@@ -1,0 +1,8 @@
+.container-wide {
+  width: 90%;
+}
+.panel {
+  border: 1px solid #eee;
+  height: 300px;
+  padding: 4px;
+}
