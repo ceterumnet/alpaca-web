@@ -12,7 +12,7 @@ props.panelName // string
       <span class="close-handle">X</span>
     </div>
     <div class="no-drag">
-      <div style="margin: 4px">
+      <div class="select" style="margin: 0 0.5em 0 0.5em">
         and more and more .. and more and more .. and more and more .. and more and more .. and more
         and more .. and more and more .. and more and more .. and more and more .. and more and more
         .. and more and more .. and more and more .. a bunch of stuff inside of here...
@@ -22,17 +22,8 @@ props.panelName // string
 </template>
 
 <style scoped>
-.panel-title {
-  font-size: 1em;
-  color: black;
-  background-color: white;
-}
-
 .close-handle {
   position: absolute;
   right: 0.5em;
 }
-/* .panel-title span {
-  display: inline-flex;
-} */
 </style>

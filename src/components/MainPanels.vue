@@ -47,12 +47,12 @@ const layout = reactive([
 
 <style scoped>
 .vgl-layout {
-  background-color: #303030;
+  background-color: var(--aw-panels-bg-color);
 }
 
 :deep(.vgl-item:not(.vgl-item--placeholder)) {
-  background-color: #ccc;
-  border: 1px solid black;
+  background-color: var(--aw-panel-resize-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
 }
 
 :deep(.vgl-item--resizing) {
@@ -60,7 +60,7 @@ const layout = reactive([
 }
 
 :deep(.vgl-item--static) {
-  background-color: #cce;
+  background-color: var(--aw-panel-bg-color);
 }
 
 :deep(.panel-container) {
@@ -68,16 +68,19 @@ const layout = reactive([
   inset: 0;
   width: 100%;
   height: 100%;
-  font-size: 24px;
   text-align: center;
   font-size: 0.8em;
   font-family: sans-serif;
   overflow: hidden;
 }
 
+:deep(.vgl-item__resizer::before) {
+  border-color: var(--aw-panel-resize-color);
+}
+
 :deep(.vue-draggable-handle) {
   position: absolute;
-  color: black;
+  color: var(--aw-panel-menu-bar-color);
   top: 0;
   right: 0;
   box-sizing: border-box;
@@ -85,7 +88,7 @@ const layout = reactive([
   height: 20px;
   padding: 0;
   cursor: move;
-  background-color: white;
+  background-color: var(--aw-panel-menu-bar-bg-color);
   background-origin: content-box;
   border-radius: 2px;
   display: flex;
@@ -101,9 +104,9 @@ const layout = reactive([
   top: 20px;
   width: 100%;
   height: calc(100% - 33px);
-  background-color: rgb(78, 0, 0);
-  color: brown;
-  scrollbar-color: brown darkred;
+  background-color: var(--aw-panel-content-bg-color);
+  color: var(--aw-panel-content-color);
+  scrollbar-color: var(--aw-panel-scrollbar-color-1) var(--aw-panel-scrollbar-color-2);
   overflow-y: scroll;
 }
 </style>
