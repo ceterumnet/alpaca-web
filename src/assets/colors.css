@@ -1,11 +1,11 @@
 :root {
   --aw-bg-color: white;
   --aw-color: black;
+  --aw-panel-menu-bar-color: white;
   --aw-panels-bg-color: white;
   --aw-panel-resize-bg-color: #93d4ff;
   --aw-panel-resize-color: white;
   --aw-panel-border-color: rgb(39, 39, 39);
-  --aw-panel-menu-bar-color: var(--aw-color);
   --aw-panel-menu-bar-bg-color: #6b6b6b;
   --aw-panel-content-bg-color: rgb(225, 225, 225);
   --aw-panel-content-color: rgb(2, 2, 2);
@@ -16,9 +16,9 @@
   --aw-bg-color: black;
   --aw-color: var(--aw-text-color);
   --aw-panels-bg-color: black;
-  --aw-panel-resize-bg-color: rgb(83, 4, 4);
+  --aw-panel-resize-bg-color: rgb(114, 0, 0);
   --aw-panel-resize-color: rgb(239, 82, 82);
-  --aw-panel-border-color: purple;
+  --aw-panel-border-color: var(--aw-panel-resize-color);
   --aw-panel-menu-bar-color: var(--aw-text-color);
   --aw-panel-menu-bar-bg-color: rgb(114, 0, 0);
   --aw-panel-content-bg-color: rgb(78, 0, 0);

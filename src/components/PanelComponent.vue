@@ -1,21 +1,23 @@
 <script setup lang="ts">
 const props = defineProps({
-  panelName: { type: String, required: true }
+  panelName: { type: String, required: true },
+  connected: { type: Boolean, required: true }
 })
 
+import Icon from './Icon.vue'
 props.panelName // string
 </script>
 <template>
   <div class="panel-container">
-    <div class="vue-draggable-handle panel-title">
-      <span>{{ panelName }}</span>
-      <span class="close-handle">X</span>
+    <div class="panel-title">
+      <span class="vue-draggable-handle">{{ panelName }}</span>
+      <Icon class="close-handle" type="close"></Icon>
+      <Icon class="configure-handle" type="gear"></Icon>
+      <Icon class="connect-handle" :type="connected ? 'connected' : 'disconnected'"></Icon>
     </div>
     <div class="no-drag">
-      <div class="select" style="margin: 0 0.5em 0 0.5em">
-        and more and more .. and more and more .. and more and more .. and more and more .. and more
-        and more .. and more and more .. and more and more .. and more and more .. and more and more
-        .. and more and more .. and more and more .. a bunch of stuff inside of here...
+      <div class="select">
+        <slot></slot>
       </div>
     </div>
   </div>
@@ -24,6 +26,18 @@ props.panelName // string
 <style scoped>
 .close-handle {
   position: absolute;
-  right: 0.5em;
+  top: 0.1em;
+  right: 0.1em;
+}
+
+.configure-handle {
+  position: absolute;
+  top: 0.1em;
+  right: 2em;
+}
+.connect-handle {
+  position: absolute;
+  top: 0.1em;
+  right: 4em;
 }
 </style>

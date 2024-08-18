@@ -1,28 +1,31 @@
 <script setup lang="ts">
-// import PanelLayout from './PanelLayout.vue'
-// import Splitter from 'primevue/splitter'
-// import SplitterPanel from 'primevue/splitterpanel'
-// import Panel from 'primevue/panel'
-// import { Vue }
-// const panels = [{ title: 'PanelA' }, { title: 'Panel2' }, { title: 'Panel3' }]
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import { reactive } from 'vue'
 import PanelComponent from './PanelComponent.vue'
+import TelescopePanel from './TelescopePanel.vue'
+import type { Device } from '@/types/Device'
+
 const layout = reactive([
-  {
-    x: 0,
-    y: 0,
-    w: 2,
-    h: 2,
-    i: '0',
-    static: false
-    // content: 'lorem ipsum fodder foo 123 \n what is this going to be like? '
-  },
-  { x: 2, y: 0, w: 2, h: 4, i: '1', static: false },
-  { x: 4, y: 0, w: 2, h: 5, i: '2', static: false },
-  { x: 0, y: 5, w: 2, h: 3, i: '3', static: false },
-  { x: 4, y: 5, w: 2, h: 3, i: '4', static: false }
+  { x: 0, y: 0, w: 6, h: 8, i: 'five', deviceType: 'telescope', static: false, connected: true },
+  { x: 6, y: 0, w: 6, h: 8, i: 'one', static: false, connected: false },
+  { x: 0, y: 0, w: 6, h: 8, i: 'two', static: false, connected: false },
+  { x: 6, y: 0, w: 6, h: 8, i: 'three', static: false, connected: false },
+  { x: 0, y: 5, w: 6, h: 8, i: 'four', static: false, connected: false }
 ])
+
+function isDevice(obj: Device | object): obj is Device {
+  return (obj as Device).deviceType !== undefined
+}
+
+const getComponent = function (lookupBy: Device) {
+  if (isDevice(lookupBy)) {
+    console.log('getComponent: ', lookupBy)
+    if (lookupBy['deviceType'].toLowerCase() == 'telescope') {
+      return TelescopePanel
+    }
+  }
+  return PanelComponent
+}
 </script>
 
 <template>
@@ -39,7 +42,7 @@ const layout = reactive([
         drag-allow-from=".vue-draggable-handle"
         drag-ignore-from=".no-drag"
       >
-        <PanelComponent :panel-name="'Item: ' + item.i"></PanelComponent>
+        <component :is="getComponent(item as Device)" :connected="item.connected" :panel-name="'generic ' + item.i"></component>
       </GridItem>
     </GridLayout>
   </div>
@@ -64,7 +67,7 @@ const layout = reactive([
 }
 
 :deep(.panel-container) {
-  position: absolute;
+  position: relative;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -95,7 +98,10 @@ const layout = reactive([
   flex-wrap: wrap;
   align-content: center;
   align-items: center;
-  justify-content: center;
+  justify-content: left;
+  padding-left: 0.3em;
+  overflow: hidden;
+  text-wrap: nowrap;
 }
 
 :deep(.no-drag) {
@@ -108,5 +114,9 @@ const layout = reactive([
   color: var(--aw-panel-content-color);
   scrollbar-color: var(--aw-panel-scrollbar-color-1) var(--aw-panel-scrollbar-color-2);
   overflow-y: scroll;
+}
+
+:deep(.panel-title *) {
+  color: var(--aw-panel-menu-bar-color);
 }
 </style>
