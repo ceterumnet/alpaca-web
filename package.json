@@ -16,8 +16,11 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "materialize-css": "^1.0.0-rc.2",
+    "@primevue/themes": "^4.0.4",
+    "grid-layout-plus": "^1.0.5",
     "pinia": "^2.1.7",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.0.4",
     "vue": "^3.4.29"
   },
   "devDependencies": {

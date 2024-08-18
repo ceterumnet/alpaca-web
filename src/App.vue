@@ -1,9 +1,10 @@
 <script setup lang="ts">
+// import '@primevue/themes'
 import MainPanels from './components/MainPanels.vue'
 </script>
 
 <template>
-  <!-- <header></header> -->
+  <header></header>
 
   <main>
     <MainPanels />
