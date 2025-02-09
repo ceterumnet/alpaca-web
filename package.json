@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.0.4",
+    "axios": "^1.7.9",
     "grid-layout-plus": "^1.0.5",
     "pinia": "^2.1.7",
     "primeicons": "^7.0.0",

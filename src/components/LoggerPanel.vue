@@ -12,50 +12,8 @@ function someThing() {
 props.panelName // string
 </script>
 <template>
-  <PanelComponent panel-name="Telescope" :connected="false">
-    <table class="device-properties">
-      <thead>
-        <tr>
-          <th>Property</th>
-          <th>Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>RA</td>
-          <td>-98.1</td>
-        </tr>
-        <tr>
-          <td>Dec:</td>
-          <td>20.1</td>
-        </tr>
-        <tr>
-          <td>Alt:</td>
-          <td>17.1</td>
-        </tr>
-        <tr>
-          <td>Az:</td>
-          <td>123.1</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="telescope-jog">
-      <div class="row">
-        <div class="button" @click="someThing"><Icon type="arrow-up"></Icon></div>
-      </div>
-      <div class="row">
-        <div class="button"><Icon type="arrow-left"></Icon></div>
-        <div class="button"><Icon type="home"></Icon></div>
-        <div class="button"><Icon type="arrow-right"></Icon></div>
-      </div>
-      <div class="row">
-        <div class="button"><Icon type="arrow-down"></Icon></div>
-      </div>
-      <div class="row" style="margin-top: 10px">
-        <div class="button"><Icon type="stop"></Icon></div>
-        <div class="button"><Icon type="park"></Icon></div>
-      </div>
-    </div>
+  <PanelComponent panel-name="Debug Log">
+    <div>Log:</div>
   </PanelComponent>
 </template>
 

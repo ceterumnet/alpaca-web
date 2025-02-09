@@ -4,13 +4,15 @@ import { reactive } from 'vue'
 import PanelComponent from './PanelComponent.vue'
 import TelescopePanel from './TelescopePanel.vue'
 import type { Device } from '@/types/Device'
+import LoggerPanel from './LoggerPanel.vue'
+import { useDevicesStore } from '@/stores/useDevicesStore'
 
 const layout = reactive([
   { x: 0, y: 0, w: 6, h: 8, i: 'five', deviceType: 'telescope', static: false, connected: true },
   { x: 6, y: 0, w: 6, h: 8, i: 'one', static: false, connected: false },
   { x: 0, y: 0, w: 6, h: 8, i: 'two', static: false, connected: false },
   { x: 6, y: 0, w: 6, h: 8, i: 'three', static: false, connected: false },
-  { x: 0, y: 5, w: 6, h: 8, i: 'four', static: false, connected: false }
+  { x: 0, y: 6, w: 12, h: 8, i: 'six', deviceType: 'logger', static: false, connected: false }
 ])
 
 function isDevice(obj: Device | object): obj is Device {
@@ -19,13 +21,20 @@ function isDevice(obj: Device | object): obj is Device {
 
 const getComponent = function (lookupBy: Device) {
   if (isDevice(lookupBy)) {
-    console.log('getComponent: ', lookupBy)
+    // console.log('getComponent: ', lookupBy)
     if (lookupBy['deviceType'].toLowerCase() == 'telescope') {
       return TelescopePanel
+    }
+    if (lookupBy['deviceType'].toLowerCase() == 'logger') {
+      return LoggerPanel
     }
   }
   return PanelComponent
 }
+
+let deviceStore = useDevicesStore()
+
+console.log('deviceStore: ', deviceStore)
 </script>
 
 <template>
@@ -42,7 +51,11 @@ const getComponent = function (lookupBy: Device) {
         drag-allow-from=".vue-draggable-handle"
         drag-ignore-from=".no-drag"
       >
-        <component :is="getComponent(item as Device)" :connected="item.connected" :panel-name="'generic ' + item.i"></component>
+        <component
+          :is="getComponent(item as unknown as Device)"
+          :connected="item.connected"
+          :panel-name="'generic ' + item.i"
+        ></component>
       </GridItem>
     </GridLayout>
   </div>

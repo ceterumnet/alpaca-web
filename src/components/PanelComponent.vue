@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps({
   panelName: { type: String, required: true },
-  connected: { type: Boolean, required: true }
+  connected: { type: Boolean, required: false }
 })
 
 import Icon from './Icon.vue'
