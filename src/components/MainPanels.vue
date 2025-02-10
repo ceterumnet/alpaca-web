@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { GridLayout, GridItem } from 'grid-layout-plus'
-import { reactive } from 'vue'
+import { onMounted, reactive } from 'vue'
 import PanelComponent from './PanelComponent.vue'
 import TelescopePanel from './TelescopePanel.vue'
-import type { Device } from '@/types/Device'
+import { DeviceFactory, type Device } from '@/types/Device'
 import LoggerPanel from './LoggerPanel.vue'
 import { useDevicesStore } from '@/stores/useDevicesStore'
+import axios from 'axios'
 
-const layout = reactive([
-  { x: 0, y: 0, w: 6, h: 8, i: 'five', deviceType: 'telescope', static: false, connected: true },
-  { x: 6, y: 0, w: 6, h: 8, i: 'one', static: false, connected: false },
-  { x: 0, y: 0, w: 6, h: 8, i: 'two', static: false, connected: false },
-  { x: 6, y: 0, w: 6, h: 8, i: 'three', static: false, connected: false },
-  { x: 0, y: 6, w: 12, h: 8, i: 'six', deviceType: 'logger', static: false, connected: false }
+let layout: any = reactive([
+  // { x: 0, y: 0, w: 6, h: 8, i: 'five', deviceType: 'telescope', static: false, connected: false },
+  // { x: 6, y: 0, w: 6, h: 8, i: 'one', static: false, connected: false },
+  // { x: 0, y: 0, w: 6, h: 8, i: 'two', static: false, connected: false },
+  // { x: 6, y: 0, w: 6, h: 8, i: 'three', static: false, connected: false },
+  // { x: 0, y: 6, w: 12, h: 8, i: 'six', deviceType: 'logger', static: false, connected: false }
 ])
 
 function isDevice(obj: Device | object): obj is Device {
@@ -31,6 +32,55 @@ const getComponent = function (lookupBy: Device) {
   }
   return PanelComponent
 }
+
+function fetchConfiguredDevices() {
+  axios
+    .get('/management/v1/configureddevices')
+    .then((resp) => {
+      console.log('resp', resp)
+      let deviceArray = resp.data.Value
+      for (let deviceIdx = 0; deviceIdx < deviceArray.length; deviceIdx++) {
+        const device = deviceArray[deviceIdx]
+        console.log('device: ', device)
+        // console.log('device.deviceType:', device.DeviceType)
+        let deviceInstanceClass = DeviceFactory.deviceTypeMap.get(device.DeviceType)
+
+        if (undefined !== deviceInstanceClass) {
+          console.log('found matching type')
+          console.log('DeviceFactory.deviceTypeMap: ', DeviceFactory.deviceTypeMap)
+          console.log('DeviceNum: ', device.DeviceNumber)
+          // console.log(
+          //   'DeviceFactory.deviceTypeMap["Telescope"]: ',
+          //   DeviceFactory.deviceTypeMap.get('Telescope')
+          // )
+          // console.log('deviceInstanceClass:', deviceInstanceClass)
+          // { x: 0, y: 0, w: 6, h: 8, i: 'five', deviceType: 'telescope', static: false, connected: false },
+          layout.push({
+            x: 0,
+            y: 0,
+            w: 12,
+            h: 8,
+            i: deviceIdx,
+            deviceNum: device.DeviceNumber,
+            deviceType: device.DeviceType,
+            connected: false
+          })
+        } else {
+          console.log('no matching type found, skipping')
+        }
+        // deviceStore.$state.devices.push(new deviceInstanceClass())
+
+        // deviceStore.$state.devices.push(device)
+      }
+    })
+    .catch((e) => {
+      console.error('problem: ', e)
+    })
+}
+
+onMounted(() => {
+  fetchConfiguredDevices()
+})
 
 let deviceStore = useDevicesStore()
 
@@ -55,6 +105,8 @@ console.log('deviceStore: ', deviceStore)
           :is="getComponent(item as unknown as Device)"
           :connected="item.connected"
           :panel-name="'generic ' + item.i"
+          :idx="item.i"
+          :device-num="item.deviceNum"
         ></component>
       </GridItem>
     </GridLayout>

@@ -1,18 +1,43 @@
 <script setup lang="ts">
 import PanelComponent from './PanelComponent.vue'
 import Icon from './Icon.vue'
+import { onMounted, reactive } from 'vue'
+import axios from 'axios'
 const props = defineProps({
-  panelName: { type: String, required: true }
+  panelName: { type: String, required: true },
+  connected: { type: Boolean, required: true },
+  idx: { type: Number, required: true },
+  deviceNum: { type: Number, required: true }
 })
+
+type TelescopeDataType = Record<string, string | number>
+
+const telescopeData = reactive<TelescopeDataType>({})
 
 function someThing() {
   console.log('someThing!')
 }
 
-props.panelName // string
+async function fetchData() {
+  axios
+    .get(`/api/v1/telescope/${props.deviceNum}/devicestate`)
+    .then((resp) => {
+      console.log('resp from telescope: ', resp)
+      for (let index = 0; index < resp.data.Value.length; index++) {
+        telescopeData[resp.data.Value[index].Name] = resp.data.Value[index]['Value']
+      }
+      telescopeData
+    })
+    .catch((e) => console.error(e))
+}
+
+onMounted(() => {
+  console.log('type: ', props)
+  fetchData()
+})
 </script>
 <template>
-  <PanelComponent panel-name="Telescope" :connected="false">
+  <PanelComponent :panel-name="`Telescope ${deviceNum}`">
     <table class="device-properties">
       <thead>
         <tr>
@@ -22,20 +47,12 @@ props.panelName // string
       </thead>
       <tbody>
         <tr>
-          <td>RA</td>
-          <td>-98.1</td>
+          <td>Connected</td>
+          <td>{{ connected }}</td>
         </tr>
-        <tr>
-          <td>Dec:</td>
-          <td>20.1</td>
-        </tr>
-        <tr>
-          <td>Alt:</td>
-          <td>17.1</td>
-        </tr>
-        <tr>
-          <td>Az:</td>
-          <td>123.1</td>
+        <tr v-for="(v, k) in telescopeData" :key="k">
+          <td>{{ k }}</td>
+          <td>{{ v }}</td>
         </tr>
       </tbody>
     </table>
@@ -75,7 +92,7 @@ th {
 }
 
 table.device-properties td {
-  padding-left: 1em;
+  padding-left: 0.5em;
 }
 
 .telescope-jog {

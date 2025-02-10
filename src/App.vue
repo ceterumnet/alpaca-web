@@ -25,41 +25,9 @@ function darkLightToggle() {
   console.log('theme: ', themeClass)
 }
 
-function fetchConfiguredDevices() {
-  axios
-    .get('/management/v1/configureddevices')
-    .then((resp) => {
-      console.log('resp', resp)
-      let deviceArray = resp.data.Value
-      for (let deviceIdx = 0; deviceIdx < deviceArray.length; deviceIdx++) {
-        const device = deviceArray[deviceIdx]
-        console.log('device: ', device)
-        console.log('device.deviceType:', device.DeviceType)
-        let deviceInstanceClass = DeviceFactory.deviceTypeMap.get(device.DeviceType)
-
-        if (undefined !== deviceInstanceClass) {
-          console.log('found matching type')
-          console.log('DeviceFactory.deviceTypeMap: ', DeviceFactory.deviceTypeMap)
-          console.log(
-            'DeviceFactory.deviceTypeMap["Telescope"]: ',
-            DeviceFactory.deviceTypeMap.get('Telescope')
-          )
-          console.log('deviceInstanceClass:', deviceInstanceClass)
-        } else {
-          console.log('no matching type found, skipping')
-        }
-        // deviceStore.$state.devices.push(new deviceInstanceClass())
-
-        // deviceStore.$state.devices.push(device)
-      }
-    })
-    .catch((e) => {
-      console.error('problem: ', e)
-    })
-}
 onMounted(() => {
   console.log('mounted!!!')
-  fetchConfiguredDevices()
+  // fetchConfiguredDevices()
 })
 </script>
 
