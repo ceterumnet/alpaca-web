@@ -3598,7 +3598,7 @@ input[type='text'],
 
 .info-label {
   font-weight: 600;
-  color: var(--text-color-secondary, rgba(255, 255, 255, 0.8));
+  color: var(--text-color-secondary);
   font-size: 0.85em;
   margin-bottom: 4px;
   text-transform: uppercase;
@@ -3606,7 +3606,7 @@ input[type='text'],
 }
 
 .info-value {
-  color: var(--text-color, white);
+  color: var(--text-color);
   word-break: break-word;
   font-weight: 500;
   padding-left: 5px;
