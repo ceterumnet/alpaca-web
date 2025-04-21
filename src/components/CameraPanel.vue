@@ -47,6 +47,16 @@ interface CameraDataType {
   [key: string]: string | number | boolean | null | { x: number; y: number } | any[] | undefined
 }
 
+// Image history interface to store previous captures
+interface ImageHistoryItem {
+  thumbnail: string
+  fullImage: string
+  timestamp: Date
+  exposureTime: number
+  gain: number
+  binning: { x: number; y: number }
+}
+
 // Instead of separate variables, initialize cameraData with default values
 const cameraData = reactive<CameraDataType>({
   // Camera settings with default values
@@ -1428,7 +1438,42 @@ function displayProcessedImage(processedData: any, forceReprocess = false) {
   ctx.putImageData(imageData, 0, 0)
 
   // Convert canvas to data URL and update the image
-  cameraData.previewImage = canvas.toDataURL('image/jpeg', 0.85) // Use JPEG for speed
+  const imageUrl = canvas.toDataURL('image/jpeg', 0.85) // Use JPEG for speed
+  cameraData.previewImage = imageUrl
+
+  // If this is a new image (not just adjusting an existing one), add it to history
+  if (forceReprocess) {
+    // Create a smaller thumbnail for history
+    const thumbCanvas = document.createElement('canvas')
+    const thumbCtx = thumbCanvas.getContext('2d')
+    if (!thumbCtx) {
+      throw new Error('Could not get thumbnail canvas context')
+    }
+    // Make thumbnail 150px wide, maintain aspect ratio
+    const thumbWidth = 150
+    const thumbHeight = Math.floor((height / width) * thumbWidth)
+    thumbCanvas.width = thumbWidth
+    thumbCanvas.height = thumbHeight
+
+    // Create the thumbnail by drawing the full canvas onto the smaller one
+    thumbCtx.drawImage(canvas, 0, 0, width, height, 0, 0, thumbWidth, thumbHeight)
+
+    // Add to history
+    const historyItem: ImageHistoryItem = {
+      thumbnail: thumbCanvas.toDataURL('image/jpeg', 0.6),
+      fullImage: imageUrl,
+      timestamp: new Date(),
+      exposureTime: Number(cameraData.exposureTime),
+      gain: Number(cameraData.gain),
+      binning: { x: Number(cameraData.binningX), y: Number(cameraData.binningY) }
+    }
+
+    // Add to beginning of array and limit to 5 items
+    imageHistory.value.unshift(historyItem)
+    if (imageHistory.value.length > 5) {
+      imageHistory.value.pop()
+    }
+  }
 
   // Always draw histogram at the end, regardless of preview mode
   if (imageControls.showHistogram) {
@@ -2652,6 +2697,25 @@ function formatBitDepth(maxADU: any): string {
   // Return formatted bit depth
   return `${roundedBitDepth}`
 }
+
+// Add image history array to store the last 5 images
+const imageHistory = ref<ImageHistoryItem[]>([])
+const showImageHistory = ref(false)
+const selectedHistoryImage = ref<ImageHistoryItem | null>(null)
+
+// Function to display a history image
+function displayHistoryImage(historyItem: ImageHistoryItem) {
+  selectedHistoryImage.value = historyItem
+  cameraData.previewImage = historyItem.fullImage
+}
+
+// Function to go back to live view
+function returnToLiveView() {
+  selectedHistoryImage.value = null
+  if (lastProcessedImage.value) {
+    displayProcessedImage(lastProcessedImage.value, false)
+  }
+}
 </script>
 
 <template>
@@ -2991,41 +3055,6 @@ function formatBitDepth(maxADU: any): string {
               </div>
             </div>
           </div>
-
-          <div class="properties-container">
-            <div
-              v-for="(groupData, groupName) in propertyGroups"
-              :key="groupName"
-              class="property-group"
-            >
-              <h3 class="group-title">
-                {{ groupName.charAt(0).toUpperCase() + groupName.slice(1) }}
-              </h3>
-              <table class="device-properties">
-                <tbody>
-                  <tr v-for="(value, key) in groupData" :key="key">
-                    <td class="property-name">{{ key }}</td>
-                    <td class="property-value">
-                      <!-- Add special formatting for pixel size values -->
-                      <span v-if="key.toLowerCase().includes('pixelsize')">
-                        {{ parseFloat(String(value)).toFixed(2) }} μm
-                      </span>
-                      <!-- Add degrees for temperature values -->
-                      <span v-else-if="key.toLowerCase().includes('temperature')">
-                        {{ parseFloat(String(value)).toFixed(1) }}°C
-                      </span>
-                      <!-- Add percentage for coolerpower -->
-                      <span v-else-if="key.toLowerCase() === 'coolerpower'">
-                        {{ parseFloat(String(value)).toFixed(1) }}%
-                      </span>
-                      <!-- Default display for other values -->
-                      <span v-else>{{ value }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         <div class="camera-controls">
@@ -3062,6 +3091,49 @@ function formatBitDepth(maxADU: any): string {
             >
               <Icon type="stop"></Icon>
               <span class="button-label">Abort</span>
+            </div>
+            <div
+              class="control-button"
+              @click="showImageHistory = !showImageHistory"
+              :class="{ active: showImageHistory }"
+              title="Show/hide image history"
+            >
+              <Icon type="history"></Icon>
+              <span class="button-label">History</span>
+            </div>
+          </div>
+
+          <!-- Image History Panel -->
+          <div v-if="showImageHistory" class="image-history-panel">
+            <h3>
+              Image History
+              <span class="history-count">({{ imageHistory.length }} of 5)</span>
+            </h3>
+            <div class="history-items">
+              <div v-if="imageHistory.length === 0" class="empty-history">
+                No images captured yet
+              </div>
+              <div
+                v-for="(item, index) in imageHistory"
+                :key="index"
+                class="history-item"
+                :class="{ selected: selectedHistoryImage === item }"
+                @click="displayHistoryImage(item)"
+              >
+                <div class="thumbnail">
+                  <img :src="item.thumbnail" alt="Captured image" />
+                </div>
+                <div class="image-info">
+                  <div class="image-time">{{ item.timestamp.toLocaleTimeString() }}</div>
+                  <div class="image-settings">
+                    {{ item.exposureTime.toFixed(2) }}s, Gain: {{ item.gain }}, Bin:
+                    {{ item.binning.x }}x{{ item.binning.y }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-if="selectedHistoryImage" class="back-to-live">
+              <button @click="returnToLiveView">Back to Live View</button>
             </div>
           </div>
 
@@ -3696,5 +3768,113 @@ input[type='text'],
 
 .feature-not-supported .not-supported-text {
   color: var(--text-color-secondary);
+}
+
+/* Image History Styles */
+.image-history-panel {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+.image-history-panel h3 {
+  font-size: 14px;
+  margin-top: 0;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.history-count {
+  font-size: 12px;
+  color: #999;
+  font-weight: normal;
+}
+
+.history-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.empty-history {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  padding: 10px;
+}
+
+.history-item {
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 5px;
+}
+
+.history-item:hover {
+  background-color: rgba(30, 30, 30, 0.5);
+}
+
+.history-item.selected {
+  background-color: rgba(25, 50, 80, 0.6);
+  border: 1px solid #48a;
+}
+
+.thumbnail {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.image-info {
+  flex: 1;
+  margin-left: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.image-time {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.image-settings {
+  font-size: 11px;
+  color: #ccc;
+  margin-top: 4px;
+}
+
+.back-to-live {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.back-to-live button {
+  background-color: #555;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.back-to-live button:hover {
+  background-color: #777;
 }
 </style>
