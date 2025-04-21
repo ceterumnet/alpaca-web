@@ -1785,6 +1785,37 @@ function onConnectButtonClick() {
   }
 }
 
+// Add a polling interval ref
+const dataPollingInterval = ref<number | null>(null)
+
+// Add function to start data polling
+function startDataPolling() {
+  // Clear any existing interval first
+  stopDataPolling()
+
+  // Only start polling if camera is connected
+  if (isConnected.value) {
+    console.log('Starting camera data polling')
+    dataPollingInterval.value = window.setInterval(async () => {
+      if (isConnected.value) {
+        await fetchData()
+      } else {
+        // Stop polling if camera becomes disconnected
+        stopDataPolling()
+      }
+    }, 2000) // Poll every 2 seconds
+  }
+}
+
+// Add function to stop data polling
+function stopDataPolling() {
+  if (dataPollingInterval.value) {
+    console.log('Stopping camera data polling')
+    clearInterval(dataPollingInterval.value)
+    dataPollingInterval.value = null
+  }
+}
+
 async function connectCamera() {
   if (isConnecting.value) return
 
@@ -1800,6 +1831,7 @@ async function connectCamera() {
       console.log('Camera already connected')
       updateConnectionState(true)
       await fetchData() // Refresh camera data as we're already connected
+      startDataPolling() // Start polling after connecting
       return
     }
 
@@ -1836,6 +1868,9 @@ async function connectCamera() {
       await fetchPixelSizeY()
       await fetchReadoutModes()
       await fetchReadoutMode()
+
+      // Start data polling
+      startDataPolling()
     } else {
       throw new Error('Camera connection verification failed')
     }
@@ -1859,6 +1894,9 @@ async function disconnectCamera() {
   try {
     isConnecting.value = true
     console.log('Attempting to disconnect from camera:', props.deviceNum)
+
+    // Stop data polling immediately when disconnecting
+    stopDataPolling()
 
     // First check if the camera is connected
     const stateResp = await axios.get(`/api/v1/camera/${props.deviceNum}/connected`)
@@ -1969,13 +2007,13 @@ onMounted(async () => {
   }, 100)
 
   // Set up periodic connection check (every 30 seconds)
-  const intervalId = setInterval(async () => {
+  const connectionCheckIntervalId = setInterval(async () => {
     await checkConnectionState()
   }, 30000)
 
   // Store on window for access in onUnmounted
   if (typeof window !== 'undefined') {
-    ;(window as any).intervalId = intervalId
+    ;(window as any).connectionCheckIntervalId = connectionCheckIntervalId
   }
 
   // Store intervalId for cleanup in onUnmounted
@@ -1991,12 +2029,17 @@ onMounted(async () => {
   // Only fetch data if connected
   if (apiConnected) {
     await fetchData()
+    // Start polling if connected
+    startDataPolling()
   }
 })
 
-// Clean up resize observer in onUnmounted
+// Update onUnmounted to clean up polling interval
 onUnmounted(() => {
   console.log('Camera panel unmounted for device:', props.deviceNum)
+
+  // Stop data polling
+  stopDataPolling()
 
   // Clear any pending timeouts or intervals
   if (renderTimeout) {
@@ -2005,9 +2048,9 @@ onUnmounted(() => {
   }
 
   // Clear the connection check interval
-  if (typeof window !== 'undefined' && (window as any).intervalId) {
-    clearInterval((window as any).intervalId)
-    ;(window as any).intervalId = null
+  if (typeof window !== 'undefined' && (window as any).connectionCheckIntervalId) {
+    clearInterval((window as any).connectionCheckIntervalId)
+    ;(window as any).connectionCheckIntervalId = null
   }
 
   // Clean up resize observer
@@ -2622,7 +2665,7 @@ function formatBitDepth(maxADU: any): string {
           {{ isConnected ? 'Connected' : 'Disconnected' }}
         </span>
         <span
-          v-if="cameraData.camerastate !== undefined"
+          v-if="getPropertyValue('CameraState') !== undefined"
           class="camera-state"
           :class="cameraStateClass"
           :title="cameraStateDescription"
@@ -2653,7 +2696,7 @@ function formatBitDepth(maxADU: any): string {
 
           <!-- Histogram as a separate widget -->
           <div v-if="imageControls.showHistogram" class="histogram-widget">
-            <h3>Histogram Comparison</h3>
+            <h3>Histogram</h3>
             <canvas ref="histogramCanvas" class="histogram-canvas"></canvas>
           </div>
 
@@ -2774,29 +2817,31 @@ function formatBitDepth(maxADU: any): string {
                   />
                 </div>
               </div>
-              <div class="control-row" v-if="canAdjustGain">
+              <div class="control-row" :class="{ 'feature-not-supported': !canAdjustGain }">
                 <label>Gain:</label>
                 <input
                   type="number"
                   v-model.number="gain"
                   :min="minGain"
                   :max="maxGain"
-                  :disabled="!canAdjustExposure"
+                  :disabled="!canAdjustExposure || !canAdjustGain"
                   @change="setGain(gain)"
                 />
                 <span class="control-value">{{ gain }}</span>
+                <span v-if="!canAdjustGain" class="not-supported-text">Not supported</span>
               </div>
-              <div class="control-row" v-if="canAdjustOffset">
+              <div class="control-row" :class="{ 'feature-not-supported': !canAdjustOffset }">
                 <label>Offset:</label>
                 <input
                   type="number"
                   v-model.number="offset"
                   :min="minOffset"
                   :max="maxOffset"
-                  :disabled="!canAdjustExposure"
+                  :disabled="!canAdjustExposure || !canAdjustOffset"
                   @change="setOffset(offset)"
                 />
                 <span class="control-value">{{ offset }}</span>
+                <span v-if="!canAdjustOffset" class="not-supported-text">Not supported</span>
               </div>
             </div>
 
@@ -2872,40 +2917,43 @@ function formatBitDepth(maxADU: any): string {
                   </div>
                 </div>
 
-                <div class="control-row" v-if="canAdjustReadMode">
+                <div class="control-row" :class="{ 'feature-not-supported': !canAdjustReadMode }">
                   <label>Read Mode:</label>
                   <select
                     v-model="readMode"
                     @change="(e: any) => setReadMode(e.target.value)"
-                    :disabled="!canAdjustExposure"
+                    :disabled="!canAdjustExposure || !canAdjustReadMode"
                   >
                     <option v-for="(mode, index) in readModeOptions" :key="index" :value="index">
                       {{ mode }}
                     </option>
                   </select>
+                  <span v-if="!canAdjustReadMode" class="not-supported-text">Not supported</span>
                 </div>
-                <div class="control-row" v-if="canAdjustUSBTraffic">
+                <div class="control-row" :class="{ 'feature-not-supported': !canAdjustUSBTraffic }">
                   <label>USB Traffic:</label>
                   <input
                     type="number"
                     v-model.number="usbTraffic"
                     :min="minUSBTraffic"
                     :max="maxUSBTraffic"
-                    :disabled="!canAdjustExposure"
+                    :disabled="!canAdjustExposure || !canAdjustUSBTraffic"
                     @change="setUSBTraffic(usbTraffic)"
                   />
                   <span class="control-value">{{ usbTraffic }}</span>
+                  <span v-if="!canAdjustUSBTraffic" class="not-supported-text">Not supported</span>
                 </div>
-                <div class="control-row" v-if="hasFastReadout">
+                <div class="control-row" :class="{ 'feature-not-supported': !hasFastReadout }">
                   <label>Fast Readout:</label>
                   <input
                     type="checkbox"
                     v-model="fastReadout"
                     @change="setFastReadout(fastReadout)"
-                    :disabled="!canAdjustExposure"
+                    :disabled="!canAdjustExposure || !hasFastReadout"
                   />
+                  <span v-if="!hasFastReadout" class="not-supported-text">Not supported</span>
                 </div>
-                <div class="control-row" v-if="canSetTemperature">
+                <div class="control-row" :class="{ 'feature-not-supported': !canSetTemperature }">
                   <label>Target Temperature:</label>
                   <input
                     type="number"
@@ -2913,22 +2961,32 @@ function formatBitDepth(maxADU: any): string {
                     min="-20"
                     max="25"
                     step="1"
-                    :disabled="!canAdjustExposure"
+                    :disabled="!canAdjustExposure || !canSetTemperature"
                     @change="setTemperature(targetTemperature)"
                   />
                   <span class="control-value">{{ targetTemperature }}°C</span>
+                  <span v-if="!canSetTemperature" class="not-supported-text">Not supported</span>
                 </div>
                 <div
                   class="control-row"
-                  v-if="canSetTemperature && cameraData.ccdtemperature !== undefined"
+                  :class="{
+                    'feature-not-supported':
+                      !canSetTemperature || cameraData.ccdtemperature === undefined
+                  }"
                 >
                   <label>Current Temp:</label>
-                  <span class="control-value"
-                    >{{ Number(cameraData.ccdtemperature).toFixed(1) }}°C</span
-                  >
+                  <span class="control-value" v-if="cameraData.ccdtemperature !== undefined">
+                    {{ Number(cameraData.ccdtemperature).toFixed(1) }}°C
+                  </span>
+                  <span v-else class="control-value">-</span>
                   <span v-if="cameraData.coolerpower !== undefined" class="control-note">
                     (Power: {{ Math.round(Number(cameraData.coolerpower)) }}%)
                   </span>
+                  <span
+                    v-if="!canSetTemperature || cameraData.ccdtemperature === undefined"
+                    class="not-supported-text"
+                    >Not supported</span
+                  >
                 </div>
               </div>
             </div>
@@ -3614,6 +3672,29 @@ input[type='text'],
 
 .info-unit {
   font-size: 0.8em;
+  color: var(--text-color-secondary);
+}
+
+.not-supported-text {
+  font-size: 0.8em;
+  margin-left: 5px;
+  font-style: italic;
+}
+
+.feature-not-supported {
+  opacity: 0.85;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  padding: 4px;
+  border: 1px dashed var(--aw-panel-border-color);
+  margin-bottom: 10px;
+}
+
+.feature-not-supported label {
+  color: var(--text-color-secondary);
+}
+
+.feature-not-supported .not-supported-text {
   color: var(--text-color-secondary);
 }
 </style>
