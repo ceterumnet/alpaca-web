@@ -30,6 +30,8 @@ type IconType =
   | 'connected'
   | 'disconnected'
   | 'park'
+  | 'camera'
+  | 'exposure'
 const props = defineProps<{ type: IconType }>()
 
 const path = computed(() => {
@@ -112,6 +114,14 @@ const path = computed(() => {
     case 'park':
       path =
         'M13 3H6v18h4v-6h3c3.31 0 6-2.69 6-6s-2.69-6-6-6zm.2 8H10V7h3.2c1.1 0 2 .9 2 2s-.9 2-2 2z'
+      break
+    case 'camera':
+      path =
+        'M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 11.5V13H9v2.5L5.5 12 9 8.5V11h6V8.5l3.5 3.5-3.5 3.5z'
+      break
+    case 'exposure':
+      path =
+        'M4 6.38v11.24c0 .7.52 1.38 1.22 1.38h13.56c.7 0 1.22-.68 1.22-1.38V6.38c0-.7-.52-1.38-1.22-1.38H5.22C4.52 5 4 5.68 4 6.38zM12 8c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5 2.24-5 5-5zm0 2c1.65 0 3 1.35 3 3s-1.35 3-3 3-3-1.35-3-3 1.35-3 3-3z'
       break
   }
 

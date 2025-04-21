@@ -3,6 +3,7 @@ import { GridLayout, GridItem } from 'grid-layout-plus'
 import { onMounted, reactive } from 'vue'
 import PanelComponent from './PanelComponent.vue'
 import TelescopePanel from './TelescopePanel.vue'
+import CameraPanel from './CameraPanel.vue'
 import { DeviceFactory, type Device } from '@/types/Device'
 import LoggerPanel from './LoggerPanel.vue'
 import { useDevicesStore } from '@/stores/useDevicesStore'
@@ -22,9 +23,12 @@ function isDevice(obj: Device | object): obj is Device {
 
 const getComponent = function (lookupBy: Device) {
   if (isDevice(lookupBy)) {
-    // console.log('getComponent: ', lookupBy)
+    console.log('getComponent: ', lookupBy)
     if (lookupBy['deviceType'].toLowerCase() == 'telescope') {
       return TelescopePanel
+    }
+    if (lookupBy['deviceType'].toLowerCase() == 'camera') {
+      return CameraPanel
     }
     if (lookupBy['deviceType'].toLowerCase() == 'logger') {
       return LoggerPanel
@@ -34,16 +38,18 @@ const getComponent = function (lookupBy: Device) {
 }
 
 function fetchConfiguredDevices() {
+  console.log('fetchConfiguredDevices')
   axios
     .get('/management/v1/configureddevices')
     .then((resp) => {
       console.log('resp', resp)
       let deviceArray = resp.data.Value
+      let devicesAdded = 0
       for (let deviceIdx = 0; deviceIdx < deviceArray.length; deviceIdx++) {
         const device = deviceArray[deviceIdx]
         console.log('device: ', device)
         // console.log('device.deviceType:', device.DeviceType)
-        let deviceInstanceClass = DeviceFactory.deviceTypeMap.get(device.DeviceType)
+        let deviceInstanceClass = DeviceFactory.deviceTypeMap.get(device.DeviceType.toLowerCase())
 
         if (undefined !== deviceInstanceClass) {
           console.log('found matching type')
@@ -55,22 +61,25 @@ function fetchConfiguredDevices() {
           // )
           // console.log('deviceInstanceClass:', deviceInstanceClass)
           // { x: 0, y: 0, w: 6, h: 8, i: 'five', deviceType: 'telescope', static: false, connected: false },
+          let xPos = devicesAdded % 2 == 0 ? 0 : 6
+          devicesAdded++
           layout.push({
-            x: 0,
+            x: xPos,
             y: 0,
-            w: 12,
-            h: 8,
+            w: 6,
+            h: 20,
             i: deviceIdx,
             deviceNum: device.DeviceNumber,
             deviceType: device.DeviceType,
             connected: false
           })
         } else {
-          console.log('no matching type found, skipping')
+          console.log(`no matching type found for ${device.DeviceType}, skipping`)
         }
         // deviceStore.$state.devices.push(new deviceInstanceClass())
 
         // deviceStore.$state.devices.push(device)
+        console.log('layout: ', layout)
       }
     })
     .catch((e) => {

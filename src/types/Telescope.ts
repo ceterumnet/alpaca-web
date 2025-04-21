@@ -111,4 +111,4 @@ export class Telescope extends Device {
   declare idx: number
 }
 
-DeviceFactory.deviceTypeMap.set('Telescope', Telescope)
+DeviceFactory.deviceTypeMap.set('telescope', Telescope)

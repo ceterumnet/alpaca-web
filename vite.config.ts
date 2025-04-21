@@ -18,7 +18,8 @@ export default defineConfig({
     },
     proxy: {
       '^/(management|api)/': {
-        target: 'http://192.168.4.221:32323',
+        // target: 'http://192.168.4.221:32323',
+        target: 'http://raspberrypi.local:8080',
         changeOrigin: true,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
