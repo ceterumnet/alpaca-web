@@ -338,42 +338,40 @@ function hasProperty(name: string) {
   )
 }
 
-function getPropertyValue(
-  name: string,
-  defaultValue: string | number | boolean | any[] | { x: number; y: number } | undefined = undefined
-) {
-  // Standard Alpaca property names are PascalCase
-  const pascalCaseName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
-
-  // Check for property using all possible cases
-  if (pascalCaseName in cameraData) {
-    const value = cameraData[pascalCaseName]
-    // Ensure we don't return null to callers expecting string|number|boolean|any[]
-    if (value === null) return defaultValue
-    return value
-  }
-
+// Enhanced version of getPropertyValue to handle falsy values properly
+function getPropertyValue(name: string, defaultValue: any = undefined) {
+  // Try exact case first
   if (name in cameraData) {
-    const value = cameraData[name]
-    if (value === null) return defaultValue
-    return value
+    return cameraData[name]
   }
 
+  // Try lowercase version
   const lowercaseName = name.toLowerCase()
-  if (lowercaseName in cameraData) {
-    const value = cameraData[lowercaseName]
-    if (value === null) return defaultValue
-    return value
+  const lowercaseKey = Object.keys(cameraData).find((key) => key.toLowerCase() === lowercaseName)
+  if (lowercaseKey) {
+    return cameraData[lowercaseKey]
   }
 
-  const uppercaseName = name.toUpperCase()
-  if (uppercaseName in cameraData) {
-    const value = cameraData[uppercaseName]
-    if (value === null) return defaultValue
-    return value
+  // Try PascalCase or camelCase versions
+  const pascalCaseName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
+  const camelCaseName = name.charAt(0).toLowerCase() + name.slice(1)
+
+  if (pascalCaseName in cameraData) {
+    return cameraData[pascalCaseName]
   }
 
+  if (camelCaseName in cameraData) {
+    return cameraData[camelCaseName]
+  }
+
+  // If all attempts fail, return the default value
   return defaultValue
+}
+
+// Add a function to check if a property exists (regardless of its value)
+function propertyExists(name: string) {
+  const value = getPropertyValue(name, undefined)
+  return value !== undefined
 }
 
 // Add the canAdjustExposure property which was dropped
@@ -546,15 +544,6 @@ async function fetchData() {
 
     // Fetch specific properties directly
     await fetchCameraState()
-    await fetchPixelSizeX()
-    await fetchPixelSizeY()
-    await fetchReadoutModes()
-    await fetchReadoutMode()
-
-    // Fetch additional camera specifications
-    await fetchCameraXSize()
-    await fetchCameraYSize()
-    await fetchSensorInfo()
   } catch (e) {
     console.error('Error fetching camera data:', e)
   }
@@ -689,6 +678,28 @@ async function fetchSensorInfo() {
     }
   } catch (error) {
     console.error('Error fetching sensor info:', error)
+  }
+}
+
+// Add a dedicated function to fetch sensor type
+async function fetchSensorType() {
+  if (!isConnected.value) return
+
+  try {
+    console.log('Fetching sensor type')
+    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/sensortype`, {
+      params: {
+        ClientID: '1',
+        ClientTransactionID: '1'
+      }
+    })
+
+    if (response.data && response.data.Value !== undefined) {
+      console.log('Received sensor type:', response.data.Value)
+      cameraData.SensorType = response.data.Value
+    }
+  } catch (error) {
+    console.error('Error fetching sensor type:', error)
   }
 }
 
@@ -1876,6 +1887,7 @@ async function connectCamera() {
       console.log('Camera already connected')
       updateConnectionState(true)
       await fetchData() // Refresh camera data as we're already connected
+
       startDataPolling() // Start polling after connecting
       return
     }
@@ -1913,7 +1925,18 @@ async function connectCamera() {
       await fetchPixelSizeY()
       await fetchReadoutModes()
       await fetchReadoutMode()
+      await fetchNumX()
+      await fetchNumY()
+      await fetchStartX() // Add this line
+      await fetchStartY() // Add this line
+      await fetchReadoutModes()
+      await fetchReadoutMode()
 
+      // Fetch additional camera specifications
+      await fetchCameraXSize()
+      await fetchCameraYSize()
+      await fetchSensorInfo()
+      await fetchSensorType() // Add this line
       // Start data polling
       startDataPolling()
     } else {
@@ -2577,7 +2600,15 @@ async function fetchPixelSizeX() {
 
     if (response.data && response.data.Value !== undefined) {
       console.log('Received pixel size X:', response.data.Value)
-      cameraData.PixelSizeX = response.data.Value
+      // Validate that the value is a number before storing it
+      const value = response.data.Value
+      const parsedValue = parseFloat(String(value))
+      if (!isNaN(parsedValue)) {
+        cameraData.PixelSizeX = parsedValue
+      } else {
+        console.warn('Received non-numeric pixel size X:', value)
+        cameraData.PixelSizeX = 0 // Use a default value
+      }
     }
   } catch (error) {
     console.error('Error fetching pixel size X:', error)
@@ -2599,7 +2630,15 @@ async function fetchPixelSizeY() {
 
     if (response.data && response.data.Value !== undefined) {
       console.log('Received pixel size Y:', response.data.Value)
-      cameraData.PixelSizeY = response.data.Value
+      // Validate that the value is a number before storing it
+      const value = response.data.Value
+      const parsedValue = parseFloat(String(value))
+      if (!isNaN(parsedValue)) {
+        cameraData.PixelSizeY = parsedValue
+      } else {
+        console.warn('Received non-numeric pixel size Y:', value)
+        cameraData.PixelSizeY = 0 // Use a default value
+      }
     }
   } catch (error) {
     console.error('Error fetching pixel size Y:', error)
@@ -2716,6 +2755,122 @@ function returnToLiveView() {
     displayProcessedImage(lastProcessedImage.value, false)
   }
 }
+
+// Add these new fetch functions after the other fetch functions (around line 2080-2100)
+async function fetchNumX() {
+  if (!isConnected.value) return
+
+  try {
+    console.log('Fetching NumX value')
+    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/numx`, {
+      params: {
+        ClientID: '1',
+        ClientTransactionID: '1'
+      }
+    })
+
+    if (response.data && response.data.Value !== undefined) {
+      console.log('Received NumX value:', response.data.Value)
+      cameraData.numX = Number(response.data.Value)
+      numX.value = Number(response.data.Value)
+    }
+  } catch (error) {
+    console.error('Error fetching NumX:', error)
+  }
+}
+
+async function fetchNumY() {
+  if (!isConnected.value) return
+
+  try {
+    console.log('Fetching NumY value')
+    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/numy`, {
+      params: {
+        ClientID: '1',
+        ClientTransactionID: '1'
+      }
+    })
+
+    if (response.data && response.data.Value !== undefined) {
+      console.log('Received NumY value:', response.data.Value)
+      cameraData.numY = Number(response.data.Value)
+      numY.value = Number(response.data.Value)
+    }
+  } catch (error) {
+    console.error('Error fetching NumY:', error)
+  }
+}
+
+// Add these new fetch functions after fetchNumY
+async function fetchStartX() {
+  if (!isConnected.value) return
+
+  try {
+    console.log('Fetching StartX value')
+    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/startx`, {
+      params: {
+        ClientID: '1',
+        ClientTransactionID: '1'
+      }
+    })
+
+    if (response.data && response.data.Value !== undefined) {
+      console.log('Received StartX value:', response.data.Value)
+      cameraData.startX = Number(response.data.Value)
+      startX.value = Number(response.data.Value)
+    }
+  } catch (error) {
+    console.error('Error fetching StartX:', error)
+  }
+}
+
+async function fetchStartY() {
+  if (!isConnected.value) return
+
+  try {
+    console.log('Fetching StartY value')
+    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/starty`, {
+      params: {
+        ClientID: '1',
+        ClientTransactionID: '1'
+      }
+    })
+
+    if (response.data && response.data.Value !== undefined) {
+      console.log('Received StartY value:', response.data.Value)
+      cameraData.startY = Number(response.data.Value)
+      startY.value = Number(response.data.Value)
+    }
+  } catch (error) {
+    console.error('Error fetching StartY:', error)
+  }
+}
+
+// Add a function to convert sensor type enum to descriptive text
+function sensorTypeToString(typeValue: any): string {
+  if (typeValue === undefined || typeValue === null) return 'Unknown'
+
+  // Convert to number for comparison if it's a string
+  const typeNum = typeof typeValue === 'string' ? parseInt(typeValue, 10) : typeValue
+
+  // Return descriptive text based on enum value
+  switch (typeNum) {
+    case 0:
+      return 'Monochrome (Single-plane)'
+    case 1:
+      return 'Color (Multiple-plane)'
+    case 2:
+      return 'RGGB (Bayer matrix)'
+    case 3:
+      return 'CMYG (Bayer matrix)'
+    case 4:
+      return 'CMYG2 (Bayer matrix)'
+    case 5:
+      return 'LRGB (Bayer matrix)'
+    default:
+      return `Unknown (${typeValue})`
+  }
+}
 </script>
 
 <template>
@@ -2753,7 +2908,9 @@ function returnToLiveView() {
         <div class="camera-content">
           <div class="preview-container">
             <div v-if="previewImage" class="preview-image">
-              <img :src="previewImage" alt="Camera preview" />
+              <div class="image-wrapper">
+                <img :src="previewImage" alt="Camera preview" />
+              </div>
             </div>
             <div v-else class="preview-placeholder">No image available</div>
           </div>
@@ -3141,16 +3298,25 @@ function returnToLiveView() {
           <div class="sensor-info" v-if="isConnected">
             <h3 class="controls-title">Sensor Details</h3>
             <div class="info-grid">
-              <div v-if="getPropertyValue('PixelSizeX')" class="info-item">
+              <div v-if="propertyExists('PixelSizeX')" class="info-item">
                 <div class="info-label">Pixel Size</div>
                 <div class="info-value">
-                  {{ parseFloat(String(getPropertyValue('PixelSizeX'))).toFixed(2) }} ×
-                  {{ parseFloat(String(getPropertyValue('PixelSizeY'))).toFixed(2) }}
+                  {{
+                    getPropertyValue('PixelSizeX')
+                      ? parseFloat(String(getPropertyValue('PixelSizeX'))).toFixed(2)
+                      : '0.00'
+                  }}
+                  ×
+                  {{
+                    getPropertyValue('PixelSizeY')
+                      ? parseFloat(String(getPropertyValue('PixelSizeY'))).toFixed(2)
+                      : '0.00'
+                  }}
                   <span class="info-unit">μm</span>
                 </div>
               </div>
               <div
-                v-if="getPropertyValue('CameraXSize') && getPropertyValue('CameraYSize')"
+                v-if="propertyExists('CameraXSize') && propertyExists('CameraYSize')"
                 class="info-item"
               >
                 <div class="info-label">Resolution</div>
@@ -3159,19 +3325,25 @@ function returnToLiveView() {
                   <span class="info-unit">px</span>
                 </div>
               </div>
-              <div v-if="getPropertyValue('SensorName')" class="info-item">
+              <div v-if="propertyExists('SensorName')" class="info-item">
                 <div class="info-label">Sensor Model</div>
                 <div class="info-value">{{ getPropertyValue('SensorName') }}</div>
               </div>
-              <div v-if="getPropertyValue('SensorType')" class="info-item">
+              <div v-if="propertyExists('SensorType')" class="info-item">
                 <div class="info-label">Sensor Type</div>
-                <div class="info-value">{{ getPropertyValue('SensorType') }}</div>
+                <div class="info-value">
+                  {{ sensorTypeToString(getPropertyValue('SensorType')) }}
+                </div>
               </div>
-              <div v-if="getPropertyValue('ElectronsPerADU')" class="info-item">
+              <div v-if="propertyExists('ElectronsPerADU')" class="info-item">
                 <div class="info-label">Gain Ratio</div>
                 <div class="info-value">
-                  {{ parseFloat(String(getPropertyValue('ElectronsPerADU'))).toFixed(2) }}
-                  <span class="info-unit">e⁻/ADU</span>
+                  {{
+                    typeof getPropertyValue('ElectronsPerADU') === 'number'
+                      ? parseFloat(String(getPropertyValue('ElectronsPerADU'))).toFixed(2)
+                      : getPropertyValue('ElectronsPerADU')
+                  }}
+                  <span class="info-unit">e-/ADU</span>
                 </div>
               </div>
               <div v-if="getPropertyValue('MaxADU')" class="info-item">
@@ -3209,12 +3381,17 @@ function returnToLiveView() {
   height: 100%;
   padding: 10px;
   color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .panel-layout {
   display: flex;
   gap: 15px;
   position: relative;
+  height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 .camera-content {
@@ -3222,6 +3399,8 @@ function returnToLiveView() {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .status-bar {
@@ -3232,6 +3411,9 @@ function returnToLiveView() {
   padding: 5px;
   background-color: var(--aw-panel-menu-bar-bg-color);
   border-radius: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .status-indicator {
@@ -3252,13 +3434,17 @@ function returnToLiveView() {
   border-radius: 4px;
   padding: 10px;
   min-height: 200px;
+  height: auto;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: relative;
+  position: sticky;
+  top: 10px;
   overflow: hidden;
   width: 100%;
+  z-index: 10;
 }
 
 .preview-image {
@@ -3266,10 +3452,22 @@ function returnToLiveView() {
   display: flex;
   justify-content: center;
   align-items: center;
+  max-height: 100%;
+}
+
+.image-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  max-height: 80vh;
+  overflow: hidden;
 }
 
 .preview-image img {
   max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
   object-fit: contain;
 }
@@ -3284,6 +3482,7 @@ function returnToLiveView() {
   border: 1px solid var(--aw-panel-border-color);
   border-radius: 4px;
   padding: 10px;
+  margin-top: 10px;
 }
 
 .control-group {
@@ -3380,6 +3579,8 @@ function returnToLiveView() {
   align-self: flex-start;
   position: sticky;
   top: 10px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
 }
 
 .controls-title {
@@ -3453,6 +3654,8 @@ function returnToLiveView() {
   margin-top: 15px;
   margin-bottom: 15px;
   width: 100%;
+  position: relative;
+  z-index: 5;
 }
 
 .histogram-widget h3 {
