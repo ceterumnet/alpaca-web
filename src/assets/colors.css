@@ -12,17 +12,16 @@
 }
 
 :root .dark-theme {
-  --aw-text-color: rgb(239, 82, 82);
-  --aw-bg-color: black;
-  --aw-color: var(--aw-text-color);
-  --aw-panels-bg-color: black;
-  --aw-panel-resize-bg-color: rgb(114, 0, 0);
-  --aw-panel-resize-color: rgb(239, 82, 82);
-  --aw-panel-border-color: var(--aw-panel-resize-color);
-  --aw-panel-menu-bar-color: var(--aw-text-color);
-  --aw-panel-menu-bar-bg-color: rgb(114, 0, 0);
-  --aw-panel-content-bg-color: rgb(78, 0, 0);
-  --aw-panel-content-color: rgb(186, 87, 87);
-  --aw-panel-scrollbar-color-1: rgb(196, 63, 63);
-  --aw-panel-scrollbar-color-2: darkred;
+  --aw-bg-color: #1a0000;
+  --aw-color: #ff9e9e;
+  --aw-panels-bg-color: #220000;
+  --aw-panel-resize-bg-color: #700000;
+  --aw-panel-resize-color: #ff6b6b;
+  --aw-panel-border-color: #5a0000;
+  --aw-panel-menu-bar-color: #ffcaca;
+  --aw-panel-menu-bar-bg-color: #4d0000;
+  --aw-panel-content-bg-color: #2d0000;
+  --aw-panel-content-color: #ffd5d5;
+  --aw-panel-scrollbar-color-1: #8b0000;
+  --aw-panel-scrollbar-color-2: #6b0000;
 }

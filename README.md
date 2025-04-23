@@ -59,3 +59,71 @@ npm run test:e2e
 ```sh
 npm run lint
 ```
+
+## Project Structure
+
+The project consists of two main components:
+
+1. **Vue Web Application**: The frontend application built with Vue 3 and Vite
+2. **Discovery Server**: A Node.js server located in the `server/` directory that provides discovery functionality
+
+## Building and Packaging
+
+### GitHub Actions
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+1. **Build Workflow**: Runs on every push to main and pull requests, checking build and tests
+2. **Server Workflow**: Runs on changes to server files, checking the server's functionality
+3. **Release Workflow**: Creates distribution packages when a new tag is pushed
+
+### Creating a Release
+
+To create a new release:
+
+1. Update the version in `package.json`
+2. Create and push a new tag:
+   ```sh
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+3. GitHub Actions will automatically build the project and create a release with distribution packages
+
+### Manual Packaging
+
+To manually create a distribution package:
+
+1. Build the web application:
+
+   ```sh
+   npm run build
+   ```
+
+2. Create a distribution folder:
+
+   ```sh
+   mkdir -p dist-package
+   cp -r dist/* dist-package/
+   mkdir -p dist-package/server
+   cp server/{package.json,package-lock.json,index.js,alpacaDiscovery.js} dist-package/server/
+   cp README.md dist-package/
+   ```
+
+3. Create startup scripts:
+
+   ```sh
+   echo '#!/bin/bash
+   cd server && npm i --production && node index.js' > dist-package/start.sh
+   chmod +x dist-package/start.sh
+
+   echo '@echo off
+   cd server && npm i --production && node index.js' > dist-package/start.bat
+   ```
+
+4. Create a zip or tar archive:
+   ```sh
+   cd dist-package
+   zip -r ../alpaca-web-v1.0.0.zip .
+   # or
+   tar -czf ../alpaca-web-v1.0.0.tar.gz .
+   ```

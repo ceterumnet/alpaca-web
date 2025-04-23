@@ -1,0 +1,57 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build-only
+
+      - name: Install server dependencies
+        run: npm ci
+        working-directory: ./server
+
+      - name: Create distribution package
+        run: |
+          mkdir -p dist-package
+          cp -r dist/* dist-package/
+          mkdir -p dist-package/server
+          cp server/{package.json,package-lock.json,index.js,alpacaDiscovery.js} dist-package/server/
+          cp README.md dist-package/
+          echo "Creating startup scripts"
+          echo '#!/bin/bash\ncd server && npm i --production && node index.js' > dist-package/start.sh
+          chmod +x dist-package/start.sh
+          echo '@echo off\ncd server && npm i --production && node index.js' > dist-package/start.bat
+
+      - name: Zip distribution package
+        run: |
+          cd dist-package
+          zip -r ../alpaca-web-${{ github.ref_name }}.zip .
+          cd ..
+          tar -czf alpaca-web-${{ github.ref_name }}.tar.gz -C dist-package .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            alpaca-web-${{ github.ref_name }}.zip
+            alpaca-web-${{ github.ref_name }}.tar.gz
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}

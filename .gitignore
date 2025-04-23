@@ -11,8 +11,13 @@ node_modules
 .DS_Store
 dist
 dist-ssr
+dist-package
 coverage
 *.local
+
+# Package files
+*.zip
+*.tar.gz
 
 /cypress/videos/
 /cypress/screenshots/

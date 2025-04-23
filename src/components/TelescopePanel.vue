@@ -7,7 +7,8 @@ const props = defineProps({
   panelName: { type: String, required: true },
   connected: { type: Boolean, required: true },
   idx: { type: Number, required: true },
-  deviceNum: { type: Number, required: true }
+  deviceNum: { type: Number, required: true },
+  apiBaseUrl: { type: String, default: '' }
 })
 
 type TelescopeDataType = Record<string, string | number>
@@ -18,9 +19,14 @@ function someThing() {
   console.log('someThing!')
 }
 
+function getApiEndpoint(endpoint: string) {
+  const baseUrl = props.apiBaseUrl || `/api/v1/telescope/${props.deviceNum}`
+  return `${baseUrl}/${endpoint}`
+}
+
 async function fetchData() {
   axios
-    .get(`/api/v1/telescope/${props.deviceNum}/devicestate`)
+    .get(getApiEndpoint('devicestate'))
     .then((resp) => {
       console.log('resp from telescope: ', resp)
       for (let index = 0; index < resp.data.Value.length; index++) {

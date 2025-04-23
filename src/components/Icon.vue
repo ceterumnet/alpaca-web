@@ -27,12 +27,20 @@ type IconType =
   | 'gear'
   | 'home'
   | 'stop'
+  | 'abort'
   | 'connected'
   | 'disconnected'
   | 'park'
   | 'camera'
   | 'exposure'
   | 'history'
+  | 'expand'
+  | 'collapse'
+  | 'compact'
+  | 'detailed'
+  | 'fullscreen'
+  | 'tracking-on'
+  | 'tracking-off'
 const props = defineProps<{ type: IconType }>()
 
 const path = computed(() => {
@@ -104,6 +112,10 @@ const path = computed(() => {
     case 'stop':
       path = 'M6 6h12v12H6z'
       break
+    case 'abort':
+      path =
+        'M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z'
+      break
     case 'connected':
       path =
         'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z'
@@ -128,6 +140,34 @@ const path = computed(() => {
       path =
         'M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3'
       break
+    // New icons for UI modes
+    case 'expand':
+      path =
+        'M10,21V19H6.41L10.91,14.5L9.5,13.09L5,17.59V14H3V21H10M14.5,10.91L19,6.41V10H21V3H14V5H17.59L13.09,9.5L14.5,10.91Z'
+      break
+    case 'collapse':
+      path =
+        'M19.5,3.09L15,7.59V4H13V11H20V9H16.41L20.91,4.5L19.5,3.09M4,13V15H7.59L3.09,19.5L4.5,20.91L9,16.41V20H11V13H4Z'
+      break
+    case 'compact':
+      path = 'M3,3H10V10H3V3M13,3H21V10H13V3M3,13H10V21H3V13M16,13H21V18H16V13M16,20V18H21V20H16Z'
+      break
+    case 'detailed':
+      path = 'M3,3H11V7H3V3M3,9H11V13H3V9M3,15H11V21H3V15M13,3H21V11H13V3M13,13H21V21H13V13Z'
+      break
+    case 'fullscreen':
+      path =
+        'M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5M10,10V8H8V10H10M8,16H10V14H8V16M14,8V10H16V8H14M16,14H14V16H16V14Z'
+      break
+    // Add tracking icons
+    case 'tracking-on':
+      path =
+        'M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z'
+      break
+    case 'tracking-off':
+      path =
+        'M2.39,1.73L1.11,3L3.19,5.08C2.45,6.6 2,8.25 2,10C2,15.5 6.5,20 12,20C13.75,20 15.4,19.55 16.92,18.81L20.84,22.73L22.11,21.46L2.39,1.73M12,18C7.58,18 4,14.42 4,10C4,8.77 4.31,7.62 4.84,6.61L17.39,19.16C16.38,19.69 15.23,20 14,20C13.39,20 12.83,19.84 12.3,19.62C12.85,19.84 13.42,20 14,20C13.39,20 12.84,19.84 12.3,19.62L8.11,15.43C8.06,15.06 8,14.7 8,14.33C7.7,13.5 7.5,12.66 7.13,11.93C7.08,11.63 7,11.34 7,11.03V11C7,10.68 7.07,10.35 7.13,10.04C7.5,9.34 8.06,8.75 8.76,8.4C9.06,8.28 9.38,8.2 9.72,8.16C10.14,8.05 10.59,8 11.03,8C11.47,8 11.92,8.05 12.33,8.16C12.67,8.2 13,8.28 13.3,8.4C14,8.75 14.56,9.34 14.93,10.04C15.23,10.87 15.5,11.76 15.96,12.45L17.94,14.43C17.38,16.83 15.09,18.85 12.08,18.96M12,4C16.42,4 20,7.58 20,12C20,13.23 19.69,14.38 19.16,15.39L12.61,8.84C13.62,8.31 14.77,8 16,8C16.68,8 17.32,8.2 17.89,8.5C17.32,8.2 16.68,8 16,8C14.27,8 12.69,8.71 11.5,9.8L8.06,6.36C9.31,4.97 11,4.12 12,4Z'
+      break
   }
 
   return path
@@ -146,5 +186,21 @@ const path = computed(() => {
   width: 1rem;
   height: 1rem;
   fill: currentColor;
+}
+
+/* Larger icons for mode selectors to make them more visible in dark mode */
+.mode-selector .Icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Night vision mode adjustments */
+.dark-theme .Icon {
+  opacity: 0.9;
+}
+
+/* Make the active icon more visible */
+.mode-selector button.active .Icon {
+  opacity: 1;
 }
 </style>

@@ -8,7 +8,8 @@ const props = defineProps({
   panelName: { type: String, required: true },
   connected: { type: Boolean, required: true },
   idx: { type: Number, required: true },
-  deviceNum: { type: Number, required: true }
+  deviceNum: { type: Number, required: true },
+  apiBaseUrl: { type: String, default: '' } // Add API base URL property
 })
 
 // Define emits to update parent component
@@ -497,9 +498,16 @@ function renderFinalImage() {
   }
 }
 
+// Helper function to get API endpoint URL
+function getApiEndpoint(endpoint: string) {
+  // Use the provided apiBaseUrl if available, otherwise fall back to the default path
+  const baseUrl = props.apiBaseUrl || `/api/v1/camera/${props.deviceNum}`
+  return `${baseUrl}/${endpoint}`
+}
+
 async function fetchData() {
   try {
-    const resp = await axios.get(`/api/v1/camera/${props.deviceNum}/devicestate`)
+    const resp = await axios.get(getApiEndpoint('devicestate'))
 
     // Handle different data formats from the API
     if (resp.data && resp.data.Value) {
@@ -551,7 +559,7 @@ async function fetchCameraXSize() {
 
   try {
     console.log('Fetching camera X size')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/cameraxsize`, {
+    const response = await axios.get(getApiEndpoint('cameraxsize'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -572,7 +580,7 @@ async function fetchCameraYSize() {
 
   try {
     console.log('Fetching camera Y size')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/cameraysize`, {
+    const response = await axios.get(getApiEndpoint('cameraysize'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -595,7 +603,7 @@ async function fetchSensorInfo() {
     console.log('Fetching sensor info')
     // Fetch sensor name
     const nameResponse = await axios
-      .get(`/api/v1/camera/${props.deviceNum}/sensorname`, {
+      .get(getApiEndpoint('sensorname'), {
         params: {
           ClientID: '1',
           ClientTransactionID: '1'
@@ -613,7 +621,7 @@ async function fetchSensorInfo() {
 
     // Fetch sensor type
     const typeResponse = await axios
-      .get(`/api/v1/camera/${props.deviceNum}/sensortype`, {
+      .get(getApiEndpoint('sensortype'), {
         params: {
           ClientID: '1',
           ClientTransactionID: '1'
@@ -631,7 +639,7 @@ async function fetchSensorInfo() {
 
     // Fetch electrons per ADU value
     const electronsResponse = await axios
-      .get(`/api/v1/camera/${props.deviceNum}/electronsperadu`, {
+      .get(getApiEndpoint('electronsperadu'), {
         params: {
           ClientID: '1',
           ClientTransactionID: '1'
@@ -653,7 +661,7 @@ async function fetchSensorInfo() {
 
     // Fetch max ADU value if available
     const maxADUResponse = await axios
-      .get(`/api/v1/camera/${props.deviceNum}/maxadu`, {
+      .get(getApiEndpoint('maxadu'), {
         params: {
           ClientID: '1',
           ClientTransactionID: '1'
@@ -683,7 +691,7 @@ async function fetchSensorType() {
 
   try {
     console.log('Fetching sensor type')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/sensortype`, {
+    const response = await axios.get(getApiEndpoint('sensortype'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -849,7 +857,7 @@ async function fetchReadoutModes() {
 
   try {
     console.log('Fetching camera readout modes')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/readoutmodes`, {
+    const response = await axios.get(getApiEndpoint('readoutmodes'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -872,7 +880,7 @@ async function fetchReadoutMode() {
 
   try {
     console.log('Fetching current readout mode')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/readoutmode`, {
+    const response = await axios.get(getApiEndpoint('readoutmode'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -902,7 +910,7 @@ async function setGain(newValue: number | string) {
     gainForm.append('ClientID', '1')
     gainForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/gain`, gainForm, {
+    await axios.put(getApiEndpoint('gain'), gainForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -923,7 +931,7 @@ async function setBinningX(newValue: number | string) {
     binXForm.append('ClientID', '1')
     binXForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/binx`, binXForm, {
+    await axios.put(getApiEndpoint('binx'), binXForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -944,7 +952,7 @@ async function setBinningY(newValue: number | string) {
     binYForm.append('ClientID', '1')
     binYForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/biny`, binYForm, {
+    await axios.put(getApiEndpoint('biny'), binYForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -965,7 +973,7 @@ async function setExposureTime(newValue: number | string) {
     exposureForm.append('ClientID', '1')
     exposureForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/exposuretime`, exposureForm, {
+    await axios.put(getApiEndpoint('exposuretime'), exposureForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -987,7 +995,7 @@ async function setOffset(newValue: number | string) {
     offsetForm.append('ClientID', '1')
     offsetForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/offset`, offsetForm, {
+    await axios.put(getApiEndpoint('offset'), offsetForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -1010,7 +1018,7 @@ async function setReadMode(newValue: number | string) {
     readModeForm.append('ClientID', '1')
     readModeForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/readoutmode`, readModeForm, {
+    await axios.put(getApiEndpoint('readoutmode'), readModeForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -1031,7 +1039,7 @@ async function setUSBTraffic(newValue: number | string) {
     usbTrafficForm.append('ClientID', '1')
     usbTrafficForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/usbtraffic`, usbTrafficForm, {
+    await axios.put(getApiEndpoint('usbtraffic'), usbTrafficForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -1064,10 +1072,10 @@ async function startExposure() {
       binYForm.append('ClientID', '1')
       binYForm.append('ClientTransactionID', '1')
 
-      await axios.put(`/api/v1/camera/${props.deviceNum}/binx`, binXForm, {
+      await axios.put(getApiEndpoint('binx'), binXForm, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
-      await axios.put(`/api/v1/camera/${props.deviceNum}/biny`, binYForm, {
+      await axios.put(getApiEndpoint('biny'), binYForm, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
     }
@@ -1079,7 +1087,7 @@ async function startExposure() {
       gainForm.append('ClientID', '1')
       gainForm.append('ClientTransactionID', '1')
 
-      await axios.put(`/api/v1/camera/${props.deviceNum}/gain`, gainForm, {
+      await axios.put(getApiEndpoint('gain'), gainForm, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
     }
@@ -1112,19 +1120,19 @@ async function startExposure() {
     exposureForm.append('ClientID', '1')
     exposureForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/startx`, startXForm, {
+    await axios.put(getApiEndpoint('startx'), startXForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
-    await axios.put(`/api/v1/camera/${props.deviceNum}/starty`, startYForm, {
+    await axios.put(getApiEndpoint('starty'), startYForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
-    await axios.put(`/api/v1/camera/${props.deviceNum}/numx`, numXForm, {
+    await axios.put(getApiEndpoint('numx'), numXForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
-    await axios.put(`/api/v1/camera/${props.deviceNum}/numy`, numYForm, {
+    await axios.put(getApiEndpoint('numy'), numYForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
-    await axios.put(`/api/v1/camera/${props.deviceNum}/startexposure`, exposureForm, {
+    await axios.put(getApiEndpoint('startexposure'), exposureForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -1150,7 +1158,7 @@ async function stopExposure() {
       cameraData.canstopexposure === 'true' ||
       String(cameraData.canstopexposure).toLowerCase() === 'true'
     ) {
-      await axios.put(`/api/v1/camera/${props.deviceNum}/stopexposure`, formData, {
+      await axios.put(getApiEndpoint('stopexposure'), formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
     } else if (
@@ -1159,7 +1167,7 @@ async function stopExposure() {
       cameraData.canabortexposure === 'true' ||
       String(cameraData.canabortexposure).toLowerCase() === 'true'
     ) {
-      await axios.put(`/api/v1/camera/${props.deviceNum}/abortexposure`, formData, {
+      await axios.put(getApiEndpoint('abortexposure'), formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
     }
@@ -1220,10 +1228,10 @@ async function pollForImage() {
   if (!isExposing.value) return
 
   try {
-    const stateResp = await axios.get(`/api/v1/camera/${props.deviceNum}/imageready`)
+    const stateResp = await axios.get(getApiEndpoint('imageready'))
     if (stateResp.data.Value === true) {
       // Image is ready, download it
-      const imageResp = await axios.get(`/api/v1/camera/${props.deviceNum}/imagearray`, {
+      const imageResp = await axios.get(getApiEndpoint('imagearray'), {
         responseType: 'arraybuffer',
         headers: {
           Accept: 'application/imagebytes'
@@ -1849,7 +1857,7 @@ function startDataPolling() {
         // Stop polling if camera becomes disconnected
         stopDataPolling()
       }
-    }, 2000) // Poll every 2 seconds
+    }, 5000) // Poll every 2 seconds
   }
 }
 
@@ -1870,7 +1878,7 @@ async function connectCamera() {
     console.log('Attempting to connect to camera:', props.deviceNum)
 
     // First check if the camera is already connected
-    const stateResp = await axios.get(`/api/v1/camera/${props.deviceNum}/connected`)
+    const stateResp = await axios.get(getApiEndpoint('connected'))
     console.log('Current connection state:', stateResp.data.Value)
 
     if (stateResp.data.Value === true) {
@@ -1889,7 +1897,7 @@ async function connectCamera() {
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/connected`, formData, {
+    await axios.put(getApiEndpoint('connected'), formData, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
@@ -1897,7 +1905,7 @@ async function connectCamera() {
     console.log('Connection request sent')
 
     // Verify connection
-    const verifyResp = await axios.get(`/api/v1/camera/${props.deviceNum}/connected`)
+    const verifyResp = await axios.get(getApiEndpoint('connected'))
     console.log('Verified connection state:', verifyResp.data.Value)
 
     if (verifyResp.data.Value === true) {
@@ -1936,7 +1944,7 @@ async function connectCamera() {
     console.error('Error connecting to camera:', error)
     // Try to get more detailed error information
     try {
-      const errorResp = await axios.get(`/api/v1/camera/${props.deviceNum}/connected`)
+      const errorResp = await axios.get(getApiEndpoint('connected'))
       console.log('Error state check:', errorResp.data)
     } catch (e) {
       console.error('Error checking connection state:', e)
@@ -1957,7 +1965,7 @@ async function disconnectCamera() {
     stopDataPolling()
 
     // First check if the camera is connected
-    const stateResp = await axios.get(`/api/v1/camera/${props.deviceNum}/connected`)
+    const stateResp = await axios.get(getApiEndpoint('connected'))
     console.log('Current connection state:', stateResp.data.Value)
 
     // Disconnect from the camera using form-encoded data with additional Connected parameter
@@ -1967,7 +1975,7 @@ async function disconnectCamera() {
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/connected`, formData, {
+    await axios.put(getApiEndpoint('connected'), formData, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
@@ -1975,7 +1983,7 @@ async function disconnectCamera() {
     console.log('Disconnection request sent')
 
     // Verify disconnection
-    const verifyResp = await axios.get(`/api/v1/camera/${props.deviceNum}/connected`)
+    const verifyResp = await axios.get(getApiEndpoint('connected'))
     console.log('Verified connection state:', verifyResp.data.Value)
 
     if (verifyResp.data.Value === false) {
@@ -1993,7 +2001,7 @@ async function disconnectCamera() {
     console.error('Error disconnecting from camera:', error)
     // Try to get more detailed error information
     try {
-      const errorResp = await axios.get(`/api/v1/camera/${props.deviceNum}/connected`)
+      const errorResp = await axios.get(getApiEndpoint('connected'))
       console.log('Error state check:', errorResp.data)
     } catch (e) {
       console.error('Error checking connection state:', e)
@@ -2006,7 +2014,7 @@ async function disconnectCamera() {
 // Function to check the actual connection state from API
 async function checkConnectionState() {
   try {
-    const stateResp = await axios.get(`/api/v1/camera/${props.deviceNum}/connected`)
+    const stateResp = await axios.get(getApiEndpoint('connected'))
     console.log('API connection state:', stateResp.data.Value)
 
     // Update local state and emit if different from current
@@ -2396,7 +2404,7 @@ async function setFastReadout(newValue: any) {
     fastReadoutForm.append('ClientID', '1')
     fastReadoutForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/fastreadout`, fastReadoutForm, {
+    await axios.put(getApiEndpoint('fastreadout'), fastReadoutForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -2417,7 +2425,7 @@ async function setTemperature(newValue: any) {
     tempForm.append('ClientID', '1')
     tempForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/setccdtemperature`, tempForm, {
+    await axios.put(getApiEndpoint('setccdtemperature'), tempForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -2491,7 +2499,7 @@ async function setStartX(newValue: any) {
     startXForm.append('ClientID', '1')
     startXForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/startx`, startXForm, {
+    await axios.put(getApiEndpoint('startx'), startXForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -2512,7 +2520,7 @@ async function setStartY(newValue: any) {
     startYForm.append('ClientID', '1')
     startYForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/starty`, startYForm, {
+    await axios.put(getApiEndpoint('starty'), startYForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -2533,7 +2541,7 @@ async function setNumX(newValue: any) {
     numXForm.append('ClientID', '1')
     numXForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/numx`, numXForm, {
+    await axios.put(getApiEndpoint('numx'), numXForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -2554,7 +2562,7 @@ async function setNumY(newValue: any) {
     numYForm.append('ClientID', '1')
     numYForm.append('ClientTransactionID', '1')
 
-    await axios.put(`/api/v1/camera/${props.deviceNum}/numy`, numYForm, {
+    await axios.put(getApiEndpoint('numy'), numYForm, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
@@ -2571,7 +2579,7 @@ async function fetchCameraState() {
 
   try {
     // console.log('Fetching camera state')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/camerastate`, {
+    const response = await axios.get(getApiEndpoint('camerastate'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -2593,7 +2601,7 @@ async function fetchPixelSizeX() {
 
   try {
     console.log('Fetching pixel size X')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/pixelsizex`, {
+    const response = await axios.get(getApiEndpoint('pixelsizex'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -2623,7 +2631,7 @@ async function fetchPixelSizeY() {
 
   try {
     console.log('Fetching pixel size Y')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/pixelsizey`, {
+    const response = await axios.get(getApiEndpoint('pixelsizey'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -2764,7 +2772,7 @@ async function fetchNumX() {
 
   try {
     console.log('Fetching NumX value')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/numx`, {
+    const response = await axios.get(getApiEndpoint('numx'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -2786,7 +2794,7 @@ async function fetchNumY() {
 
   try {
     console.log('Fetching NumY value')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/numy`, {
+    const response = await axios.get(getApiEndpoint('numy'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -2809,7 +2817,7 @@ async function fetchStartX() {
 
   try {
     console.log('Fetching StartX value')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/startx`, {
+    const response = await axios.get(getApiEndpoint('startx'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
@@ -2831,7 +2839,7 @@ async function fetchStartY() {
 
   try {
     console.log('Fetching StartY value')
-    const response = await axios.get(`/api/v1/camera/${props.deviceNum}/starty`, {
+    const response = await axios.get(getApiEndpoint('starty'), {
       params: {
         ClientID: '1',
         ClientTransactionID: '1'
