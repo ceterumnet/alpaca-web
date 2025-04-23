@@ -32,6 +32,14 @@ export default defineConfig({
             console.log('Received Response from the Target:', proxyRes.statusCode, req.url)
           })
         }
+      },
+      '^/discovery/': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
+      },
+      '^/proxy/': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
       }
     }
   }

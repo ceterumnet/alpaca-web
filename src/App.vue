@@ -2,11 +2,12 @@
 // import '@primevue/themes'
 import { onMounted } from 'vue'
 import MainPanels from './components/MainPanels.vue'
+import DiscoveredDevices from './components/DiscoveredDevices.vue'
 import axios from 'axios'
 import { useDevicesStore } from './stores/useDevicesStore'
 import { Telescope } from './types/Telescope'
 import { Camera } from './types/Camera'
-import { DeviceFactory } from './types/Device'
+import { DeviceFactory, Device } from './types/Device'
 
 var darkMode = false
 var themeClass = 'dark-theme'
@@ -100,6 +101,7 @@ onMounted(() => {
   </header>
 
   <main class="no-select">
+    <DiscoveredDevices />
     <MainPanels />
   </main>
 </template>
