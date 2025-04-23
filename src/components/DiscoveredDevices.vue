@@ -6,6 +6,7 @@ import axios from 'axios'
 import { DeviceFactory } from '@/types/Device'
 import { Telescope } from '@/types/Telescope'
 import { Camera } from '@/types/Camera'
+import ManualDeviceConfig from './ManualDeviceConfig.vue'
 
 const discoveredDevicesStore = useDiscoveredDevicesStore()
 const devicesStore = useDevicesStore()
@@ -119,10 +120,12 @@ onMounted(() => {
         v-for="(device, index) in discoveredDevicesStore.sortedDevices"
         :key="`${device.address}:${device.port}`"
         class="device-item"
+        :class="{ 'manual-entry': device.isManualEntry }"
       >
         <div class="device-info">
           <div class="device-name">
             {{ device.ServerName || 'Unknown Device' }}
+            <span v-if="device.isManualEntry" class="manual-badge">Manual</span>
           </div>
           <div class="device-details">
             {{ device.Manufacturer || 'Unknown' }} - {{ device.address }}:{{ device.port }}
@@ -138,6 +141,9 @@ onMounted(() => {
         </button>
       </div>
     </div>
+
+    <!-- Manual device configuration component -->
+    <ManualDeviceConfig />
   </div>
 </template>
 
@@ -191,9 +197,25 @@ onMounted(() => {
   color: var(--aw-text-color);
 }
 
+.device-item.manual-entry {
+  border-color: var(--aw-panel-border-color);
+  border-style: dashed;
+}
+
 .device-name {
   font-weight: bold;
   color: var(--aw-text-color);
+  display: flex;
+  align-items: center;
+}
+
+.manual-badge {
+  font-size: 0.7rem;
+  background-color: var(--aw-panel-menu-bar-bg-color);
+  color: var(--aw-panel-menu-bar-color);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  margin-left: 0.5rem;
 }
 
 .device-details {

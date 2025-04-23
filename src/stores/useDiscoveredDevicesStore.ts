@@ -36,6 +36,46 @@ export const useDiscoveredDevicesStore = defineStore('discoveredDevices', () => 
     }
   }
 
+  // Add a manually configured device
+  async function addManualDevice(address: string, port: number) {
+    // Validate input
+    if (!address || !port) {
+      throw new Error('Address and port are required')
+    }
+
+    // Check if device already exists
+    const existingDevice = devices.value.find(
+      (device) => device.address === address && device.port === port
+    )
+
+    if (existingDevice) {
+      throw new Error('This device is already in the list')
+    }
+
+    try {
+      // Try to verify the device by making a request to its management API
+      const proxyUrl = `/proxy/${address}/${port}`
+      await axios.get(`${proxyUrl}/management/v1/configureddevices`)
+
+      // If successful, add the device
+      const newDevice: DiscoveredDevice = {
+        address,
+        port,
+        AlpacaPort: port,
+        discoveryTime: new Date().toISOString(),
+        ServerName: 'Manual Entry',
+        Manufacturer: 'Unknown',
+        isManualEntry: true
+      }
+
+      devices.value.push(newDevice)
+      return newDevice
+    } catch (error) {
+      console.error('Error adding manual device:', error)
+      throw new Error('Could not connect to device at the specified address and port')
+    }
+  }
+
   // Get the proxy URL for a discovered device
   function getProxyUrl(device: DiscoveredDevice) {
     return `/proxy/${device.address}/${device.port}`
@@ -47,6 +87,7 @@ export const useDiscoveredDevicesStore = defineStore('discoveredDevices', () => 
     isDiscovering,
     lastDiscoveryTime,
     discoverDevices,
+    addManualDevice,
     getProxyUrl
   }
 })

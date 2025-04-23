@@ -7,4 +7,5 @@ export interface DiscoveredDevice {
   Manufacturer?: string
   ManufacturerVersion?: string
   Location?: string
+  isManualEntry?: boolean
 }

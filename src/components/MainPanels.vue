@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { GridLayout, GridItem } from 'grid-layout-plus'
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import PanelComponent from './PanelComponent.vue'
 import TelescopePanel from './TelescopePanel.vue'
 import CameraPanel from './CameraPanel.vue'
 import { DeviceFactory, type Device } from '@/types/Device'
 import LoggerPanel from './LoggerPanel.vue'
 import { useDevicesStore } from '@/stores/useDevicesStore'
-import axios from 'axios'
+import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
+import DiscoveredDevices from './DiscoveredDevices.vue'
 
 let layout: any = reactive([
   // { x: 0, y: 0, w: 6, h: 8, i: 'five', deviceType: 'telescope', static: false, connected: false },
@@ -16,6 +17,9 @@ let layout: any = reactive([
   // { x: 6, y: 0, w: 6, h: 8, i: 'three', static: false, connected: false },
   // { x: 0, y: 6, w: 12, h: 8, i: 'six', deviceType: 'logger', static: false, connected: false }
 ])
+
+// Flag to track if a logger panel is added
+const loggerPanelAdded = ref(false)
 
 function isDevice(obj: Device | object): obj is Device {
   return (obj as Device).deviceType !== undefined
@@ -37,66 +41,84 @@ const getComponent = function (lookupBy: Device) {
   return PanelComponent
 }
 
-function fetchConfiguredDevices() {
-  console.log('fetchConfiguredDevices')
-  axios
-    .get('/management/v1/configureddevices')
-    .then((resp) => {
-      console.log('resp', resp)
-      let deviceArray = resp.data.Value
-      let devicesAdded = 0
-      for (let deviceIdx = 0; deviceIdx < deviceArray.length; deviceIdx++) {
-        const device = deviceArray[deviceIdx]
-        console.log('device: ', device)
-        // console.log('device.deviceType:', device.DeviceType)
-        let deviceInstanceClass = DeviceFactory.deviceTypeMap.get(device.DeviceType.toLowerCase())
-
-        if (undefined !== deviceInstanceClass) {
-          console.log('found matching type')
-          console.log('DeviceFactory.deviceTypeMap: ', DeviceFactory.deviceTypeMap)
-          console.log('DeviceNum: ', device.DeviceNumber)
-          // console.log(
-          //   'DeviceFactory.deviceTypeMap["Telescope"]: ',
-          //   DeviceFactory.deviceTypeMap.get('Telescope')
-          // )
-          // console.log('deviceInstanceClass:', deviceInstanceClass)
-          // { x: 0, y: 0, w: 6, h: 8, i: 'five', deviceType: 'telescope', static: false, connected: false },
-          let xPos = devicesAdded % 2 == 0 ? 0 : 6
-          devicesAdded++
-          layout.push({
-            x: xPos,
-            y: 0,
-            w: 6,
-            h: 20,
-            i: deviceIdx,
-            deviceNum: device.DeviceNumber,
-            deviceType: device.DeviceType,
-            connected: false
-          })
-        } else {
-          console.log(`no matching type found for ${device.DeviceType}, skipping`)
-        }
-        // deviceStore.$state.devices.push(new deviceInstanceClass())
-
-        // deviceStore.$state.devices.push(device)
-        console.log('layout: ', layout)
-      }
+// Add a logger panel if it doesn't exist
+function addLoggerPanel() {
+  if (!loggerPanelAdded.value) {
+    layout.push({
+      x: 0,
+      y: Math.max(...layout.map((item: any) => item.y + item.h), 0),
+      w: 12,
+      h: 8,
+      i: 'logger',
+      deviceType: 'logger',
+      static: false,
+      connected: false
     })
-    .catch((e) => {
-      console.error('problem: ', e)
-    })
+    loggerPanelAdded.value = true
+  }
 }
 
-onMounted(() => {
-  fetchConfiguredDevices()
-})
+const deviceStore = useDevicesStore()
+const discoveredDevicesStore = useDiscoveredDevicesStore()
 
-let deviceStore = useDevicesStore()
+// Watch for changes in the devices store and update layout accordingly
+watch(
+  () => deviceStore.devices,
+  (newDevices) => {
+    if (!newDevices.length) return
+
+    // Filter for devices not already in layout
+    const devicesToAdd = newDevices.filter((device) => {
+      return !layout.some(
+        (item: any) =>
+          item.deviceType?.toLowerCase() === device.deviceType.toLowerCase() &&
+          item.deviceNum === device.idx
+      )
+    })
+
+    // Add new devices to layout
+    let devicesAdded = 0
+    for (const device of devicesToAdd) {
+      let xPos = devicesAdded % 2 === 0 ? 0 : 6
+      let yPos = Math.floor(devicesAdded / 2) * 20
+      devicesAdded++
+
+      layout.push({
+        x: xPos,
+        y: yPos,
+        w: 6,
+        h: 20,
+        i: `${device.deviceType}-${device.idx}`,
+        deviceNum: device.idx,
+        deviceType: device.deviceType,
+        connected: device.connected || false
+      })
+    }
+
+    // If we added devices and there's no logger panel, add one
+    if (devicesAdded > 0) {
+      addLoggerPanel()
+    }
+  },
+  { deep: true }
+)
+
+onMounted(() => {
+  // We no longer need to fetch devices directly here
+  // The devices will come from the DiscoveredDevices component
+
+  // Still add a logger panel at startup if needed
+  if (layout.length === 0) {
+    addLoggerPanel()
+  }
+})
 
 console.log('deviceStore: ', deviceStore)
 </script>
 
 <template>
+  <DiscoveredDevices class="discovery-section" />
+
   <div style="position: relative">
     <GridLayout v-model:layout="layout" :row-height="30">
       <GridItem
@@ -123,6 +145,10 @@ console.log('deviceStore: ', deviceStore)
 </template>
 
 <style scoped>
+.discovery-section {
+  margin-bottom: 20px;
+}
+
 .vgl-layout {
   background-color: var(--aw-panels-bg-color);
 }

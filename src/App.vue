@@ -101,7 +101,6 @@ onMounted(() => {
   </header>
 
   <main class="no-select">
-    <DiscoveredDevices />
     <MainPanels />
   </main>
 </template>
