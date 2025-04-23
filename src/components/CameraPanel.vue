@@ -499,9 +499,7 @@ function renderFinalImage() {
 
 async function fetchData() {
   try {
-    console.log('Fetching camera data for device:', props.deviceNum)
     const resp = await axios.get(`/api/v1/camera/${props.deviceNum}/devicestate`)
-    console.log('resp from camera: ', resp.data)
 
     // Handle different data formats from the API
     if (resp.data && resp.data.Value) {
@@ -536,8 +534,6 @@ async function fetchData() {
         }
       })
     }
-
-    console.log('Camera data parsed:', cameraData)
 
     // Update local control values from API data
     updateControlsFromCameraData()
@@ -736,7 +732,6 @@ function updateControlsFromCameraData() {
   // Update gain if available
   const gainValue = getProperty('gain') || getProperty('Gain')
   if (gainValue !== undefined) {
-    console.log('Updating gain from API:', gainValue)
     cameraData.gain = Number(gainValue)
   }
 
@@ -745,7 +740,6 @@ function updateControlsFromCameraData() {
   const binY = getProperty('biny') || getProperty('BinY')
 
   if (binX !== undefined && binY !== undefined) {
-    console.log('Updating binning from API:', binX, binY)
     cameraData.binningX = Number(binX) || 1
     cameraData.binningY = Number(binY) || 1
   }
@@ -753,27 +747,23 @@ function updateControlsFromCameraData() {
   // Update exposure time if available
   const exposureTimeValue = getProperty('exposuretime') || getProperty('ExposureTime')
   if (exposureTimeValue !== undefined) {
-    console.log('Updating exposure time from API:', exposureTimeValue)
     cameraData.exposureTime = Number(exposureTimeValue) || 0.1
   }
 
   // Also check for min/max values
   const gainMinValue = getProperty('gainmin') || getProperty('GainMin')
   if (gainMinValue !== undefined) {
-    console.log('Setting min gain:', gainMinValue)
     cameraData.gainmin = Number(gainMinValue)
   }
 
   const gainMaxValue = getProperty('gainmax') || getProperty('GainMax')
   if (gainMaxValue !== undefined) {
-    console.log('Setting max gain:', gainMaxValue)
     cameraData.gainmax = Number(gainMaxValue)
   }
 
   // Update offset if available
   const offsetValue = getProperty('offset') || getProperty('Offset')
   if (offsetValue !== undefined) {
-    console.log('Updating offset from API:', offsetValue)
     cameraData.offset = Number(offsetValue)
   }
 
@@ -800,7 +790,6 @@ function updateControlsFromCameraData() {
   // Update USB traffic if available
   const usbTrafficValue = getProperty('usbtraffic') || getProperty('USBTraffic')
   if (usbTrafficValue !== undefined) {
-    console.log('Updating USB traffic from API:', usbTrafficValue)
     cameraData.usbTraffic = Number(usbTrafficValue)
   }
 
@@ -1546,6 +1535,7 @@ function processFullImage(processedData: any) {
       }
     }
 
+    console.log(`Min value: ${minVal}, Max value: ${maxVal} before checking theoretical range`)
     // Ensure we have a reasonable range
     if (!isFinite(minVal) || !isFinite(maxVal) || maxVal - minVal < 10) {
       // Use theoretical range based on bit depth
@@ -2226,6 +2216,18 @@ function processImageBytes(data: any) {
       transmissionBytesPerPixel = 2
       // Create a typed array view directly into the buffer
       pixelData = new Int16Array(data, dataStart)
+      // Convert Int16 to Uint16 if needed
+      if (transmissionElementType === 1) {
+        const tempBuffer = new ArrayBuffer(pixelData.length * 2)
+        const tempUint16 = new Uint16Array(tempBuffer)
+
+        // Copy values correctly by using bitwise operation to convert signed to unsigned
+        for (let i = 0; i < pixelData.length; i++) {
+          tempUint16[i] = pixelData[i] & 0xffff
+        }
+
+        pixelData = tempUint16
+      }
       break
     case 8: // UInt16
       console.log('this is 2 bytes per pixel (UInt16)!')
@@ -2568,7 +2570,7 @@ async function fetchCameraState() {
   if (!isConnected.value) return
 
   try {
-    console.log('Fetching camera state')
+    // console.log('Fetching camera state')
     const response = await axios.get(`/api/v1/camera/${props.deviceNum}/camerastate`, {
       params: {
         ClientID: '1',
@@ -2577,7 +2579,7 @@ async function fetchCameraState() {
     })
 
     if (response.data && response.data.Value !== undefined) {
-      console.log('Received camera state:', response.data.Value)
+      // console.log('Received camera state:', response.data.Value)
       cameraData.CameraState = response.data.Value
     }
   } catch (error) {
