@@ -41,7 +41,7 @@ const detailedData = reactive({
   targetRightAscension: '00:00:00',
   targetDeclination: '+00:00:00',
   parkingState: 'Unknown',
-  trackingRate: 'Sidereal'
+  trackingRate: 0
 })
 
 // Target coordinates for manual input
@@ -54,6 +54,17 @@ const formattedRA = computed(() => rightAscension.value)
 const formattedDec = computed(() => declination.value)
 const formattedAlt = computed(() => `${altitude.value.toFixed(2)}°`)
 const formattedAz = computed(() => `${azimuth.value.toFixed(2)}°`)
+
+// Define tracking rate mapping
+const trackingRates: Record<number, string> = {
+  0: 'Sidereal (15.041″/sec)',
+  1: 'Lunar (14.685″/sec)',
+  2: 'Solar (15.0″/sec)',
+  3: 'King (15.0369″/sec)'
+}
+
+// Available tracking rate options (will be fetched from API)
+const availableTrackingRates = ref<number[]>([0, 1, 2, 3])
 
 // Get the API base endpoint
 function getApiEndpoint(endpoint: string) {
@@ -115,6 +126,7 @@ function onModeChange(mode: UIMode) {
 onMounted(() => {
   if (props.connected) {
     startDataFetching()
+    fetchAvailableTrackingRates()
   }
 })
 
@@ -174,6 +186,9 @@ async function fetchData() {
           case 'Slewing':
             isSlewing.value = item.Value === true || item.Value === 'True'
             break
+          case 'TrackingRate':
+            detailedData.trackingRate = parseInt(item.Value)
+            break
         }
       }
     } else {
@@ -211,6 +226,9 @@ async function fetchData() {
             case 'Slewing':
               isSlewing.value = data[key] === true || data[key] === 'True'
               break
+            case 'TrackingRate':
+              detailedData.trackingRate = parseInt(data[key])
+              break
           }
         })
       }
@@ -219,6 +237,7 @@ async function fetchData() {
     // Get additional data for detailed mode
     if (currentMode.value !== UIMode.OVERVIEW) {
       fetchDetailedData()
+      fetchAvailableTrackingRates()
     }
   } catch (error) {
     console.error('Error fetching telescope data:', error)
@@ -250,7 +269,7 @@ function formatDec(dec: number | string): string {
 async function toggleTracking() {
   try {
     const formData = new URLSearchParams()
-    formData.append('Value', (!trackingEnabled.value).toString())
+    formData.append('Tracking', !trackingEnabled.value ? 'True' : 'False')
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
@@ -357,7 +376,7 @@ async function stopSlew() {
 async function fetchDetailedData() {
   try {
     // For actual implementation, this would make additional API calls
-    const response = await axios.get(getApiEndpoint('targetstate'))
+    const response = await axios.get(getApiEndpoint('devicestate'))
 
     if (response.data && response.data.Value) {
       const data = response.data.Value
@@ -368,7 +387,7 @@ async function fetchDetailedData() {
           } else if (item.Name === 'TargetDeclination') {
             detailedData.targetDeclination = formatDec(item.Value)
           } else if (item.Name === 'AtPark') {
-            detailedData.parkingState = item.Value ? 'Parked' : 'Unparked'
+            detailedData.parkingState = item.Value ? 'True' : 'False'
           }
         }
       } else {
@@ -379,7 +398,7 @@ async function fetchDetailedData() {
           detailedData.targetDeclination = formatDec(data.TargetDeclination)
         }
         if (data.AtPark !== undefined) {
-          detailedData.parkingState = data.AtPark ? 'Parked' : 'Unparked'
+          detailedData.parkingState = data.AtPark ? 'True' : 'False'
         }
       }
     }
@@ -388,11 +407,43 @@ async function fetchDetailedData() {
   }
 }
 
+// Fetch available tracking rates
+async function fetchAvailableTrackingRates() {
+  try {
+    const response = await axios.get(getApiEndpoint('trackingrates'))
+    if (response.data && response.data.Value) {
+      // Update available rates based on what the telescope supports
+      if (Array.isArray(response.data.Value)) {
+        availableTrackingRates.value = response.data.Value.map((rate: unknown) =>
+          typeof rate === 'object' && rate !== null && 'Value' in rate && rate.Value !== undefined
+            ? parseInt(String(rate.Value))
+            : parseInt(String(rate))
+        ).filter((rate: number) => !isNaN(rate))
+      } else {
+        // If not an array, check if it's an object with supported rates
+        const rates = []
+        if (response.data.Value.Sidereal) rates.push(0)
+        if (response.data.Value.Lunar) rates.push(1)
+        if (response.data.Value.Solar) rates.push(2)
+        if (response.data.Value.King) rates.push(3)
+
+        if (rates.length > 0) {
+          availableTrackingRates.value = rates
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching available tracking rates:', error)
+    // Default to all rates if fetching fails
+    availableTrackingRates.value = [0, 1, 2, 3]
+  }
+}
+
 // Set tracking rate
-async function setTrackingRate(rate: string) {
+async function setTrackingRate(rateId: number) {
   try {
     const formData = new URLSearchParams()
-    formData.append('Value', rate)
+    formData.append('TrackingRate', rateId.toString())
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
@@ -400,22 +451,22 @@ async function setTrackingRate(rate: string) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
 
-    detailedData.trackingRate = rate
+    detailedData.trackingRate = rateId
   } catch (error) {
     console.error('Error setting tracking rate:', error)
     lastError.value = 'Failed to set tracking rate'
   }
 }
 
-// Watch for tracking rate changes
-watch(
-  () => detailedData.trackingRate,
-  (newRate) => {
-    if (props.connected && trackingEnabled.value) {
-      setTrackingRate(newRate)
-    }
+// Handle tracking rate selection
+function handleTrackingRateChange(event: Event) {
+  const select = event.target as HTMLSelectElement
+  const rateId = parseInt(select.value)
+
+  if (!isNaN(rateId) && props.connected && trackingEnabled.value) {
+    setTrackingRate(rateId)
   }
-)
+}
 
 // Park telescope
 async function parkTelescope() {
@@ -690,13 +741,13 @@ async function slewToCoordinates() {
               </button>
               <select
                 v-model="detailedData.trackingRate"
-                :disabled="!connected || !trackingEnabled"
+                :disabled="!connected"
                 class="tracking-rate"
+                @change="handleTrackingRateChange"
               >
-                <option value="Sidereal">Sidereal</option>
-                <option value="Lunar">Lunar</option>
-                <option value="Solar">Solar</option>
-                <option value="Custom">Custom</option>
+                <option v-for="rateId in availableTrackingRates" :key="rateId" :value="rateId">
+                  {{ trackingRates[rateId] }}
+                </option>
               </select>
             </div>
           </div>
@@ -795,7 +846,7 @@ async function slewToCoordinates() {
               </div>
               <div class="status-item">
                 <span class="label">Tracking Rate:</span>
-                <span class="value">{{ detailedData.trackingRate }}</span>
+                <span class="value">{{ trackingRates[detailedData.trackingRate] }}</span>
               </div>
               <div class="status-item">
                 <span class="label">Sidereal Time:</span>
@@ -806,7 +857,7 @@ async function slewToCoordinates() {
                 <span class="value">{{ detailedData.sideOfPier }}</span>
               </div>
               <div class="status-item">
-                <span class="label">Parking State:</span>
+                <span class="label">Park State:</span>
                 <span class="value">{{ detailedData.parkingState }}</span>
               </div>
             </div>
@@ -892,13 +943,17 @@ async function slewToCoordinates() {
                     <select
                       id="tracking-rate"
                       v-model="detailedData.trackingRate"
-                      :disabled="!connected || !trackingEnabled"
+                      :disabled="!connected"
                       class="control-select"
+                      @change="handleTrackingRateChange"
                     >
-                      <option value="Sidereal">Sidereal</option>
-                      <option value="Lunar">Lunar</option>
-                      <option value="Solar">Solar</option>
-                      <option value="Custom">Custom</option>
+                      <option
+                        v-for="rateId in availableTrackingRates"
+                        :key="rateId"
+                        :value="rateId"
+                      >
+                        {{ trackingRates[rateId] }}
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -912,7 +967,7 @@ async function slewToCoordinates() {
                     :disabled="
                       !connected ||
                       isSlewing ||
-                      detailedData.parkingState === 'Parked' ||
+                      detailedData.parkingState === 'True' ||
                       detailedData.parkingState === 'Parking...'
                     "
                     @click="parkTelescope"
@@ -922,7 +977,7 @@ async function slewToCoordinates() {
                   </button>
                   <button
                     class="control-btn"
-                    :disabled="!connected || isSlewing || detailedData.parkingState !== 'Parked'"
+                    :disabled="!connected || isSlewing || detailedData.parkingState !== 'True'"
                     @click="unparkTelescope"
                   >
                     <Icon type="park" />

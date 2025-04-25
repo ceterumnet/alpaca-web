@@ -234,8 +234,8 @@ async function connectCamera() {
 
     // Connect to the camera using form-encoded data
     const formData = new URLSearchParams()
-    formData.append('Value', 'true')
-    formData.append('Connected', 'true') // Required parameter
+    formData.append('Value', 'True')
+    formData.append('Connected', 'True') // Required parameter
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
@@ -277,8 +277,8 @@ async function disconnectCamera() {
 
     // Disconnect using form-encoded data
     const formData = new URLSearchParams()
-    formData.append('Value', 'false')
-    formData.append('Connected', 'false') // Required parameter
+    formData.append('Value', 'False')
+    formData.append('Connected', 'False') // Required parameter
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
@@ -425,7 +425,7 @@ async function startExposure() {
     // Start an exposure via the API using form-encoded format
     const exposureForm = new URLSearchParams()
     exposureForm.append('Duration', exposureTime.value.toString())
-    exposureForm.append('Light', 'true')
+    exposureForm.append('Light', 'True')
     exposureForm.append('ClientID', '1')
     exposureForm.append('ClientTransactionID', '1')
 
