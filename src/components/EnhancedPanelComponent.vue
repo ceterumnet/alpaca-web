@@ -40,7 +40,8 @@ const panelClasses = computed(() => {
     'panel-container': true,
     'panel-overview': effectiveMode.value === UIMode.OVERVIEW,
     'panel-detailed': effectiveMode.value === UIMode.DETAILED,
-    'panel-fullscreen': effectiveMode.value === UIMode.FULLSCREEN
+    'panel-fullscreen': effectiveMode.value === UIMode.FULLSCREEN,
+    'sidebar-expanded': uiStore.isSidebarVisible
   }
 })
 
@@ -239,12 +240,20 @@ watch(
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100vw;
+  width: calc(100vw - var(--sidebar-collapsed-width) - 75px);
   height: 100vh;
   z-index: 1000;
   background-color: var(--aw-panel-content-bg-color);
   border-radius: 0;
   border: none;
+  transition:
+    left 0.3s ease,
+    width 0.3s ease;
+}
+
+/* Adjust fullscreen width when sidebar is expanded */
+.panel-fullscreen.sidebar-expanded {
+  width: calc(100vw - var(--sidebar-width) - 75px);
 }
 
 .panel-fullscreen .panel-content {

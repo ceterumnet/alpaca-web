@@ -998,6 +998,52 @@ async function slewToCoordinates() {
 </template>
 
 <style scoped>
+/* Panel structure - ensure proper containment */
+:deep(.panel-component) {
+  max-height: calc(100vh - 20px);
+  display: flex;
+  flex-direction: column;
+  /* Account for left menu width in calculations */
+  max-width: 100vw - var(--sidebar-collapsed-width);
+}
+
+:deep(.panel-body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.panel-content) {
+  flex: 1;
+  overflow: auto;
+  /* Ensure content doesn't overflow the container */
+  max-width: 100%;
+}
+
+/* Media query for smaller screens where menu might collapse */
+@media (max-width: 992px) {
+  :deep(.panel-component) {
+    max-width: calc(100vw - 60px); /* Adjust for collapsed menu */
+  }
+}
+
+/* Media query for mobile views */
+@media (max-width: 768px) {
+  :deep(.panel-component) {
+    max-width: 100vw; /* Full width on mobile (menu might be hidden) */
+  }
+}
+
+/* Telescope panels - fit content within parent */
+.telescope-overview,
+.telescope-detailed,
+.telescope-fullscreen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Common styles */
 h2,
 h3 {
@@ -1049,6 +1095,7 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow: auto;
 }
 
 .overview-position {
@@ -1154,10 +1201,8 @@ h3 {
 
 /* Detailed Mode */
 .telescope-detailed {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  height: 100%;
+  gap: 1rem;
+  padding: 0.5rem;
 }
 
 .detailed-header {
@@ -1252,24 +1297,32 @@ select {
 
 /* Fullscreen Mode */
 .telescope-fullscreen {
-  padding: 1rem;
-  height: 100%;
-  overflow: auto;
+  padding: 0.5rem;
+  /* Ensure content stays within boundaries */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .fullscreen-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  overflow-y: auto;
+  flex: 1;
+  /* Limit max height to prevent overflow */
+  max-height: calc(100vh - 100px);
 }
 
+/* Position panel, status panel styles */
 .position-panel,
 .status-panel,
 .controls-panel {
   background-color: rgba(0, 0, 0, 0.05);
   border-radius: 8px;
-  padding: 1rem;
-  height: min-content;
+  padding: 0.75rem;
+  height: auto;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
 }
 
 .position-grid,
@@ -1281,31 +1334,34 @@ select {
 .controls-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
+  overflow-y: auto;
 }
 
 .slew-panel,
 .tracking-panel,
-.parking-panel {
-  padding: 1rem;
+.parking-panel,
+.coordinates-panel {
+  padding: 0.75rem;
   background-color: rgba(0, 0, 0, 0.03);
   border-radius: 6px;
-}
-
-.slew-settings {
   margin-bottom: 1rem;
 }
 
+.slew-settings {
+  margin-bottom: 0.75rem;
+}
+
 .directional-controls.fullscreen .slew-btn {
-  width: 3rem;
-  height: 3rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .tracking-actions,
 .parking-actions {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .control-btn.large {
@@ -1411,6 +1467,157 @@ select {
 
   .input-group {
     flex: 1;
+  }
+}
+
+/* Media query for responsive layout */
+@media (max-width: 767px) {
+  .fullscreen-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+  }
+
+  .detailed-header {
+    flex-direction: column;
+  }
+
+  .controls-section {
+    flex-direction: column;
+  }
+
+  .coordinate-inputs {
+    flex-direction: column;
+  }
+
+  .position-panel,
+  .status-panel,
+  .controls-panel {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-height: 800px) {
+  .fullscreen-grid {
+    max-height: calc(100vh - 80px);
+  }
+
+  .position-panel,
+  .status-panel,
+  .controls-panel {
+    max-height: calc(100vh - 130px);
+  }
+}
+
+@media (max-height: 600px) {
+  .fullscreen-grid {
+    grid-template-columns: repeat(3, minmax(200px, 1fr));
+  }
+}
+
+/* Responsive sizing for different viewport sizes */
+@media (min-height: 1000px) {
+  .fullscreen-grid {
+    max-height: calc(100vh - 120px);
+  }
+
+  .position-panel,
+  .status-panel,
+  .controls-panel {
+    max-height: calc(100vh - 170px);
+  }
+}
+
+/* Restore responsive layouts */
+@media (min-width: 1200px) {
+  .fullscreen-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .fullscreen-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .fullscreen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailed-header {
+    flex-direction: column;
+  }
+
+  .controls-section {
+    flex-direction: column;
+  }
+
+  .coordinate-inputs {
+    flex-direction: column;
+  }
+}
+
+/* Adjust panel sizing for very small screens */
+@media (max-width: 480px) {
+  .telescope-detailed,
+  .telescope-fullscreen {
+    padding: 0.25rem;
+  }
+
+  .fullscreen-grid {
+    gap: 0.5rem;
+  }
+
+  .slew-panel,
+  .tracking-panel,
+  .parking-panel,
+  .coordinates-panel {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Smaller UI elements for small screens */
+  .slew-btn {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .directional-controls.fullscreen .slew-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  h2 {
+    font-size: 1rem;
+    margin-bottom: 0.35rem;
+  }
+
+  h3 {
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+  }
+}
+
+:deep(.fullscreen-content) {
+  /* Ensure fullscreen mode respects left menu width */
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+}
+
+@media (max-width: 992px) {
+  :deep(.fullscreen-content) {
+    max-width: calc(100vw - 60px); /* Adjust for collapsed menu */
+  }
+}
+
+@media (max-width: 768px) {
+  :deep(.fullscreen-content) {
+    max-width: 100vw; /* Full width on mobile */
   }
 }
 </style>
