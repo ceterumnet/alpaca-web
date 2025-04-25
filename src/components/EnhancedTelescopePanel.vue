@@ -948,190 +948,146 @@ async function slewToCoordinates() {
           </button>
         </div>
 
-        <div v-else class="fullscreen-grid">
-          <div class="position-panel">
-            <h2>Position</h2>
-            <div class="position-grid-optimized">
-              <div class="position-column">
-                <h3>Equatorial</h3>
-                <div class="coord-row">
-                  <span class="label">Right Ascension:</span>
-                  <span class="value">{{ formattedRA }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Declination:</span>
-                  <span class="value">{{ formattedDec }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Target RA:</span>
-                  <span class="value">{{ detailedData.targetRightAscension }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Target Dec:</span>
-                  <span class="value">{{ detailedData.targetDeclination }}</span>
-                </div>
+        <div v-else class="fullscreen-layout">
+          <!-- Top section - Position and Status Information -->
+          <div class="fullscreen-top-section">
+            <!-- Equatorial and Horizontal coordinates with larger display -->
+            <div class="position-display">
+              <div class="coord-box ra">
+                <div class="coord-label">RA</div>
+                <div class="coord-value large">{{ formattedRA }}</div>
               </div>
-              <div class="position-column">
-                <h3>Horizontal</h3>
-                <div class="coord-row">
-                  <span class="label">Altitude:</span>
-                  <span class="value">{{ formattedAlt }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Azimuth:</span>
-                  <span class="value">{{ formattedAz }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Sidereal Time:</span>
-                  <span class="value">{{ detailedData.siderealTime }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Side of Pier:</span>
-                  <span class="value">{{ detailedData.sideOfPier }}</span>
-                </div>
+              <div class="coord-box dec">
+                <div class="coord-label">Dec</div>
+                <div class="coord-value large">{{ formattedDec }}</div>
+              </div>
+              <div class="coord-box alt">
+                <div class="coord-label">Alt</div>
+                <div class="coord-value large">{{ formattedAlt }}</div>
+              </div>
+              <div class="coord-box az">
+                <div class="coord-label">Az</div>
+                <div class="coord-value large">{{ formattedAz }}</div>
+              </div>
+            </div>
+
+            <!-- Status badges for key information -->
+            <div class="status-badges-fullscreen">
+              <div class="status-badge-fs" :class="{ active: trackingEnabled }">
+                <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
+                <span>{{ trackingEnabled ? 'Tracking' : 'Not Tracking' }}</span>
+              </div>
+              <div class="status-badge-fs" :class="{ active: isSlewing }">
+                <Icon type="arrow-up" />
+                <span>{{ isSlewing ? 'Slewing' : 'Idle' }}</span>
+              </div>
+              <div class="status-badge-fs">
+                <Icon type="history" />
+                <span>{{ detailedData.siderealTime }}</span>
+              </div>
+              <div class="status-badge-fs">
+                <Icon type="home" />
+                <span>{{ detailedData.parkingState }}</span>
               </div>
             </div>
           </div>
 
-          <div class="status-panel">
-            <h2>Telescope Status</h2>
-            <div class="status-grid">
-              <div class="status-item">
-                <span class="label">Connection:</span>
-                <span class="value" :class="{ connected: connected }">
-                  {{ connected ? 'Connected' : 'Disconnected' }}
-                </span>
-              </div>
-              <div class="status-item">
-                <span class="label">Slew Status:</span>
-                <span class="value" :class="{ slewing: isSlewing }">
-                  {{ isSlewing ? 'Slewing' : 'Idle' }}
-                </span>
-              </div>
-              <div class="status-item">
-                <span class="label">Tracking:</span>
-                <span class="value" :class="{ tracking: trackingEnabled }">
-                  {{ trackingEnabled ? 'Enabled' : 'Disabled' }}
-                </span>
-              </div>
-              <div class="status-item">
-                <span class="label">Tracking Rate:</span>
-                <span class="value">{{ trackingRates[detailedData.trackingRate] }}</span>
-              </div>
-              <div class="status-item">
-                <span class="label">Sidereal Time:</span>
-                <span class="value">{{ detailedData.siderealTime }}</span>
-              </div>
-              <div class="status-item">
-                <span class="label">Side of Pier:</span>
-                <span class="value">{{ detailedData.sideOfPier }}</span>
-              </div>
-              <div class="status-item">
-                <span class="label">Park State:</span>
-                <span class="value">{{ detailedData.parkingState }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="controls-panel">
-            <h2>Telescope Controls</h2>
-            <div class="controls-wrapper">
-              <div class="slew-panel">
+          <!-- Main control interface - split into two columns -->
+          <div class="fullscreen-main-section">
+            <!-- Left column - Controls and Actions -->
+            <div class="fullscreen-controls">
+              <!-- Motion Control Section -->
+              <div class="control-section motion-control">
                 <h3>Motion Control</h3>
-                <div class="slew-settings">
-                  <div class="slew-rate">
-                    <label for="slew-rate-fs">Slew Rate:</label>
-                    <select
-                      id="slew-rate-fs"
-                      v-model="selectedSlewRate"
-                      :disabled="!connected || isSlewing"
-                      class="control-select"
-                    >
-                      <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
-                        {{ rate }}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-                <div class="directional-controls fullscreen">
-                  <div class="slew-control">
-                    <button
-                      class="slew-btn north"
-                      :disabled="!connected || isSlewing"
-                      @click="moveNorth"
-                    >
-                      <Icon type="arrow-up" />
-                    </button>
-                    <div class="east-west">
-                      <button
-                        class="slew-btn west"
-                        :disabled="!connected || isSlewing"
-                        @click="moveWest"
-                      >
-                        <Icon type="arrow-left" />
-                      </button>
-                      <button
-                        class="slew-btn stop"
-                        :disabled="!connected || !isSlewing"
-                        @click="stopSlew"
-                      >
-                        <Icon type="stop" />
-                      </button>
-                      <button
-                        class="slew-btn east"
-                        :disabled="!connected || isSlewing"
-                        @click="moveEast"
-                      >
-                        <Icon type="arrow-right" />
-                      </button>
-                    </div>
-                    <button
-                      class="slew-btn south"
-                      :disabled="!connected || isSlewing"
-                      @click="moveSouth"
-                    >
-                      <Icon type="arrow-down" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="tracking-panel">
-                <h3>Tracking Controls</h3>
-                <div class="tracking-actions">
-                  <button
-                    class="control-btn large"
-                    :class="{ active: trackingEnabled }"
-                    :disabled="!connected"
-                    @click="toggleTracking"
+                <div class="slew-rate-selector">
+                  <label for="slew-rate-fs">Slew Rate:</label>
+                  <select
+                    id="slew-rate-fs"
+                    v-model="selectedSlewRate"
+                    :disabled="!connected || isSlewing"
+                    class="control-select"
                   >
-                    <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
-                    <span>{{ trackingEnabled ? 'Disable Tracking' : 'Enable Tracking' }}</span>
+                    <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
+                      {{ rate }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Directional pad for telescope control -->
+                <div class="directional-pad">
+                  <button
+                    class="slew-btn north large-btn"
+                    :disabled="!connected || isSlewing"
+                    @click="moveNorth"
+                  >
+                    <Icon type="arrow-up" />
                   </button>
-                  <div class="tracking-rate-selector">
-                    <label for="tracking-rate">Tracking Rate:</label>
-                    <select
-                      id="tracking-rate"
-                      v-model="detailedData.trackingRate"
-                      :disabled="!connected || !trackingEnabled"
-                      class="control-select"
-                      @change="handleTrackingRateChange"
+                  <div class="center-controls">
+                    <button
+                      class="slew-btn west large-btn"
+                      :disabled="!connected || isSlewing"
+                      @click="moveWest"
                     >
-                      <option
-                        v-for="rateId in availableTrackingRates"
-                        :key="rateId"
-                        :value="rateId"
-                      >
-                        {{ trackingRates[rateId] }}
-                      </option>
-                    </select>
+                      <Icon type="arrow-left" />
+                    </button>
+                    <button
+                      class="slew-btn stop large-btn"
+                      :disabled="!connected || !isSlewing"
+                      @click="stopSlew"
+                    >
+                      <Icon type="stop" />
+                    </button>
+                    <button
+                      class="slew-btn east large-btn"
+                      :disabled="!connected || isSlewing"
+                      @click="moveEast"
+                    >
+                      <Icon type="arrow-right" />
+                    </button>
                   </div>
+                  <button
+                    class="slew-btn south large-btn"
+                    :disabled="!connected || isSlewing"
+                    @click="moveSouth"
+                  >
+                    <Icon type="arrow-down" />
+                  </button>
                 </div>
               </div>
 
-              <div class="parking-panel">
-                <h3>Parking</h3>
-                <div class="parking-actions">
+              <!-- Tracking Control Section -->
+              <div class="control-section tracking-control">
+                <h3>Tracking</h3>
+                <button
+                  class="control-btn large-btn full-width"
+                  :class="{ active: trackingEnabled }"
+                  :disabled="!connected"
+                  @click="toggleTracking"
+                >
+                  <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
+                  <span>{{ trackingEnabled ? 'Disable Tracking' : 'Enable Tracking' }}</span>
+                </button>
+
+                <div class="tracking-rate-selector">
+                  <label for="tracking-rate-fs">Tracking Rate:</label>
+                  <select
+                    id="tracking-rate-fs"
+                    v-model="detailedData.trackingRate"
+                    :disabled="!connected || !trackingEnabled"
+                    class="control-select"
+                    @change="handleTrackingRateChange"
+                  >
+                    <option v-for="rateId in availableTrackingRates" :key="rateId" :value="rateId">
+                      {{ trackingRates[rateId] }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Parking Control Section -->
+              <div class="control-section parking-control">
+                <h3>Telescope Operations</h3>
+                <div class="operation-buttons">
                   <button
                     class="control-btn"
                     :disabled="
@@ -1143,7 +1099,7 @@ async function slewToCoordinates() {
                     @click="parkTelescope"
                   >
                     <Icon type="home" />
-                    <span>Park Telescope</span>
+                    <span>Park</span>
                   </button>
                   <button
                     class="control-btn"
@@ -1151,7 +1107,7 @@ async function slewToCoordinates() {
                     @click="unparkTelescope"
                   >
                     <Icon type="home" />
-                    <span>Unpark Telescope</span>
+                    <span>Unpark</span>
                   </button>
                   <button
                     class="control-btn"
@@ -1159,40 +1115,46 @@ async function slewToCoordinates() {
                     @click="homePosition"
                   >
                     <Icon type="home" />
-                    <span>Home Position</span>
+                    <span>Home</span>
                   </button>
                 </div>
               </div>
+            </div>
 
-              <div class="coordinates-panel">
+            <!-- Right column - Go To and Additional Information -->
+            <div class="fullscreen-goto">
+              <!-- Go To Coordinates Section -->
+              <div class="control-section goto-section">
                 <h3>Go To Coordinates</h3>
-                <div class="coordinate-inputs">
-                  <div class="input-group">
-                    <label for="target-ra">RA (HH:MM:SS):</label>
-                    <input
-                      id="target-ra"
-                      v-model="targetRA"
-                      type="text"
-                      pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}"
-                      placeholder="00:00:00"
-                      :disabled="!connected || isSlewing"
-                      class="input-field"
-                    />
-                  </div>
-                  <div class="input-group">
-                    <label for="target-dec">Dec (+/-DD:MM:SS):</label>
-                    <input
-                      id="target-dec"
-                      v-model="targetDec"
-                      type="text"
-                      pattern="[+-][0-9]{2}:[0-9]{2}:[0-9]{2}"
-                      placeholder="+00:00:00"
-                      :disabled="!connected || isSlewing"
-                      class="input-field"
-                    />
+                <div class="target-coordinates">
+                  <div class="input-row">
+                    <div class="input-group">
+                      <label for="target-ra-fs">RA (HH:MM:SS):</label>
+                      <input
+                        id="target-ra-fs"
+                        v-model="targetRA"
+                        type="text"
+                        pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}"
+                        placeholder="00:00:00"
+                        :disabled="!connected || isSlewing"
+                        class="input-field"
+                      />
+                    </div>
+                    <div class="input-group">
+                      <label for="target-dec-fs">Dec (+/-DD:MM:SS):</label>
+                      <input
+                        id="target-dec-fs"
+                        v-model="targetDec"
+                        type="text"
+                        pattern="[+-][0-9]{2}:[0-9]{2}:[0-9]{2}"
+                        placeholder="+00:00:00"
+                        :disabled="!connected || isSlewing"
+                        class="input-field"
+                      />
+                    </div>
                   </div>
                   <button
-                    class="control-btn"
+                    class="control-btn large-btn goto-btn"
                     :disabled="!connected || isSlewing"
                     @click="slewToCoordinates"
                   >
@@ -1200,6 +1162,52 @@ async function slewToCoordinates() {
                     <span>Slew to Target</span>
                   </button>
                 </div>
+              </div>
+
+              <!-- Detailed telescope info -->
+              <div class="control-section status-section">
+                <h3>Detailed Status</h3>
+                <table class="status-table">
+                  <tr>
+                    <td>Current Coordinates:</td>
+                    <td>{{ formattedRA }}, {{ formattedDec }}</td>
+                  </tr>
+                  <tr>
+                    <td>Target Coordinates:</td>
+                    <td>
+                      {{ detailedData.targetRightAscension || '00:00:00' }},
+                      {{ detailedData.targetDeclination || '+00:00:00' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Altitude / Azimuth:</td>
+                    <td>{{ formattedAlt }} / {{ formattedAz }}</td>
+                  </tr>
+                  <tr>
+                    <td>Sidereal Time:</td>
+                    <td>{{ detailedData.siderealTime }}</td>
+                  </tr>
+                  <tr>
+                    <td>Side of Pier:</td>
+                    <td>{{ detailedData.sideOfPier }}</td>
+                  </tr>
+                  <tr>
+                    <td>Tracking Status:</td>
+                    <td>{{ trackingEnabled ? 'Enabled' : 'Disabled' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Tracking Rate:</td>
+                    <td>{{ trackingRates[detailedData.trackingRate] }}</td>
+                  </tr>
+                  <tr>
+                    <td>Park State:</td>
+                    <td>{{ detailedData.parkingState }}</td>
+                  </tr>
+                  <tr>
+                    <td>Slew Status:</td>
+                    <td>{{ isSlewing ? 'Slewing' : 'Idle' }}</td>
+                  </tr>
+                </table>
               </div>
             </div>
           </div>
@@ -1798,341 +1806,238 @@ h3 {
 
 /* Fullscreen Mode */
 .telescope-fullscreen {
-  padding: 0.75rem;
+  padding: 1rem;
   max-width: 100%;
   box-sizing: border-box;
   height: 100%;
-}
-
-.fullscreen-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
   overflow-y: auto;
-  flex: 1;
-  max-height: calc(100vh - 100px);
+  position: relative;
 }
 
-/* Position panel, status panel styles */
-.position-panel,
-.status-panel,
-.controls-panel {
+.fullscreen-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+/* Top section with position display and status badges */
+.fullscreen-top-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* Large coordinate display */
+.position-display {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.coord-box {
   background-color: rgba(0, 0, 0, 0.05);
   border-radius: 8px;
-  padding: 0.75rem;
-  height: auto;
-  max-height: calc(100vh - 150px);
-  overflow-y: auto;
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.position-grid,
-.status-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.controls-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  overflow-y: auto;
-}
-
-.slew-panel,
-.tracking-panel,
-.parking-panel,
-.coordinates-panel {
-  padding: 0.75rem;
-  background-color: rgba(0, 0, 0, 0.03);
-  border-radius: 6px;
-  margin-bottom: 1rem;
-}
-
-.slew-settings {
-  margin-bottom: 0.75rem;
-}
-
-.directional-controls.fullscreen .slew-btn {
-  width: 2.75rem;
-  height: 2.75rem;
-}
-
-.tracking-actions,
-.parking-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.control-btn.large {
-  padding: 0.5rem 1rem;
-  justify-content: center;
-}
-
-.tracking-rate-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.control-select {
-  padding: 0.5rem;
-  width: 100%;
-}
-
-/* Status bar styling */
-.status-indicators {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.status-indicator {
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-/* Night vision mode specific adjustments */
-:root .dark-theme .position-block,
-:root .dark-theme .status-info,
-:root .dark-theme .slew-controls,
-:root .dark-theme .tracking-section,
-:root .dark-theme .coordinates-section,
-:root .dark-theme .position-panel,
-:root .dark-theme .status-panel,
-:root .dark-theme .controls-panel,
-:root .dark-theme .slew-panel,
-:root .dark-theme .tracking-panel,
-:root .dark-theme .parking-panel,
-:root .dark-theme .coordinates-panel {
-  background-color: rgba(70, 0, 0, 0.15);
-}
-
-:root .dark-theme .pos-box,
-:root .dark-theme .status-badge {
-  background-color: rgba(70, 0, 0, 0.25);
-}
-
-:root .dark-theme .ra-dec {
-  background-color: rgba(70, 0, 0, 0.3);
-}
-
-:root .dark-theme .status-badge.active {
-  background-color: rgba(255, 107, 107, 0.3);
-}
-
-:root .dark-theme .status-badge.slewing {
-  background-color: rgba(255, 179, 0, 0.3);
-}
-
-:root .dark-theme .slew-btn.stop {
-  background-color: rgba(255, 0, 0, 0.3);
-}
-
-:root .dark-theme .slew-btn.stop:hover:not(:disabled) {
-  background-color: rgba(255, 0, 0, 0.5);
-}
-
-:root .dark-theme select,
-:root .dark-theme .control-select,
-:root .dark-theme input,
-:root .dark-theme .select-field,
-:root .dark-theme .input-field {
-  background-color: rgba(70, 0, 0, 0.2);
-  border-color: var(--aw-panel-border-color);
-}
-
-:root .dark-theme .control-btn.active {
-  background-color: rgba(255, 107, 107, 0.3);
-}
-
-/* Coordinate input styles */
-.coordinate-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.input-group label {
-  font-size: 0.9rem;
-  color: var(--aw-panel-content-color);
+.coord-label {
+  font-size: 1rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
   opacity: 0.8;
 }
 
-@media (min-width: 768px) {
-  .coordinate-inputs {
-    flex-direction: row;
-    align-items: flex-end;
-  }
-
-  .input-group {
-    flex: 1;
-  }
+.coord-value.large {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: monospace;
 }
 
-/* Media query for responsive layout */
-@media (max-width: 767px) {
-  .telescope-overview {
-    padding: 0.35rem;
-  }
+/* Status badges in fullscreen mode */
+.status-badges-fullscreen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
 
-  .overview-controls {
-    grid-template-columns: 1fr;
-  }
+.status-badge-fs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.05);
+  font-size: 0.9rem;
+}
 
-  .overview-actions {
-    flex-direction: row;
-    margin-left: 0;
-    margin-top: 0.5rem;
-  }
+.status-badge-fs.active {
+  background-color: rgba(53, 205, 68, 0.2);
+  color: #35cd44;
+}
 
-  .fullscreen-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    overflow-y: auto;
-  }
+/* Main control interface section */
+.fullscreen-main-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  flex: 1;
+}
 
-  .detailed-top-section,
-  .detailed-bottom-section {
-    grid-template-columns: 1fr;
-  }
-
-  .position-grid-optimized {
-    grid-template-columns: 1fr;
-  }
-
-  .status-badges-detailed {
-    grid-template-columns: 1fr;
-  }
-
-  .quick-buttons {
-    grid-template-columns: 1fr;
-  }
-
-  .slew-controls-grid {
+@media (max-width: 1100px) {
+  .fullscreen-main-section {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-height: 800px) {
-  .fullscreen-grid {
-    max-height: calc(100vh - 80px);
-  }
-
-  .position-panel,
-  .status-panel,
-  .controls-panel {
-    max-height: calc(100vh - 130px);
-  }
+/* Shared section styling */
+.control-section {
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-@media (max-height: 600px) {
-  .fullscreen-grid {
-    grid-template-columns: repeat(3, minmax(200px, 1fr));
-  }
+.control-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  opacity: 0.9;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 0.5rem;
 }
 
-/* Responsive sizing for different viewport sizes */
-@media (min-height: 1000px) {
-  .fullscreen-grid {
-    max-height: calc(100vh - 120px);
-  }
-
-  .position-panel,
-  .status-panel,
-  .controls-panel {
-    max-height: calc(100vh - 170px);
-  }
+/* Motion control section */
+.directional-pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-/* Restore responsive layouts */
-@media (min-width: 1200px) {
-  .fullscreen-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.center-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-@media (min-width: 768px) and (max-width: 1199px) {
-  .fullscreen-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.slew-btn.large-btn {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: 1.2rem;
 }
 
-/* Adjust panel sizing for very small screens */
-@media (max-width: 480px) {
-  .telescope-detailed,
-  .telescope-fullscreen {
-    padding: 0.25rem;
-  }
-
-  .telescope-overview {
-    padding: 0.25rem;
-  }
-
-  .pos-box {
-    padding: 0.35rem;
-  }
-
-  .coord-value {
-    font-size: 0.95rem;
-  }
-
-  .fullscreen-grid {
-    gap: 0.5rem;
-  }
-
-  .slew-panel,
-  .tracking-panel,
-  .parking-panel,
-  .coordinates-panel {
-    padding: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  /* Smaller UI elements for small screens */
-  .slew-btn {
-    width: 2rem;
-    height: 2rem;
-  }
-
-  .directional-controls.fullscreen .slew-btn {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
-
-  h2 {
-    font-size: 1rem;
-    margin-bottom: 0.35rem;
-  }
-
-  h3 {
-    font-size: 0.9rem;
-    margin-bottom: 0.35rem;
-  }
+.slew-rate-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
-:deep(.fullscreen-content) {
-  /* Ensure fullscreen mode respects left menu width */
-  max-height: calc(100vh - 40px);
-  overflow: hidden;
+/* Tracking section */
+.control-btn.large-btn {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
 }
 
-@media (max-width: 992px) {
-  :deep(.fullscreen-content) {
-    max-width: calc(100vw - 60px); /* Adjust for collapsed menu */
-  }
+.full-width {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 1rem;
 }
 
+.control-btn.active {
+  background-color: rgba(53, 205, 68, 0.2);
+  color: #35cd44;
+}
+
+/* Parking section */
+.operation-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+/* Go to coordinates section */
+.target-coordinates {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.goto-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Status table styling */
+.status-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.status-table tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.status-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.status-table td:first-child {
+  font-weight: 600;
+  opacity: 0.8;
+  width: 40%;
+}
+
+/* Dark theme adjustments */
+:root .dark-theme .coord-box,
+:root .dark-theme .status-badge-fs,
+:root .dark-theme .control-section {
+  background-color: rgba(70, 0, 0, 0.15);
+}
+
+:root .dark-theme .status-badge-fs.active {
+  background-color: rgba(53, 205, 68, 0.2);
+  color: #35cd44;
+}
+
+:root .dark-theme .status-table tr:nth-child(even) {
+  background-color: rgba(70, 0, 0, 0.08);
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  :deep(.fullscreen-content) {
-    max-width: 100vw; /* Full width on mobile */
+  .position-display {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .coord-value.large {
+    font-size: 1.4rem;
   }
 }
 </style>
