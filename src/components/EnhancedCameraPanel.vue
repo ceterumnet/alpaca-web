@@ -49,6 +49,10 @@ const whitePoint = ref(100) // Percentage 0-100
 const midtoneValue = ref(0.8) // Range 0.1-2.0, with 1.0 being linear
 const autoStretch = ref(true) // Auto-stretch by default
 
+// Add LUT for efficient image stretching
+const currentLUT = ref<Uint8Array>(new Uint8Array(65536))
+const lutInitialized = ref(false)
+
 const connectionStatus = ref('')
 
 const exposureProgress = ref(0)
@@ -541,6 +545,8 @@ async function fetchImage() {
     // Process the image data
     const processedData = processImageBytes(response.data)
     if (processedData && processedData.width > 0 && processedData.height > 0) {
+      // Store the original image data for reprocessing
+      originalImageData.value = { ...processedData }
       displayImage(processedData)
     } else {
       console.error('Invalid image data received')
@@ -763,7 +769,77 @@ function processImageBytes(data: ArrayBuffer) {
   }
 }
 
-// Function to display the processed image
+// Add function to generate a LUT (Look-Up Table) based on current stretch settings
+function generateLUT(min: number, max: number, gamma: number): Uint8Array {
+  console.log(`Generating LUT with min=${min}, max=${max}, gamma=${gamma}`)
+
+  // Create LUT with enough precision for common bit depths
+  // 65536 covers 16-bit images, which is common in astronomy
+  const lut = new Uint8Array(65536)
+
+  // Range check to avoid division by zero
+  const range = max - min
+  if (range <= 0) {
+    // If there's no range, return a flat LUT
+    return lut
+  }
+
+  // Generate lookup table for all possible values
+  for (let i = 0; i < 65536; i++) {
+    // Normalize the input value to 0-1 range
+    let normalizedValue = 0
+
+    // Only process values in the valid range
+    if (i >= min && i <= max) {
+      normalizedValue = (i - min) / range
+
+      // Apply gamma correction (midtone adjustment)
+      normalizedValue = Math.pow(normalizedValue, gamma)
+    } else if (i > max) {
+      normalizedValue = 1 // Clip values above max
+    }
+
+    // Convert to 8-bit value for output (0-255)
+    lut[i] = Math.max(0, Math.min(255, Math.round(normalizedValue * 255)))
+  }
+
+  console.log('LUT generated')
+  lutInitialized.value = true
+  return lut
+}
+
+// Function to apply the current LUT to an input value
+function applyLUT(value: number): number {
+  // Ensure value is in valid range for the LUT
+  const index = Math.max(0, Math.min(65535, Math.floor(value)))
+  return currentLUT.value[index]
+}
+
+// Function to update the current LUT based on stretch parameters
+function updateLUT(min: number, max: number, gamma: number): void {
+  currentLUT.value = generateLUT(min, max, gamma)
+}
+
+// Add code to cache the original image data for reprocessing without API calls
+const originalImageData = ref<{
+  width: number
+  height: number
+  pixelData:
+    | Uint8Array
+    | Uint16Array
+    | Int16Array
+    | Int32Array
+    | Uint32Array
+    | Float32Array
+    | Float64Array
+    | number[]
+  imageType: string
+  bytesPerPixel?: number
+  bitsPerPixel?: number
+  transmissionElementType?: number
+} | null>(null)
+
+// Modify the displayImage function to use LUTs
 function displayImage(processedData: {
   width: number
   height: number
@@ -900,14 +976,67 @@ function displayImage(processedData: {
     `Final display range: min=${displayMin}, max=${displayMax}, range=${range}, midtone=${midtoneValue.value}`
   )
 
-  // Generate histogram data for display
-  generateHistogram(pixelData, min, max, width, height)
+  // Calculate histogram data for display directly
+  // Use 32 bins for the histogram (matching the UI display)
+  const numBins = 32
+  const histogramBins = new Array(numBins).fill(0)
+
+  // Calculate mean, min, max for stats display
+  let histSum = 0
+  let histCount = 0
+  let histMin = min
+  let histMax = max
+
+  // Sample the pixels for the histogram
+  const totalPixels = width * height
+  const sampleStep = totalPixels > 1000000 ? Math.floor(totalPixels / 100000) : 1
+
+  for (let y = 0; y < height; y += sampleStep) {
+    for (let x = 0; x < width; x += sampleStep) {
+      // Calculate source index for Alpaca data (column-major order)
+      const sourceIdx = x * height + y
+
+      if (sourceIdx < pixelData.length) {
+        const val = Number(pixelData[sourceIdx])
+        if (!isNaN(val) && isFinite(val)) {
+          // Track min, max, sum for statistics
+          histMin = Math.min(histMin, val)
+          histMax = Math.max(histMax, val)
+          histSum += val
+          histCount++
+
+          // Calculate histogram bin
+          const normalizedVal = (val - min) / (max - min)
+          const binIndex = Math.min(numBins - 1, Math.floor(normalizedVal * numBins))
+          if (binIndex >= 0 && binIndex < numBins) {
+            histogramBins[binIndex]++
+          }
+        }
+      }
+    }
+  }
+
+  // Find the highest bin count for normalization
+  const maxBinCount = Math.max(...histogramBins)
+
+  // Normalize histogram data for display (as percentages)
+  histogramData.value = histogramBins.map((count) =>
+    maxBinCount > 0 ? (count / maxBinCount) * 100 : 0
+  )
+
+  // Update histogram statistics
+  histogramMin.value = histMin
+  histogramMax.value = histMax
+  histogramMean.value = histCount > 0 ? histSum / histCount : 0
 
   // Use the midtone value as the gamma correction factor
   const gamma = midtoneValue.value
 
+  // Generate the LUT for current stretch settings
+  updateLUT(displayMin, displayMax, gamma)
+
   // Convert column-major order (Alpaca) to row-major order (canvas)
-  // while also normalizing values for display
+  // while also applying the LUT for faster processing
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       // Calculate source index for Alpaca data (column-major order)
@@ -916,27 +1045,14 @@ function displayImage(processedData: {
       // Target index for our canvas (row-major order)
       const targetIdx = y * width + x
 
-      // Get the pixel value
-      let normalizedValue = 0
+      // Get the pixel value and apply LUT transformation
+      let pixelValue = 0
 
       if (sourceIdx < pixelData.length) {
         const pixel = Number(pixelData[sourceIdx])
-
-        // Normalize value to 0-1 range
-        if (range <= 0) {
-          normalizedValue = 0 // Avoid division by zero
-        } else {
-          // Clamp values to the min-max range
-          const clampedValue = Math.max(displayMin, Math.min(displayMax, pixel))
-          normalizedValue = (clampedValue - displayMin) / range
-
-          // Apply gamma correction (midtone adjustment)
-          normalizedValue = Math.pow(normalizedValue, gamma)
-        }
+        // Use the LUT for fast value lookup instead of calculating for each pixel
+        pixelValue = applyLUT(pixel)
       }
-
-      // Convert to 8-bit value
-      const pixelValue = Math.max(0, Math.min(255, Math.round(normalizedValue * 255)))
 
       // Set RGB (grayscale)
       const outIdx = targetIdx * 4
@@ -954,157 +1070,97 @@ function displayImage(processedData: {
   previewImage.value = canvas.toDataURL('image/jpeg', 0.9)
 }
 
-// Generate histogram data for display
-function generateHistogram(
-  pixelData:
-    | Uint8Array
-    | Uint16Array
-    | Int16Array
-    | Int32Array
-    | Uint32Array
-    | Float32Array
-    | Float64Array
-    | number[],
-  min: number,
-  max: number,
-  width?: number,
-  height?: number
-) {
-  // Use 32 bins for the histogram (matching the UI display)
-  const numBins = 32
-  const bins = new Array(numBins).fill(0)
-  const range = max - min
+// Add function to redisplay the image with new stretching settings
+function reprocessImage() {
+  // Only attempt to redisplay if there's an image already displayed
+  if (!previewImage.value) return
 
-  if (range <= 0) {
-    // If there's no range, we can't generate a meaningful histogram
-    histogramData.value = [...bins]
-    histogramMin.value = min
-    histogramMax.value = max
-    histogramMean.value = min
-    return
+  // Function to force redisplay
+  console.log('Reprocessing image with new stretch settings')
+  console.log(
+    `Black: ${blackPoint.value}%, White: ${whitePoint.value}%, Midtone: ${midtoneValue.value}`
+  )
+
+  if (originalImageData.value) {
+    // Use the cached original image data for reprocessing
+    // This avoids another API call to the camera
+    console.log('Using cached image data for reprocessing')
+    displayImage(originalImageData.value)
+  } else {
+    // Fall back to fetching the image again if no cached data
+    console.log('No cached image data, fetching from camera')
+    fetchImage()
+  }
+}
+
+// Functions to set stretch parameters
+function setBlackPoint(value: number) {
+  // Ensure values stay in range and don't cross
+  blackPoint.value = Math.max(0, Math.min(whitePoint.value - 1, value))
+  if (previewImage.value && !autoStretch.value) reprocessImage()
+}
+
+function setWhitePoint(value: number) {
+  // Ensure values stay in range and don't cross
+  whitePoint.value = Math.max(blackPoint.value + 1, Math.min(100, value))
+  if (previewImage.value && !autoStretch.value) reprocessImage()
+}
+
+function setMidtone(value: number) {
+  // Ensure value stays in range
+  midtoneValue.value = Math.max(0.1, Math.min(2.0, value))
+
+  // Turn off auto stretch when manually adjusting the midtone
+  if (autoStretch.value) {
+    autoStretch.value = false
   }
 
-  // If width and height are not provided or invalid, try to estimate or use direct sampling
-  if (!width || !height || width * height !== pixelData.length) {
-    // Try to estimate dimensions for square images
-    const estDimension = Math.sqrt(pixelData.length)
+  if (previewImage.value) reprocessImage()
+}
 
-    // If it's a perfect square, use those dimensions
-    if (Number.isInteger(estDimension)) {
-      width = estDimension
-      height = estDimension
-      console.log(`Estimated square dimensions: ${width}x${height}`)
-    } else {
-      console.log('Using direct array sampling for histogram (dimensions unknown or invalid)')
-      // Count pixels in each bin
-      let sum = 0
-      let count = 0
+onMounted(() => {
+  if (isConnected.value) {
+    // For already connected cameras, fetch static properties first, then regular data
+    fetchCameraStaticProperties().then(() => fetchData())
+  }
 
-      // Sample the pixels (for large images, sampling improves performance)
-      const totalPixels = pixelData.length
-      const sampleStep = totalPixels > 1000000 ? Math.floor(totalPixels / 100000) : 1
-
-      for (let i = 0; i < totalPixels; i += sampleStep) {
-        const val = Number(pixelData[i])
-        if (!isNaN(val) && isFinite(val)) {
-          // Clamp to min-max range
-          const clampedVal = Math.max(min, Math.min(max, val))
-
-          // Calculate bin index
-          const binIndex = Math.min(numBins - 1, Math.floor(((clampedVal - min) / range) * numBins))
-
-          bins[binIndex]++
-          sum += val
-          count++
-        }
-      }
-
-      // Calculate the mean
-      const mean = count > 0 ? sum / count : 0
-
-      // Log the raw bin counts
-      console.log('Raw histogram bins (direct):', bins.join(','))
-
-      // Normalize the bins for display (tallest bar will be 100%)
-      const maxBinValue = Math.max(...bins)
-      console.log('Maximum bin value:', maxBinValue)
-
-      if (maxBinValue > 0) {
-        for (let i = 0; i < numBins; i++) {
-          bins[i] = (bins[i] / maxBinValue) * 100
-        }
-      }
-
-      // Update reactive data for display - ensure we don't interfere with progress calculations
-      histogramData.value = [...bins] // Create a new array to ensure reactivity
-      histogramMin.value = min
-      histogramMax.value = max
-      histogramMean.value = mean
-
-      console.log(`Histogram generated: min=${min}, max=${max}, mean=${mean.toFixed(2)}`)
-      return
+  // Set up a polling interval for status updates
+  const statusInterval = setInterval(async () => {
+    // Always attempt to check connection status and fetch data if connected
+    try {
+      await fetchData() // Now includes connection checking
+    } catch (error) {
+      console.error('Error during polling interval:', error)
     }
+  }, 2000)
+
+  // Clean up on component unmount
+  onUnmounted(() => {
+    clearInterval(statusInterval)
+  })
+})
+
+// Function to download the current preview image
+function downloadPreview() {
+  if (!previewImage.value) return
+
+  try {
+    // Create an anchor element
+    const link = document.createElement('a')
+    // Set the download attribute with a filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    link.download = `camera-image-${timestamp}.jpg`
+    // Set the href to the preview image
+    link.href = previewImage.value
+    // Append to the document
+    document.body.appendChild(link)
+    // Trigger the download
+    link.click()
+    // Clean up
+    document.body.removeChild(link)
+  } catch (error) {
+    console.error('Error downloading image:', error)
   }
-
-  // If we have proper dimensions, use them to access column-major data correctly
-  console.log(`Generating histogram using dimensions: ${width}x${height}`)
-
-  // Count pixels in each bin using proper column-major access
-  let sum = 0
-  let count = 0
-
-  // Sample step for performance
-  const sampleXStep = width > 1000 ? Math.ceil(width / 250) : 1
-  const sampleYStep = height > 1000 ? Math.ceil(height / 250) : 1
-
-  // Access data using column-major indexing (x * height + y)
-  for (let x = 0; x < width; x += sampleXStep) {
-    for (let y = 0; y < height; y += sampleYStep) {
-      const sourceIdx = x * height + y
-
-      if (sourceIdx < pixelData.length) {
-        const val = Number(pixelData[sourceIdx])
-        if (!isNaN(val) && isFinite(val)) {
-          // Clamp to min-max range
-          const clampedVal = Math.max(min, Math.min(max, val))
-
-          // Calculate bin index
-          const binIndex = Math.min(numBins - 1, Math.floor(((clampedVal - min) / range) * numBins))
-
-          bins[binIndex]++
-          sum += val
-          count++
-        }
-      }
-    }
-  }
-
-  // Calculate the mean
-  const mean = count > 0 ? sum / count : 0
-
-  // Log the raw bin counts
-  console.log('Raw histogram bins (column-major):', bins.join(','))
-
-  // Normalize the bins for display (tallest bar will be 100%)
-  const maxBinValue = Math.max(...bins)
-  console.log('Maximum bin value:', maxBinValue)
-
-  if (maxBinValue > 0) {
-    for (let i = 0; i < numBins; i++) {
-      bins[i] = (bins[i] / maxBinValue) * 100
-    }
-  }
-
-  // Log the normalized bins
-  console.log('Normalized histogram bins:', bins.join(','))
-
-  // Update reactive data for display - ensure we don't interfere with progress calculations
-  histogramData.value = [...bins] // Create a new array to ensure reactivity
-  histogramMin.value = min
-  histogramMax.value = max
-  histogramMean.value = mean
-
-  console.log(`Histogram generated: min=${min}, max=${max}, mean=${mean.toFixed(2)}`)
 }
 
 // Function to set exposure time
@@ -1254,86 +1310,6 @@ async function setReadMode(modeValue: number) {
       console.error('Error fetching current readout mode:', fetchError)
     }
   }
-}
-
-onMounted(() => {
-  if (isConnected.value) {
-    // For already connected cameras, fetch static properties first, then regular data
-    fetchCameraStaticProperties().then(() => fetchData())
-  }
-
-  // Set up a polling interval for status updates
-  const statusInterval = setInterval(async () => {
-    // Always attempt to check connection status and fetch data if connected
-    try {
-      await fetchData() // Now includes connection checking
-    } catch (error) {
-      console.error('Error during polling interval:', error)
-    }
-  }, 2000)
-
-  // Clean up on component unmount
-  onUnmounted(() => {
-    clearInterval(statusInterval)
-  })
-})
-
-// Function to download the current preview image
-function downloadPreview() {
-  if (!previewImage.value) return
-
-  try {
-    // Create an anchor element
-    const link = document.createElement('a')
-    // Set the download attribute with a filename
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    link.download = `camera-image-${timestamp}.jpg`
-    // Set the href to the preview image
-    link.href = previewImage.value
-    // Append to the document
-    document.body.appendChild(link)
-    // Trigger the download
-    link.click()
-    // Clean up
-    document.body.removeChild(link)
-  } catch (error) {
-    console.error('Error downloading image:', error)
-  }
-}
-
-// Add function to redisplay the image with new stretching settings
-function reprocessImage() {
-  // Only attempt to redisplay if there's an image already displayed
-  if (!previewImage.value) return
-
-  // Function to force redisplay
-  console.log('Reprocessing image with new stretch settings')
-  console.log(
-    `Black: ${blackPoint.value}%, White: ${whitePoint.value}%, Midtone: ${midtoneValue.value}`
-  )
-
-  // Re-fetch the image to apply new stretch settings
-  // In a real implementation, we'd store the original image data and reprocess without a new API call
-  fetchImage()
-}
-
-// Functions to set stretch parameters
-function setBlackPoint(value: number) {
-  // Ensure values stay in range and don't cross
-  blackPoint.value = Math.max(0, Math.min(whitePoint.value - 1, value))
-  if (previewImage.value && !autoStretch.value) reprocessImage()
-}
-
-function setWhitePoint(value: number) {
-  // Ensure values stay in range and don't cross
-  whitePoint.value = Math.max(blackPoint.value + 1, Math.min(100, value))
-  if (previewImage.value && !autoStretch.value) reprocessImage()
-}
-
-function setMidtone(value: number) {
-  // Ensure value stays in range
-  midtoneValue.value = Math.max(0.1, Math.min(2.0, value))
-  if (previewImage.value) reprocessImage()
 }
 </script>
 
