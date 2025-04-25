@@ -16,9 +16,6 @@ const layoutStore = useLayoutStore()
 // Create a computed reference to the layout
 const layout = ref(layoutStore.layout)
 
-// Flag to track if a logger panel is added
-const loggerPanelAdded = ref(false)
-
 const getComponent = function (lookupBy: LayoutItem | Device) {
   // Check if deviceType exists and use it to determine the component
   if (lookupBy.deviceType) {
@@ -31,24 +28,6 @@ const getComponent = function (lookupBy: LayoutItem | Device) {
     }
   }
   return EnhancedPanelComponent
-}
-
-// Add a logger panel if it doesn't exist
-function addLoggerPanel() {
-  if (!loggerPanelAdded.value) {
-    layout.value.push({
-      x: 0,
-      y: Math.max(...layout.value.map((item: LayoutItem) => item.y + item.h), 0),
-      w: 12,
-      h: 8,
-      i: 'logger',
-      deviceType: 'logger',
-      static: false,
-      connected: false
-    })
-    layoutStore.updateLayout(layout.value)
-    loggerPanelAdded.value = true
-  }
 }
 
 const deviceStore = useDevicesStore()
@@ -90,11 +69,6 @@ watch(
 
     // Update the store with the new layout
     layoutStore.updateLayout(layout.value)
-
-    // If we added devices and there's no logger panel, add one
-    if (devicesAdded > 0) {
-      addLoggerPanel()
-    }
   },
   { deep: true }
 )
@@ -108,8 +82,6 @@ function onLayoutUpdate(newLayout: LayoutItem[]) {
 function resetLayout() {
   if (confirm('Are you sure you want to reset the layout? This will remove all panels.')) {
     layoutStore.resetLayout()
-    // Make sure we have the logger panel at minimum
-    addLoggerPanel()
   }
 }
 
@@ -121,19 +93,7 @@ function saveLayoutPreset() {
 
 onMounted(() => {
   // Try to initialize from saved layout first
-  const hasLoadedLayout = layoutStore.initLayout()
-
-  // If no saved layout, create default layout
-  if (!hasLoadedLayout) {
-    // Add a logger panel at startup if needed
-    addLoggerPanel()
-  } else {
-    // Check if the loaded layout has a logger panel
-    loggerPanelAdded.value = layout.value.some((item) => item.deviceType === 'logger')
-    if (!loggerPanelAdded.value) {
-      addLoggerPanel()
-    }
-  }
+  layoutStore.initLayout()
 })
 
 function getPanelName(item: LayoutItem): string {
