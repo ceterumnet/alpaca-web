@@ -44,6 +44,10 @@ const detailedData = reactive({
   trackingRate: 'Sidereal'
 })
 
+// Target coordinates for manual input
+const targetRA = ref('00:00:00')
+const targetDec = ref('+00:00:00')
+
 // Computed values
 const connectionStatus = computed(() => (props.connected ? 'Connected' : 'Disconnected'))
 const formattedRA = computed(() => rightAscension.value)
@@ -262,42 +266,254 @@ async function toggleTracking() {
 
 // Telescope movement controls - implementation details omitted for brevity
 async function moveNorth() {
-  console.log('Moving telescope North')
-  isSlewing.value = true
+  try {
+    const formData = new URLSearchParams()
+    formData.append('Direction', 'North')
+    formData.append('Rate', selectedSlewRate.value)
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('moveaxis'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    isSlewing.value = true
+  } catch (error) {
+    console.error('Error moving telescope North:', error)
+    lastError.value = 'Failed to move telescope North'
+  }
 }
 
 async function moveSouth() {
-  console.log('Moving telescope South')
-  isSlewing.value = true
+  try {
+    const formData = new URLSearchParams()
+    formData.append('Direction', 'South')
+    formData.append('Rate', selectedSlewRate.value)
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('moveaxis'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    isSlewing.value = true
+  } catch (error) {
+    console.error('Error moving telescope South:', error)
+    lastError.value = 'Failed to move telescope South'
+  }
 }
 
 async function moveEast() {
-  console.log('Moving telescope East')
-  isSlewing.value = true
+  try {
+    const formData = new URLSearchParams()
+    formData.append('Direction', 'East')
+    formData.append('Rate', selectedSlewRate.value)
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('moveaxis'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    isSlewing.value = true
+  } catch (error) {
+    console.error('Error moving telescope East:', error)
+    lastError.value = 'Failed to move telescope East'
+  }
 }
 
 async function moveWest() {
-  console.log('Moving telescope West')
-  isSlewing.value = true
+  try {
+    const formData = new URLSearchParams()
+    formData.append('Direction', 'West')
+    formData.append('Rate', selectedSlewRate.value)
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('moveaxis'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    isSlewing.value = true
+  } catch (error) {
+    console.error('Error moving telescope West:', error)
+    lastError.value = 'Failed to move telescope West'
+  }
 }
 
 async function stopSlew() {
-  console.log('Stopping telescope slew')
-  isSlewing.value = false
+  try {
+    const formData = new URLSearchParams()
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('abortslew'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    isSlewing.value = false
+  } catch (error) {
+    console.error('Error stopping telescope slew:', error)
+    lastError.value = 'Failed to stop telescope slew'
+  }
 }
 
 // Fetch additional detailed data
 async function fetchDetailedData() {
   try {
     // For actual implementation, this would make additional API calls
-    // Mock data for demo purposes
-    detailedData.targetRightAscension = rightAscension.value
-    detailedData.targetDeclination = declination.value
-    detailedData.parkingState = 'Unparked'
+    const response = await axios.get(getApiEndpoint('targetstate'))
 
-    // In a real implementation, we would fetch these values from the API
+    if (response.data && response.data.Value) {
+      const data = response.data.Value
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          if (item.Name === 'TargetRightAscension') {
+            detailedData.targetRightAscension = formatRA(item.Value)
+          } else if (item.Name === 'TargetDeclination') {
+            detailedData.targetDeclination = formatDec(item.Value)
+          } else if (item.Name === 'AtPark') {
+            detailedData.parkingState = item.Value ? 'Parked' : 'Unparked'
+          }
+        }
+      } else {
+        if (data.TargetRightAscension) {
+          detailedData.targetRightAscension = formatRA(data.TargetRightAscension)
+        }
+        if (data.TargetDeclination) {
+          detailedData.targetDeclination = formatDec(data.TargetDeclination)
+        }
+        if (data.AtPark !== undefined) {
+          detailedData.parkingState = data.AtPark ? 'Parked' : 'Unparked'
+        }
+      }
+    }
   } catch (error) {
     console.error('Error fetching detailed data:', error)
+  }
+}
+
+// Set tracking rate
+async function setTrackingRate(rate: string) {
+  try {
+    const formData = new URLSearchParams()
+    formData.append('Value', rate)
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('trackingrate'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+
+    detailedData.trackingRate = rate
+  } catch (error) {
+    console.error('Error setting tracking rate:', error)
+    lastError.value = 'Failed to set tracking rate'
+  }
+}
+
+// Watch for tracking rate changes
+watch(
+  () => detailedData.trackingRate,
+  (newRate) => {
+    if (props.connected && trackingEnabled.value) {
+      setTrackingRate(newRate)
+    }
+  }
+)
+
+// Park telescope
+async function parkTelescope() {
+  try {
+    const formData = new URLSearchParams()
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('park'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+
+    detailedData.parkingState = 'Parking...'
+    // Fetch updated status after a delay
+    setTimeout(() => fetchDetailedData(), 2000)
+  } catch (error) {
+    console.error('Error parking telescope:', error)
+    lastError.value = 'Failed to park telescope'
+  }
+}
+
+// Unpark telescope
+async function unparkTelescope() {
+  try {
+    const formData = new URLSearchParams()
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('unpark'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+
+    detailedData.parkingState = 'Unparking...'
+    // Fetch updated status after a delay
+    setTimeout(() => fetchDetailedData(), 2000)
+  } catch (error) {
+    console.error('Error unparking telescope:', error)
+    lastError.value = 'Failed to unpark telescope'
+  }
+}
+
+// Move telescope to home position
+async function homePosition() {
+  try {
+    const formData = new URLSearchParams()
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('findhome'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+
+    isSlewing.value = true
+    // Fetch updated status after a delay
+    setTimeout(() => fetchDetailedData(), 2000)
+  } catch (error) {
+    console.error('Error homing telescope:', error)
+    lastError.value = 'Failed to home telescope'
+  }
+}
+
+// Slew telescope to target coordinates
+async function slewToCoordinates() {
+  try {
+    // Parse the input coordinates
+    const formattedRA = targetRA.value
+    const formattedDec = targetDec.value
+
+    // Convert HH:MM:SS to decimal hours
+    const raParts = formattedRA.split(':').map(Number)
+    const raDecimal = raParts[0] + raParts[1] / 60 + raParts[2] / 3600
+
+    // Convert +/-DD:MM:SS to decimal degrees
+    const decSign = formattedDec.startsWith('-') ? -1 : 1
+    const decParts = formattedDec.replace(/^[+-]/, '').split(':').map(Number)
+    const decDecimal = decSign * (decParts[0] + decParts[1] / 60 + decParts[2] / 3600)
+
+    // Prepare and send the coordinates
+    const formData = new URLSearchParams()
+    formData.append('RightAscension', raDecimal.toString())
+    formData.append('Declination', decDecimal.toString())
+    formData.append('ClientID', '1')
+    formData.append('ClientTransactionID', '1')
+
+    await axios.put(getApiEndpoint('slewtocoordinatesasync'), formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+
+    isSlewing.value = true
+    // Update target coordinates in the detailed data
+    detailedData.targetRightAscension = formattedRA
+    detailedData.targetDeclination = formattedDec
+
+    // Fetch updated status after a delay
+    setTimeout(() => fetchDetailedData(), 2000)
+  } catch (error) {
+    console.error('Error slewing to coordinates:', error)
+    lastError.value = 'Failed to slew telescope to coordinates'
   }
 }
 </script>
@@ -485,6 +701,42 @@ async function fetchDetailedData() {
             </div>
           </div>
         </div>
+
+        <div class="coordinates-section">
+          <h3>Go To Coordinates</h3>
+          <div class="coordinate-inputs">
+            <div class="input-group">
+              <label for="detailed-target-ra">RA (HH:MM:SS):</label>
+              <input
+                id="detailed-target-ra"
+                v-model="targetRA"
+                type="text"
+                pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}"
+                placeholder="00:00:00"
+                :disabled="!connected || isSlewing"
+              />
+            </div>
+            <div class="input-group">
+              <label for="detailed-target-dec">Dec (+/-DD:MM:SS):</label>
+              <input
+                id="detailed-target-dec"
+                v-model="targetDec"
+                type="text"
+                pattern="[+-][0-9]{2}:[0-9]{2}:[0-9]{2}"
+                placeholder="+00:00:00"
+                :disabled="!connected || isSlewing"
+              />
+            </div>
+            <button
+              class="control-btn"
+              :disabled="!connected || isSlewing"
+              @click="slewToCoordinates"
+            >
+              <Icon type="arrow-right" />
+              <span>Slew to Target</span>
+            </button>
+          </div>
+        </div>
       </div>
     </template>
 
@@ -655,13 +907,70 @@ async function fetchDetailedData() {
               <div class="parking-panel">
                 <h3>Parking</h3>
                 <div class="parking-actions">
-                  <button class="control-btn" :disabled="!connected || isSlewing">
+                  <button
+                    class="control-btn"
+                    :disabled="
+                      !connected ||
+                      isSlewing ||
+                      detailedData.parkingState === 'Parked' ||
+                      detailedData.parkingState === 'Parking...'
+                    "
+                    @click="parkTelescope"
+                  >
                     <Icon type="park" />
                     <span>Park Telescope</span>
                   </button>
-                  <button class="control-btn" :disabled="!connected || isSlewing">
+                  <button
+                    class="control-btn"
+                    :disabled="!connected || isSlewing || detailedData.parkingState !== 'Parked'"
+                    @click="unparkTelescope"
+                  >
+                    <Icon type="park" />
+                    <span>Unpark Telescope</span>
+                  </button>
+                  <button
+                    class="control-btn"
+                    :disabled="!connected || isSlewing"
+                    @click="homePosition"
+                  >
                     <Icon type="home" />
                     <span>Home Position</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="coordinates-panel">
+                <h3>Go To Coordinates</h3>
+                <div class="coordinate-inputs">
+                  <div class="input-group">
+                    <label for="target-ra">RA (HH:MM:SS):</label>
+                    <input
+                      id="target-ra"
+                      v-model="targetRA"
+                      type="text"
+                      pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}"
+                      placeholder="00:00:00"
+                      :disabled="!connected || isSlewing"
+                    />
+                  </div>
+                  <div class="input-group">
+                    <label for="target-dec">Dec (+/-DD:MM:SS):</label>
+                    <input
+                      id="target-dec"
+                      v-model="targetDec"
+                      type="text"
+                      pattern="[+-][0-9]{2}:[0-9]{2}:[0-9]{2}"
+                      placeholder="+00:00:00"
+                      :disabled="!connected || isSlewing"
+                    />
+                  </div>
+                  <button
+                    class="control-btn"
+                    :disabled="!connected || isSlewing"
+                    @click="slewToCoordinates"
+                  >
+                    <Icon type="arrow-right" />
+                    <span>Slew to Target</span>
                   </button>
                 </div>
               </div>
@@ -934,6 +1243,13 @@ select {
   padding: 0.5rem;
 }
 
+.coordinates-section {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+}
+
 /* Fullscreen Mode */
 .telescope-fullscreen {
   padding: 1rem;
@@ -1019,12 +1335,14 @@ select {
 :root .dark-theme .status-info,
 :root .dark-theme .slew-controls,
 :root .dark-theme .tracking-section,
+:root .dark-theme .coordinates-section,
 :root .dark-theme .position-panel,
 :root .dark-theme .status-panel,
 :root .dark-theme .controls-panel,
 :root .dark-theme .slew-panel,
 :root .dark-theme .tracking-panel,
-:root .dark-theme .parking-panel {
+:root .dark-theme .parking-panel,
+:root .dark-theme .coordinates-panel {
   background-color: rgba(70, 0, 0, 0.1);
 }
 
@@ -1037,8 +1355,62 @@ select {
 }
 
 :root .dark-theme select,
-:root .dark-theme .control-select {
+:root .dark-theme .control-select,
+:root .dark-theme input {
   background-color: rgba(70, 0, 0, 0.2);
   border-color: var(--aw-panel-border-color);
+}
+
+/* Coordinate input styles */
+.coordinates-panel {
+  padding: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  margin-top: 1rem;
+}
+
+.coordinate-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.input-group label {
+  font-size: 0.9rem;
+  color: var(--aw-panel-content-color);
+  opacity: 0.8;
+}
+
+.input-group input {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--aw-panel-border-color);
+  background-color: var(--aw-panel-content-bg-color);
+  color: var(--aw-panel-content-color);
+  font-family: monospace;
+}
+
+/* Layout adjustments */
+.controls-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .coordinate-inputs {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .input-group {
+    flex: 1;
+  }
 }
 </style>
