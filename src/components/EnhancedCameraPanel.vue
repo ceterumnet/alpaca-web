@@ -914,6 +914,8 @@ function displayImage(processedData: {
 
   // For high bit-depth data, apply some stretch to improve visibility only if auto-stretch is enabled
   if (isHighBitDepth && autoStretch.value) {
+    console.log('Applying auto stretch because autoStretch is enabled:', autoStretch.value)
+
     // Use histogram-like approach to find better black/white points
     const histogram = new Uint32Array(1024)
     const totalPixels = width * height
@@ -960,6 +962,21 @@ function displayImage(processedData: {
       autoMin = min + (blackBin / 1023) * range
       autoMax = min + (whiteBin / 1023) * range
       console.log(`Adjusted range: min=${autoMin}, max=${autoMax} (original: ${min}-${max})`)
+
+      // Update the slider positions to match the auto-calculated values if auto stretch is enabled
+      if (autoStretch.value) {
+        // Convert auto min/max to percentage values for the sliders
+        const blackPointPercent = Math.round(((autoMin - min) / (max - min)) * 100)
+        const whitePointPercent = Math.round(((autoMax - min) / (max - min)) * 100)
+
+        // Update slider positions
+        blackPoint.value = blackPointPercent
+        whitePoint.value = whitePointPercent
+
+        console.log(
+          `Updated sliders to match auto stretch: Black=${blackPointPercent}%, White=${whitePointPercent}%`
+        )
+      }
     }
   }
 
@@ -1078,7 +1095,7 @@ function reprocessImage() {
   // Function to force redisplay
   console.log('Reprocessing image with new stretch settings')
   console.log(
-    `Black: ${blackPoint.value}%, White: ${whitePoint.value}%, Midtone: ${midtoneValue.value}`
+    `Auto: ${autoStretch.value}, Black: ${blackPoint.value}%, White: ${whitePoint.value}%, Midtone: ${midtoneValue.value}`
   )
 
   if (originalImageData.value) {
@@ -1109,11 +1126,6 @@ function setWhitePoint(value: number) {
 function setMidtone(value: number) {
   // Ensure value stays in range
   midtoneValue.value = Math.max(0.1, Math.min(2.0, value))
-
-  // Turn off auto stretch when manually adjusting the midtone
-  if (autoStretch.value) {
-    autoStretch.value = false
-  }
 
   if (previewImage.value) reprocessImage()
 }
@@ -1311,6 +1323,18 @@ async function setReadMode(modeValue: number) {
     }
   }
 }
+
+function toggleAutoStretch() {
+  autoStretch.value = !autoStretch.value
+  console.log(`Auto stretch toggled to: ${autoStretch.value}`)
+
+  if (previewImage.value) {
+    console.log('Reprocessing image with new auto stretch setting')
+    // When toggling auto stretch off, keep the current slider positions
+    // When toggling on, the displayImage function will update the sliders
+    reprocessImage()
+  }
+}
 </script>
 
 <template>
@@ -1353,182 +1377,225 @@ async function setReadMode(modeValue: number) {
     <!-- Overview Content (Simple Mode) -->
     <template #overview-content>
       <div class="camera-overview">
-        <!-- Preview image section -->
-        <div class="image-preview">
-          <div v-if="previewImage" class="preview-container">
-            <img :src="previewImage" alt="Camera Preview" />
-            <div v-if="histogramData.length > 0" class="preview-stats">
-              <div class="stat-item"><span>Min:</span> {{ Math.round(histogramMin) }}</div>
-              <div class="stat-item"><span>Max:</span> {{ Math.round(histogramMax) }}</div>
-              <div class="stat-item"><span>Mean:</span> {{ Math.round(histogramMean) }}</div>
-            </div>
-
-            <!-- Overview Stretch Controls -->
-            <div class="overview-stretch-controls">
-              <div class="stretch-toggle-simple">
-                <label>
-                  <input v-model="autoStretch" type="checkbox" @input="reprocessImage" />
-                  Auto
-                </label>
-              </div>
-              <input
-                v-model.number="midtoneValue"
-                type="range"
-                min="0.1"
-                max="2.0"
-                step="0.05"
-                title="Midtone Adjustment"
-                @change="setMidtone(midtoneValue)"
-              />
-              <span class="midtone-value">{{ midtoneValue.toFixed(1) }}</span>
-              <button
-                class="download-button"
-                title="Save Image"
-                :disabled="!previewImage"
-                @click="downloadPreview"
-              >
-                <Icon v-if="previewImage" type="files" />
-                <span class="sr-only">Save Image</span>
-              </button>
-            </div>
-          </div>
-          <div v-else class="empty-preview">
-            <div v-if="cameraData.isExposing" class="exposing-status">
-              <Icon type="camera" class="exposing-icon" />
-              <div>
-                <div class="state-text">{{ cameraState }}</div>
-                <div class="percent-text">{{ percentComplete }}%</div>
+        <div class="overview-layout">
+          <!-- Image preview side -->
+          <div class="overview-preview">
+            <div v-if="previewImage" class="preview-container">
+              <img :src="previewImage" alt="Camera Preview" />
+              <div v-if="histogramData.length > 0" class="preview-stats">
+                <div class="stat-item"><span>Min:</span> {{ Math.round(histogramMin) }}</div>
+                <div class="stat-item"><span>Max:</span> {{ Math.round(histogramMax) }}</div>
+                <div class="stat-item"><span>Mean:</span> {{ Math.round(histogramMean) }}</div>
               </div>
             </div>
-            <span v-else-if="!isConnected" class="status-disconnected">
-              <Icon type="disconnected" />
-              <span>Camera disconnected</span>
-            </span>
-            <span v-else class="status-no-image">
-              <Icon type="camera" />
-              <span>No image available</span>
-            </span>
+            <div v-else class="empty-preview">
+              <div v-if="cameraData.isExposing" class="exposing-status">
+                <Icon type="camera" class="exposing-icon" />
+                <div>
+                  <div class="state-text">{{ cameraState }}</div>
+                  <div class="percent-text">{{ percentComplete }}%</div>
+                </div>
+              </div>
+              <span v-else-if="!isConnected" class="status-disconnected">
+                <Icon type="disconnected" />
+                <span>Camera disconnected</span>
+              </span>
+              <span v-else class="status-no-image">
+                <Icon type="camera" />
+                <span>No image available</span>
+              </span>
+            </div>
           </div>
-        </div>
 
-        <!-- Quick controls section -->
-        <div class="quick-controls" :class="{ 'controls-disabled': !isConnected }">
-          <div class="controls-grid">
-            <div class="control-row">
-              <label>Exposure:</label>
-              <div class="input-with-unit">
+          <!-- Controls side -->
+          <div class="overview-controls">
+            <!-- Image stretch controls -->
+            <div v-if="previewImage" class="overview-stretch-controls">
+              <h4>Image Controls</h4>
+              <div class="overview-stretch-row">
+                <div class="stretch-toggle-simple">
+                  <label>
+                    <input type="checkbox" :checked="autoStretch" @change="toggleAutoStretch" />
+                    Auto Stretch
+                  </label>
+                </div>
+              </div>
+              <div class="overview-stretch-row">
+                <span class="slider-label">Black:</span>
                 <input
-                  v-model="exposureTime"
-                  type="number"
-                  :min="minExposure"
-                  :max="maxExposure"
-                  :disabled="cameraData.isExposing || !isConnected"
-                  step="0.1"
-                  @change="setExposureTime(exposureTime)"
+                  v-model.number="blackPoint"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  :disabled="autoStretch"
+                  class="stretch-slider"
+                  @change="setBlackPoint(blackPoint)"
                 />
-                <span class="unit">s</span>
+                <span class="slider-value">{{ blackPoint }}%</span>
+              </div>
+              <div class="overview-stretch-row">
+                <span class="slider-label">White:</span>
+                <input
+                  v-model.number="whitePoint"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  :disabled="autoStretch"
+                  class="stretch-slider"
+                  @change="setWhitePoint(whitePoint)"
+                />
+                <span class="slider-value">{{ whitePoint }}%</span>
+              </div>
+              <div class="overview-stretch-row">
+                <span class="midtone-label">Midtone:</span>
+                <input
+                  v-model.number="midtoneValue"
+                  type="range"
+                  min="0.1"
+                  max="2.0"
+                  step="0.05"
+                  title="Midtone Adjustment"
+                  class="midtone-slider"
+                  @change="setMidtone(midtoneValue)"
+                />
+                <span class="midtone-value">{{ midtoneValue.toFixed(1) }}</span>
+              </div>
+              <div class="overview-stretch-actions">
+                <button
+                  class="download-button"
+                  title="Save Image"
+                  :disabled="!previewImage"
+                  @click="downloadPreview"
+                >
+                  <Icon type="files" />
+                  <span>Save Image</span>
+                </button>
               </div>
             </div>
 
-            <div class="control-row">
-              <label>Binning:</label>
-              <div class="binning-control">
-                <input
-                  v-model.number="cameraData.binningX"
-                  type="number"
-                  min="1"
-                  max="4"
-                  :disabled="cameraData.isExposing || !isConnected"
-                  @change="setBinning(cameraData.binningX, cameraData.binningY)"
-                />
-                <span>×</span>
-                <input
-                  v-model.number="cameraData.binningY"
-                  type="number"
-                  min="1"
-                  max="4"
-                  :disabled="cameraData.isExposing || !isConnected"
-                  @change="setBinning(cameraData.binningX, cameraData.binningY)"
-                />
+            <!-- Camera settings controls -->
+            <div class="camera-settings" :class="{ 'controls-disabled': !isConnected }">
+              <h4>Camera Settings</h4>
+              <div class="controls-grid">
+                <div class="control-row">
+                  <label>Exposure:</label>
+                  <div class="input-with-unit">
+                    <input
+                      v-model="exposureTime"
+                      type="number"
+                      :min="minExposure"
+                      :max="maxExposure"
+                      :disabled="cameraData.isExposing || !isConnected"
+                      step="0.1"
+                      @change="setExposureTime(exposureTime)"
+                    />
+                    <span class="unit">s</span>
+                  </div>
+                </div>
+
+                <div class="control-row">
+                  <label>Binning:</label>
+                  <div class="binning-control">
+                    <input
+                      v-model.number="cameraData.binningX"
+                      type="number"
+                      min="1"
+                      max="4"
+                      :disabled="cameraData.isExposing || !isConnected"
+                      @change="setBinning(cameraData.binningX, cameraData.binningY)"
+                    />
+                    <span>×</span>
+                    <input
+                      v-model.number="cameraData.binningY"
+                      type="number"
+                      min="1"
+                      max="4"
+                      :disabled="cameraData.isExposing || !isConnected"
+                      @change="setBinning(cameraData.binningX, cameraData.binningY)"
+                    />
+                  </div>
+                </div>
+
+                <div class="control-row">
+                  <label>Gain:</label>
+                  <input
+                    v-model.number="gain"
+                    type="number"
+                    :min="minGain"
+                    :max="maxGain"
+                    :disabled="cameraData.isExposing || !isConnected"
+                    @change="setGain(gain)"
+                  />
+                </div>
+
+                <div v-if="canAdjustOffset" class="control-row">
+                  <label>Offset:</label>
+                  <input
+                    v-model.number="offset"
+                    type="number"
+                    :min="minOffset"
+                    :max="maxOffset"
+                    :disabled="cameraData.isExposing || !isConnected"
+                    @change="setOffset(offset)"
+                  />
+                </div>
+
+                <div v-if="canAdjustReadMode && readModeOptions.length > 0" class="control-row">
+                  <label>Read Mode:</label>
+                  <select
+                    v-model.number="readMode"
+                    :disabled="cameraData.isExposing || !isConnected"
+                    @change="setReadMode(readMode)"
+                  >
+                    <option v-for="(mode, index) in readModeOptions" :key="index" :value="index">
+                      {{ mode }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="action-buttons">
+                <button
+                  v-if="!cameraData.isExposing"
+                  class="action-button start-button"
+                  :disabled="!isConnected"
+                  @click="startExposure"
+                >
+                  <Icon type="camera" />
+                  <span>Expose</span>
+                </button>
+
+                <button
+                  v-else
+                  class="action-button abort-button"
+                  :disabled="!isConnected"
+                  @click="abortExposure"
+                >
+                  <Icon type="stop" />
+                  <span>Abort</span>
+                </button>
               </div>
             </div>
 
-            <div class="control-row">
-              <label>Gain:</label>
-              <input
-                v-model.number="gain"
-                type="number"
-                :min="minGain"
-                :max="maxGain"
-                :disabled="cameraData.isExposing || !isConnected"
-                @change="setGain(gain)"
-              />
+            <!-- Progress bar for exposure -->
+            <div v-if="cameraData.isExposing" class="exposure-progress-overview">
+              <div class="progress-label">
+                <span>{{ cameraState }} </span>
+                <span>{{ percentComplete }}%</span>
+              </div>
+              <div class="progress-bar-container-overview">
+                <div
+                  class="progress-bar-fill-overview"
+                  :style="'width: ' + percentComplete + '%'"
+                ></div>
+              </div>
+              <div class="progress-time">
+                {{ Math.round((Date.now() - exposureStartTime) / 1000) }}s / {{ exposureTime }}s
+              </div>
             </div>
-
-            <div v-if="canAdjustOffset" class="control-row">
-              <label>Offset:</label>
-              <input
-                v-model.number="offset"
-                type="number"
-                :min="minOffset"
-                :max="maxOffset"
-                :disabled="cameraData.isExposing || !isConnected"
-                @change="setOffset(offset)"
-              />
-            </div>
-
-            <div v-if="canAdjustReadMode && readModeOptions.length > 0" class="control-row">
-              <label>Read Mode:</label>
-              <select
-                v-model.number="readMode"
-                :disabled="cameraData.isExposing || !isConnected"
-                @change="setReadMode(readMode)"
-              >
-                <option v-for="(mode, index) in readModeOptions" :key="index" :value="index">
-                  {{ mode }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Action buttons -->
-          <div class="action-buttons">
-            <button
-              v-if="!cameraData.isExposing"
-              class="action-button start-button"
-              :disabled="!isConnected"
-              @click="startExposure"
-            >
-              <Icon type="camera" />
-              <span>Expose</span>
-            </button>
-
-            <button
-              v-else
-              class="action-button abort-button"
-              :disabled="!isConnected"
-              @click="abortExposure"
-            >
-              <Icon type="stop" />
-              <span>Abort</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Progress bar for overview mode -->
-        <div v-if="cameraData.isExposing" class="exposure-progress-overview">
-          <div class="progress-label">
-            <span>{{ cameraState }} </span>
-            <span>{{ percentComplete }}%</span>
-          </div>
-          <div class="progress-bar-container-overview">
-            <div
-              class="progress-bar-fill-overview"
-              :style="'width: ' + percentComplete + '%'"
-            ></div>
-          </div>
-          <div class="progress-time">
-            {{ Math.round((Date.now() - exposureStartTime) / 1000) }}s / {{ exposureTime }}s
           </div>
         </div>
       </div>
@@ -1612,6 +1679,7 @@ async function setReadMode(modeValue: number) {
                       max="100"
                       step="1"
                       :disabled="autoStretch"
+                      class="stretch-slider"
                       @change="setBlackPoint(blackPoint)"
                     />
                     <span class="slider-value">{{ blackPoint }}%</span>
@@ -1626,6 +1694,7 @@ async function setReadMode(modeValue: number) {
                       max="100"
                       step="1"
                       :disabled="autoStretch"
+                      class="stretch-slider"
                       @change="setWhitePoint(whitePoint)"
                     />
                     <span class="slider-value">{{ whitePoint }}%</span>
@@ -1639,9 +1708,11 @@ async function setReadMode(modeValue: number) {
                       min="0.1"
                       max="2.0"
                       step="0.05"
+                      title="Midtone Adjustment"
+                      class="midtone-slider"
                       @change="setMidtone(midtoneValue)"
                     />
-                    <span class="slider-value">{{ midtoneValue.toFixed(2) }}</span>
+                    <span class="slider-value">{{ midtoneValue.toFixed(1) }}</span>
                   </div>
                 </div>
 
@@ -1801,47 +1872,56 @@ h4 {
 .camera-overview {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   height: 100%;
-  padding-top: 2px; /* Add top padding to prevent overlap with the panel title */
+  padding: 8px;
+  overflow: hidden;
 }
 
-.image-preview {
-  flex: 1;
-  min-height: 180px;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.overview-layout {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+  height: 100%;
+}
+
+.overview-preview {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
   overflow: hidden;
-  position: relative;
+  display: flex;
+  height: 100%;
+}
+
+.overview-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  overflow: auto;
 }
 
 .preview-container {
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  flex-direction: column;
 }
 
 .preview-container img {
-  max-width: 100%;
-  max-height: 100%;
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 36px); /* Adjust for stats bar */
   object-fit: contain;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .preview-stats {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 8px;
   display: flex;
   justify-content: space-around;
-  padding: 6px;
+  gap: 8px;
   font-size: 0.8rem;
 }
 
@@ -1855,14 +1935,8 @@ h4 {
 }
 
 .empty-preview {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  color: var(--aw-panel-menu-bar-color);
-  opacity: 0.8;
-  font-size: 0.9rem;
+  padding: 24px;
+  text-align: center;
 }
 
 .exposing-status {
@@ -1978,7 +2052,7 @@ h4 {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-top: 6px;
+  margin-top: 16px;
 }
 
 .action-button {
@@ -3147,113 +3221,101 @@ h4 {
 
 /* CSS for stretch controls */
 .overview-stretch-controls {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.overview-stretch-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  padding: 4px 8px;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
+  margin-bottom: 10px;
 }
 
 .stretch-toggle-simple {
-  font-size: 0.8rem;
-  white-space: nowrap;
-  min-width: 50px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.midtone-slider {
+  flex: 1;
+  height: 6px;
 }
 
 .midtone-value {
   min-width: 24px;
   text-align: right;
-  font-size: 0.8rem;
 }
 
-.stretch-controls {
-  margin-top: 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  padding-top: 12px;
-}
-
-.stretch-controls h4 {
-  margin: 0 0 8px 0;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.stretch-toggle {
-  margin-bottom: 8px;
-}
-
-.stretch-sliders {
+.overview-stretch-actions {
+  margin-top: 8px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  justify-content: flex-end;
 }
 
-.stretch-sliders.disabled {
-  opacity: 0.5;
+.camera-settings {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 12px;
 }
 
-.slider-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
-.slider-row label {
-  min-width: 90px;
-  font-size: 0.9rem;
-}
-
-.slider-row input[type='range'] {
-  flex: 1;
-}
-
-.slider-value {
-  min-width: 45px;
-  text-align: right;
-  font-size: 0.9rem;
-}
-
-/* Add CSS for the download button */
+/* Make the download button more visible */
 .download-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #2196f3;
-  color: white;
-  border: none;
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--aw-panel-content-color);
   border-radius: 4px;
   padding: 4px 8px;
   cursor: pointer;
-  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
   gap: 4px;
+  transition: background-color 0.2s;
 }
 
-.download-button:hover {
-  background-color: #0d8aee;
+.download-button:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 .download-button:disabled {
-  background-color: #cccccc;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+.slider-label {
+  min-width: 50px;
   white-space: nowrap;
-  border: 0;
+  font-size: 0.85rem;
 }
 
-.stretch-actions {
-  margin-top: 12px;
-  display: flex;
-  justify-content: flex-end;
+.stretch-slider {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.stretch-slider:disabled {
+  opacity: 0.6;
+}
+
+.slider-value {
+  min-width: 36px;
+  text-align: right;
+  font-size: 0.85rem;
+}
+
+/* Update midtone slider to match other sliders */
+.midtone-slider {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
 }
 </style>
