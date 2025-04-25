@@ -27,6 +27,14 @@ const currentMode = ref(UIMode.OVERVIEW)
 const trackingEnabled = ref(false)
 const slewRateOptions = ['Guide', 'Center', 'Find', 'Max']
 const selectedSlewRate = ref('Center')
+// Define axis indices and slew rate mapping (degrees per second)
+const TelescopeAxes = { Primary: 0, Secondary: 1 }
+const slewRateMapping: Record<string, number> = {
+  Guide: 0.1,
+  Center: 0.5,
+  Find: 1.0,
+  Max: 2.0
+}
 const lastError = ref('')
 const isSlewing = ref(false)
 const rightAscension = ref('00:00:00')
@@ -283,12 +291,14 @@ async function toggleTracking() {
   }
 }
 
-// Telescope movement controls - implementation details omitted for brevity
+// Telescope movement controls
 async function moveNorth() {
   try {
+    const rate =
+      slewRateMapping[selectedSlewRate.value] || parseFloat(String(selectedSlewRate.value))
     const formData = new URLSearchParams()
-    formData.append('Direction', 'North')
-    formData.append('Rate', selectedSlewRate.value)
+    formData.append('Axis', TelescopeAxes.Secondary.toString())
+    formData.append('Rate', rate.toString())
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
@@ -304,9 +314,11 @@ async function moveNorth() {
 
 async function moveSouth() {
   try {
+    const rate =
+      slewRateMapping[selectedSlewRate.value] || parseFloat(String(selectedSlewRate.value))
     const formData = new URLSearchParams()
-    formData.append('Direction', 'South')
-    formData.append('Rate', selectedSlewRate.value)
+    formData.append('Axis', TelescopeAxes.Secondary.toString())
+    formData.append('Rate', (-rate).toString())
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
@@ -322,9 +334,11 @@ async function moveSouth() {
 
 async function moveEast() {
   try {
+    const rate =
+      slewRateMapping[selectedSlewRate.value] || parseFloat(String(selectedSlewRate.value))
     const formData = new URLSearchParams()
-    formData.append('Direction', 'East')
-    formData.append('Rate', selectedSlewRate.value)
+    formData.append('Axis', TelescopeAxes.Primary.toString())
+    formData.append('Rate', rate.toString())
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
@@ -340,9 +354,11 @@ async function moveEast() {
 
 async function moveWest() {
   try {
+    const rate =
+      slewRateMapping[selectedSlewRate.value] || parseFloat(String(selectedSlewRate.value))
     const formData = new URLSearchParams()
-    formData.append('Direction', 'West')
-    formData.append('Rate', selectedSlewRate.value)
+    formData.append('Axis', TelescopeAxes.Primary.toString())
+    formData.append('Rate', (-rate).toString())
     formData.append('ClientID', '1')
     formData.append('ClientTransactionID', '1')
 
