@@ -1,6 +1,7 @@
 :root {
   --aw-bg-color: white;
   --aw-color: black;
+  --aw-panel-bg-color: white;
   --aw-panel-menu-bar-color: white;
   --aw-panels-bg-color: white;
   --aw-panel-resize-bg-color: #93d4ff;
@@ -9,11 +10,15 @@
   --aw-panel-menu-bar-bg-color: #6b6b6b;
   --aw-panel-content-bg-color: rgb(225, 225, 225);
   --aw-panel-content-color: rgb(2, 2, 2);
+  --aw-text-color: rgb(2, 2, 2);
+  --aw-form-bg-color: white;
+  --aw-input-bg-color: white;
 }
 
 :root .dark-theme {
   --aw-bg-color: #1a0000;
   --aw-color: #ff9e9e;
+  --aw-panel-bg-color: #2d0000;
   --aw-panels-bg-color: #220000;
   --aw-panel-resize-bg-color: #700000;
   --aw-panel-resize-color: #ff6b6b;
@@ -24,4 +29,7 @@
   --aw-panel-content-color: #ffd5d5;
   --aw-panel-scrollbar-color-1: #8b0000;
   --aw-panel-scrollbar-color-2: #6b0000;
+  --aw-text-color: #ffd5d5;
+  --aw-form-bg-color: #2d0000;
+  --aw-input-bg-color: #4d0000;
 }

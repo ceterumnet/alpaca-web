@@ -68,20 +68,54 @@ export const useUIPreferencesStore = defineStore('uiPreferences', () => {
 
   // Toggle dark mode
   function toggleDarkMode() {
+    console.log('Before toggle:', isDarkMode.value)
     isDarkMode.value = !isDarkMode.value
+    console.log('After toggle:', isDarkMode.value)
+
+    // Save preference to localStorage
+    localStorage.setItem('dark-theme-preference', isDarkMode.value.toString())
+    console.log('Saved to localStorage:', isDarkMode.value.toString())
+
     // Apply dark mode class to document
     if (isDarkMode.value) {
-      document.documentElement.classList.add('dark-mode')
+      console.log('Adding dark-theme class')
+      document.documentElement.classList.add('dark-theme')
     } else {
-      document.documentElement.classList.remove('dark-mode')
+      console.log('Removing dark-theme class')
+      document.documentElement.classList.remove('dark-theme')
     }
+
+    // Check if class was applied correctly
+    console.log('Has dark-theme class:', document.documentElement.classList.contains('dark-theme'))
   }
 
   // Initialize dark mode on store creation
   function initializeDarkMode() {
-    if (isDarkMode.value) {
-      document.documentElement.classList.add('dark-mode')
+    console.log('Initializing dark mode')
+    // Check if we have a stored preference
+    const storedPref = localStorage.getItem('dark-theme-preference')
+    console.log('Stored preference:', storedPref)
+    if (storedPref !== null) {
+      isDarkMode.value = storedPref === 'true'
+      console.log('Using stored preference:', isDarkMode.value)
+    } else {
+      console.log('No stored preference, using default:', isDarkMode.value)
     }
+
+    // Apply the current theme
+    if (isDarkMode.value) {
+      console.log('Adding dark-theme class on init')
+      document.documentElement.classList.add('dark-theme')
+    } else {
+      console.log('Removing dark-theme class on init')
+      document.documentElement.classList.remove('dark-theme')
+    }
+
+    // Check if class was applied correctly
+    console.log(
+      'Has dark-theme class after init:',
+      document.documentElement.classList.contains('dark-theme')
+    )
   }
 
   // Reset all UI preferences to defaults

@@ -1,40 +1,101 @@
 <script setup lang="ts">
 // import '@primevue/themes'
-import { onMounted, watch } from 'vue'
+import { computed, onMounted } from 'vue'
 import MainPanels from './components/MainPanels.vue'
 import AppSidebar from './components/AppSidebar.vue'
 import { useUIPreferencesStore } from './stores/useUIPreferencesStore'
+import './assets/colors.css' // Import the CSS
 
 // Get stores
 const uiStore = useUIPreferencesStore()
 
-// Watch for dark mode changes from the UI store
-watch(
-  () => uiStore.isDarkMode,
-  (isDarkMode) => {
-    if (isDarkMode) {
-      document.body.classList.add('dark-theme')
-    } else {
-      document.body.classList.remove('dark-theme')
+// Define theme styles based on dark mode
+const themeStyles = computed(() => {
+  if (uiStore.isDarkMode) {
+    return {
+      '--aw-bg-color': '#1a0000',
+      '--aw-color': '#ff9e9e',
+      '--aw-panel-bg-color': '#2d0000',
+      '--aw-panels-bg-color': '#220000',
+      '--aw-panel-resize-bg-color': '#700000',
+      '--aw-panel-resize-color': '#ff6b6b',
+      '--aw-panel-border-color': '#5a0000',
+      '--aw-panel-menu-bar-color': '#ffcaca',
+      '--aw-panel-menu-bar-bg-color': '#4d0000',
+      '--aw-panel-content-bg-color': '#2d0000',
+      '--aw-panel-content-color': '#ffd5d5',
+      '--aw-panel-scrollbar-color-1': '#8b0000',
+      '--aw-panel-scrollbar-color-2': '#6b0000',
+      '--aw-text-color': '#ffd5d5',
+      '--aw-form-bg-color': '#2d0000',
+      '--aw-input-bg-color': '#4d0000'
+    }
+  } else {
+    return {
+      '--aw-bg-color': 'white',
+      '--aw-color': 'black',
+      '--aw-panel-bg-color': 'white',
+      '--aw-panel-menu-bar-color': 'white',
+      '--aw-panels-bg-color': 'white',
+      '--aw-panel-resize-bg-color': '#93d4ff',
+      '--aw-panel-resize-color': 'white',
+      '--aw-panel-border-color': 'rgb(39, 39, 39)',
+      '--aw-panel-menu-bar-bg-color': '#6b6b6b',
+      '--aw-panel-content-bg-color': 'rgb(225, 225, 225)',
+      '--aw-panel-content-color': 'rgb(2, 2, 2)',
+      '--aw-text-color': 'rgb(2, 2, 2)',
+      '--aw-form-bg-color': 'white',
+      '--aw-input-bg-color': 'white'
     }
   }
-)
+})
 
 // Toggle between dark and light mode
 function toggleDarkMode() {
-  uiStore.toggleDarkMode()
+  // Toggle the value in the store
+  uiStore.isDarkMode = !uiStore.isDarkMode
+
+  // Apply directly to document
+  if (uiStore.isDarkMode) {
+    document.documentElement.classList.add('dark-theme')
+  } else {
+    document.documentElement.classList.remove('dark-theme')
+  }
+
+  // Save preference
+  localStorage.setItem('dark-theme-preference', uiStore.isDarkMode.toString())
+
+  console.log('Toggled dark mode:', uiStore.isDarkMode)
+  console.log('Has dark-theme class:', document.documentElement.classList.contains('dark-theme'))
 }
 
 onMounted(() => {
   console.log('App mounted')
-  // Initialize dark mode
-  uiStore.initializeDarkMode()
-  // fetchConfiguredDevices()
+
+  // Check for stored preference
+  const storedPref = localStorage.getItem('dark-theme-preference')
+  if (storedPref !== null) {
+    uiStore.isDarkMode = storedPref === 'true'
+  }
+
+  // Apply theme on initial load
+  if (uiStore.isDarkMode) {
+    document.documentElement.classList.add('dark-theme')
+  } else {
+    document.documentElement.classList.remove('dark-theme')
+  }
+
+  console.log('Initial dark mode:', uiStore.isDarkMode)
+  console.log('Has dark-theme class:', document.documentElement.classList.contains('dark-theme'))
 })
 </script>
 
 <template>
-  <div class="app-container" :class="{ 'sidebar-expanded': uiStore.isSidebarVisible }">
+  <div
+    class="app-container"
+    :class="{ 'sidebar-expanded': uiStore.isSidebarVisible }"
+    :style="themeStyles"
+  >
     <!-- Sidebar for navigation -->
     <AppSidebar />
 
@@ -68,7 +129,7 @@ onMounted(() => {
                 d="M9.37 5.51c-.18.64-.27 1.31-.27 1.99 0 4.08 3.32 7.4 7.4 7.4.68 0 1.35-.09 1.99-.27C17.45 17.19 14.93 19 12 19c-3.86 0-7-3.14-7-7 0-2.93 1.81-5.45 4.37-6.49zM12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"
               ></path>
             </svg>
-            <span>{{ uiStore.isDarkMode ? 'Light' : 'Dark' }}</span>
+            <span>{{ uiStore.isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
           </button>
         </div>
       </header>
@@ -140,6 +201,17 @@ body {
   background-color: var(--aw-panel-bg-color);
   border-bottom: 1px solid var(--aw-panel-border-color);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.theme-test-box {
+  margin: 10px 20px;
+  padding: 15px;
+  text-align: center;
+  background-color: var(--aw-panel-menu-bar-bg-color);
+  color: var(--aw-panel-menu-bar-color);
+  border: 2px solid var(--aw-panel-border-color);
+  border-radius: 4px;
+  font-weight: bold;
 }
 
 .header-left,
