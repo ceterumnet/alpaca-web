@@ -103,16 +103,9 @@ function getPanelName(item: LayoutItem): string {
   return `Panel ${item.i}`
 }
 
-function getSupportedModes(item: LayoutItem): UIMode[] {
-  // Default modes for all panels
-  const modes = [UIMode.OVERVIEW, UIMode.DETAILED]
-
-  // Add fullscreen mode for certain device types
-  if (item.deviceType && ['camera', 'telescope'].includes(item.deviceType.toLowerCase())) {
-    modes.push(UIMode.FULLSCREEN)
-  }
-
-  return modes
+function getSupportedModes(): UIMode[] {
+  // Only support overview and detailed modes for all panels
+  return [UIMode.OVERVIEW, UIMode.DETAILED]
 }
 
 // Handle removing a panel
@@ -168,7 +161,7 @@ function handleConnect(connected: boolean, itemId: string) {
           :panel-name="getPanelName(item)"
           :device-type="item.deviceType"
           :device-id="item.deviceNum || item.i"
-          :supported-modes="getSupportedModes(item)"
+          :supported-modes="getSupportedModes()"
           :idx="item.i"
           :device-num="item.deviceNum"
           :api-base-url="item.apiBaseUrl"
