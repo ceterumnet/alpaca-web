@@ -1260,6 +1260,29 @@ onMounted(() => {
     clearInterval(statusInterval)
   })
 })
+
+// Function to download the current preview image
+function downloadPreview() {
+  if (!previewImage.value) return
+
+  try {
+    // Create an anchor element
+    const link = document.createElement('a')
+    // Set the download attribute with a filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    link.download = `camera-image-${timestamp}.jpg`
+    // Set the href to the preview image
+    link.href = previewImage.value
+    // Append to the document
+    document.body.appendChild(link)
+    // Trigger the download
+    link.click()
+    // Clean up
+    document.body.removeChild(link)
+  } catch (error) {
+    console.error('Error downloading image:', error)
+  }
+}
 </script>
 
 <template>
@@ -1429,13 +1452,13 @@ onMounted(() => {
     <!-- Detailed Content -->
     <template #detailed-content>
       <div class="camera-detailed">
-        <div class="detailed-grid">
-          <!-- Image Preview Section -->
-          <div class="detailed-preview">
-            <div v-if="previewImage" class="preview-image">
+        <div class="detailed-grid-optimized">
+          <!-- Image Preview Section (Reduced height) -->
+          <div class="detailed-preview-optimized">
+            <div v-if="previewImage" class="preview-image-optimized">
               <img :src="previewImage" alt="Camera preview" />
             </div>
-            <div v-else class="empty-preview-detailed">
+            <div v-else class="empty-preview-detailed-optimized">
               <div v-if="cameraData.isExposing" class="exposing-status">
                 <Icon type="camera" class="exposing-icon" />
                 <div>
@@ -1454,169 +1477,187 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Histogram & Stats Section -->
-          <div v-if="previewImage && histogramData.length > 0" class="detailed-stats">
-            <h3>Image Statistics</h3>
-            <div class="histogram">
-              <div class="histogram-bars">
-                <div
-                  v-for="(value, i) in histogramData"
-                  :key="`hist-${i}`"
-                  class="histogram-bar"
-                  :style="{ height: `${value}%` }"
-                ></div>
+          <!-- Stats & Controls - Side by Side Layout -->
+          <div class="detailed-content-grid">
+            <!-- Histogram & Stats Section -->
+            <div v-if="previewImage && histogramData.length > 0" class="detailed-stats-optimized">
+              <h3>Image Statistics</h3>
+              <div class="histogram-optimized">
+                <div class="histogram-bars">
+                  <div
+                    v-for="(value, i) in histogramData"
+                    :key="`hist-${i}`"
+                    class="histogram-bar"
+                    :style="{ height: `${value}%` }"
+                  ></div>
+                </div>
+              </div>
+              <div class="stats-grid-optimized">
+                <div class="stat-item">
+                  <span class="stat-label">Min:</span>
+                  <span class="stat-value">{{ Math.round(histogramMin) }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Max:</span>
+                  <span class="stat-value">{{ Math.round(histogramMax) }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Mean:</span>
+                  <span class="stat-value">{{ Math.round(histogramMean) }}</span>
+                </div>
               </div>
             </div>
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-label">Min:</span>
-                <span class="stat-value">{{ Math.round(histogramMin) }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Max:</span>
-                <span class="stat-value">{{ Math.round(histogramMax) }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Mean:</span>
-                <span class="stat-value">{{ Math.round(histogramMean) }}</span>
-              </div>
-            </div>
-          </div>
 
-          <!-- Controls Section -->
-          <div class="detailed-controls">
-            <h3>Camera Settings</h3>
-            <div class="controls-container">
-              <div class="control-section">
-                <h4>Exposure</h4>
-                <div class="control-row">
-                  <label for="exposureTime">Exposure Time:</label>
-                  <div class="input-with-unit">
-                    <input
-                      id="exposureTime"
-                      v-model="exposureTime"
-                      type="number"
-                      :disabled="!isConnected || cameraData.isExposing"
-                      :min="minExposure"
-                      :max="maxExposure"
-                      step="0.1"
-                      @change="setExposureTime(exposureTime)"
-                    />
-                    <span class="unit">s</span>
-                  </div>
-                </div>
+            <!-- Controls Section - Compact Layout -->
+            <div class="detailed-controls-optimized">
+              <h3>Camera Settings</h3>
+              <div class="controls-container-optimized">
+                <div class="control-section">
+                  <div class="control-compact-grid">
+                    <!-- Exposure row -->
+                    <div class="control-row-optimized">
+                      <label for="exposureTime">Exposure:</label>
+                      <div class="input-with-unit">
+                        <input
+                          id="exposureTime"
+                          v-model="exposureTime"
+                          type="number"
+                          :disabled="!isConnected || cameraData.isExposing"
+                          :min="minExposure"
+                          :max="maxExposure"
+                          step="0.1"
+                          @change="setExposureTime(exposureTime)"
+                        />
+                        <span class="unit">s</span>
+                      </div>
+                    </div>
 
-                <div class="control-row">
-                  <label for="gain">Gain:</label>
-                  <div class="input-with-unit">
-                    <input
-                      id="gain"
-                      v-model="gain"
-                      type="number"
-                      :disabled="!isConnected || cameraData.isExposing"
-                      :min="minGain"
-                      :max="maxGain"
-                      @change="setGain(gain)"
-                    />
-                  </div>
-                </div>
+                    <!-- Binning row -->
+                    <div class="control-row-optimized">
+                      <label for="binning">Binning:</label>
+                      <div class="binning-control">
+                        <input
+                          id="binningX"
+                          v-model.number="cameraData.binningX"
+                          type="number"
+                          min="1"
+                          max="4"
+                          :disabled="!isConnected || cameraData.isExposing"
+                          @change="setBinning(cameraData.binningX, cameraData.binningY)"
+                        />
+                        <span>×</span>
+                        <input
+                          id="binningY"
+                          v-model.number="cameraData.binningY"
+                          type="number"
+                          min="1"
+                          max="4"
+                          :disabled="!isConnected || cameraData.isExposing"
+                          @change="setBinning(cameraData.binningX, cameraData.binningY)"
+                        />
+                      </div>
+                    </div>
 
-                <div v-if="canAdjustOffset" class="control-row">
-                  <label for="offset">Offset:</label>
-                  <div class="input-with-unit">
-                    <input
-                      id="offset"
-                      v-model="offset"
-                      type="number"
-                      :disabled="!isConnected || cameraData.isExposing"
-                      :min="minOffset"
-                      :max="maxOffset"
-                      @change="setOffset(offset)"
-                    />
-                  </div>
-                </div>
-              </div>
+                    <!-- Gain row -->
+                    <div class="control-row-optimized">
+                      <label for="gainInput">Gain:</label>
+                      <input
+                        id="gainInput"
+                        v-model.number="gain"
+                        type="number"
+                        :min="minGain"
+                        :max="maxGain"
+                        :disabled="!isConnected || cameraData.isExposing"
+                        @change="setGain(gain)"
+                      />
+                    </div>
 
-              <div class="control-section">
-                <h4>Readout</h4>
-                <div v-if="canAdjustReadMode && readModeOptions.length > 0" class="control-row">
-                  <label for="readMode">Read Mode:</label>
-                  <select
-                    id="readMode"
-                    v-model="readMode"
-                    :disabled="!isConnected || cameraData.isExposing"
-                    @change="setReadMode(readMode)"
-                  >
-                    <option v-for="(mode, index) in readModeOptions" :key="index" :value="index">
-                      {{ mode }}
-                    </option>
-                  </select>
-                </div>
+                    <!-- Offset row (if available) -->
+                    <div v-if="canAdjustOffset" class="control-row-optimized">
+                      <label for="offsetInput">Offset:</label>
+                      <input
+                        id="offsetInput"
+                        v-model.number="offset"
+                        type="number"
+                        :min="minOffset"
+                        :max="maxOffset"
+                        :disabled="!isConnected || cameraData.isExposing"
+                        @change="setOffset(offset)"
+                      />
+                    </div>
 
-                <div class="control-row">
-                  <label>Binning:</label>
-                  <div class="binning-control-detailed">
-                    <input
-                      v-model.number="cameraData.binningX"
-                      type="number"
-                      min="1"
-                      max="4"
-                      :disabled="cameraData.isExposing || !isConnected"
-                    />
-                    <span>×</span>
-                    <input
-                      v-model.number="cameraData.binningY"
-                      type="number"
-                      min="1"
-                      max="4"
-                      :disabled="cameraData.isExposing || !isConnected"
-                    />
-                    <button
-                      class="binning-button"
-                      :disabled="cameraData.isExposing || !isConnected"
-                      @click="setBinning(cameraData.binningX, cameraData.binningY)"
+                    <!-- Read Mode row (if available) -->
+                    <div
+                      v-if="canAdjustReadMode && readModeOptions.length > 0"
+                      class="control-row-optimized"
                     >
-                      Set
-                    </button>
+                      <label for="readModeSelect">Read Mode:</label>
+                      <select
+                        id="readModeSelect"
+                        v-model.number="readMode"
+                        :disabled="!isConnected || cameraData.isExposing"
+                        @change="setReadMode(readMode)"
+                      >
+                        <option
+                          v-for="(mode, index) in readModeOptions"
+                          :key="index"
+                          :value="index"
+                        >
+                          {{ mode }}
+                        </option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div class="detailed-action-buttons">
-              <button
-                v-if="!cameraData.isExposing"
-                :disabled="!isConnected"
-                class="detailed-start-button"
-                @click="startExposure"
-              >
-                <Icon type="camera" />
-                Start Exposure
-              </button>
-              <button
-                v-else
-                :disabled="!isConnected"
-                class="detailed-abort-button"
-                @click="abortExposure"
-              >
-                <Icon type="stop" />
-                Abort Exposure
-              </button>
+          <!-- Action buttons in a horizontal row -->
+          <div class="detailed-action-buttons-optimized">
+            <button
+              v-if="!cameraData.isExposing"
+              class="action-button"
+              :disabled="!isConnected"
+              @click="startExposure"
+            >
+              <Icon type="camera" />
+              <span>Start Exposure</span>
+            </button>
+            <button
+              v-else
+              class="action-button abort-button"
+              :disabled="!isConnected"
+              @click="abortExposure"
+            >
+              <Icon type="stop" />
+              <span>Abort Exposure</span>
+            </button>
+            <button
+              class="action-button"
+              :disabled="!isConnected || !previewImage"
+              @click="downloadPreview"
+            >
+              <Icon type="files" />
+              <span>Save Image</span>
+            </button>
+          </div>
+
+          <!-- Progress bar for detailed mode -->
+          <div v-if="cameraData.isExposing" class="exposure-progress-detailed">
+            <div class="progress-details">
+              <div class="progress-info">
+                <span class="state">{{ cameraState }}</span>
+                <span class="percent">{{ percentComplete }}%</span>
+              </div>
+              <div class="progress-time">
+                Elapsed: {{ Math.round((Date.now() - exposureStartTime) / 1000) }}s / Total:
+                {{ exposureTime }}s
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div v-if="cameraData.isExposing" class="exposure-progress">
-          <div class="progress-label">
-            <span>{{ cameraState }}</span>
-            <span>{{ percentComplete }}%</span>
-          </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill" :style="'width: ' + percentComplete + '%'"></div>
-          </div>
-          <div class="progress-time">
-            Elapsed: {{ Math.round((Date.now() - exposureStartTime) / 1000) }}s / Total:
-            {{ exposureTime }}s
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" :style="'width: ' + percentComplete + '%'"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -3152,5 +3193,122 @@ h4 {
 
 .dark-theme .status-exposing {
   background-color: rgba(50, 100, 180, 0.7);
+}
+
+/* Optimized detailed layout */
+.detailed-grid-optimized {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+.detailed-preview-optimized {
+  height: 40%; /* Reduced from original size */
+  min-height: 180px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.preview-image-optimized {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-image-optimized img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.empty-preview-detailed-optimized {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.detailed-content-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(200px, 1.5fr);
+  gap: 0.75rem;
+  height: 50%;
+  min-height: 160px;
+}
+
+.detailed-stats-optimized,
+.detailed-controls-optimized {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 0.5rem;
+  height: 100%;
+  overflow: auto;
+}
+
+.histogram-optimized {
+  height: 80px;
+  margin: 0.5rem 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  padding: 0.25rem;
+}
+
+.stats-grid-optimized {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.controls-container-optimized {
+  height: calc(100% - 2rem);
+  overflow-y: auto;
+}
+
+.control-compact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.control-row-optimized {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem;
+}
+
+.control-row-optimized label {
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.detailed-action-buttons-optimized {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.detailed-action-buttons-optimized button {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* Media query for smaller screens */
+@media (max-width: 600px) {
+  .detailed-content-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .control-compact-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

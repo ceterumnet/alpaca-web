@@ -718,65 +718,124 @@ async function slewToCoordinates() {
     <!-- Detailed Mode - More Controls and Data -->
     <template #detailed-content>
       <div class="telescope-detailed">
-        <div class="detailed-header">
-          <div class="position-info">
-            <div class="position-block">
-              <h3>Equatorial</h3>
-              <div class="pos-grid">
-                <span class="label">RA:</span>
-                <span class="value">{{ formattedRA }}</span>
-                <span class="label">Dec:</span>
-                <span class="value">{{ formattedDec }}</span>
+        <!-- Optimized Layout: Position & Status Side-by-Side -->
+        <div class="detailed-top-section">
+          <!-- Position Information -->
+          <div class="position-info-optimized">
+            <div class="position-grid-optimized">
+              <div class="position-column">
+                <h3>Equatorial</h3>
+                <div class="coord-row">
+                  <span class="label">RA:</span>
+                  <span class="value">{{ formattedRA }}</span>
+                </div>
+                <div class="coord-row">
+                  <span class="label">Dec:</span>
+                  <span class="value">{{ formattedDec }}</span>
+                </div>
+                <div class="coord-row">
+                  <span class="label">Target RA:</span>
+                  <span class="value">{{ detailedData.targetRightAscension }}</span>
+                </div>
+                <div class="coord-row">
+                  <span class="label">Target Dec:</span>
+                  <span class="value">{{ detailedData.targetDeclination }}</span>
+                </div>
               </div>
-            </div>
-            <div class="position-block">
-              <h3>Horizontal</h3>
-              <div class="pos-grid">
-                <span class="label">Alt:</span>
-                <span class="value">{{ formattedAlt }}</span>
-                <span class="label">Az:</span>
-                <span class="value">{{ formattedAz }}</span>
+              <div class="position-column">
+                <h3>Horizontal</h3>
+                <div class="coord-row">
+                  <span class="label">Alt:</span>
+                  <span class="value">{{ formattedAlt }}</span>
+                </div>
+                <div class="coord-row">
+                  <span class="label">Az:</span>
+                  <span class="value">{{ formattedAz }}</span>
+                </div>
+                <div class="coord-row">
+                  <span class="label">LST:</span>
+                  <span class="value">{{ detailedData.siderealTime }}</span>
+                </div>
+                <div class="coord-row">
+                  <span class="label">Side of Pier:</span>
+                  <span class="value">{{ detailedData.sideOfPier }}</span>
+                </div>
               </div>
             </div>
           </div>
-          <div class="status-info">
-            <div class="status-item">
-              <span class="label">Status:</span>
-              <span class="value" :class="{ slewing: isSlewing }">
-                {{ isSlewing ? 'Slewing' : 'Idle' }}
-              </span>
+
+          <!-- Status & Controls -->
+          <div class="status-controls-optimized">
+            <div class="status-section">
+              <h3>Status</h3>
+              <div class="status-badges-detailed">
+                <div class="status-badge" :class="{ active: connected }">
+                  <span class="badge-label">Connection:</span>
+                  <span class="badge-value">{{ connected ? 'Connected' : 'Disconnected' }}</span>
+                </div>
+                <div class="status-badge" :class="{ active: trackingEnabled }">
+                  <span class="badge-label">Tracking:</span>
+                  <span class="badge-value">{{ trackingEnabled ? 'On' : 'Off' }}</span>
+                </div>
+                <div class="status-badge" :class="{ active: isSlewing }">
+                  <span class="badge-label">Movement:</span>
+                  <span class="badge-value">{{ isSlewing ? 'Slewing' : 'Stationary' }}</span>
+                </div>
+                <div v-if="detailedData.parkingState !== 'Unknown'" class="status-badge">
+                  <span class="badge-label">Parking:</span>
+                  <span class="badge-value">{{ detailedData.parkingState }}</span>
+                </div>
+              </div>
             </div>
-            <div class="status-item">
-              <span class="label">Tracking:</span>
-              <span class="value" :class="{ tracking: trackingEnabled }">
-                {{ trackingEnabled ? 'Enabled' : 'Disabled' }}
-              </span>
-            </div>
-            <div class="status-item">
-              <span class="label">LST:</span>
-              <span class="value">{{ detailedData.siderealTime }}</span>
+
+            <div class="quick-actions">
+              <h3>Quick Actions</h3>
+              <div class="quick-buttons">
+                <button
+                  class="action-btn"
+                  :class="{ active: trackingEnabled }"
+                  :disabled="!connected"
+                  @click="toggleTracking"
+                >
+                  <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
+                  <span>{{ trackingEnabled ? 'Stop Tracking' : 'Start Tracking' }}</span>
+                </button>
+                <button
+                  class="action-btn"
+                  :disabled="!connected || detailedData.parkingState === 'Parked'"
+                  @click="parkTelescope"
+                >
+                  <Icon type="home" />
+                  <span>Park</span>
+                </button>
+                <button
+                  class="action-btn"
+                  :disabled="!connected || detailedData.parkingState !== 'Parked'"
+                  @click="unparkTelescope"
+                >
+                  <Icon type="power" />
+                  <span>Unpark</span>
+                </button>
+                <button
+                  class="action-btn"
+                  :disabled="!connected || isSlewing"
+                  @click="homePosition"
+                >
+                  <Icon type="home" />
+                  <span>Home</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="controls-section">
-          <div class="slew-controls">
-            <h3>Motion Control</h3>
-            <div class="slew-rate">
-              <label for="slew-rate">Slew Rate:</label>
-              <select
-                id="slew-rate"
-                v-model="selectedSlewRate"
-                :disabled="!connected || isSlewing"
-                class="select-field"
-              >
-                <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
-                  {{ rate }}
-                </option>
-              </select>
-            </div>
-            <div class="directional-controls detailed">
-              <div class="slew-control">
+        <!-- Movement Controls & Target Coordinates -->
+        <div class="detailed-bottom-section">
+          <!-- Movement Controls -->
+          <div class="movement-controls-optimized">
+            <h3>Movement Controls</h3>
+            <div class="slew-controls-grid">
+              <div class="slew-buttons">
                 <button
                   class="slew-btn north"
                   :disabled="!connected || isSlewing"
@@ -815,71 +874,64 @@ async function slewToCoordinates() {
                   <Icon type="arrow-down" />
                 </button>
               </div>
+              <div class="slew-settings">
+                <div class="slew-rate">
+                  <label for="slew-rate-select">Slew Rate:</label>
+                  <select
+                    id="slew-rate-select"
+                    v-model="selectedSlewRate"
+                    :disabled="!connected || isSlewing"
+                    class="slew-rate-select"
+                  >
+                    <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
+                      {{ rate }}
+                    </option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="tracking-section">
-            <h3>Tracking</h3>
-            <div class="tracking-controls">
+          <!-- Target Coordinates -->
+          <div class="target-coordinates-optimized">
+            <h3>Target Coordinates</h3>
+            <div class="target-inputs">
+              <div class="target-row">
+                <label for="target-ra">Target RA:</label>
+                <input
+                  id="target-ra"
+                  v-model="targetRA"
+                  type="text"
+                  placeholder="HH:MM:SS"
+                  :disabled="!connected || isSlewing"
+                />
+              </div>
+              <div class="target-row">
+                <label for="target-dec">Target Dec:</label>
+                <input
+                  id="target-dec"
+                  v-model="targetDec"
+                  type="text"
+                  placeholder="+DD:MM:SS"
+                  :disabled="!connected || isSlewing"
+                />
+              </div>
               <button
-                class="control-btn"
-                :class="{ active: trackingEnabled }"
-                :disabled="!connected"
-                @click="toggleTracking"
+                class="slew-to-target-btn"
+                :disabled="!connected || isSlewing"
+                @click="slewToCoordinates"
               >
-                <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
-                <span>{{ trackingEnabled ? 'Disable Tracking' : 'Enable Tracking' }}</span>
+                <Icon type="navigation" />
+                <span>Slew to Target</span>
               </button>
-              <select
-                v-model="detailedData.trackingRate"
-                :disabled="!connected || !trackingEnabled"
-                class="tracking-rate select-field"
-                @change="handleTrackingRateChange"
-              >
-                <option v-for="rateId in availableTrackingRates" :key="rateId" :value="rateId">
-                  {{ trackingRates[rateId] }}
-                </option>
-              </select>
             </div>
           </div>
         </div>
 
-        <div class="coordinates-section">
-          <h3>Go To Coordinates</h3>
-          <div class="coordinate-inputs">
-            <div class="input-group">
-              <label for="detailed-target-ra">RA (HH:MM:SS):</label>
-              <input
-                id="detailed-target-ra"
-                v-model="targetRA"
-                type="text"
-                pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}"
-                placeholder="00:00:00"
-                :disabled="!connected || isSlewing"
-                class="input-field"
-              />
-            </div>
-            <div class="input-group">
-              <label for="detailed-target-dec">Dec (+/-DD:MM:SS):</label>
-              <input
-                id="detailed-target-dec"
-                v-model="targetDec"
-                type="text"
-                pattern="[+-][0-9]{2}:[0-9]{2}:[0-9]{2}"
-                placeholder="+00:00:00"
-                :disabled="!connected || isSlewing"
-                class="input-field"
-              />
-            </div>
-            <button
-              class="control-btn"
-              :disabled="!connected || isSlewing"
-              @click="slewToCoordinates"
-            >
-              <Icon type="arrow-right" />
-              <span>Slew to Target</span>
-            </button>
-          </div>
+        <!-- Error Message Display -->
+        <div v-if="lastError" class="error-message">
+          <Icon type="alert" />
+          <span>{{ lastError }}</span>
         </div>
       </div>
     </template>
@@ -1507,86 +1559,220 @@ h3 {
   padding: 0.75rem;
 }
 
-.detailed-header {
-  display: flex;
+.detailed-top-section,
+.detailed-bottom-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.position-info,
-.status-info {
-  flex: 1;
-  min-width: 200px;
-}
-
-.position-block {
   margin-bottom: 1rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  background-color: rgba(0, 0, 0, 0.05);
 }
 
-.pos-grid {
+.position-info-optimized,
+.status-controls-optimized,
+.movement-controls-optimized,
+.target-coordinates-optimized {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.position-grid-optimized {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.position-column h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--aw-panel-content-color);
+}
+
+.coord-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.coord-row .label {
+  font-weight: normal;
+  opacity: 0.8;
+  flex: 0 0 40%;
+}
+
+.coord-row .value {
+  font-weight: 600;
+  flex: 0 0 60%;
+  text-align: right;
+}
+
+.status-badges-detailed {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.status-badges-detailed .status-badge {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.status-badges-detailed .status-badge.active {
+  background-color: rgba(0, 128, 0, 0.3);
+  color: rgb(200, 255, 200);
+}
+
+.status-section h3,
+.quick-actions h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--aw-panel-content-color);
+}
+
+.quick-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  background-color: rgba(50, 50, 80, 0.5);
+  color: var(--aw-panel-content-color);
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover:not(:disabled) {
+  background-color: rgba(70, 70, 120, 0.6);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.active {
+  background-color: rgba(0, 100, 0, 0.5);
+}
+
+.action-btn.active:hover:not(:disabled) {
+  background-color: rgba(0, 120, 0, 0.6);
+}
+
+.slew-controls-grid {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.5rem 1rem;
+  gap: 1rem;
   align-items: center;
 }
 
-.status-info {
-  padding: 0.75rem;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 6px;
-}
-
-.status-item {
-  display: flex;
-  justify-content: space-between;
+.movement-controls-optimized h3,
+.target-coordinates-optimized h3 {
+  margin-top: 0;
   margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--aw-panel-content-color);
 }
 
-.controls-section {
+.target-inputs {
   display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.slew-controls,
-.tracking-section {
-  flex: 1;
-  min-width: 200px;
-  padding: 0.75rem;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 6px;
-}
-
-.slew-rate {
-  margin-bottom: 1rem;
+.target-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.directional-controls.detailed {
-  margin-top: 1rem;
+.target-row label {
+  flex: 0 0 30%;
+  text-align: right;
 }
 
-.tracking-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.target-row input {
+  flex: 1;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--aw-panel-content-color);
+  padding: 0.4rem;
 }
 
-.tracking-rate {
-  width: 100%;
+.slew-to-target-btn {
+  margin-top: 0.5rem;
+  background-color: rgba(0, 100, 150, 0.5);
+  color: var(--aw-panel-content-color);
+  border: none;
+  border-radius: 4px;
   padding: 0.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.coordinates-section {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 6px;
+.slew-to-target-btn:hover:not(:disabled) {
+  background-color: rgba(0, 120, 180, 0.6);
+}
+
+.slew-to-target-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-message {
+  margin-top: 0.5rem;
+  background-color: rgba(150, 0, 0, 0.3);
+  color: rgb(255, 200, 200);
+  padding: 0.5rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .detailed-top-section,
+  .detailed-bottom-section {
+    grid-template-columns: 1fr;
+  }
+
+  .position-grid-optimized {
+    grid-template-columns: 1fr;
+  }
+
+  .status-badges-detailed {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .slew-controls-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Fullscreen Mode */
@@ -1792,24 +1978,25 @@ h3 {
     overflow-y: auto;
   }
 
-  .detailed-header {
-    flex-direction: column;
+  .detailed-top-section,
+  .detailed-bottom-section {
+    grid-template-columns: 1fr;
   }
 
-  .controls-section {
-    flex-direction: column;
+  .position-grid-optimized {
+    grid-template-columns: 1fr;
   }
 
-  .coordinate-inputs {
-    flex-direction: column;
+  .status-badges-detailed {
+    grid-template-columns: 1fr;
   }
 
-  .position-panel,
-  .status-panel,
-  .controls-panel {
-    width: 100%;
-    padding: 0.5rem;
-    margin-bottom: 0.5rem;
+  .quick-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .slew-controls-grid {
+    grid-template-columns: 1fr;
   }
 }
 
