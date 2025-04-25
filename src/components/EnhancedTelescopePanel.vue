@@ -813,7 +813,7 @@ async function slewToCoordinates() {
                   :disabled="!connected || detailedData.parkingState !== 'Parked'"
                   @click="unparkTelescope"
                 >
-                  <Icon type="power" />
+                  <Icon type="home" />
                   <span>Unpark</span>
                 </button>
                 <button
@@ -835,7 +835,7 @@ async function slewToCoordinates() {
           <div class="movement-controls-optimized">
             <h3>Movement Controls</h3>
             <div class="slew-controls-grid">
-              <div class="slew-buttons">
+              <div class="slew-control">
                 <button
                   class="slew-btn north"
                   :disabled="!connected || isSlewing"
@@ -921,7 +921,7 @@ async function slewToCoordinates() {
                 :disabled="!connected || isSlewing"
                 @click="slewToCoordinates"
               >
-                <Icon type="navigation" />
+                <Icon type="arrow-right" />
                 <span>Slew to Target</span>
               </button>
             </div>
@@ -930,7 +930,7 @@ async function slewToCoordinates() {
 
         <!-- Error Message Display -->
         <div v-if="lastError" class="error-message">
-          <Icon type="alert" />
+          <Icon type="stop" />
           <span>{{ lastError }}</span>
         </div>
       </div>
@@ -951,27 +951,43 @@ async function slewToCoordinates() {
         <div v-else class="fullscreen-grid">
           <div class="position-panel">
             <h2>Position</h2>
-            <div class="position-grid">
-              <div class="position-block">
+            <div class="position-grid-optimized">
+              <div class="position-column">
                 <h3>Equatorial</h3>
-                <div class="pos-grid">
+                <div class="coord-row">
                   <span class="label">Right Ascension:</span>
                   <span class="value">{{ formattedRA }}</span>
+                </div>
+                <div class="coord-row">
                   <span class="label">Declination:</span>
                   <span class="value">{{ formattedDec }}</span>
+                </div>
+                <div class="coord-row">
                   <span class="label">Target RA:</span>
                   <span class="value">{{ detailedData.targetRightAscension }}</span>
+                </div>
+                <div class="coord-row">
                   <span class="label">Target Dec:</span>
                   <span class="value">{{ detailedData.targetDeclination }}</span>
                 </div>
               </div>
-              <div class="position-block">
+              <div class="position-column">
                 <h3>Horizontal</h3>
-                <div class="pos-grid">
+                <div class="coord-row">
                   <span class="label">Altitude:</span>
                   <span class="value">{{ formattedAlt }}</span>
+                </div>
+                <div class="coord-row">
                   <span class="label">Azimuth:</span>
                   <span class="value">{{ formattedAz }}</span>
+                </div>
+                <div class="coord-row">
+                  <span class="label">Sidereal Time:</span>
+                  <span class="value">{{ detailedData.siderealTime }}</span>
+                </div>
+                <div class="coord-row">
+                  <span class="label">Side of Pier:</span>
+                  <span class="value">{{ detailedData.sideOfPier }}</span>
                 </div>
               </div>
             </div>
@@ -1126,7 +1142,7 @@ async function slewToCoordinates() {
                     "
                     @click="parkTelescope"
                   >
-                    <Icon type="park" />
+                    <Icon type="home" />
                     <span>Park Telescope</span>
                   </button>
                   <button
@@ -1134,7 +1150,7 @@ async function slewToCoordinates() {
                     :disabled="!connected || isSlewing || detailedData.parkingState !== 'True'"
                     @click="unparkTelescope"
                   >
-                    <Icon type="park" />
+                    <Icon type="home" />
                     <span>Unpark Telescope</span>
                   </button>
                   <button
@@ -1191,8 +1207,8 @@ async function slewToCoordinates() {
       </div>
     </template>
 
-    <!-- Status Bar - Only shown in Detailed and Fullscreen modes -->
-    <template #status-bar>
+    <!-- Status Bar content - now shown at the top instead of bottom -->
+    <template #top-status-bar>
       <div class="status-indicators">
         <span class="status-indicator" :class="{ connected: connected, disconnected: !connected }">
           {{ connectionStatus }}
@@ -1208,6 +1224,9 @@ async function slewToCoordinates() {
         </span>
       </div>
     </template>
+
+    <!-- Keep the original status bar empty to hide it -->
+    <template #status-bar> </template>
   </EnhancedPanelComponent>
 </template>
 
@@ -1584,27 +1603,28 @@ h3 {
 
 .position-column h3 {
   margin-top: 0;
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
   color: var(--aw-panel-content-color);
 }
 
 .coord-row {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .coord-row .label {
   font-weight: normal;
   opacity: 0.8;
-  flex: 0 0 40%;
+  flex: 0 0 48%;
 }
 
 .coord-row .value {
   font-weight: 600;
-  flex: 0 0 60%;
+  flex: 0 0 52%;
   text-align: right;
+  font-family: monospace;
 }
 
 .status-badges-detailed {
@@ -1760,6 +1780,7 @@ h3 {
 
   .position-grid-optimized {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 
   .status-badges-detailed {

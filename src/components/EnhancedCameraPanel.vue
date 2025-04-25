@@ -1294,6 +1294,34 @@ function downloadPreview() {
     :supported-modes="[UIMode.OVERVIEW, UIMode.DETAILED, UIMode.FULLSCREEN]"
     @connect="onConnect"
   >
+    <!-- Top Status Bar - Shown in Detailed and Fullscreen modes -->
+    <template #top-status-bar>
+      <div class="status-indicators">
+        <span
+          class="status-indicator"
+          :class="{ connected: isConnected, disconnected: !isConnected }"
+        >
+          {{ isConnected ? 'Connected' : 'Disconnected' }}
+        </span>
+        <span
+          v-if="isConnected"
+          class="status-indicator"
+          :class="{ exposing: cameraData.isExposing }"
+        >
+          {{ cameraState }}
+        </span>
+        <span v-if="isConnected && cameraData.isExposing" class="status-indicator progress">
+          {{ percentComplete }}% Complete
+        </span>
+        <span v-if="isConnected && !cameraData.isExposing" class="status-indicator settings">
+          {{ gain }}% Gain {{ canAdjustOffset ? '| ' + offset + ' Offset' : '' }}
+        </span>
+      </div>
+    </template>
+
+    <!-- Keep the original status bar empty to hide it -->
+    <template #status-bar> </template>
+
     <!-- Overview Content (Simple Mode) -->
     <template #overview-content>
       <div class="camera-overview">
@@ -3310,5 +3338,45 @@ h4 {
   .control-compact-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.status-indicators {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.status-indicator {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.status-indicator.connected {
+  background-color: rgba(0, 128, 0, 0.2);
+  color: #4caf50;
+}
+
+.status-indicator.disconnected {
+  background-color: rgba(245, 101, 101, 0.2);
+  color: #f56565;
+}
+
+.status-indicator.exposing {
+  background-color: rgba(255, 179, 0, 0.2);
+  color: #ffb300;
+}
+
+.status-indicator.progress {
+  background-color: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+}
+
+.status-indicator.settings {
+  background-color: rgba(156, 39, 176, 0.2);
+  color: #9c27b0;
 }
 </style>

@@ -157,6 +157,21 @@ watch(
         'content-fullscreen': effectiveMode === UIMode.FULLSCREEN
       }"
     >
+      <!-- Top status bar for additional information -->
+      <div
+        v-if="!isContentCollapsed && effectiveMode !== UIMode.OVERVIEW"
+        class="panel-top-statusbar"
+      >
+        <slot name="top-status-bar">
+          <!-- By default, show the same content as the bottom status bar -->
+          <slot name="status-bar">
+            <!-- Default empty status bar -->
+            <span v-if="connected" class="status-indicator connected">Connected</span>
+            <span v-else class="status-indicator disconnected">Disconnected</span>
+          </slot>
+        </slot>
+      </div>
+
       <!-- Overview mode content -->
       <div v-if="effectiveMode === UIMode.OVERVIEW" class="overview-content">
         <slot name="overview-content">
@@ -416,7 +431,8 @@ watch(
 }
 
 /* Status bar */
-.panel-statusbar {
+.panel-statusbar,
+.panel-top-statusbar {
   height: 24px;
   display: flex;
   align-items: center;
@@ -424,13 +440,22 @@ watch(
   background-color: var(--aw-panel-menu-bar-bg-color);
   color: var(--aw-panel-menu-bar-color);
   font-size: 0.8rem;
-  border-top: 1px solid var(--aw-panel-border-color);
   opacity: 0.8;
+}
+
+.panel-statusbar {
+  border-top: 1px solid var(--aw-panel-border-color);
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
 }
 
-.panel-fullscreen .panel-statusbar {
+.panel-top-statusbar {
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  margin-bottom: 8px;
+}
+
+.panel-fullscreen .panel-statusbar,
+.panel-fullscreen .panel-top-statusbar {
   border-radius: 0;
   height: 28px;
 }
