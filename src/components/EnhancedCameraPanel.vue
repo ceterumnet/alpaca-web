@@ -37,6 +37,12 @@ const offset = ref(0)
 const readMode = ref(0)
 const previewImage = ref<string | null>(null)
 
+// Add histogram data ref
+const histogramData = ref<number[]>([])
+const histogramMin = ref(0)
+const histogramMax = ref(0)
+const histogramMean = ref(0)
+
 const connectionStatus = ref('')
 
 const exposureProgress = ref(0)
@@ -65,7 +71,13 @@ const cameraData = reactive({
 // Computed properties
 const isConnected = computed(() => !!props.deviceId && connectionStatus.value === 'CONNECTED')
 const name = computed(() => `Camera ${props.idx}`)
-const percentComplete = computed(() => exposureProgress.value)
+const percentComplete = computed(() => {
+  // Ensure we have a valid number between 0-100
+  const progress = Number(exposureProgress.value)
+  if (isNaN(progress) || progress < 0) return 0
+  if (progress > 100) return 100
+  return progress
+})
 
 // Watch for prop changes to sync with local state
 watch(
@@ -420,7 +432,11 @@ async function startExposure() {
     // Set the exposure state to active
     cameraData.isExposing = true
     cameraState.value = 'Exposing'
-    exposureProgress.value = 0
+    exposureProgress.value = 0 // Ensure we start at 0
+
+    // Set the exposure start time to the current time
+    exposureStartTime.value = Date.now()
+    console.log('Exposure started at:', new Date(exposureStartTime.value).toISOString())
 
     // Start an exposure via the API using form-encoded format
     const exposureForm = new URLSearchParams()
@@ -435,32 +451,44 @@ async function startExposure() {
 
     // Poll for exposure progress and completion
     const progressInterval = setInterval(async () => {
-      // Check percent complete
-      const percentResp = await axios.get(getApiEndpoint('percentcompleted'))
-      exposureProgress.value = Number(percentResp.data.Value)
+      try {
+        // Check percent complete
+        const percentResp = await axios.get(getApiEndpoint('percentcompleted'))
+        exposureProgress.value = Number(percentResp.data.Value)
+        console.log(
+          'Exposure progress:',
+          exposureProgress.value,
+          '%, elapsed:',
+          Math.round((Date.now() - exposureStartTime.value) / 1000),
+          's'
+        )
 
-      // Check exposure state
-      const stateResp = await axios.get(getApiEndpoint('camerastate'))
-      const stateNum = Number(stateResp.data.Value)
+        // Check exposure state
+        const stateResp = await axios.get(getApiEndpoint('camerastate'))
+        const stateNum = Number(stateResp.data.Value)
 
-      if (stateNum === 0) {
-        // Idle, exposure completed
-        clearInterval(progressInterval)
-        cameraData.isExposing = false
-        cameraState.value = 'Idle'
+        if (stateNum === 0) {
+          // Idle, exposure completed
+          clearInterval(progressInterval)
+          cameraData.isExposing = false
+          cameraState.value = 'Idle'
 
-        // Check if an image is ready
-        const imageReadyResp = await axios.get(getApiEndpoint('imageready'))
-        if (imageReadyResp.data.Value) {
-          // Image is ready, download it
-          fetchImage()
+          // Check if an image is ready
+          const imageReadyResp = await axios.get(getApiEndpoint('imageready'))
+          if (imageReadyResp.data.Value) {
+            // Image is ready, download it
+            fetchImage()
+          }
+        } else if (stateNum === 2) {
+          cameraState.value = 'Exposing'
+        } else if (stateNum === 3) {
+          cameraState.value = 'Reading'
+        } else if (stateNum === 4) {
+          cameraState.value = 'Downloading'
         }
-      } else if (stateNum === 2) {
-        cameraState.value = 'Exposing'
-      } else if (stateNum === 3) {
-        cameraState.value = 'Reading'
-      } else if (stateNum === 4) {
-        cameraState.value = 'Downloading'
+      } catch (error) {
+        console.error('Error in progress polling:', error)
+        // Don't clear the interval to allow for recovery
       }
     }, 500)
   } catch (error) {
@@ -484,6 +512,7 @@ async function abortExposure() {
     })
     cameraData.isExposing = false
     cameraState.value = 'Idle'
+    exposureProgress.value = 0
   } catch (error) {
     console.error('Error aborting exposure:', error)
   }
@@ -854,6 +883,9 @@ function displayImage(processedData: {
   const range = max - min
   console.log(`Final display range: min=${min}, max=${max}, range=${range}`)
 
+  // Generate histogram data for display
+  generateHistogram(pixelData, min, max, width, height)
+
   // Apply mild gamma correction for better visibility
   const gamma = 0.8 // Values < 1 enhance darker areas
 
@@ -903,6 +935,159 @@ function displayImage(processedData: {
 
   // Convert canvas to data URL
   previewImage.value = canvas.toDataURL('image/jpeg', 0.9)
+}
+
+// Generate histogram data for display
+function generateHistogram(
+  pixelData:
+    | Uint8Array
+    | Uint16Array
+    | Int16Array
+    | Int32Array
+    | Uint32Array
+    | Float32Array
+    | Float64Array
+    | number[],
+  min: number,
+  max: number,
+  width?: number,
+  height?: number
+) {
+  // Use 32 bins for the histogram (matching the UI display)
+  const numBins = 32
+  const bins = new Array(numBins).fill(0)
+  const range = max - min
+
+  if (range <= 0) {
+    // If there's no range, we can't generate a meaningful histogram
+    histogramData.value = [...bins]
+    histogramMin.value = min
+    histogramMax.value = max
+    histogramMean.value = min
+    return
+  }
+
+  // If width and height are not provided or invalid, try to estimate or use direct sampling
+  if (!width || !height || width * height !== pixelData.length) {
+    // Try to estimate dimensions for square images
+    const estDimension = Math.sqrt(pixelData.length)
+
+    // If it's a perfect square, use those dimensions
+    if (Number.isInteger(estDimension)) {
+      width = estDimension
+      height = estDimension
+      console.log(`Estimated square dimensions: ${width}x${height}`)
+    } else {
+      console.log('Using direct array sampling for histogram (dimensions unknown or invalid)')
+      // Count pixels in each bin
+      let sum = 0
+      let count = 0
+
+      // Sample the pixels (for large images, sampling improves performance)
+      const totalPixels = pixelData.length
+      const sampleStep = totalPixels > 1000000 ? Math.floor(totalPixels / 100000) : 1
+
+      for (let i = 0; i < totalPixels; i += sampleStep) {
+        const val = Number(pixelData[i])
+        if (!isNaN(val) && isFinite(val)) {
+          // Clamp to min-max range
+          const clampedVal = Math.max(min, Math.min(max, val))
+
+          // Calculate bin index
+          const binIndex = Math.min(numBins - 1, Math.floor(((clampedVal - min) / range) * numBins))
+
+          bins[binIndex]++
+          sum += val
+          count++
+        }
+      }
+
+      // Calculate the mean
+      const mean = count > 0 ? sum / count : 0
+
+      // Log the raw bin counts
+      console.log('Raw histogram bins (direct):', bins.join(','))
+
+      // Normalize the bins for display (tallest bar will be 100%)
+      const maxBinValue = Math.max(...bins)
+      console.log('Maximum bin value:', maxBinValue)
+
+      if (maxBinValue > 0) {
+        for (let i = 0; i < numBins; i++) {
+          bins[i] = (bins[i] / maxBinValue) * 100
+        }
+      }
+
+      // Update reactive data for display - ensure we don't interfere with progress calculations
+      histogramData.value = [...bins] // Create a new array to ensure reactivity
+      histogramMin.value = min
+      histogramMax.value = max
+      histogramMean.value = mean
+
+      console.log(`Histogram generated: min=${min}, max=${max}, mean=${mean.toFixed(2)}`)
+      return
+    }
+  }
+
+  // If we have proper dimensions, use them to access column-major data correctly
+  console.log(`Generating histogram using dimensions: ${width}x${height}`)
+
+  // Count pixels in each bin using proper column-major access
+  let sum = 0
+  let count = 0
+
+  // Sample step for performance
+  const sampleXStep = width > 1000 ? Math.ceil(width / 250) : 1
+  const sampleYStep = height > 1000 ? Math.ceil(height / 250) : 1
+
+  // Access data using column-major indexing (x * height + y)
+  for (let x = 0; x < width; x += sampleXStep) {
+    for (let y = 0; y < height; y += sampleYStep) {
+      const sourceIdx = x * height + y
+
+      if (sourceIdx < pixelData.length) {
+        const val = Number(pixelData[sourceIdx])
+        if (!isNaN(val) && isFinite(val)) {
+          // Clamp to min-max range
+          const clampedVal = Math.max(min, Math.min(max, val))
+
+          // Calculate bin index
+          const binIndex = Math.min(numBins - 1, Math.floor(((clampedVal - min) / range) * numBins))
+
+          bins[binIndex]++
+          sum += val
+          count++
+        }
+      }
+    }
+  }
+
+  // Calculate the mean
+  const mean = count > 0 ? sum / count : 0
+
+  // Log the raw bin counts
+  console.log('Raw histogram bins (column-major):', bins.join(','))
+
+  // Normalize the bins for display (tallest bar will be 100%)
+  const maxBinValue = Math.max(...bins)
+  console.log('Maximum bin value:', maxBinValue)
+
+  if (maxBinValue > 0) {
+    for (let i = 0; i < numBins; i++) {
+      bins[i] = (bins[i] / maxBinValue) * 100
+    }
+  }
+
+  // Log the normalized bins
+  console.log('Normalized histogram bins:', bins.join(','))
+
+  // Update reactive data for display - ensure we don't interfere with progress calculations
+  histogramData.value = [...bins] // Create a new array to ensure reactivity
+  histogramMin.value = min
+  histogramMax.value = max
+  histogramMean.value = mean
+
+  console.log(`Histogram generated: min=${min}, max=${max}, mean=${mean.toFixed(2)}`)
 }
 
 // Function to set exposure time
@@ -1199,6 +1384,24 @@ onMounted(() => {
             </button>
           </div>
         </div>
+
+        <!-- Progress bar for overview mode -->
+        <div v-if="cameraData.isExposing" class="exposure-progress-overview">
+          <div class="progress-label">
+            <span>{{ cameraState }} </span>
+            <span>{{ percentComplete }}%</span>
+          </div>
+          <div class="progress-bar-container-overview">
+            <div
+              class="progress-bar-fill-overview"
+              :style="'width: ' + percentComplete + '%'"
+            ></div>
+          </div>
+          <!-- Add debugging info -->
+          <div class="debug-info" style="margin-top: 4px; font-size: 0.7rem">
+            Progress: {{ percentComplete }}%, Raw value: {{ exposureProgress }}
+          </div>
+        </div>
       </div>
     </template>
 
@@ -1282,11 +1485,11 @@ onMounted(() => {
 
         <div v-if="cameraData.isExposing" class="exposure-progress">
           <div class="progress-label">
-            <span>Exposure in progress</span>
+            <span>Exposure in progress </span>
             <span>{{ percentComplete }}%</span>
           </div>
           <div class="progress-bar-container">
-            <div class="progress-bar-fill" :style="{ width: `${percentComplete}%` }"></div>
+            <div class="progress-bar-fill" :style="'width: ' + percentComplete + '%'"></div>
           </div>
           <div class="progress-time">
             Elapsed: {{ Math.round((Date.now() - exposureStartTime) / 1000) }}s / Total:
@@ -1330,12 +1533,12 @@ onMounted(() => {
             <div class="analysis-container">
               <div class="histogram-fullscreen">
                 <div v-if="previewImage" class="histogram-bars">
-                  <!-- Placeholder for histogram bars -->
+                  <!-- Real histogram bars -->
                   <div
-                    v-for="i in 32"
-                    :key="i"
+                    v-for="(value, i) in histogramData"
+                    :key="`hist-${i}-${value}`"
                     class="histogram-bar"
-                    :style="{ height: `${Math.random() * 100}%` }"
+                    :style="{ height: `${value}%` }"
                   ></div>
                 </div>
                 <div v-else class="histogram-empty">No histogram data</div>
@@ -1345,19 +1548,19 @@ onMounted(() => {
                 <div class="stat-item">
                   <span class="stat-label">Min</span>
                   <span class="stat-value">{{
-                    previewImage ? Math.floor(Math.random() * 100) : '-'
+                    previewImage ? Math.round(histogramMin) : '-'
                   }}</span>
                 </div>
                 <div class="stat-item">
                   <span class="stat-label">Max</span>
                   <span class="stat-value">{{
-                    previewImage ? Math.floor(Math.random() * 1000 + 1000) : '-'
+                    previewImage ? Math.round(histogramMax) : '-'
                   }}</span>
                 </div>
                 <div class="stat-item">
                   <span class="stat-label">Mean</span>
                   <span class="stat-value">{{
-                    previewImage ? Math.floor(Math.random() * 500 + 500) : '-'
+                    previewImage ? Math.round(histogramMean) : '-'
                   }}</span>
                 </div>
                 <div class="stat-item">
@@ -1378,6 +1581,21 @@ onMounted(() => {
                     previewImage ? Math.floor(Math.random() * 200 + 50) : '-'
                   }}</span>
                 </div>
+              </div>
+            </div>
+
+            <!-- Debug information (can be removed in production) -->
+            <div v-if="histogramData.length > 0" class="debug-info">
+              <div class="debug-label">
+                Histogram data available: {{ histogramData.length }} bins
+              </div>
+              <div class="debug-values">
+                {{
+                  histogramData
+                    .slice(0, 5)
+                    .map((v) => Math.round(v))
+                    .join(', ')
+                }}...
               </div>
             </div>
           </div>
@@ -1514,7 +1732,10 @@ onMounted(() => {
                   <span>{{ percentComplete }}%</span>
                 </div>
                 <div class="progress-bar-container-fs">
-                  <div class="progress-bar-fill-fs" :style="{ width: `${percentComplete}%` }"></div>
+                  <div
+                    class="progress-bar-fill-fs"
+                    :style="'width: ' + percentComplete + '%'"
+                  ></div>
                 </div>
                 <div class="progress-time">
                   Elapsed: {{ Math.round((Date.now() - exposureStartTime) / 1000) }}s / Total:
@@ -1824,6 +2045,7 @@ h4 {
   background-color: rgba(0, 0, 0, 0.15);
   border-radius: 4px;
   overflow: hidden;
+  width: 100%;
 }
 
 .progress-bar-fill {
@@ -1831,6 +2053,7 @@ h4 {
   background-color: rgba(255, 107, 107, 0.7);
   border-radius: 4px;
   transition: width 0.3s ease;
+  min-width: 3px;
 }
 
 /* Status Bar Styles */
@@ -2112,17 +2335,18 @@ h4 {
   align-items: flex-end;
   width: 100%;
   height: 100%;
-  gap: 5px;
+  gap: 2px;
 }
 
 .histogram-bar {
   background: linear-gradient(
     to top,
-    var(--aw-panel-scrollbar-color-1),
-    var(--aw-panel-scrollbar-color-2)
+    var(--aw-panel-scrollbar-color-1, rgba(100, 100, 255, 0.8)),
+    var(--aw-panel-scrollbar-color-2, rgba(160, 160, 255, 0.8))
   );
   flex: 1;
   border-radius: 2px 2px 0 0;
+  min-height: 1px; /* Ensure even tiny values are visible */
 }
 
 .histogram-empty {
@@ -2299,11 +2523,12 @@ h4 {
   height: 100%;
   background: linear-gradient(
     to right,
-    var(--aw-panel-scrollbar-color-1),
-    var(--aw-panel-scrollbar-color-2)
+    var(--aw-panel-scrollbar-color-1, rgba(255, 107, 107, 0.7)),
+    var(--aw-panel-scrollbar-color-2, rgba(255, 155, 155, 0.9))
   );
   border-radius: 0.25rem;
   transition: width 0.3s ease;
+  min-width: 3px;
 }
 
 .progress-time {
@@ -2346,4 +2571,108 @@ h4 {
     filter: brightness(0.85) contrast(1.1);
   }
 }
+
+.debug-info {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.debug-label {
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.debug-values {
+  font-family: monospace;
+  word-break: break-all;
+}
+
+/* Progress bar styles for overview mode */
+.exposure-progress-overview {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.progress-bar-container-overview {
+  height: 8px; /* Make it taller */
+  background-color: rgba(0, 0, 0, 0.3); /* Darker background for contrast */
+  border-radius: 3px;
+  overflow: hidden;
+  width: 100%; /* Ensure the container spans full width */
+  position: relative; /* Needed for absolute positioning of child */
+}
+
+.progress-bar-fill-overview {
+  position: absolute; /* Absolute positioning to force width to work */
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: #ff6b6b; /* Brighter color for visibility */
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  min-width: 3px; /* Ensure it's always visible when progress starts */
+}
+
+/* Ensure the detailed view progress bar works correctly too */
+.progress-bar-container {
+  height: 8px;
+  background-color: rgba(0, 0, 0, 0.3); /* Darker for contrast */
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+  position: relative; /* Needed for absolute positioning of child */
+}
+
+.progress-bar-fill {
+  position: absolute; /* Absolute positioning to force width to work */
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: #ff6b6b; /* Brighter color */
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 3px;
+}
+
+.exposure-progress-fs {
+  margin-top: 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.progress-bar-container-fs {
+  width: 100%;
+  height: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  position: relative; /* Needed for absolute positioning of child */
+}
+
+.progress-bar-fill-fs {
+  position: absolute; /* Absolute positioning to force width to work */
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: #ff6b6b; /* Solid color instead of gradient for better visibility */
+  border-radius: 0.25rem;
+  transition: width 0.3s ease;
+  min-width: 3px;
+}
+
+/* ... rest of existing styles ... */
 </style>

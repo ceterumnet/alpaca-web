@@ -53,6 +53,22 @@ async function refreshDiscoveredDevicesList() {
       const proxyUrl = discoveredDevicesStore.getProxyUrl(server)
       console.log(`Fetching devices from ${server.address}:${server.port}`)
 
+      // Fetch server description
+      try {
+        const descResponse = await axios.get(`${proxyUrl}/management/v1/description`)
+        const descValue = descResponse.data.Value
+        server.ServerName = descValue.ServerName
+        server.Manufacturer = descValue.Manufacturer
+        server.ManufacturerVersion = descValue.ManufacturerVersion
+        server.Location = descValue.Location
+        console.log(`Fetched description for ${server.address}:${server.port}`)
+      } catch (descError) {
+        console.error(
+          `Error fetching description from ${server.address}:${server.port}:`,
+          descError
+        )
+      }
+
       try {
         // Get the list of configured devices from this Alpaca server
         const response = await axios.get(`${proxyUrl}/management/v1/configureddevices`)
@@ -90,6 +106,8 @@ async function refreshDiscoveredDevicesList() {
             AlpacaPort: server.AlpacaPort,
             ServerName: server.ServerName,
             Manufacturer: server.Manufacturer,
+            ManufacturerVersion: server.ManufacturerVersion,
+            Location: server.Location,
             isManualEntry: server.isManualEntry,
 
             // Extended properties used in the UI
@@ -508,6 +526,7 @@ watch(
   align-items: center;
   justify-content: center;
   gap: 8px;
+  color: var(--aw-panel-content-color);
 }
 
 .manual-badge {
