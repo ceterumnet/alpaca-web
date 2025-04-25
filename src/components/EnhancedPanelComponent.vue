@@ -134,14 +134,24 @@ watch(
         </div>
       </div>
 
-      <!-- Right header section - action buttons -->
+      <!-- Right header section - action buttons with status indicator -->
       <div class="header-right">
-        <Icon
-          class="connect-handle"
-          :type="connected ? 'connected' : 'disconnected'"
-          :title="connected ? 'Disconnect' : 'Connect'"
+        <span
+          v-if="connected"
+          class="status-indicator connected header-status"
+          title="Connected"
           @click="onConnect"
-        />
+        >
+          <Icon type="connected" /> Connected
+        </span>
+        <span
+          v-else
+          class="status-indicator disconnected header-status"
+          title="Click to connect"
+          @click="onConnect"
+        >
+          <Icon type="disconnected" /> Disconnected
+        </span>
         <Icon class="configure-handle" type="gear" title="Configure" @click="onConfigure" />
         <Icon class="close-handle" type="close" title="Close" @click="onClose" />
       </div>
@@ -157,21 +167,6 @@ watch(
         'content-fullscreen': effectiveMode === UIMode.FULLSCREEN
       }"
     >
-      <!-- Top status bar for additional information -->
-      <div
-        v-if="!isContentCollapsed && effectiveMode !== UIMode.OVERVIEW"
-        class="panel-top-statusbar"
-      >
-        <slot name="top-status-bar">
-          <!-- By default, show the same content as the bottom status bar -->
-          <slot name="status-bar">
-            <!-- Default empty status bar -->
-            <span v-if="connected" class="status-indicator connected">Connected</span>
-            <span v-else class="status-indicator disconnected">Disconnected</span>
-          </slot>
-        </slot>
-      </div>
-
       <!-- Overview mode content -->
       <div v-if="effectiveMode === UIMode.OVERVIEW" class="overview-content">
         <slot name="overview-content">
@@ -199,12 +194,13 @@ watch(
       </div>
     </div>
 
-    <!-- Status bar for additional information -->
-    <div v-if="!isContentCollapsed && effectiveMode !== UIMode.OVERVIEW" class="panel-statusbar">
+    <!-- Status bar for additional information (only shown in detailed mode when additional status info is provided) -->
+    <div
+      v-if="!isContentCollapsed && effectiveMode === UIMode.DETAILED && $slots['status-bar']"
+      class="panel-statusbar"
+    >
       <slot name="status-bar">
-        <!-- Default empty status bar -->
-        <span v-if="connected" class="status-indicator connected">Connected</span>
-        <span v-else class="status-indicator disconnected">Disconnected</span>
+        <!-- This will only be shown if the slot is provided and contains content beyond the default connected/disconnected state already shown in header -->
       </slot>
     </div>
   </div>
@@ -220,15 +216,14 @@ watch(
   color: var(--aw-panel-content-color);
   transition: all 0.3s ease;
   overflow: hidden;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--aw-panel-border-color);
+  /* Remove border-radius from the container - let GridLayout handle the outer border */
+  border: none;
+  background-color: var(--aw-panel-content-bg-color);
 }
 
 /* Panel modes - OVERVIEW: minimal, compact view */
 .panel-overview {
   font-size: 0.9em;
-  border-width: 1px;
 }
 
 .panel-overview .panel-header {
@@ -240,10 +235,6 @@ watch(
 }
 
 /* Panel modes - DETAILED: standard view with all controls */
-.panel-detailed {
-  border-width: 1px;
-}
-
 .panel-detailed .panel-content {
   padding: 12px;
 }
@@ -255,24 +246,35 @@ watch(
   left: 0;
   right: 0;
   bottom: 0;
-  width: calc(100vw - var(--sidebar-collapsed-width) - 75px);
+  width: 100%;
   height: 100vh;
+  margin: 0;
   z-index: 1000;
   background-color: var(--aw-panel-content-bg-color);
   border-radius: 0;
   border: none;
+  overflow: auto;
+  /* Adjust position to account for app structure */
+  padding: 0;
+  box-sizing: border-box;
+  /* This ensures the panel respects the main content area */
+  max-width: calc(100vw - var(--sidebar-collapsed-width));
+  /* left: var(--sidebar-collapsed-width); */
   transition:
     left 0.3s ease,
-    width 0.3s ease;
+    max-width 0.3s ease;
 }
 
 /* Adjust fullscreen width when sidebar is expanded */
 .panel-fullscreen.sidebar-expanded {
-  width: calc(100vw - var(--sidebar-width) - 75px);
+  max-width: calc(100vw - var(--sidebar-width));
+  /* left: var(--sidebar-width); */
 }
 
 .panel-fullscreen .panel-content {
   padding: 16px;
+  height: calc(100vh - 46px - 28px); /* Viewport height minus header and status bar */
+  overflow-y: auto;
 }
 
 /* Header section */
@@ -288,8 +290,9 @@ watch(
   cursor: move; /* Make the whole header draggable */
   border-bottom: 1px solid var(--aw-panel-border-color);
   user-select: none; /* Prevent text selection while dragging */
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
+  /* Apply border radius only to the top of the header */
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
   transition: all 0.3s ease;
 }
 
@@ -430,9 +433,21 @@ watch(
   overflow: hidden;
 }
 
+/* Specific styling for fullscreen content */
+.panel-fullscreen .panel-content {
+  padding: 16px;
+  height: calc(100vh - 46px - 28px); /* Viewport height minus header and status bar */
+  overflow-y: auto;
+}
+
+.fullscreen-content {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Status bar */
-.panel-statusbar,
-.panel-top-statusbar {
+.panel-statusbar {
   height: 24px;
   display: flex;
   align-items: center;
@@ -441,25 +456,17 @@ watch(
   color: var(--aw-panel-menu-bar-color);
   font-size: 0.8rem;
   opacity: 0.8;
-}
-
-.panel-statusbar {
   border-top: 1px solid var(--aw-panel-border-color);
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
 }
 
-.panel-top-statusbar {
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  margin-bottom: 8px;
-}
-
-.panel-fullscreen .panel-statusbar,
-.panel-fullscreen .panel-top-statusbar {
+.panel-fullscreen .panel-statusbar {
   border-radius: 0;
   height: 28px;
 }
 
+/* Status indicator for both header and status bar */
 .status-indicator {
   display: inline-flex;
   align-items: center;
@@ -468,9 +475,18 @@ watch(
   font-size: 0.75rem;
 }
 
+.header-status {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.header-status:hover {
+  filter: brightness(1.1);
+}
+
 .status-indicator.connected {
-  background-color: rgba(255, 107, 107, 0.2);
-  color: #ff6b6b;
+  background-color: rgba(53, 205, 68, 0.2);
+  color: #35cd44;
 }
 
 .status-indicator.disconnected {
@@ -497,26 +513,6 @@ watch(
 
 /* Dim brightness slightly for overview mode to reduce brightness for night vision */
 .dark-theme .panel-overview .panel-content {
-  filter: brightness(0.85);
-}
-
-/* Scrollbar styling */
-.panel-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.panel-content::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-}
-
-.panel-content::-webkit-scrollbar-thumb {
-  background: var(--aw-panel-scrollbar-color-1, #8b0000);
-  border-radius: 4px;
-}
-
-.panel-content::-webkit-scrollbar-thumb:hover {
-  background: var(--aw-panel-scrollbar-color-2, #6b0000);
+  filter: brightness(0.9);
 }
 </style>

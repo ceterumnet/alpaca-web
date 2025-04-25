@@ -778,11 +778,11 @@ async function slewToCoordinates() {
                   <span class="badge-value">{{ trackingEnabled ? 'On' : 'Off' }}</span>
                 </div>
                 <div class="status-badge" :class="{ active: isSlewing }">
-                  <span class="badge-label">Movement:</span>
+                  <span class="badge-label">Slew Status:</span>
                   <span class="badge-value">{{ isSlewing ? 'Slewing' : 'Stationary' }}</span>
                 </div>
                 <div v-if="detailedData.parkingState !== 'Unknown'" class="status-badge">
-                  <span class="badge-label">Parking:</span>
+                  <span class="badge-label">Parked:</span>
                   <span class="badge-value">{{ detailedData.parkingState }}</span>
                 </div>
               </div>
@@ -1003,7 +1003,7 @@ async function slewToCoordinates() {
                 </span>
               </div>
               <div class="status-item">
-                <span class="label">Motion Status:</span>
+                <span class="label">Slew Status:</span>
                 <span class="value" :class="{ slewing: isSlewing }">
                   {{ isSlewing ? 'Slewing' : 'Idle' }}
                 </span>

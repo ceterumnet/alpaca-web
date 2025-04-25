@@ -230,9 +230,13 @@ function handleConnect(connected: boolean, itemId: string) {
   background-color: var(--aw-panels-bg-color);
 }
 
+/* Style the grid items with proper rounded corners */
 :deep(.vgl-item:not(.vgl-item--placeholder)) {
   background-color: var(--aw-panel-resize-bg-color);
   border: 1px solid var(--aw-panel-border-color);
+  border-radius: 6px;
+  overflow: hidden; /* Ensure children don't overflow the rounded corners */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 :deep(.vgl-item--resizing) {
@@ -247,8 +251,7 @@ function handleConnect(connected: boolean, itemId: string) {
   border-color: var(--aw-panel-resize-color);
 }
 
-/* This styling was for the old panel structure, but causes issues with EnhancedPanelComponent */
-/* We'll set the drag handle differently for EnhancedPanelComponent */
+/* Set the drag handle styling */
 :deep(.vue-draggable-handle) {
   color: var(--aw-panel-menu-bar-color);
   cursor: move;
@@ -261,13 +264,31 @@ function handleConnect(connected: boolean, itemId: string) {
 :deep(.no-drag) {
   text-align: left;
   position: relative;
-  top: 20px;
   width: 100%;
-  height: calc(100% - 33px);
   background-color: var(--aw-panel-content-bg-color);
   color: var(--aw-panel-content-color);
   scrollbar-color: var(--aw-panel-scrollbar-color-1) var(--aw-panel-scrollbar-color-2);
-  overflow-y: scroll;
+  overflow-y: auto;
+}
+
+/* Scrollbar styling */
+:deep(.panel-content::-webkit-scrollbar) {
+  width: 8px;
+  height: 8px;
+}
+
+:deep(.panel-content::-webkit-scrollbar-track) {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+:deep(.panel-content::-webkit-scrollbar-thumb) {
+  background: var(--aw-panel-scrollbar-color-1, #8b0000);
+  border-radius: 4px;
+}
+
+:deep(.panel-content::-webkit-scrollbar-thumb:hover) {
+  background: var(--aw-panel-scrollbar-color-2, #6b0000);
 }
 
 :deep(.panel-title *) {
