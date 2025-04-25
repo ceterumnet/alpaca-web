@@ -48,7 +48,7 @@ jobs:
           tar -czf alpaca-web-${{ github.ref_name }}.tar.gz -C dist-package .
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             alpaca-web-${{ github.ref_name }}.zip
