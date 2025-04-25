@@ -43,6 +43,12 @@ const histogramMin = ref(0)
 const histogramMax = ref(0)
 const histogramMean = ref(0)
 
+// Add image stretch controls
+const blackPoint = ref(0) // Percentage 0-100
+const whitePoint = ref(100) // Percentage 0-100
+const midtoneValue = ref(0.8) // Range 0.1-2.0, with 1.0 being linear
+const autoStretch = ref(true) // Auto-stretch by default
+
 const connectionStatus = ref('')
 
 const exposureProgress = ref(0)
@@ -827,8 +833,11 @@ function displayImage(processedData: {
     max = isHighBitDepth ? 65535 : 255
   }
 
-  // For high bit-depth data, apply some stretch to improve visibility
-  if (isHighBitDepth) {
+  let autoMin = min
+  let autoMax = max
+
+  // For high bit-depth data, apply some stretch to improve visibility only if auto-stretch is enabled
+  if (isHighBitDepth && autoStretch.value) {
     // Use histogram-like approach to find better black/white points
     const histogram = new Uint32Array(1024)
     const totalPixels = width * height
@@ -872,22 +881,30 @@ function displayImage(processedData: {
 
     // Apply the new min/max if they make sense
     if (whiteBin > blackBin) {
-      const newMin = min + (blackBin / 1023) * range
-      const newMax = min + (whiteBin / 1023) * range
-      console.log(`Adjusted range: min=${newMin}, max=${newMax} (original: ${min}-${max})`)
-      min = newMin
-      max = newMax
+      autoMin = min + (blackBin / 1023) * range
+      autoMax = min + (whiteBin / 1023) * range
+      console.log(`Adjusted range: min=${autoMin}, max=${autoMax} (original: ${min}-${max})`)
     }
   }
 
-  const range = max - min
-  console.log(`Final display range: min=${min}, max=${max}, range=${range}`)
+  // Calculate the actual min/max values based on user's stretch controls or auto values
+  const userMin = min + (blackPoint.value / 100) * (max - min)
+  const userMax = min + (whitePoint.value / 100) * (max - min)
+
+  // Use auto-calculated values or user-defined stretch
+  const displayMin = autoStretch.value ? autoMin : userMin
+  const displayMax = autoStretch.value ? autoMax : userMax
+
+  const range = displayMax - displayMin
+  console.log(
+    `Final display range: min=${displayMin}, max=${displayMax}, range=${range}, midtone=${midtoneValue.value}`
+  )
 
   // Generate histogram data for display
   generateHistogram(pixelData, min, max, width, height)
 
-  // Apply mild gamma correction for better visibility
-  const gamma = 0.8 // Values < 1 enhance darker areas
+  // Use the midtone value as the gamma correction factor
+  const gamma = midtoneValue.value
 
   // Convert column-major order (Alpaca) to row-major order (canvas)
   // while also normalizing values for display
@@ -910,10 +927,10 @@ function displayImage(processedData: {
           normalizedValue = 0 // Avoid division by zero
         } else {
           // Clamp values to the min-max range
-          const clampedValue = Math.max(min, Math.min(max, pixel))
-          normalizedValue = (clampedValue - min) / range
+          const clampedValue = Math.max(displayMin, Math.min(displayMax, pixel))
+          normalizedValue = (clampedValue - displayMin) / range
 
-          // Apply gamma correction
+          // Apply gamma correction (midtone adjustment)
           normalizedValue = Math.pow(normalizedValue, gamma)
         }
       }
@@ -1283,6 +1300,41 @@ function downloadPreview() {
     console.error('Error downloading image:', error)
   }
 }
+
+// Add function to redisplay the image with new stretching settings
+function reprocessImage() {
+  // Only attempt to redisplay if there's an image already displayed
+  if (!previewImage.value) return
+
+  // Function to force redisplay
+  console.log('Reprocessing image with new stretch settings')
+  console.log(
+    `Black: ${blackPoint.value}%, White: ${whitePoint.value}%, Midtone: ${midtoneValue.value}`
+  )
+
+  // Re-fetch the image to apply new stretch settings
+  // In a real implementation, we'd store the original image data and reprocess without a new API call
+  fetchImage()
+}
+
+// Functions to set stretch parameters
+function setBlackPoint(value: number) {
+  // Ensure values stay in range and don't cross
+  blackPoint.value = Math.max(0, Math.min(whitePoint.value - 1, value))
+  if (previewImage.value && !autoStretch.value) reprocessImage()
+}
+
+function setWhitePoint(value: number) {
+  // Ensure values stay in range and don't cross
+  whitePoint.value = Math.max(blackPoint.value + 1, Math.min(100, value))
+  if (previewImage.value && !autoStretch.value) reprocessImage()
+}
+
+function setMidtone(value: number) {
+  // Ensure value stays in range
+  midtoneValue.value = Math.max(0.1, Math.min(2.0, value))
+  if (previewImage.value) reprocessImage()
+}
 </script>
 
 <template>
@@ -1333,6 +1385,35 @@ function downloadPreview() {
               <div class="stat-item"><span>Min:</span> {{ Math.round(histogramMin) }}</div>
               <div class="stat-item"><span>Max:</span> {{ Math.round(histogramMax) }}</div>
               <div class="stat-item"><span>Mean:</span> {{ Math.round(histogramMean) }}</div>
+            </div>
+
+            <!-- Overview Stretch Controls -->
+            <div class="overview-stretch-controls">
+              <div class="stretch-toggle-simple">
+                <label>
+                  <input v-model="autoStretch" type="checkbox" @input="reprocessImage" />
+                  Auto
+                </label>
+              </div>
+              <input
+                v-model.number="midtoneValue"
+                type="range"
+                min="0.1"
+                max="2.0"
+                step="0.05"
+                title="Midtone Adjustment"
+                @change="setMidtone(midtoneValue)"
+              />
+              <span class="midtone-value">{{ midtoneValue.toFixed(1) }}</span>
+              <button
+                class="download-button"
+                title="Save Image"
+                :disabled="!previewImage"
+                @click="downloadPreview"
+              >
+                <Icon v-if="previewImage" type="files" />
+                <span class="sr-only">Save Image</span>
+              </button>
             </div>
           </div>
           <div v-else class="empty-preview">
@@ -1534,6 +1615,68 @@ function downloadPreview() {
                   <span class="stat-value">{{ Math.round(histogramMean) }}</span>
                 </div>
               </div>
+
+              <!-- Image Stretch Controls -->
+              <div class="stretch-controls">
+                <h4>Stretch Controls</h4>
+                <div class="stretch-toggle">
+                  <label>
+                    <input v-model="autoStretch" type="checkbox" @input="reprocessImage" />
+                    Auto Stretch
+                  </label>
+                </div>
+
+                <div class="stretch-sliders" :class="{ disabled: autoStretch }">
+                  <div class="slider-row">
+                    <label>Black Point:</label>
+                    <input
+                      v-model.number="blackPoint"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      :disabled="autoStretch"
+                      @change="setBlackPoint(blackPoint)"
+                    />
+                    <span class="slider-value">{{ blackPoint }}%</span>
+                  </div>
+
+                  <div class="slider-row">
+                    <label>White Point:</label>
+                    <input
+                      v-model.number="whitePoint"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      :disabled="autoStretch"
+                      @change="setWhitePoint(whitePoint)"
+                    />
+                    <span class="slider-value">{{ whitePoint }}%</span>
+                  </div>
+
+                  <div class="slider-row">
+                    <label>Midtone:</label>
+                    <input
+                      v-model.number="midtoneValue"
+                      type="range"
+                      min="0.1"
+                      max="2.0"
+                      step="0.05"
+                      @change="setMidtone(midtoneValue)"
+                    />
+                    <span class="slider-value">{{ midtoneValue.toFixed(2) }}</span>
+                  </div>
+                </div>
+
+                <!-- Add download button in detailed view -->
+                <div class="stretch-actions">
+                  <button class="download-button" title="Save Image" @click="downloadPreview">
+                    <Icon type="files" />
+                    <span>Save Image</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Controls Section - Compact Layout -->
@@ -1638,53 +1781,6 @@ function downloadPreview() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- Action buttons in a horizontal row -->
-          <div class="detailed-action-buttons-optimized">
-            <button
-              v-if="!cameraData.isExposing"
-              class="action-button"
-              :disabled="!isConnected"
-              @click="startExposure"
-            >
-              <Icon type="camera" />
-              <span>Start Exposure</span>
-            </button>
-            <button
-              v-else
-              class="action-button abort-button"
-              :disabled="!isConnected"
-              @click="abortExposure"
-            >
-              <Icon type="stop" />
-              <span>Abort Exposure</span>
-            </button>
-            <button
-              class="action-button"
-              :disabled="!isConnected || !previewImage"
-              @click="downloadPreview"
-            >
-              <Icon type="files" />
-              <span>Save Image</span>
-            </button>
-          </div>
-
-          <!-- Progress bar for detailed mode -->
-          <div v-if="cameraData.isExposing" class="exposure-progress-detailed">
-            <div class="progress-details">
-              <div class="progress-info">
-                <span class="state">{{ cameraState }}</span>
-                <span class="percent">{{ percentComplete }}%</span>
-              </div>
-              <div class="progress-time">
-                Elapsed: {{ Math.round((Date.now() - exposureStartTime) / 1000) }}s / Total:
-                {{ exposureTime }}s
-              </div>
-            </div>
-            <div class="progress-bar-container">
-              <div class="progress-bar-fill" :style="'width: ' + percentComplete + '%'"></div>
             </div>
           </div>
         </div>
@@ -3071,5 +3167,117 @@ h4 {
 .status-indicator.settings {
   background-color: rgba(156, 39, 176, 0.2);
   color: #9c27b0;
+}
+
+/* CSS for stretch controls */
+.overview-stretch-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.stretch-toggle-simple {
+  font-size: 0.8rem;
+  white-space: nowrap;
+  min-width: 50px;
+}
+
+.midtone-value {
+  min-width: 24px;
+  text-align: right;
+  font-size: 0.8rem;
+}
+
+.stretch-controls {
+  margin-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding-top: 12px;
+}
+
+.stretch-controls h4 {
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.stretch-toggle {
+  margin-bottom: 8px;
+}
+
+.stretch-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stretch-sliders.disabled {
+  opacity: 0.5;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slider-row label {
+  min-width: 90px;
+  font-size: 0.9rem;
+}
+
+.slider-row input[type='range'] {
+  flex: 1;
+}
+
+.slider-value {
+  min-width: 45px;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+/* Add CSS for the download button */
+.download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  gap: 4px;
+}
+
+.download-button:hover {
+  background-color: #0d8aee;
+}
+
+.download-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stretch-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
