@@ -37,7 +37,7 @@
     "cypress": "^14.3.2",
     "eslint": "^9.25.1",
     "eslint-plugin-cypress": "^4.3.0",
-    "eslint-plugin-vue": "^9.23.0",
+    "eslint-plugin-vue": "^10.0.0",
     "jsdom": "^24.1.0",
     "npm-run-all2": "^6.2.0",
     "prettier": "^3.2.5",
