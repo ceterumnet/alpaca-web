@@ -3,33 +3,32 @@ import { onMounted, ref, computed, watch } from 'vue'
 import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
 import { useDevicesStore } from '@/stores/useDevicesStore'
 import axios from 'axios'
-import { DeviceFactory } from '@/types/Device'
+import { DeviceFactory, Device } from '@/types/Device'
 import { Telescope } from '@/types/Telescope'
 import { Camera } from '@/types/Camera'
-import type { DiscoveredDevice } from '@/types/DiscoveredDevice'
 import ManualDeviceConfig from './ManualDeviceConfig.vue'
+import type { DiscoveredDevice } from '@/types/DiscoveredDevice'
 
 const discoveredDevicesStore = useDiscoveredDevicesStore()
 const devicesStore = useDevicesStore()
 
 const isLoading = ref(false)
 const selectedDeviceIndex = ref<number | null>(null)
-const discoveredAlpacaDevices = ref<any[]>([])
+const discoveredAlpacaDevices = ref<DiscoveredDevice[]>([])
 
 // Track the last refresh time to avoid duplicate refreshes
 const lastRefreshTime = ref<Date | null>(null)
 
-// Format the discovery time
-function formatDiscoveryTime(timeString: string): string {
-  const date = new Date(timeString)
-  return date.toLocaleTimeString()
+// Define a type interface for devices with API URL
+interface DeviceWithApi extends Device {
+  apiBaseUrl: string
 }
 
 // Check if a device is already added to the devices store
-function isDeviceAdded(alpacaDevice: any) {
+function isDeviceAdded(alpacaDevice: DiscoveredDevice) {
   // We consider a device added if any device in the store has the same API base URL
   return devicesStore.devices.some((device) => {
-    const deviceWithApiUrl = device as any
+    const deviceWithApiUrl = device as { apiBaseUrl?: string }
     return deviceWithApiUrl.apiBaseUrl === alpacaDevice.apiBaseUrl
   })
 }
@@ -85,6 +84,15 @@ async function refreshDiscoveredDevicesList() {
 
           // Add this device to our discovery list
           discoveredAlpacaDevices.value.push({
+            address: server.address,
+            port: server.port,
+            discoveryTime: new Date().toISOString(),
+            AlpacaPort: server.AlpacaPort,
+            ServerName: server.ServerName,
+            Manufacturer: server.Manufacturer,
+            isManualEntry: server.isManualEntry,
+
+            // Extended properties used in the UI
             serverAddress: server.address,
             serverPort: server.port,
             serverName: server.ServerName || 'Unknown Server',
@@ -92,8 +100,7 @@ async function refreshDiscoveredDevicesList() {
             deviceType: deviceTypeLower,
             deviceNumber: deviceNumber,
             deviceName: `${deviceType} ${deviceNumber}`,
-            apiBaseUrl: `${proxyUrl}/api/v1/${deviceTypeLower}/${deviceNumber}`,
-            isManualEntry: server.isManualEntry
+            apiBaseUrl: `${proxyUrl}/api/v1/${deviceTypeLower}/${deviceNumber}`
           })
           console.log(
             `Added device: ${deviceType} ${deviceNumber} from ${server.address}:${server.port}`
@@ -117,26 +124,28 @@ async function connectToDevice(index: number) {
 
   try {
     // Create appropriate device instance based on type
-    let newDevice: any = null
+    let newDevice: Telescope | Camera | null = null
 
     switch (alpacaDevice.deviceType) {
       case 'telescope':
         newDevice = DeviceFactory.createDevice(Telescope)
-        newDevice.idx = alpacaDevice.deviceNumber
+        newDevice.idx = Number(alpacaDevice.deviceNumber) || 0
         break
       case 'camera':
         newDevice = DeviceFactory.createDevice(Camera)
-        newDevice.idx = alpacaDevice.deviceNumber
+        newDevice.idx = Number(alpacaDevice.deviceNumber) || 0
         break
     }
 
     if (newDevice) {
       // Set the device's API URL
-      newDevice.apiBaseUrl = alpacaDevice.apiBaseUrl
+      ;(newDevice as DeviceWithApi).apiBaseUrl = alpacaDevice.apiBaseUrl || ''
 
       // Check if device is connected
       try {
-        const stateResponse = await axios.get(`${newDevice.apiBaseUrl}/connected`)
+        const stateResponse = await axios.get(
+          `${(newDevice as DeviceWithApi).apiBaseUrl}/connected`
+        )
         newDevice.connected = stateResponse.data.Value
       } catch (error) {
         console.error(`Error checking connection state:`, error)
@@ -145,8 +154,8 @@ async function connectToDevice(index: number) {
 
       // Add the device in our store if it doesn't already exist
       const deviceExists = devicesStore.devices.some((existingDevice) => {
-        const existingDeviceWithApi = existingDevice as any
-        return existingDeviceWithApi.apiBaseUrl === newDevice.apiBaseUrl
+        const existingDeviceWithApi = existingDevice as { apiBaseUrl?: string }
+        return existingDeviceWithApi.apiBaseUrl === (newDevice as DeviceWithApi).apiBaseUrl
       })
 
       if (!deviceExists) {
@@ -206,9 +215,9 @@ watch(
         </div>
       </div>
       <button
-        @click="discoveredDevicesStore.discoverDevices()"
         :disabled="discoveredDevicesStore.isDiscovering || isLoading"
         class="discover-btn"
+        @click="discoveredDevicesStore.discoverDevices()"
       >
         <span class="btn-icon">
           <svg
@@ -249,7 +258,7 @@ watch(
         />
       </svg>
       <p>No Alpaca devices found</p>
-      <button @click="discoveredDevicesStore.discoverDevices()" class="retry-btn">Try Again</button>
+      <button class="retry-btn" @click="discoveredDevicesStore.discoverDevices()">Try Again</button>
     </div>
 
     <div v-else-if="availableDevices.length === 0" class="empty-state">
@@ -303,9 +312,9 @@ watch(
         </div>
 
         <button
-          @click="connectToDevice(discoveredAlpacaDevices.indexOf(device))"
           :disabled="selectedDeviceIndex === discoveredAlpacaDevices.indexOf(device)"
           class="connect-btn"
+          @click="connectToDevice(discoveredAlpacaDevices.indexOf(device))"
         >
           <span v-if="selectedDeviceIndex === discoveredAlpacaDevices.indexOf(device)">
             Connecting...

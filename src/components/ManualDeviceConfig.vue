@@ -30,8 +30,8 @@ async function addManualDevice() {
     deviceAddress.value = 'localhost'
     devicePort.value = 11111
     showForm.value = false
-  } catch (error: any) {
-    errorMessage.value = error.message || 'Failed to add device'
+  } catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to add device'
   } finally {
     isSubmitting.value = false
   }
@@ -41,7 +41,7 @@ async function addManualDevice() {
 <template>
   <div class="manual-device-config">
     <div class="header">
-      <button @click="toggleForm" class="toggle-btn">
+      <button class="toggle-btn" @click="toggleForm">
         {{ showForm ? 'Cancel' : 'Add Device Manually' }}
       </button>
     </div>
@@ -50,21 +50,21 @@ async function addManualDevice() {
       <div class="form-group">
         <label for="deviceAddress">Alpaca Server Address:</label>
         <input
-          type="text"
           id="deviceAddress"
           v-model="deviceAddress"
+          type="text"
           placeholder="e.g., localhost or 192.168.1.100"
         />
       </div>
 
       <div class="form-group">
         <label for="devicePort">Alpaca Management Port:</label>
-        <input type="number" id="devicePort" v-model="devicePort" min="1" max="65535" />
+        <input id="devicePort" v-model="devicePort" type="number" min="1" max="65535" />
       </div>
 
       <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
 
-      <button @click="addManualDevice" :disabled="isSubmitting" class="add-btn">
+      <button :disabled="isSubmitting" class="add-btn" @click="addManualDevice">
         {{ isSubmitting ? 'Adding...' : 'Add Device' }}
       </button>
     </div>

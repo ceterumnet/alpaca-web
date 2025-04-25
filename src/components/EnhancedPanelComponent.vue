@@ -95,9 +95,9 @@ watch(
         <span class="panel-title vue-draggable-handle">{{ panelName }}</span>
         <button
           v-if="effectiveMode !== UIMode.FULLSCREEN"
-          @click="toggleCollapse"
           class="collapse-button"
           :title="isContentCollapsed ? 'Expand' : 'Collapse'"
+          @click="toggleCollapse"
         >
           <Icon :type="isContentCollapsed ? 'expand' : 'collapse'" />
         </button>
@@ -108,25 +108,25 @@ watch(
         <div class="mode-selector">
           <button
             v-if="supportedModes.includes(UIMode.OVERVIEW)"
-            @click="changeMode(UIMode.OVERVIEW)"
             :class="{ active: effectiveMode === UIMode.OVERVIEW }"
             title="Overview Mode"
+            @click="changeMode(UIMode.OVERVIEW)"
           >
             <Icon type="compact" />
           </button>
           <button
             v-if="supportedModes.includes(UIMode.DETAILED)"
-            @click="changeMode(UIMode.DETAILED)"
             :class="{ active: effectiveMode === UIMode.DETAILED }"
             title="Detailed Mode"
+            @click="changeMode(UIMode.DETAILED)"
           >
             <Icon type="detailed" />
           </button>
           <button
             v-if="supportedModes.includes(UIMode.FULLSCREEN)"
-            @click="changeMode(UIMode.FULLSCREEN)"
             :class="{ active: effectiveMode === UIMode.FULLSCREEN }"
             title="Fullscreen Mode"
+            @click="changeMode(UIMode.FULLSCREEN)"
           >
             <Icon type="fullscreen" />
           </button>

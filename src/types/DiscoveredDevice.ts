@@ -8,4 +8,14 @@ export interface DiscoveredDevice {
   ManufacturerVersion?: string
   Location?: string
   isManualEntry?: boolean
+
+  // Additional properties used in the component
+  serverAddress?: string
+  serverPort?: number
+  serverName?: string
+  manufacturer?: string
+  deviceType?: string
+  deviceNumber?: number
+  deviceName?: string
+  apiBaseUrl?: string
 }

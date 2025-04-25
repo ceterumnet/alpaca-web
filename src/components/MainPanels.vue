@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { GridLayout, GridItem } from 'grid-layout-plus'
-import { onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import EnhancedPanelComponent from './EnhancedPanelComponent.vue'
-import TelescopePanel from './TelescopePanel.vue'
 import EnhancedTelescopePanel from './EnhancedTelescopePanel.vue'
-import CameraPanel from './CameraPanel.vue'
 import EnhancedCameraPanel from './EnhancedCameraPanel.vue'
-import { DeviceFactory, type Device } from '@/types/Device'
-import LoggerPanel from './LoggerPanel.vue'
+import { type Device } from '@/types/Device'
 import { useDevicesStore } from '@/stores/useDevicesStore'
-import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
 import DiscoveredDevices from './DiscoveredDevices.vue'
 import { UIMode } from '@/stores/useUIPreferencesStore'
 import { useLayoutStore, type LayoutItem } from '@/stores/useLayoutStore'
@@ -23,10 +19,6 @@ const layout = ref(layoutStore.layout)
 // Flag to track if a logger panel is added
 const loggerPanelAdded = ref(false)
 
-function isDevice(obj: Device | object): obj is Device {
-  return (obj as Device).deviceType !== undefined
-}
-
 const getComponent = function (lookupBy: LayoutItem | Device) {
   // Check if deviceType exists and use it to determine the component
   if (lookupBy.deviceType) {
@@ -37,9 +29,6 @@ const getComponent = function (lookupBy: LayoutItem | Device) {
     if (deviceType === 'camera') {
       return EnhancedCameraPanel
     }
-    if (deviceType === 'logger') {
-      return LoggerPanel
-    }
   }
   return EnhancedPanelComponent
 }
@@ -49,7 +38,7 @@ function addLoggerPanel() {
   if (!loggerPanelAdded.value) {
     layout.value.push({
       x: 0,
-      y: Math.max(...layout.value.map((item: any) => item.y + item.h), 0),
+      y: Math.max(...layout.value.map((item: LayoutItem) => item.y + item.h), 0),
       w: 12,
       h: 8,
       i: 'logger',
@@ -63,7 +52,6 @@ function addLoggerPanel() {
 }
 
 const deviceStore = useDevicesStore()
-const discoveredDevicesStore = useDiscoveredDevicesStore()
 
 // Watch for changes in the devices store and update layout accordingly
 watch(
@@ -74,7 +62,7 @@ watch(
     // Filter for devices not already in layout
     const devicesToAdd = newDevices.filter((device) => {
       return !layout.value.some(
-        (item: any) =>
+        (item: LayoutItem) =>
           item.deviceType?.toLowerCase() === device.deviceType.toLowerCase() &&
           item.deviceNum === device.idx
       )
@@ -83,8 +71,8 @@ watch(
     // Add new devices to layout
     let devicesAdded = 0
     for (const device of devicesToAdd) {
-      let xPos = devicesAdded % 2 === 0 ? 0 : 6
-      let yPos = Math.floor(devicesAdded / 2) * 20
+      const xPos = devicesAdded % 2 === 0 ? 0 : 6
+      const yPos = Math.floor(devicesAdded / 2) * 20
       devicesAdded++
 
       layout.value.push({
@@ -96,7 +84,7 @@ watch(
         deviceNum: device.idx,
         deviceType: device.deviceType,
         connected: device.connected || false,
-        apiBaseUrl: (device as any).apiBaseUrl || ''
+        apiBaseUrl: (device as Device & { apiBaseUrl?: string }).apiBaseUrl || ''
       })
     }
 
@@ -148,19 +136,19 @@ onMounted(() => {
   }
 })
 
-function getPanelName(item: any): string {
+function getPanelName(item: LayoutItem): string {
   if (item.deviceType) {
     return `${item.deviceType.charAt(0).toUpperCase() + item.deviceType.slice(1)} ${item.deviceNum || ''}`
   }
   return `Panel ${item.i}`
 }
 
-function getSupportedModes(item: any): UIMode[] {
+function getSupportedModes(item: LayoutItem): UIMode[] {
   // Default modes for all panels
   const modes = [UIMode.OVERVIEW, UIMode.DETAILED]
 
   // Add fullscreen mode for certain device types
-  if (['camera', 'telescope'].includes(item.deviceType?.toLowerCase())) {
+  if (item.deviceType && ['camera', 'telescope'].includes(item.deviceType.toLowerCase())) {
     modes.push(UIMode.FULLSCREEN)
   }
 
@@ -169,7 +157,7 @@ function getSupportedModes(item: any): UIMode[] {
 
 // Handle removing a panel
 function removePanel(itemId: string) {
-  layout.value = layout.value.filter((layoutItem: any) => layoutItem.i !== itemId)
+  layout.value = layout.value.filter((layoutItem: LayoutItem) => layoutItem.i !== itemId)
   layoutStore.updateLayout(layout.value)
 }
 
@@ -177,7 +165,7 @@ function removePanel(itemId: string) {
 function handleConnect(connected: boolean, itemId: string) {
   console.log(`Panel ${itemId} connection state changed to: ${connected}`)
   // Find the panel in the layout
-  const panelItem = layout.value.find((item: any) => item.i === itemId)
+  const panelItem = layout.value.find((item: LayoutItem) => item.i === itemId)
   if (panelItem) {
     // Update the connection state
     panelItem.connected = connected
@@ -226,7 +214,7 @@ function handleConnect(connected: boolean, itemId: string) {
           :api-base-url="item.apiBaseUrl"
           @close="removePanel(item.i)"
           @configure="() => {}"
-          @connect="(connected) => handleConnect(connected, item.i)"
+          @connect="(connected: boolean) => handleConnect(connected, item.i)"
         ></component>
       </GridItem>
     </GridLayout>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
 import { useDevicesStore } from '@/stores/useDevicesStore'
 import Icon from './Icon.vue'
+import type { Device } from '@/types/Device'
 
 const uiStore = useUIPreferencesStore()
 const devicesStore = useDevicesStore()
@@ -22,9 +23,9 @@ function toggleSidebar() {
 
 // Get categorized devices for display
 const categorizedDevices = computed(() => {
-  const devicesByType: Record<string, any[]> = {}
+  const devicesByType: Record<string, Device[]> = {}
 
-  devicesStore.devices.forEach((device: any) => {
+  devicesStore.devices.forEach((device: Device) => {
     const type = device.deviceType || 'other'
     if (!devicesByType[type]) {
       devicesByType[type] = []
@@ -52,7 +53,7 @@ function getDeviceIcon(type: string): 'search' | 'camera' | 'exposure' | 'gear' 
 }
 
 // Get device connection status
-function isDeviceConnected(device: any): boolean {
+function isDeviceConnected(device: Device): boolean {
   return device.connected || false
 }
 </script>
@@ -70,7 +71,7 @@ function isDeviceConnected(device: any): boolean {
     <!-- Device categories and items -->
     <div class="sidebar-content">
       <template v-for="(devices, category) in categorizedDevices" :key="category">
-        <div class="device-category" v-if="!isCollapsed">
+        <div v-if="!isCollapsed" class="device-category">
           <h3 class="category-title">{{ category }}</h3>
           <div
             v-for="device in devices"

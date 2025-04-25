@@ -14,8 +14,8 @@ const props = defineProps({
     type: Array as () => UIMode[],
     default: () => [UIMode.OVERVIEW, UIMode.DETAILED, UIMode.FULLSCREEN]
   },
-  idx: { type: [String, Number], required: false },
-  deviceNum: { type: Number, required: false },
+  idx: { type: [String, Number], required: true },
+  deviceNum: { type: Number, required: true },
   apiBaseUrl: { type: String, default: '' }
 })
 
@@ -23,8 +23,6 @@ const props = defineProps({
 const emit = defineEmits(['close', 'configure', 'connect', 'modeChange'])
 
 // Local reactive connection state
-const currentMode = ref(UIMode.OVERVIEW)
-
 // Flag to track connection in progress
 const isConnecting = ref(false)
 
@@ -38,11 +36,10 @@ const gain = ref(0)
 const offset = ref(0)
 const readMode = ref(0)
 const previewImage = ref<string | null>(null)
-const statusMessage = ref('')
+
 const connectionStatus = ref('')
-const lastImageUrl = ref<string | null>(null)
+
 const exposureProgress = ref(0)
-const isExposing = ref(false)
 
 // Additional reactive data for camera parameters
 const minExposure = ref(0.001) // minimum exposure time in seconds
@@ -84,12 +81,6 @@ watch(
 
 // Add transactionId variable
 const transactionId = ref(1)
-
-// Handle mode changes
-function setMode(newMode: UIMode) {
-  currentMode.value = newMode
-  emit('modeChange', newMode)
-}
 
 // Method to handle connect events from EnhancedPanelComponent
 function onConnect() {
@@ -281,8 +272,8 @@ async function disconnectCamera() {
     isConnecting.value = true
     console.log('Attempting to disconnect from camera:', props.deviceNum)
 
-    // First check if the camera is connected
-    const stateResp = await axios.get(getApiEndpoint('connected'))
+    // Skip connection check since we're disconnecting anyway
+    await axios.get(getApiEndpoint('connected'))
 
     // Disconnect using form-encoded data
     const formData = new URLSearchParams()
@@ -749,14 +740,13 @@ function displayImage(processedData: {
     | Uint32Array
     | Float32Array
     | Float64Array
-    | any[]
+    | number[]
   imageType: string
   bytesPerPixel?: number
   bitsPerPixel?: number
   transmissionElementType?: number
 }) {
-  const { width, height, pixelData, imageType, transmissionElementType, bitsPerPixel } =
-    processedData
+  const { width, height, pixelData, bitsPerPixel } = processedData
 
   // Create a canvas to render the image
   const canvas = document.createElement('canvas')
@@ -1116,8 +1106,8 @@ onMounted(() => {
           <div class="control-row">
             <label>Exposure:</label>
             <input
-              type="number"
               v-model="exposureTime"
+              type="number"
               :min="minExposure"
               :max="maxExposure"
               :disabled="cameraData.isExposing || !isConnected"
@@ -1131,8 +1121,8 @@ onMounted(() => {
             <label>Binning:</label>
             <div class="binning-control">
               <input
-                type="number"
                 v-model.number="cameraData.binningX"
+                type="number"
                 min="1"
                 max="4"
                 :disabled="cameraData.isExposing || !isConnected"
@@ -1140,8 +1130,8 @@ onMounted(() => {
               />
               <span>×</span>
               <input
-                type="number"
                 v-model.number="cameraData.binningY"
+                type="number"
                 min="1"
                 max="4"
                 :disabled="cameraData.isExposing || !isConnected"
@@ -1153,8 +1143,8 @@ onMounted(() => {
           <div class="control-row">
             <label>Gain:</label>
             <input
-              type="number"
               v-model.number="gain"
+              type="number"
               :min="minGain"
               :max="maxGain"
               :disabled="cameraData.isExposing || !isConnected"
@@ -1162,11 +1152,11 @@ onMounted(() => {
             />
           </div>
 
-          <div class="control-row" v-if="canAdjustOffset">
+          <div v-if="canAdjustOffset" class="control-row">
             <label>Offset:</label>
             <input
-              type="number"
               v-model.number="offset"
+              type="number"
               :min="minOffset"
               :max="maxOffset"
               :disabled="cameraData.isExposing || !isConnected"
@@ -1174,7 +1164,7 @@ onMounted(() => {
             />
           </div>
 
-          <div class="control-row" v-if="canAdjustReadMode && readModeOptions.length > 0">
+          <div v-if="canAdjustReadMode && readModeOptions.length > 0" class="control-row">
             <label>Read Mode:</label>
             <select
               v-model.number="readMode"
@@ -1191,8 +1181,8 @@ onMounted(() => {
             <button
               v-if="!cameraData.isExposing"
               class="action-button start-button"
-              @click="startExposure"
               :disabled="!isConnected"
+              @click="startExposure"
             >
               <Icon type="camera" />
               <span>Expose</span>
@@ -1201,8 +1191,8 @@ onMounted(() => {
             <button
               v-else
               class="action-button abort-button"
-              @click="abortExposure"
               :disabled="!isConnected"
+              @click="abortExposure"
             >
               <Icon type="stop" />
               <span>Abort</span>
@@ -1230,9 +1220,9 @@ onMounted(() => {
                 <label for="exposureTime">Exposure Time:</label>
                 <div class="input-group">
                   <input
-                    type="number"
                     id="exposureTime"
                     v-model="exposureTime"
+                    type="number"
                     :disabled="!isConnected || cameraData.isExposing"
                     min="0.001"
                     step="0.1"
@@ -1245,9 +1235,9 @@ onMounted(() => {
                 <label for="gain">Gain:</label>
                 <div class="input-group">
                   <input
-                    type="number"
                     id="gain"
                     v-model="gain"
+                    type="number"
                     :disabled="!isConnected || cameraData.isExposing"
                     min="0"
                     max="100"
@@ -1260,9 +1250,9 @@ onMounted(() => {
                 <label for="offset">Offset:</label>
                 <div class="input-group">
                   <input
-                    type="number"
                     id="offset"
                     v-model="offset"
+                    type="number"
                     :disabled="!isConnected || cameraData.isExposing || !canAdjustOffset"
                     min="0"
                     max="100"
@@ -1272,16 +1262,16 @@ onMounted(() => {
 
               <div class="control-buttons">
                 <button
-                  @click="startExposure"
                   :disabled="!isConnected || cameraData.isExposing"
                   class="start-exposure"
+                  @click="startExposure"
                 >
                   Start Exposure
                 </button>
                 <button
-                  @click="abortExposure"
                   :disabled="!isConnected || !cameraData.isExposing"
                   class="abort-exposure"
+                  @click="abortExposure"
                 >
                   Abort
                 </button>
@@ -1403,9 +1393,9 @@ onMounted(() => {
                     <label for="fs-exposure">Exposure Time:</label>
                     <div class="input-with-unit">
                       <input
-                        type="number"
                         id="fs-exposure"
                         v-model="exposureTime"
+                        type="number"
                         :disabled="!isConnected || cameraData.isExposing"
                         :min="minExposure"
                         :max="maxExposure"
@@ -1422,24 +1412,24 @@ onMounted(() => {
                     <label>Bin:</label>
                     <div class="binning-controls-fs">
                       <input
-                        type="number"
                         v-model="cameraData.binningX"
+                        type="number"
                         :disabled="!isConnected || cameraData.isExposing"
                         min="1"
                         max="4"
                       />
                       <span>x</span>
                       <input
-                        type="number"
                         v-model="cameraData.binningY"
+                        type="number"
                         :disabled="!isConnected || cameraData.isExposing"
                         min="1"
                         max="4"
                       />
                       <button
-                        @click="setBinning(cameraData.binningX, cameraData.binningY)"
                         :disabled="!isConnected || cameraData.isExposing"
                         class="fs-button"
+                        @click="setBinning(cameraData.binningX, cameraData.binningY)"
                       >
                         Set
                       </button>
@@ -1453,9 +1443,9 @@ onMounted(() => {
                     <label for="fs-gain">Gain:</label>
                     <div class="input-with-unit">
                       <input
-                        type="number"
                         id="fs-gain"
                         v-model="gain"
+                        type="number"
                         :disabled="!isConnected || cameraData.isExposing"
                         :min="minGain"
                         :max="maxGain"
@@ -1468,9 +1458,9 @@ onMounted(() => {
                     <label for="fs-offset">Offset:</label>
                     <div class="input-with-unit">
                       <input
-                        type="number"
                         id="fs-offset"
                         v-model="offset"
+                        type="number"
                         :disabled="!isConnected || cameraData.isExposing || !canAdjustOffset"
                         :min="minOffset"
                         :max="maxOffset"
@@ -1501,17 +1491,17 @@ onMounted(() => {
             <div class="actions-container">
               <div class="action-buttons-fs">
                 <button
-                  @click="startExposure"
                   :disabled="!isConnected || cameraData.isExposing"
                   class="fs-button start-button"
+                  @click="startExposure"
                 >
                   <Icon type="camera" />
                   Start Exposure
                 </button>
                 <button
-                  @click="abortExposure"
                   :disabled="!isConnected || !cameraData.isExposing"
                   class="fs-button abort-button"
+                  @click="abortExposure"
                 >
                   <Icon type="stop" />
                   Abort

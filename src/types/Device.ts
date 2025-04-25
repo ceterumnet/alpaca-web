@@ -6,6 +6,8 @@ export abstract class Device {
   // This is the Alpaca device number
   // deviceIdx: number
   idx!: number
+  // This is the API base URL for the device
+  apiBaseUrl?: string
   // This is the Alpaca server baseURL in the format http[s]//[ip|dns][:][port]/
   // baseURL: string
   // This is the Alpaca device number

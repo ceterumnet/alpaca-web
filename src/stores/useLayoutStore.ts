@@ -10,7 +10,7 @@ export interface LayoutItem {
   w: number
   h: number
   i: string
-  deviceType?: string
+  deviceType: string
   deviceNum?: number
   connected?: boolean
   apiBaseUrl?: string

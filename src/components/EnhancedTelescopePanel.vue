@@ -14,8 +14,8 @@ const props = defineProps({
     type: Array as () => UIMode[],
     default: () => [UIMode.OVERVIEW, UIMode.DETAILED, UIMode.FULLSCREEN]
   },
-  idx: { type: [String, Number], required: false },
-  deviceNum: { type: Number, required: false },
+  idx: { type: [String, Number], required: true },
+  deviceNum: { type: Number, required: true },
   apiBaseUrl: { type: String, default: '' }
 })
 
@@ -330,8 +330,8 @@ async function fetchDetailedData() {
             <button
               class="control-btn"
               :class="{ active: trackingEnabled }"
-              @click="toggleTracking"
               :disabled="!connected"
+              @click="toggleTracking"
             >
               <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
               <span>{{ trackingEnabled ? 'Tracking' : 'Track' }}</span>
@@ -340,21 +340,21 @@ async function fetchDetailedData() {
         </div>
         <div class="directional-controls">
           <div class="slew-control">
-            <button class="slew-btn north" @click="moveNorth" :disabled="!connected || isSlewing">
+            <button class="slew-btn north" :disabled="!connected || isSlewing" @click="moveNorth">
               <Icon type="arrow-up" />
             </button>
             <div class="east-west">
-              <button class="slew-btn west" @click="moveWest" :disabled="!connected || isSlewing">
+              <button class="slew-btn west" :disabled="!connected || isSlewing" @click="moveWest">
                 <Icon type="arrow-left" />
               </button>
-              <button class="slew-btn stop" @click="stopSlew" :disabled="!connected || !isSlewing">
+              <button class="slew-btn stop" :disabled="!connected || !isSlewing" @click="stopSlew">
                 <Icon type="stop" />
               </button>
-              <button class="slew-btn east" @click="moveEast" :disabled="!connected || isSlewing">
+              <button class="slew-btn east" :disabled="!connected || isSlewing" @click="moveEast">
                 <Icon type="arrow-right" />
               </button>
             </div>
-            <button class="slew-btn south" @click="moveSouth" :disabled="!connected || isSlewing">
+            <button class="slew-btn south" :disabled="!connected || isSlewing" @click="moveSouth">
               <Icon type="arrow-down" />
             </button>
           </div>
@@ -421,38 +421,38 @@ async function fetchDetailedData() {
               <div class="slew-control">
                 <button
                   class="slew-btn north"
-                  @click="moveNorth"
                   :disabled="!connected || isSlewing"
+                  @click="moveNorth"
                 >
                   <Icon type="arrow-up" />
                 </button>
                 <div class="east-west">
                   <button
                     class="slew-btn west"
-                    @click="moveWest"
                     :disabled="!connected || isSlewing"
+                    @click="moveWest"
                   >
                     <Icon type="arrow-left" />
                   </button>
                   <button
                     class="slew-btn stop"
-                    @click="stopSlew"
                     :disabled="!connected || !isSlewing"
+                    @click="stopSlew"
                   >
                     <Icon type="stop" />
                   </button>
                   <button
                     class="slew-btn east"
-                    @click="moveEast"
                     :disabled="!connected || isSlewing"
+                    @click="moveEast"
                   >
                     <Icon type="arrow-right" />
                   </button>
                 </div>
                 <button
                   class="slew-btn south"
-                  @click="moveSouth"
                   :disabled="!connected || isSlewing"
+                  @click="moveSouth"
                 >
                   <Icon type="arrow-down" />
                 </button>
@@ -466,8 +466,8 @@ async function fetchDetailedData() {
               <button
                 class="control-btn"
                 :class="{ active: trackingEnabled }"
-                @click="toggleTracking"
                 :disabled="!connected"
+                @click="toggleTracking"
               >
                 <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
                 <span>{{ trackingEnabled ? 'Disable Tracking' : 'Enable Tracking' }}</span>
@@ -584,38 +584,38 @@ async function fetchDetailedData() {
                   <div class="slew-control">
                     <button
                       class="slew-btn north"
-                      @click="moveNorth"
                       :disabled="!connected || isSlewing"
+                      @click="moveNorth"
                     >
                       <Icon type="arrow-up" />
                     </button>
                     <div class="east-west">
                       <button
                         class="slew-btn west"
-                        @click="moveWest"
                         :disabled="!connected || isSlewing"
+                        @click="moveWest"
                       >
                         <Icon type="arrow-left" />
                       </button>
                       <button
                         class="slew-btn stop"
-                        @click="stopSlew"
                         :disabled="!connected || !isSlewing"
+                        @click="stopSlew"
                       >
                         <Icon type="stop" />
                       </button>
                       <button
                         class="slew-btn east"
-                        @click="moveEast"
                         :disabled="!connected || isSlewing"
+                        @click="moveEast"
                       >
                         <Icon type="arrow-right" />
                       </button>
                     </div>
                     <button
                       class="slew-btn south"
-                      @click="moveSouth"
                       :disabled="!connected || isSlewing"
+                      @click="moveSouth"
                     >
                       <Icon type="arrow-down" />
                     </button>
@@ -629,8 +629,8 @@ async function fetchDetailedData() {
                   <button
                     class="control-btn large"
                     :class="{ active: trackingEnabled }"
-                    @click="toggleTracking"
                     :disabled="!connected"
+                    @click="toggleTracking"
                   >
                     <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
                     <span>{{ trackingEnabled ? 'Disable Tracking' : 'Enable Tracking' }}</span>

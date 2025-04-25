@@ -1,11 +1,10 @@
 <script setup lang="ts">
-const props = defineProps({
+import Icon from './Icon.vue'
+
+defineProps({
   panelName: { type: String, required: true },
   connected: { type: Boolean, required: false }
 })
-
-import Icon from './Icon.vue'
-props.panelName // string
 </script>
 <template>
   <div class="panel-container">
