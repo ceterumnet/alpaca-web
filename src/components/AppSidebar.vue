@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
-import { useDevicesStore } from '@/stores/useDevicesStore'
+import { getLegacyDevicesAdapter } from '@/stores/deviceStoreAdapter'
 import Icon from './Icon.vue'
 import type { Device } from '@/types/Device'
 
 const uiStore = useUIPreferencesStore()
-const devicesStore = useDevicesStore()
+const devicesStore = getLegacyDevicesAdapter()
 
 // Sidebar collapse state
 const isCollapsed = computed({

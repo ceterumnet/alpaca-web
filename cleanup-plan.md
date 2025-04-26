@@ -1,135 +1,95 @@
-# Alpaca Web Cleanup and Integration Plan
+# Cleanup Plan for Alpaca Web Project
 
-## Overview
+## Current Tasks
 
-This document outlines a plan to clean up and integrate the existing codebase with the enhanced UI components that were developed during the UI improvement phase. The goal is to establish a consistent architecture and eliminate redundancies while preserving the improved interface.
+- 🏃‍♂️ Testing components with the adapter approach
+- 🏃‍♂️ Verifying connectivity and discovery flows with the new store architecture
+- 🏃‍♂️ Ensuring type compatibility across the codebase
 
-## Current State Analysis
+## Completed Tasks
 
-### Identified Issues
+- ✅ Created initial cleanup plan
+- ✅ Analyzed current architecture and identified areas for improvement
+- ✅ Developed new unified store: `useAstroDeviceStore.ts`
+- ✅ Created compatibility layer in `deviceStoreAdapter.ts`
+- ✅ Updated `DiscoveredDevices.vue` component to use the adapter approach
+- ✅ Updated `MainPanels.vue` component to use the adapter approach
+- ✅ Updated `AppSidebar.vue` component to use the adapter approach
+- ✅ Updated `DiscoveryView.vue` component to use the adapter approach
+- ✅ Extended adapter with discovery-related methods
 
-1. **Duplicate Functionality**: We have multiple implementations of discovery and device management across different stores.
-2. **Integration Gaps**: The enhanced UI components from `ui-examples` directory are not fully integrated with the core application.
-3. **Event Handling Inconsistencies**: Some event emitters like the 'discover' event in EnhancedDiscoveryPanel may not be properly connected.
-4. **Store Architecture**: We have both `useDevicesStore.ts` and `useDeviceStore.ts` with overlapping functionality.
-5. **Component Hierarchy**: The relationship between components is not always clear, particularly with the panels system.
+## Implementation Progress
 
-### Asset Organization
+### Store Unification
 
-- **Core Components**: Located in `src/components/`
-- **Enhanced UI Components**: Located in `src/components/ui-examples/`
-- **Stores**: Multiple stores in `src/stores/` with overlapping responsibilities
+- ✅ Created new unified store: `useAstroDeviceStore.ts`
+- ✅ Implemented core device methods and state
+- ✅ Added telescope-specific methods
+- ✅ Added camera-specific methods
+- 🏃‍♂️ Testing the store across different components
 
-## Action Plan
+### Component Migration
 
-### 1. Store Consolidation (Priority: High)
+- ✅ Created compatibility layer in `deviceStoreAdapter.ts`
+- ✅ Updated DiscoveredDevices component
+- ✅ Updated MainPanels component
+- ✅ Updated AppSidebar component
+- ✅ Updated DiscoveryView component
+- 🏃‍♂️ Working on remaining components that use device stores
 
-- [ ] Merge `useDevicesStore.ts` and `useDeviceStore.ts` into a single store
-  - Base the unified store on `useDeviceStore.ts` which has more functionality
-  - Ensure all components reference this consolidated store
-- [ ] Create a comprehensive device interface that is:
-  - Device type-specific functionality into separate composables or store modules
-  - Complete: Contains all necessary properties for all device types
-  - Consistent: Uses standardized property naming and typing
-  - Well-documented: Includes JSDoc comments explaining each property and method
-  - Extensible: Allows for different device types without code duplication
-- [ ] Implement specialized device type modules within the store:
-  - Create a base device module with shared functionality
-  - Add specialized modules for telescopes, cameras, and other device types
-  - Use composition patterns to avoid inheritance issues
-- [ ] Implement a clean state management approach:
-  - Clearly separate state, getters, actions, and mutations
-  - Use TypeScript to ensure type safety throughout
-  - Add proper reactive state management for real-time updates
+### Device Discovery Integration
 
-### 2. Device Discovery Integration (Priority: High)
+- ✅ Implemented device discovery methods in the unified store
+- ✅ Adapted discovery view to work with the new store
+- ✅ Extended adapter to support discovery-related methods
+- 🏃‍♂️ Testing discovery and connection flows
 
-- [ ] Ensure the `DiscoveredDevices.vue` component properly works with `EnhancedDiscoveryPanel.vue`
-- [ ] Fix the discover event flow:
-  - Verify `DiscoveryView.vue` properly handles the `@discover` event from `EnhancedDiscoveryPanel`
-  - Ensure `handleDiscover()` correctly triggers the discovery process
-- [ ] Create a consistent device discovery service/API to be used by both components
+## Next Steps
 
-### 3. UI Component Migration (Priority: Medium)
+1. Update remaining components to use the adapter approach:
+   - [ ] DevicesView
+   - [ ] DeviceDetailView
+   - [ ] Adapter components
+2. Test adapter implementation thoroughly
+3. Refine device type system for better type safety
+4. Document the migration approach for future reference
 
-- [ ] Move valuable components from `ui-examples` to the main component directories:
-  - [ ] Migrate `EnhancedSidebar.vue` to `src/components/AppSidebar.vue`
-  - [ ] Migrate `EnhancedDiscoveryPanel.vue` to `src/components/DiscoveryPanel.vue`
-- [ ] Delete redundant components
-- [ ] Update all imports and references to use the new component paths
+## Identified Issues
 
-### 4. Panel System Improvements (Priority: Medium)
+### Type Safety Issues
 
-- [ ] Refine `MainPanels.vue` to better integrate with enhanced panel components
-- [ ] Standardize the props and emits between all panel components
-- [ ] Ensure device type detection and component selection is consistent
+- **Issue**: The original stores have minimal typing for device state and methods
+- **Solution**: Created strongly typed interfaces in the new store but need to maintain compatibility
+- **Solution**: Created adapter in `deviceStoreAdapter.ts` that provides compatibility functions to translate between old and new formats
 
-### 5. API Interface Standardization (Priority: High)
+### Store Fragmentation
 
-- [ ] Create a consistent API service for Alpaca device communication
-- [ ] Abstract device-specific API calls into device-type services
-- [ ] Implement proper error handling and loading states for all API calls
+- **Issue**: Device data is spread across multiple stores without clear boundaries
+- **Solution**: Unified store centralizes all device-related functionality
+- **Solution**: Legacy adapter provides backward compatibility
 
-### 6. TypeScript Type Definitions (Priority: Medium)
+## Compatibility Strategy
 
-- [ ] Consolidate shared interfaces in a central location
-- [ ] Ensure consistent naming and structure across all type definitions
-- [ ] Add comprehensive type declarations for emits and props
+### Supporting Legacy Devices
 
-### 7. Style and UI Consistency (Priority: Low)
+1. **Type Conversion**: Convert between legacy device types and new device interfaces
+2. **Method Adaptation**: Provide compatibility methods that work with both formats
+3. **Progressive Migration**: Allow components to gradually adopt the new store
 
-- [ ] Create a UI component style guide
-- [ ] Standardize CSS variable usage
-- [ ] Implement consistent layout patterns and responsive behaviors
+### Support Methods
 
-## Implementation Sequence
+- `legacyDeviceToNew()`: Convert legacy device to new format
+- `createLegacyDevice()`: Create legacy device instance from type and properties
+- `useLegacyDeviceStore()`: Provide a store that looks like the old one but uses the new store behind the scenes
+- `getLegacyDevicesAdapter()`: Get a simpler adapter just for the devices collection
 
-1. **Phase 1: Store Consolidation**
+## Phase 2 Planning
 
-   - Complete store merging
-   - Update all component imports
-   - Test basic functionality
+Once all components are using the adapter successfully:
 
-2. **Phase 2: Device Discovery Integration**
+1. **Direct Store Usage**: Modify components to use the new store directly instead of through adapters
+2. **API Simplification**: Remove unnecessary compatibility methods
+3. **Cleanup Old Stores**: Remove old store files when no longer referenced
+4. **Refine Type System**: Strengthen type checking across the application
 
-   - Fix discovery event handling
-   - Ensure proper communication between discovery components
-   - Test discovery and device addition process
-
-3. **Phase 3: Component Migration**
-
-   - Migrate enhanced UI components to main directories
-   - Update references and imports
-   - Deprecate redundant components
-
-4. **Phase 4: Final Integration and Testing**
-   - Complete API standardization
-   - Implement comprehensive error handling
-   - Test all main user flows
-
-## Testing Plan
-
-For each phase, ensure the following is tested:
-
-1. **Device Discovery**:
-
-   - Discovery process initiates correctly
-   - Discovered devices display properly
-   - Adding discovered devices works
-
-2. **Device Connection**:
-
-   - Connect/disconnect functions work
-   - Connection state persists correctly
-   - Error states are handled properly
-
-3. **Device Control**:
-   - Device-specific controls function correctly
-   - State is maintained between operations
-   - UI updates reflect device state changes
-
-## Conclusion
-
-This plan addresses the key issues identified in the current codebase while preserving the improvements made during the UI enhancement phase. By following this structured approach, we can create a more maintainable, consistent, and user-friendly application.
-
-The highest priority is to address the store consolidation and device discovery integration, as these are foundational to the application's functionality. Once these are resolved, we can proceed with the more structural and aesthetic improvements.
+This approach allows for incremental improvements while maintaining a working application throughout the transition.

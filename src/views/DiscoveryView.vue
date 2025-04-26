@@ -3,14 +3,18 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import EnhancedDiscoveryPanel from '../components/ui-examples/EnhancedDiscoveryPanel.vue'
 import ToastNotification from '../components/ui/ToastNotification.vue'
-import { useDeviceStore, type DiscoveredDevice, type ServerData } from '../stores/useDeviceStore'
+import {
+  useLegacyDeviceStore,
+  type DiscoveredDevice,
+  type ServerData
+} from '../stores/deviceStoreAdapter'
 
 defineOptions({
   name: 'DiscoveryView'
 })
 
 // Get stores and router
-const deviceStore = useDeviceStore()
+const deviceStore = useLegacyDeviceStore()
 const router = useRouter()
 
 // Toast management

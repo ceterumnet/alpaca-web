@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from 'vue'
 import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
-import { useDevicesStore } from '@/stores/useDevicesStore'
+import { getLegacyDevicesAdapter, useLegacyDeviceStore } from '@/stores/deviceStoreAdapter'
 import axios from 'axios'
 import { DeviceFactory, Device } from '@/types/Device'
 import { Telescope } from '@/types/Telescope'
@@ -10,7 +10,10 @@ import ManualDeviceConfig from './ManualDeviceConfig.vue'
 import type { DiscoveredDevice } from '@/types/DiscoveredDevice'
 
 const discoveredDevicesStore = useDiscoveredDevicesStore()
-const devicesStore = useDevicesStore()
+// Use the adapter for compatibility with existing code
+const devicesStore = getLegacyDevicesAdapter()
+// Get the enhanced store for advanced operations
+const legacyDeviceStore = useLegacyDeviceStore()
 
 const isLoading = ref(false)
 const selectedDeviceIndex = ref<number | null>(null)
@@ -170,16 +173,9 @@ async function connectToDevice(index: number) {
         newDevice.connected = false
       }
 
-      // Add the device in our store if it doesn't already exist
-      const deviceExists = devicesStore.devices.some((existingDevice) => {
-        const existingDeviceWithApi = existingDevice as { apiBaseUrl?: string }
-        return existingDeviceWithApi.apiBaseUrl === (newDevice as DeviceWithApi).apiBaseUrl
-      })
-
-      if (!deviceExists) {
-        devicesStore.devices.push(newDevice)
-        console.log('Device added to panels:', newDevice)
-      }
+      // Add the device using our enhanced store's compatibility method
+      legacyDeviceStore.addLegacyDevice(newDevice)
+      console.log('Device added to panels:', newDevice)
     }
   } catch (error) {
     console.error('Error connecting to device:', error)

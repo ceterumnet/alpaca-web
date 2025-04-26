@@ -5,7 +5,7 @@ import EnhancedPanelComponent from './EnhancedPanelComponent.vue'
 import EnhancedTelescopePanel from './EnhancedTelescopePanel.vue'
 import EnhancedCameraPanel from './EnhancedCameraPanel.vue'
 import { type Device } from '@/types/Device'
-import { useDevicesStore } from '@/stores/useDevicesStore'
+import { getLegacyDevicesAdapter } from '@/stores/deviceStoreAdapter'
 import DiscoveredDevices from './DiscoveredDevices.vue'
 import { UIMode } from '@/stores/useUIPreferencesStore'
 import { useLayoutStore, type LayoutItem } from '@/stores/useLayoutStore'
@@ -30,7 +30,8 @@ const getComponent = function (lookupBy: LayoutItem | Device) {
   return EnhancedPanelComponent
 }
 
-const deviceStore = useDevicesStore()
+// Use the adapter for compatibility with existing code
+const deviceStore = getLegacyDevicesAdapter()
 
 // Watch for changes in the devices store and update layout accordingly
 watch(
