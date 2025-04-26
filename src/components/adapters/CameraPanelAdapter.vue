@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import EnhancedCameraPanel from '../EnhancedCameraPanel.vue'
-import { useDeviceStore } from '../../stores/useDeviceStore'
+import { useLegacyDeviceStore } from '../../stores/deviceStoreAdapter'
 import BaseDeviceAdapter from './BaseDeviceAdapter.vue'
 
 const props = defineProps({
@@ -16,7 +16,7 @@ const props = defineProps({
 })
 
 const baseAdapter = ref()
-const deviceStore = useDeviceStore()
+const deviceStore = useLegacyDeviceStore()
 
 // Handle camera-specific actions
 const handleStartExposure = (exposureTime: number) => {

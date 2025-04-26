@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDeviceStore } from '../../stores/useDeviceStore'
+import { useLegacyDeviceStore } from '../../stores/deviceStoreAdapter'
 import { UIMode } from '../../stores/useUIPreferencesStore'
 
 const props = defineProps({
@@ -14,7 +14,7 @@ const props = defineProps({
   }
 })
 
-const deviceStore = useDeviceStore()
+const deviceStore = useLegacyDeviceStore()
 const currentMode = ref(UIMode.OVERVIEW)
 
 // Get the device from the store

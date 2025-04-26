@@ -2,7 +2,8 @@
 import { useRouter } from 'vue-router'
 import EnhancedSidebar from '../components/ui-examples/EnhancedSidebar.vue'
 import { useUIPreferencesStore } from '../stores/useUIPreferencesStore'
-import { useDeviceStore, type Device } from '../stores/useDeviceStore'
+import { useLegacyDeviceStore } from '../stores/deviceStoreAdapter'
+import { type Device } from '../stores/useAstroDeviceStore'
 
 defineOptions({
   name: 'DevicesView'
@@ -10,7 +11,7 @@ defineOptions({
 
 // Get stores and router
 const uiStore = useUIPreferencesStore()
-const deviceStore = useDeviceStore()
+const deviceStore = useLegacyDeviceStore()
 const router = useRouter()
 
 // Event handlers

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useDeviceStore } from '../stores/useDeviceStore'
+import { useLegacyDeviceStore } from '../stores/deviceStoreAdapter'
+import { UIMode } from '../stores/useUIPreferencesStore'
 import EnhancedTelescopePanel from '../components/EnhancedTelescopePanel.vue'
 import EnhancedCameraPanel from '../components/EnhancedCameraPanel.vue'
 import EnhancedPanelComponent from '../components/EnhancedPanelComponent.vue'
@@ -12,7 +13,7 @@ defineOptions({
 
 const route = useRoute()
 const router = useRouter()
-const deviceStore = useDeviceStore()
+const deviceStore = useLegacyDeviceStore()
 
 // Get device ID from route params
 const deviceId = computed(() => route.params.id as string)
@@ -48,10 +49,11 @@ const getPanelComponent = computed(() => {
 
 // Panel configuration
 const panelConfig = ref({
-  title: computed(() => device.value?.name || 'Device'),
+  panelName: computed(() => device.value?.name || 'Device'),
   deviceId: computed(() => device.value?.id || ''),
   deviceType: computed(() => device.value?.type || ''),
-  isConnected: computed(() => device.value?.connected || false)
+  connected: computed(() => device.value?.connected || false),
+  supportedModes: [UIMode.OVERVIEW, UIMode.DETAILED]
 })
 </script>
 
@@ -100,10 +102,11 @@ const panelConfig = ref({
       <div v-if="device.connected" class="device-panel-container">
         <component
           :is="getPanelComponent"
-          :title="panelConfig.title"
+          :panel-name="panelConfig.panelName"
           :device-id="panelConfig.deviceId"
           :device-type="panelConfig.deviceType"
-          :is-connected="panelConfig.isConnected"
+          :connected="panelConfig.connected"
+          :supported-modes="panelConfig.supportedModes"
         />
       </div>
 

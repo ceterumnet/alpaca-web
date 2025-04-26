@@ -16,6 +16,12 @@
 - ✅ Updated `MainPanels.vue` component to use the adapter approach
 - ✅ Updated `AppSidebar.vue` component to use the adapter approach
 - ✅ Updated `DiscoveryView.vue` component to use the adapter approach
+- ✅ Updated `DevicesView.vue` component to use the adapter approach
+- ✅ Updated `DeviceDetailView.vue` component to use the adapter approach
+- ✅ Updated adapter components to use the legacy device store adapter:
+  - ✅ `BaseDeviceAdapter.vue`
+  - ✅ `TelescopePanelAdapter.vue`
+  - ✅ `CameraPanelAdapter.vue`
 - ✅ Extended adapter with discovery-related methods
 
 ## Implementation Progress
@@ -35,7 +41,10 @@
 - ✅ Updated MainPanels component
 - ✅ Updated AppSidebar component
 - ✅ Updated DiscoveryView component
-- 🏃‍♂️ Working on remaining components that use device stores
+- ✅ Updated DevicesView component
+- ✅ Updated DeviceDetailView component
+- ✅ Updated adapter components
+- 🏃‍♂️ Testing all components with the adapter
 
 ### Device Discovery Integration
 
@@ -46,13 +55,15 @@
 
 ## Next Steps
 
-1. Update remaining components to use the adapter approach:
-   - [ ] DevicesView
-   - [ ] DeviceDetailView
-   - [ ] Adapter components
+1. ✅ Update remaining components to use the adapter approach:
+   - ✅ DevicesView
+   - ✅ DeviceDetailView
+   - ✅ Adapter components
 2. Test adapter implementation thoroughly
 3. Refine device type system for better type safety
 4. Document the migration approach for future reference
+5. Address type compatibility issues in EnhancedDiscoveryPanel component
+6. Create comprehensive test cases for the adapter approach
 
 ## Identified Issues
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import EnhancedTelescopePanel from '../EnhancedTelescopePanel.vue'
-import { useDeviceStore } from '../../stores/useDeviceStore'
+import { useLegacyDeviceStore } from '../../stores/deviceStoreAdapter'
 import BaseDeviceAdapter from './BaseDeviceAdapter.vue'
 
 const props = defineProps({
@@ -16,7 +16,7 @@ const props = defineProps({
 })
 
 const baseAdapter = ref()
-const deviceStore = useDeviceStore()
+const deviceStore = useLegacyDeviceStore()
 
 // Handle telescope actions
 const handleSlew = (ra: string, dec: string) => {
