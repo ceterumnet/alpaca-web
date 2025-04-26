@@ -9,23 +9,10 @@
 
 import UnifiedStore from './UnifiedStore'
 import type { Device, DeviceEvent } from './UnifiedStore'
+import type { LegacyDevice as TypedLegacyDevice } from '../types/DeviceTypes'
 
-// Legacy device interface for compatibility
-export interface LegacyDevice {
-  id: string
-  deviceName: string
-  deviceType: string
-  address?: string
-  devicePort?: number
-  isConnected?: boolean
-  status?: string
-  properties?: Record<string, unknown> | null
-  telemetry?: Record<string, unknown>
-  lastSeen?: number | string
-  firmwareVersion?: string
-  _original?: unknown // Reference to original for internal use
-  [key: string]: unknown // Allow for additional properties
-}
+// Re-export the LegacyDevice interface from our types
+export type LegacyDevice = TypedLegacyDevice
 
 // Legacy server interface
 export interface LegacyServer {
@@ -57,8 +44,8 @@ function newToLegacyDevice(device: Device): LegacyDevice {
     id: device.id,
     deviceName: device.name || device.displayName || '',
     deviceType: device.type || device.deviceType || 'unknown',
-    address: (device.ipAddress as string) || (device.address as string),
-    devicePort: (device.port as number) || (device.devicePort as number),
+    address: (device.ipAddress as string) || (device.address as string) || undefined,
+    devicePort: (device.port as number) || (device.devicePort as number) || undefined,
     isConnected: device.isConnected || false,
     status: (device.status as string) || 'idle',
     telemetry: (device.telemetry as Record<string, unknown>) || {},
@@ -70,6 +57,8 @@ function newToLegacyDevice(device: Device): LegacyDevice {
   // Only set the properties if they exist
   if (device.properties) {
     legacyDevice.properties = device.properties
+  } else {
+    legacyDevice.properties = null
   }
 
   return legacyDevice
@@ -97,10 +86,10 @@ function legacyToNewDevice(legacyDevice: LegacyDevice): Device {
   // Create a base new format device
   return {
     id: legacyDevice.id,
-    name: legacyDevice.deviceName || (legacyDevice.name as string),
-    type: legacyDevice.deviceType || (legacyDevice.type as string),
-    ipAddress: legacyDevice.address || (legacyDevice.ipAddress as string),
-    port: legacyDevice.devicePort || (legacyDevice.port as number),
+    name: legacyDevice.deviceName || (legacyDevice.name as string) || '',
+    type: legacyDevice.deviceType || (legacyDevice.type as string) || 'unknown',
+    ipAddress: legacyDevice.address || (legacyDevice.ipAddress as string) || undefined,
+    port: legacyDevice.devicePort || (legacyDevice.port as number) || undefined,
     isConnected: isConnected,
     isConnecting: legacyDevice.status === 'connecting',
     isDisconnecting: legacyDevice.status === 'disconnecting',
@@ -484,6 +473,15 @@ export {
   createLegacyDeviceArray,
   createNewDeviceArray,
   mergeDeviceUpdate
+}
+
+/**
+ * Helper function to create a new StoreAdapter instance
+ * @param existingStore Optional existing UnifiedStore instance
+ * @returns A new StoreAdapter instance
+ */
+export function createStoreAdapter(existingStore?: UnifiedStore): StoreAdapter {
+  return new StoreAdapter(existingStore)
 }
 
 // Default export for the adapter

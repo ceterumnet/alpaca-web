@@ -6,21 +6,10 @@
  * with a more maintainable and extensible architecture.
  */
 
-// Define interfaces for the store
-export interface Device {
-  id: string
-  type: string
-  name: string
-  displayName?: string
-  properties: Record<string, unknown>
-  isConnected: boolean
-  isConnecting: boolean
-  isDisconnecting: boolean
-  discoveredAt?: string
-  lastConnected?: string
-  deviceType?: string // For compatibility with older code
-  [key: string]: unknown // Allow for additional properties
-}
+import type { UnifiedDevice } from '../types/DeviceTypes'
+
+// Use the existing type definitions
+export type Device = UnifiedDevice
 
 export interface StoreOptions {
   silent?: boolean
