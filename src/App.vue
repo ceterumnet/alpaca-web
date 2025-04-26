@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // import '@primevue/themes'
 import { computed, onMounted } from 'vue'
-import MainPanels from './components/MainPanels.vue'
 import AppSidebar from './components/AppSidebar.vue'
 import { useUIPreferencesStore } from './stores/useUIPreferencesStore'
 import './assets/colors.css' // Import the CSS
+import { RouterLink } from 'vue-router'
 
 // Get stores
 const uiStore = useUIPreferencesStore()
@@ -88,6 +88,14 @@ onMounted(() => {
   console.log('Initial dark mode:', uiStore.isDarkMode)
   console.log('Has dark-theme class:', document.documentElement.classList.contains('dark-theme'))
 })
+
+// Navigation links
+const navLinks = [
+  { name: 'Home', path: '/' },
+  { name: 'Devices', path: '/devices' },
+  { name: 'Discovery', path: '/discovery' },
+  { name: 'UI Demo', path: '/ui-demo' }
+]
 </script>
 
 <template>
@@ -109,6 +117,13 @@ onMounted(() => {
             </svg>
           </div>
           <h1 class="app-title">Alpaca Web</h1>
+
+          <!-- Add navigation links -->
+          <nav class="app-nav">
+            <RouterLink v-for="link in navLinks" :key="link.path" :to="link.path">
+              {{ link.name }}
+            </RouterLink>
+          </nav>
         </div>
 
         <div class="header-right">
@@ -135,8 +150,12 @@ onMounted(() => {
       </header>
 
       <main class="main-content">
-        <!-- Main panel system -->
-        <MainPanels />
+        <!-- Router view with transition -->
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </main>
     </div>
   </div>
@@ -165,6 +184,40 @@ body {
     'Open Sans',
     'Helvetica Neue',
     sans-serif;
+}
+
+/* Add router link styles */
+.app-nav {
+  display: flex;
+  margin-left: 20px;
+}
+
+.app-nav a {
+  color: var(--aw-panel-menu-bar-color);
+  text-decoration: none;
+  margin-right: 15px;
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+
+.app-nav a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-nav a.router-link-active {
+  background-color: var(--aw-panel-resize-bg-color);
+  color: var(--aw-panel-resize-color);
+}
+
+/* Add transition styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
 
