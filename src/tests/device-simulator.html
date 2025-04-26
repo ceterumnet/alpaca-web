@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alpaca Web Device Simulator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #336699;
+      }
+      .card {
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+        background-color: #f9f9f9;
+      }
+      .device-list {
+        list-style: none;
+        padding: 0;
+      }
+      .device-item {
+        padding: 10px;
+        border: 1px solid #eee;
+        margin-bottom: 5px;
+        border-radius: 5px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .device-item.telescope {
+        background-color: #e6f2ff;
+      }
+      .device-item.camera {
+        background-color: #e6ffe6;
+      }
+      .device-item.connected {
+        border-left: 5px solid #33cc33;
+      }
+      button {
+        background-color: #336699;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #264d73;
+      }
+      .actions {
+        margin-top: 15px;
+      }
+      .log-area {
+        height: 150px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        font-family: monospace;
+        background-color: #f5f5f5;
+        margin-top: 15px;
+      }
+      .log-entry {
+        margin: 0;
+        padding: 3px 0;
+        border-bottom: 1px solid #eee;
+      }
+      .log-time {
+        color: #999;
+        margin-right: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Alpaca Web Device Simulator</h1>
+    <p>
+      This page allows you to simulate ALPACA-compatible astronomy devices for testing the Alpaca
+      Web application.
+    </p>
+
+    <div class="card">
+      <h2>Simulator Control</h2>
+      <div class="actions">
+        <button id="startSimulator">Start Simulator</button>
+        <button id="stopSimulator">Stop Simulator</button>
+        <button id="startDiscovery">Run Discovery</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Discovered Devices</h2>
+      <ul id="deviceList" class="device-list">
+        <li class="device-item">No devices discovered yet</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Device Controls</h2>
+      <div id="deviceControls">
+        <p>Select a device from the list above to control it</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Log</h2>
+      <div id="logArea" class="log-area"></div>
+    </div>
+
+    <script type="module">
+      // Import the simulator module
+      import { initializeTestingEnvironment } from './utils/runDeviceSimulator.js'
+
+      let store, adapter, simulator
+      let selectedDeviceId = null
+
+      // Initialize the simulator when the page loads
+      window.addEventListener('DOMContentLoaded', async () => {
+        logMessage('Initializing device simulator...')
+
+        try {
+          const result = await initializeTestingEnvironment()
+          store = result.store
+          adapter = result.adapter
+          simulator = result.simulator
+
+          logMessage('Device simulator initialized successfully')
+
+          // Set up event listeners
+          document.getElementById('startSimulator').addEventListener('click', startSimulator)
+          document.getElementById('stopSimulator').addEventListener('click', stopSimulator)
+          document.getElementById('startDiscovery').addEventListener('click', startDiscovery)
+
+          // Listen for device changes
+          store.addEventListener((event) => {
+            if (event.type === 'deviceAdded' || event.type === 'deviceUpdated') {
+              updateDeviceList()
+            }
+          })
+        } catch (error) {
+          logMessage(`Error initializing simulator: ${error.message}`, true)
+        }
+      })
+
+      // Start the simulator
+      function startSimulator() {
+        logMessage('Starting simulator...')
+        simulator.start()
+        updateDeviceList()
+      }
+
+      // Stop the simulator
+      function stopSimulator() {
+        logMessage('Stopping simulator...')
+        simulator.stop()
+        updateDeviceList()
+      }
+
+      // Start device discovery
+      async function startDiscovery() {
+        logMessage('Starting device discovery...')
+
+        try {
+          await store.startDiscovery()
+          logMessage('Discovery completed')
+          updateDeviceList()
+        } catch (error) {
+          logMessage(`Error during discovery: ${error.message}`, true)
+        }
+      }
+
+      // Update the device list in the UI
+      function updateDeviceList() {
+        const deviceList = document.getElementById('deviceList')
+        const devices = store.devices
+
+        if (devices.length === 0) {
+          deviceList.innerHTML = '<li class="device-item">No devices discovered</li>'
+          return
+        }
+
+        deviceList.innerHTML = ''
+
+        devices.forEach((device) => {
+          const deviceElement = document.createElement('li')
+          deviceElement.className = `device-item ${device.type}${device.isConnected ? ' connected' : ''}`
+          deviceElement.dataset.deviceId = device.id
+
+          deviceElement.innerHTML = `
+          <div>
+            <strong>${device.name}</strong> (${device.type})
+            <div>Status: ${device.isConnected ? 'Connected' : 'Disconnected'}</div>
+            <div>IP: ${device.ipAddress}:${device.port}</div>
+          </div>
+          <div>
+            ${
+              !device.isConnected
+                ? `<button class="connect-btn" data-device-id="${device.id}">Connect</button>`
+                : `<button class="disconnect-btn" data-device-id="${device.id}">Disconnect</button>`
+            }
+            <button class="details-btn" data-device-id="${device.id}">Details</button>
+          </div>
+        `
+
+          deviceList.appendChild(deviceElement)
+        })
+
+        // Add event listeners to buttons
+        document.querySelectorAll('.connect-btn').forEach((btn) => {
+          btn.addEventListener('click', async (e) => {
+            const deviceId = e.target.dataset.deviceId
+            logMessage(`Connecting to device ${deviceId}...`)
+
+            try {
+              await store.connectDevice(deviceId)
+              logMessage(`Connected to device ${deviceId}`)
+              updateDeviceList()
+              showDeviceControls(deviceId)
+            } catch (error) {
+              logMessage(`Error connecting to device: ${error.message}`, true)
+            }
+          })
+        })
+
+        document.querySelectorAll('.disconnect-btn').forEach((btn) => {
+          btn.addEventListener('click', async (e) => {
+            const deviceId = e.target.dataset.deviceId
+            logMessage(`Disconnecting from device ${deviceId}...`)
+
+            try {
+              await store.disconnectDevice(deviceId)
+              logMessage(`Disconnected from device ${deviceId}`)
+              updateDeviceList()
+
+              if (selectedDeviceId === deviceId) {
+                document.getElementById('deviceControls').innerHTML =
+                  '<p>Select a device from the list above to control it</p>'
+                selectedDeviceId = null
+              }
+            } catch (error) {
+              logMessage(`Error disconnecting from device: ${error.message}`, true)
+            }
+          })
+        })
+
+        document.querySelectorAll('.details-btn').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            const deviceId = e.target.dataset.deviceId
+            showDeviceControls(deviceId)
+          })
+        })
+      }
+
+      // Show device-specific controls
+      function showDeviceControls(deviceId) {
+        const device = store.getDeviceById(deviceId)
+        if (!device) {
+          logMessage(`Device ${deviceId} not found`, true)
+          return
+        }
+
+        selectedDeviceId = deviceId
+        const controlsDiv = document.getElementById('deviceControls')
+
+        // Basic device info
+        controlsDiv.innerHTML = `
+        <h3>${device.name}</h3>
+        <p>Type: ${device.type}</p>
+        <p>Connection: ${device.isConnected ? 'Connected' : 'Disconnected'}</p>
+      `
+
+        // Only show controls if connected
+        if (!device.isConnected) {
+          controlsDiv.innerHTML += `<p>Connect to the device to access controls</p>`
+          return
+        }
+
+        // Device-specific controls
+        if (device.type === 'telescope') {
+          controlsDiv.innerHTML += `
+          <div class="card">
+            <h4>Telescope Controls</h4>
+            <p>Current Position: RA ${device.rightAscension?.toFixed(2) || 'N/A'}, 
+                                DEC ${device.declination?.toFixed(2) || 'N/A'}</p>
+            <div>
+              <label>Right Ascension (hours):</label>
+              <input type="number" id="raInput" min="0" max="24" step="0.1" value="12">
+            </div>
+            <div>
+              <label>Declination (degrees):</label>
+              <input type="number" id="decInput" min="-90" max="90" step="0.1" value="45">
+            </div>
+            <button id="slewButton">Slew Telescope</button>
+            <button id="parkButton">Park Telescope</button>
+          </div>
+        `
+
+          // Add event listeners
+          setTimeout(() => {
+            document.getElementById('slewButton').addEventListener('click', async () => {
+              const ra = parseFloat(document.getElementById('raInput').value)
+              const dec = parseFloat(document.getElementById('decInput').value)
+
+              logMessage(`Slewing telescope to RA: ${ra}, DEC: ${dec}...`)
+
+              try {
+                await store.executeDeviceCommand(deviceId, 'slew', {
+                  rightAscension: ra,
+                  declination: dec
+                })
+                logMessage('Slew command completed')
+              } catch (error) {
+                logMessage(`Error during slew: ${error.message}`, true)
+              }
+            })
+
+            document.getElementById('parkButton').addEventListener('click', async () => {
+              logMessage('Parking telescope...')
+
+              try {
+                await store.executeDeviceCommand(deviceId, 'park', {})
+                logMessage('Park command completed')
+              } catch (error) {
+                logMessage(`Error during park: ${error.message}`, true)
+              }
+            })
+          }, 0)
+        } else if (device.type === 'camera') {
+          controlsDiv.innerHTML += `
+          <div class="card">
+            <h4>Camera Controls</h4>
+            <p>${device.isExposing ? `Exposure in progress: ${device.exposureProgress?.toFixed(1) || 0}%` : 'Camera idle'}</p>
+            <div>
+              <label>Exposure Duration (seconds):</label>
+              <input type="number" id="exposureInput" min="0.001" max="60" step="0.1" value="2">
+            </div>
+            <button id="exposureButton">Start Exposure</button>
+            <button id="abortButton" ${!device.isExposing ? 'disabled' : ''}>Abort Exposure</button>
+          </div>
+        `
+
+          // Add event listeners
+          setTimeout(() => {
+            document.getElementById('exposureButton').addEventListener('click', async () => {
+              const duration = parseFloat(document.getElementById('exposureInput').value)
+
+              logMessage(`Starting ${duration}s exposure...`)
+
+              try {
+                await store.executeDeviceCommand(deviceId, 'startExposure', { duration })
+                logMessage('Exposure completed')
+              } catch (error) {
+                logMessage(`Error during exposure: ${error.message}`, true)
+              }
+            })
+
+            document.getElementById('abortButton').addEventListener('click', async () => {
+              logMessage('Aborting exposure...')
+
+              try {
+                await store.executeDeviceCommand(deviceId, 'abortExposure', {})
+                logMessage('Exposure aborted')
+              } catch (error) {
+                logMessage(`Error aborting exposure: ${error.message}`, true)
+              }
+            })
+          }, 0)
+        }
+      }
+
+      // Add a message to the log
+      function logMessage(message, isError = false) {
+        const logArea = document.getElementById('logArea')
+        const now = new Date()
+        const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+
+        const logEntry = document.createElement('p')
+        logEntry.className = 'log-entry' + (isError ? ' error' : '')
+        logEntry.innerHTML = `<span class="log-time">${timeString}</span> ${message}`
+
+        logArea.appendChild(logEntry)
+        logArea.scrollTop = logArea.scrollHeight
+
+        if (isError) {
+          console.error(message)
+        } else {
+          console.log(message)
+        }
+      }
+    </script>
+  </body>
+</html>
