@@ -6,14 +6,23 @@ This document tracks the analysis of components for direct UnifiedStore migratio
 
 ## Component Inventory and Adapter Usage
 
-| Component                              | Adapter Methods Used                                                                                      | Dependencies                                      | Migration Priority    |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------- |
-| DiscoveryPanel.vue                     | `discoveredDevices`, `isDiscovering`, `startDiscovery`, `stopDiscovery`, `connectToDevice`                | None                                              | High (leaf component) |
-| DiscoveredDevices.vue                  | `getLegacyDevicesAdapter()`, `useLegacyDeviceStore()`, `devices`, `addLegacyDevice`                       | ManualDeviceConfig.vue                            | Medium                |
-| TelescopePanelAdapter.vue              | `useLegacyDeviceStore()`, `slewToCoordinates`, `setTelescopeTracking`, `parkTelescope`, `unparkTelescope` | BaseDeviceAdapter.vue, EnhancedTelescopePanel.vue | Medium                |
-| CameraPanelAdapter.vue                 | Similar to TelescopePanelAdapter                                                                          | BaseDeviceAdapter.vue, EnhancedCameraPanel.vue    | Medium                |
-| BaseDeviceAdapter.vue                  | Likely uses core adapter methods                                                                          | None                                              | High                  |
-| _Additional components to be analyzed_ |                                                                                                           |                                                   |                       |
+| Component                          | Adapter Methods Used                                                                                      | Dependencies                                                  | Migration Priority    |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------- |
+| DiscoveryPanel.vue                 | `discoveredDevices`, `isDiscovering`, `startDiscovery`, `stopDiscovery`, `connectToDevice`                | None                                                          | High (leaf component) |
+| DiscoveredDevices.vue              | `getLegacyDevicesAdapter()`, `useLegacyDeviceStore()`, `devices`, `addLegacyDevice`                       | ManualDeviceConfig.vue                                        | Medium                |
+| TelescopePanelAdapter.vue          | `useLegacyDeviceStore()`, `slewToCoordinates`, `setTelescopeTracking`, `parkTelescope`, `unparkTelescope` | BaseDeviceAdapter.vue, EnhancedTelescopePanel.vue             | Medium                |
+| CameraPanelAdapter.vue             | Similar to TelescopePanelAdapter                                                                          | BaseDeviceAdapter.vue, EnhancedCameraPanel.vue                | Medium                |
+| BaseDeviceAdapter.vue              | `useLegacyDeviceStore()`, `getDeviceById`, `toggleDeviceConnection`                                       | None                                                          | High (leaf component) |
+| MainPanels.vue                     | `getLegacyDevicesAdapter()`, `devices`                                                                    | EnhancedPanelComponent, DiscoveredDevices, adapter components | Medium                |
+| AppSidebar.vue                     | `getLegacyDevicesAdapter()`, `devices`                                                                    | None                                                          | High (leaf component) |
+| EnhancedPanelComponent.vue         | No direct adapter usage                                                                                   | None                                                          | High (UI component)   |
+| ManualDeviceConfig.vue             | Uses `useDiscoveredDevicesStore()` directly, no adapter                                                   | None                                                          | Low (legacy store)    |
+| DiscoveryView.vue                  | `useLegacyDeviceStore()`, discovery methods                                                               | DiscoveryPanel.vue                                            | Medium                |
+| DevicesView.vue                    | `useLegacyDeviceStore()`, device listing methods                                                          | DiscoveredDevices.vue                                         | Medium                |
+| DeviceDetailView.vue               | `useLegacyDeviceStore()`, `getDeviceById`, `toggleDeviceConnection`                                       | EnhancedTelescopePanel, EnhancedCameraPanel                   | Low (complex)         |
+| EnhancedTelescopePanel.vue         | Likely receives device from adapter components                                                            | None                                                          | Medium                |
+| EnhancedCameraPanel.vue            | Likely receives device from adapter components                                                            | None                                                          | Medium                |
+| _Additional components to analyze_ |                                                                                                           |                                                               |                       |
 
 ## Dependency Map
 
@@ -25,6 +34,7 @@ Views
 │   └── DiscoveryPanel.vue (uses adapter directly)
 ├── DevicesView.vue
 │   └── DiscoveredDevices.vue (uses adapter via helper functions)
+│       └── ManualDeviceConfig.vue (uses legacy store directly)
 └── DeviceDetailView.vue
     ├── TelescopePanelAdapter.vue
     │   ├── BaseDeviceAdapter.vue
@@ -32,12 +42,23 @@ Views
     └── CameraPanelAdapter.vue
         ├── BaseDeviceAdapter.vue
         └── EnhancedCameraPanel.vue
+
+Additional Components
+├── MainPanels.vue (uses adapter and manages panel layout)
+│   ├── DiscoveredDevices.vue
+│   ├── EnhancedPanelComponent.vue
+│   ├── EnhancedTelescopePanel.vue
+│   └── EnhancedCameraPanel.vue
+└── AppSidebar.vue (uses adapter for device listing)
 ```
 
 ### Store Dependency Chain
 
 ```
 Component → StoreAdapter → UnifiedStore
+
+Alternative Legacy Path:
+Some Components → Legacy Stores → No Type Safety
 ```
 
 ## Migration Order
@@ -46,16 +67,31 @@ Component → StoreAdapter → UnifiedStore
 
 - DiscoveryPanel.vue - Simple component with direct adapter usage
 - BaseDeviceAdapter.vue - Common adapter component used by other adapter components
+- AppSidebar.vue - Sidebar with minimal dependencies that uses the adapter
+- EnhancedPanelComponent.vue - UI component with no direct adapter usage
 
-### Batch 2: Intermediate Components
+### Batch 2: Intermediate UI Components
 
 - TelescopePanelAdapter.vue - Depends on BaseDeviceAdapter
 - CameraPanelAdapter.vue - Depends on BaseDeviceAdapter
+- EnhancedTelescopePanel.vue - Panel component used by adapter
+- EnhancedCameraPanel.vue - Panel component used by adapter
+
+### Batch 3: Composition Components
+
 - DiscoveredDevices.vue - Uses adapter helper functions
+- MainPanels.vue - Depends on multiple components and uses adapter
 
-### Batch 3: Core Components (Highest Dependencies)
+### Batch 4: View Components
 
-_Components that many other components depend on - to be determined upon further analysis_
+- DiscoveryView.vue - View component that integrates discovery panels
+- DevicesView.vue - View component that integrates device panels
+- DeviceDetailView.vue - Complex view with multiple dependencies
+
+### Batch 5: Legacy Components
+
+- ManualDeviceConfig.vue - Uses legacy store directly
+- Any remaining components with legacy store usage
 
 ## API Mapping
 
@@ -77,6 +113,7 @@ _Components that many other components depend on - to be determined upon further
 | `setTelescopeTracking`      | `executeDeviceCommand`                              | Device-specific command execution                                      |
 | `parkTelescope`             | `executeDeviceCommand`                              | Device-specific command execution                                      |
 | `unparkTelescope`           | `executeDeviceCommand`                              | Device-specific command execution                                      |
+| `toggleDeviceConnection`    | `isConnected ? disconnectDevice : connectDevice`    | Combined method vs. separate methods                                   |
 
 ## Event Handling Changes
 
@@ -93,6 +130,54 @@ store.addEventListener((event) => {
     // Handle discovered device
   }
 })
+```
+
+## Common Component Migration Patterns
+
+### 1. Store Initialization
+
+```typescript
+// Before - Adapter pattern
+import { useLegacyDeviceStore } from '@/stores/deviceStoreAdapter'
+const deviceStore = useLegacyDeviceStore()
+
+// After - Direct UnifiedStore usage
+import UnifiedStore from '@/stores/UnifiedStore'
+const store = new UnifiedStore()
+```
+
+### 2. Device Listing
+
+```typescript
+// Before - Adapter pattern
+const devices = computed(() => deviceStore.devices)
+
+// After - Direct UnifiedStore usage
+const devices = computed(() => store.devices)
+```
+
+### 3. Device Identification
+
+```typescript
+// Before - Adapter pattern
+const device = computed(() => deviceStore.getDeviceById(deviceId))
+
+// After - Direct UnifiedStore usage
+const device = computed(() => store.getDeviceById(deviceId))
+```
+
+### 4. Device Connection
+
+```typescript
+// Before - Adapter pattern
+deviceStore.toggleDeviceConnection(deviceId)
+
+// After - Direct UnifiedStore usage
+if (store.getDeviceById(deviceId)?.isConnected) {
+  store.disconnectDevice(deviceId)
+} else {
+  store.connectDevice(deviceId)
+}
 ```
 
 ## Sample Migration
@@ -153,23 +238,25 @@ onMounted(() => {
 
 | Component                  | Analysis Complete | Migration Complete | Tests Updated | Verified |
 | -------------------------- | ----------------- | ------------------ | ------------- | -------- |
-| DiscoveryPanel.vue         | ✅                |                    |               |          |
+| DiscoveryPanel.vue         | ✅                | ✅                 | ✅            |          |
 | DiscoveredDevices.vue      | ✅                |                    |               |          |
 | TelescopePanelAdapter.vue  | ✅                |                    |               |          |
-| CameraPanelAdapter.vue     |                   |                    |               |          |
-| BaseDeviceAdapter.vue      |                   |                    |               |          |
-| EnhancedTelescopePanel.vue |                   |                    |               |          |
-| EnhancedCameraPanel.vue    |                   |                    |               |          |
-| MainPanels.vue             |                   |                    |               |          |
-| AppSidebar.vue             |                   |                    |               |          |
-| DiscoveryView.vue          |                   |                    |               |          |
-| DevicesView.vue            |                   |                    |               |          |
-| DeviceDetailView.vue       |                   |                    |               |          |
+| CameraPanelAdapter.vue     | ✅                |                    |               |          |
+| BaseDeviceAdapter.vue      | ✅                |                    |               |          |
+| MainPanels.vue             | ✅                |                    |               |          |
+| AppSidebar.vue             | ✅                |                    |               |          |
+| EnhancedPanelComponent.vue | ✅                |                    |               |          |
+| ManualDeviceConfig.vue     | ✅                |                    |               |          |
+| DiscoveryView.vue          | ✅                |                    |               |          |
+| DevicesView.vue            | ✅                |                    |               |          |
+| DeviceDetailView.vue       | ✅                |                    |               |          |
+| EnhancedTelescopePanel.vue | ✅                |                    |               |          |
+| EnhancedCameraPanel.vue    | ✅                |                    |               |          |
 
 ## Next Steps
 
-1. Complete component inventory by analyzing remaining components
-2. Expand analysis of adapter method usage patterns
-3. Complete a detailed dependency map
-4. Select DiscoveryPanel.vue as our first proof-of-concept migration
-5. Create test plan for validating the migration
+1. Create detailed migration schedule for Batch 1 components
+2. Estimate effort for each component migration
+3. Set up tracking system to monitor migration progress
+4. Update test infrastructure to support new component testing approach
+5. Create sample test cases for all component types
