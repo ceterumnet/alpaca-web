@@ -394,19 +394,24 @@ class UnifiedStore {
    * @param event - Event name
    * @param listener - Event listener
    */
-  on(event: string, listener: (...args: any[]) => void): void {
+  on(event: string, listener: (...args: unknown[]) => void): void {
     this.addEventListener((deviceEvent) => {
       if (deviceEvent.type === event) {
         // Map the event to the expected args format
         switch (event) {
           case 'deviceAdded':
-            listener((deviceEvent as any).device)
+            listener((deviceEvent as { type: 'deviceAdded'; device: Device }).device)
             break
           case 'deviceRemoved':
-            listener((deviceEvent as any).deviceId)
+            listener((deviceEvent as { type: 'deviceRemoved'; deviceId: string }).deviceId)
             break
           case 'deviceUpdated':
-            listener((deviceEvent as any).deviceId, (deviceEvent as any).updates)
+            listener(
+              (deviceEvent as { type: 'deviceUpdated'; deviceId: string; updates: Partial<Device> })
+                .deviceId,
+              (deviceEvent as { type: 'deviceUpdated'; deviceId: string; updates: Partial<Device> })
+                .updates
+            )
             break
           default:
             listener()
@@ -421,9 +426,12 @@ class UnifiedStore {
    * @param event - Event name
    * @param listener - Listener to remove
    */
-  off(event: string, listener: (...args: any[]) => void): void {
+  off(event: string, listener: (...args: unknown[]) => void): void {
     // This is a simplified version that doesn't exactly remove the specific listener
     // In a real implementation, you'd need to track the wrappers
+    // These parameters are intentionally unused in this implementation
+    void event
+    void listener
   }
 
   /**
@@ -431,16 +439,20 @@ class UnifiedStore {
    * @param event - Event name
    * @param args - Event arguments
    */
-  emit(event: string, ...args: any[]): void {
+  emit(event: string, ...args: unknown[]): void {
     switch (event) {
       case 'deviceAdded':
-        this._emitEvent({ type: 'deviceAdded', device: args[0] })
+        this._emitEvent({ type: 'deviceAdded', device: args[0] as Device })
         break
       case 'deviceRemoved':
-        this._emitEvent({ type: 'deviceRemoved', deviceId: args[0] })
+        this._emitEvent({ type: 'deviceRemoved', deviceId: args[0] as string })
         break
       case 'deviceUpdated':
-        this._emitEvent({ type: 'deviceUpdated', deviceId: args[0], updates: args[1] })
+        this._emitEvent({
+          type: 'deviceUpdated',
+          deviceId: args[0] as string,
+          updates: args[1] as Partial<Device>
+        })
         break
       case 'discoveryStarted':
         this._emitEvent({ type: 'discoveryStarted' })

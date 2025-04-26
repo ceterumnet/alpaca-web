@@ -8,21 +8,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach, type MockInstance } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import UnifiedStore from '../../stores/UnifiedStore'
-import StoreAdapter from '../../stores/StoreAdapter'
+import StoreAdapter, { createStoreAdapter } from '../../stores/StoreAdapter'
 import type { TelescopeDevice, CameraDevice } from '../../types/DeviceTypes'
 import { isTelescope, isCamera } from '../../types/DeviceTypes'
-// Remove imports that can't be found
-// import DiscoveryPanel from '@/components/DiscoveryPanel.vue'
-// import { createUnifiedStore } from '@/store/unified-store'
-// import { createStoreAdapter } from '@/stores/StoreAdapter'
-
-// Create mock UI components
-const DiscoveryPanel = {
-  name: 'DiscoveryPanel',
-  props: ['store'],
-  template: '<div class="discovery-panel"><slot></slot></div>',
-  emits: ['discover', 'add-device', 'connect-device']
-}
+import DiscoveryPanel from '../../components/DiscoveryPanel.vue'
 
 // Simulate real components with the adapter pattern
 describe('Discovery and Connection Integration Tests', () => {
@@ -70,7 +59,7 @@ describe('Discovery and Connection Integration Tests', () => {
   beforeEach(() => {
     // Initialize store and adapter
     store = new UnifiedStore()
-    adapter = new StoreAdapter(store)
+    adapter = createStoreAdapter(store)
     mockDevices = []
 
     // Setup spies
@@ -84,7 +73,7 @@ describe('Discovery and Connection Integration Tests', () => {
       return true
     })
 
-    // Mount the discovery panel component
+    // Mount the discovery panel component with the real component
     discoveryPanel = mount(DiscoveryPanel, {
       props: {
         store: adapter
@@ -99,19 +88,34 @@ describe('Discovery and Connection Integration Tests', () => {
 
   describe('Device Discovery Flow', () => {
     it('should start and stop discovery through the adapter', async () => {
-      // Trigger discovery start
-      discoveryPanel.vm.$emit('discover', true)
+      // Verify initial state
+      expect(store.isDiscovering).toBe(false)
+
+      // Trigger discovery start by clicking the button in the component
+      await discoveryPanel.find('.discover-button').trigger('click')
+
+      // Wait for reactive updates
+      await flushPromises()
 
       // Verify startDiscovery was called on the store
       expect(discoveryStartSpy).toHaveBeenCalledTimes(1)
       expect(store.isDiscovering).toBe(true)
 
-      // Stop discovery
-      discoveryPanel.vm.$emit('discover', false)
+      // Now the button should show Stop Discovery
+      expect(discoveryPanel.find('.discover-button').text()).toContain('Stop Discovery')
+
+      // Click again to stop discovery
+      await discoveryPanel.find('.discover-button').trigger('click')
+
+      // Wait for reactive updates
+      await flushPromises()
 
       // Verify stopDiscovery was called on the store
       expect(discoveryStopSpy).toHaveBeenCalledTimes(1)
       expect(store.isDiscovering).toBe(false)
+
+      // Button should show Start Discovery again
+      expect(discoveryPanel.find('.discover-button').text()).toContain('Start Discovery')
     })
 
     it('should properly handle discovered devices', async () => {

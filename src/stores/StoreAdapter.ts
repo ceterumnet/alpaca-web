@@ -359,6 +359,13 @@ export class StoreAdapter {
   }
 
   /**
+   * Get discovery status (legacy API)
+   */
+  get isDiscovering(): boolean {
+    return this.store.isDiscovering
+  }
+
+  /**
    * Start device discovery (legacy API)
    */
   startDiscovery(): boolean {
