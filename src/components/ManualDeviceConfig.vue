@@ -131,18 +131,19 @@ async function addManualDevice() {
 }
 
 .add-btn {
-  padding: 0.5rem 1rem;
-  background-color: var(--aw-panel-menu-bar-bg-color);
-  color: var(--aw-text-color);
+  padding: 8px 16px;
+  background-color: var(--aw-panel-resize-bg-color);
+  color: var(--aw-panel-resize-color);
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  width: 100%;
 }
 
-.add-btn:hover {
-  background-color: var(--aw-panel-menu-bar-color);
-  color: var(--aw-panel-menu-bar-bg-color);
+.add-btn:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 .add-btn:disabled {

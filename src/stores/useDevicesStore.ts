@@ -6,10 +6,7 @@ import { Camera } from '@/types/Camera'
 
 // import '@/types/Device'
 export const useDevicesStore = defineStore('devices', () => {
-  // state: () => ({
-  //   devices: Array<Device>
-  // }),
-
+  // Initialize with an empty array
   const devices = ref<Device[]>([])
   const connectedDevices = computed(() => devices.value.filter((device) => device.connected))
   const telescopes = computed(() => devices.value.filter((device) => device instanceof Telescope))

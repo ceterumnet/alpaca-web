@@ -269,14 +269,16 @@ watch(
       </div>
     </div>
 
-    <div v-else-if="discoveredAlpacaDevices.length === 0" class="empty-state">
+    <div v-else-if="discoveredDevicesStore.devices.length === 0" class="empty-state">
       <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" opacity="0.5">
         <path
           d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
         />
       </svg>
-      <p>No Alpaca devices found</p>
-      <button class="retry-btn" @click="discoveredDevicesStore.discoverDevices()">Try Again</button>
+      <p>No Alpaca devices found. Click Discover to search for devices.</p>
+      <button class="retry-btn" @click="discoveredDevicesStore.discoverDevices()">
+        Discover Devices
+      </button>
     </div>
 
     <div v-else-if="availableDevices.length === 0" class="empty-state">
@@ -284,6 +286,9 @@ watch(
         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
       </svg>
       <p>All discovered devices have been added</p>
+      <button class="retry-btn" @click="discoveredDevicesStore.discoverDevices()">
+        Scan Again
+      </button>
     </div>
 
     <div v-else class="devices-grid">
@@ -315,17 +320,25 @@ watch(
               fill="currentColor"
             />
           </svg>
+          <svg v-else viewBox="0 0 24 24" width="24" height="24">
+            <path
+              d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"
+              fill="currentColor"
+            />
+          </svg>
         </div>
 
         <div class="device-info">
           <div class="device-name">
-            {{ device.deviceName }}
+            {{ device.deviceName || 'Unknown Device' }}
             <span v-if="device.isManualEntry" class="manual-badge">Manual</span>
           </div>
           <div class="device-details">
-            <div class="manufacturer">{{ device.manufacturer }}</div>
-            <div class="server-info">{{ device.serverName }}</div>
-            <div class="address-info">{{ device.serverAddress }}:{{ device.serverPort }}</div>
+            <div class="manufacturer">{{ device.manufacturer || 'Unknown Manufacturer' }}</div>
+            <div class="server-info">{{ device.serverName || 'Unknown Server' }}</div>
+            <div class="address-info">
+              {{ device.serverAddress || device.address }}:{{ device.serverPort || device.port }}
+            </div>
           </div>
         </div>
 

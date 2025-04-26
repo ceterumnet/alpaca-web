@@ -17,7 +17,7 @@ export const useDiscoveredDevicesStore = defineStore('discoveredDevices', () => 
 
   async function discoverDevices() {
     isDiscovering.value = true
-
+    console.log('Discovering devices...')
     try {
       // Trigger a discovery scan
       await axios.post('/discovery/scan')

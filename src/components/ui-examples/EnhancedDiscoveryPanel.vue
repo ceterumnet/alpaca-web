@@ -160,7 +160,7 @@ const startDiscovery = () => {
     <!-- Header -->
     <div class="panel-header">
       <div class="header-left">
-        <h2>Device Discovery</h2>
+        <h2>Example: Device Discovery</h2>
         <div class="discovery-stats">
           <div class="stat-item">
             <span class="stat-label">Servers:</span>

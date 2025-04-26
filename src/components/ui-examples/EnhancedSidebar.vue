@@ -143,7 +143,7 @@ const toggleFavorite = (device: Device) => {
     <!-- Sidebar Header -->
     <div class="sidebar-header">
       <div v-if="isExpanded" class="sidebar-title">
-        <h2>AlpacaWeb</h2>
+        <h2>Example: AlpacaWeb</h2>
       </div>
       <button class="sidebar-toggle" @click="toggleExpanded">
         <span v-if="isExpanded" class="icon-chevron-left" aria-hidden="true"></span>
