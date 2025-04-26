@@ -5,7 +5,7 @@ import EnhancedDiscoveryPanel from '../components/ui-examples/EnhancedDiscoveryP
 import ToastNotification from '../components/ui/ToastNotification.vue'
 import {
   useLegacyDeviceStore,
-  type DiscoveredDevice,
+  type UIDiscoveredDevice,
   type ServerData
 } from '../stores/deviceStoreAdapter'
 
@@ -47,7 +47,7 @@ const handleDiscover = () => {
   }
 }
 
-const handleConnectDevice = (device: DiscoveredDevice) => {
+const handleConnectDevice = (device: UIDiscoveredDevice) => {
   // Add discovered device to managed devices
   const managedDevice = deviceStore.addDiscoveredDeviceToManaged(device.id)
 

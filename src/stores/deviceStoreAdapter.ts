@@ -4,14 +4,25 @@
  * with the new store with minimal changes.
  */
 
-import { useAstroDeviceStore, type Device, type BaseDevice } from './useAstroDeviceStore'
+import {
+  useAstroDeviceStore,
+  type Device,
+  type BaseDevice,
+  type DiscoveredDevice as AstroDiscoveredDevice
+} from './useAstroDeviceStore'
 import { DeviceFactory as LegacyDeviceFactory, Device as LegacyDevice } from '@/types/Device'
 import { Telescope as LegacyTelescope } from '@/types/Telescope'
 import { Camera as LegacyCamera } from '@/types/Camera'
 import { type DiscoveredDevice, type ServerData, type Server } from './useDeviceStore'
 
 // Re-export needed types
-export { type DiscoveredDevice, type ServerData, type Server }
+export { type ServerData, type Server }
+
+// Define a new type for the UI-friendly discovered device
+export interface UIDiscoveredDevice extends Omit<DiscoveredDevice, 'isAdded'> {
+  isAdded: boolean // Make isAdded required and boolean
+  capabilities: string[] // Make capabilities required
+}
 
 /**
  * Extended Device interface with apiBaseUrl property
@@ -99,6 +110,21 @@ export function createLegacyDevice(
 }
 
 /**
+ * Adapter function to ensure discovered devices meet the expected interface in UI components
+ */
+function adaptDiscoveredDevices(devices: AstroDiscoveredDevice[]): UIDiscoveredDevice[] {
+  return devices.map((device) => ({
+    ...device,
+    isAdded: device.isAdded === true, // Ensure isAdded is a boolean, not undefined
+    capabilities: device.capabilities || [],
+    // Ensure these properties exist with default values if needed
+    name: device.name || `${device.type || 'Unknown'} ${device.number || 0}`,
+    type: device.type || 'unknown',
+    number: device.number || 0
+  })) as UIDiscoveredDevice[]
+}
+
+/**
  * Legacy-compatible version of the device store
  * This wraps the new store but presents it with the legacy interface
  */
@@ -134,12 +160,12 @@ export function useLegacyDeviceStore() {
       astroStore.addDevice(newDevice)
     },
 
-    // Ensure we have access to discovery-related properties and methods
+    // Ensure we have access to discovery-related properties and methods with correct types
     get servers() {
       return astroStore.servers
     },
-    get discoveredDevices() {
-      return astroStore.discoveredDevices
+    get discoveredDevices(): UIDiscoveredDevice[] {
+      return adaptDiscoveredDevices(astroStore.discoveredDevices)
     },
     get isDiscovering() {
       return astroStore.isDiscovering
@@ -167,9 +193,9 @@ export function getLegacyDevicesAdapter() {
     telescopes: astroStore.legacyTelescopes,
     cameras: astroStore.legacyCameras,
 
-    // Discovery-related properties
+    // Discovery-related properties with correct types
     servers: astroStore.servers,
-    discoveredDevices: astroStore.discoveredDevices,
+    discoveredDevices: adaptDiscoveredDevices(astroStore.discoveredDevices),
     isDiscovering: astroStore.isDiscovering,
     lastDiscoveryTime: astroStore.lastDiscoveryTime,
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import type { PropType } from 'vue'
 import { Lightning, Settings } from './icons'
 
 // Type definitions
@@ -41,7 +42,7 @@ const props = defineProps({
     default: false
   },
   lastDiscoveryTime: {
-    type: Date,
+    type: [Date, null] as PropType<Date | null>,
     default: null
   }
 })
