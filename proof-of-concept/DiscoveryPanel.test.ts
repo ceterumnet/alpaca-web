@@ -9,8 +9,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import DiscoveryPanel from './DiscoveryPanel.vue'
-import UnifiedStore from '../../stores/UnifiedStore'
-import type { Device } from '../../types/DeviceTypes'
+import UnifiedStore from './UnifiedStore'
+import type { Device } from './UnifiedStore'
 
 describe('DiscoveryPanel.vue (Direct Store)', () => {
   let store: UnifiedStore
@@ -117,8 +117,11 @@ describe('DiscoveryPanel.vue (Direct Store)', () => {
     expect(store.startDiscovery).toHaveBeenCalled()
     expect(store.stopDiscovery).not.toHaveBeenCalled()
 
-    // Set discovery to active
+    // Manually change the isDiscovering state and force a computed property update
     store.isDiscovering = true
+
+    // Force the wrapper to update
+    await wrapper.vm.$forceUpdate()
     await wrapper.vm.$nextTick()
 
     // Button text should change

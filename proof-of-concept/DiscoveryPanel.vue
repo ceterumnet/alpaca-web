@@ -41,8 +41,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PropType } from 'vue'
-import UnifiedStore from '../../stores/UnifiedStore'
-import type { Device } from '../../types/DeviceTypes'
+import UnifiedStore from './UnifiedStore'
+import type { Device } from './UnifiedStore'
 
 // Props
 const props = defineProps({
