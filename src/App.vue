@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // import '@primevue/themes'
 import { computed, onMounted } from 'vue'
-import AppSidebar from './components/AppSidebar.vue'
 import { useUIPreferencesStore } from './stores/useUIPreferencesStore'
 import './assets/colors.css' // Import the CSS
 import { RouterLink } from 'vue-router'
@@ -99,15 +98,8 @@ const navLinks = [
 </script>
 
 <template>
-  <div
-    class="app-container"
-    :class="{ 'sidebar-expanded': uiStore.isSidebarVisible }"
-    :style="themeStyles"
-  >
-    <!-- Sidebar for navigation -->
-    <AppSidebar />
-
-    <!-- Main content area -->
+  <div class="app-container" :style="themeStyles">
+    <!-- Main content area without sidebar -->
     <div class="app-content">
       <header class="app-header">
         <div class="header-left">
@@ -118,7 +110,7 @@ const navLinks = [
           </div>
           <h1 class="app-title">Alpaca Web</h1>
 
-          <!-- Add navigation links -->
+          <!-- Navigation links -->
           <nav class="app-nav">
             <RouterLink v-for="link in navLinks" :key="link.path" :to="link.path">
               {{ link.name }}
@@ -164,8 +156,6 @@ const navLinks = [
 <style>
 /* Global styles */
 :root {
-  --sidebar-width: 240px;
-  --sidebar-collapsed-width: 54px;
   --header-height: 60px;
 }
 
@@ -233,16 +223,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: var(--sidebar-collapsed-width);
-  width: calc(100% - var(--sidebar-collapsed-width));
-  transition:
-    margin-left 0.3s ease,
-    width 0.3s ease;
-}
-
-.sidebar-expanded .app-content {
-  margin-left: var(--sidebar-width);
-  width: calc(100% - var(--sidebar-width));
+  width: 100%;
 }
 
 .app-header {
@@ -254,17 +235,6 @@ body {
   background-color: var(--aw-panel-bg-color);
   border-bottom: 1px solid var(--aw-panel-border-color);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.theme-test-box {
-  margin: 10px 20px;
-  padding: 15px;
-  text-align: center;
-  background-color: var(--aw-panel-menu-bar-bg-color);
-  color: var(--aw-panel-menu-bar-color);
-  border: 2px solid var(--aw-panel-border-color);
-  border-radius: 4px;
-  font-weight: bold;
 }
 
 .header-left,
@@ -313,7 +283,7 @@ body {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 0;
   background-color: var(--aw-panels-bg-color);
 }
 </style>

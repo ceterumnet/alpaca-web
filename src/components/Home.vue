@@ -60,7 +60,9 @@ const navigateTo = (route: string) => {
 
     <div class="panels-section">
       <h2>Device Control Panels</h2>
-      <MainPanels />
+      <div class="panels-container">
+        <MainPanels />
+      </div>
     </div>
   </div>
 </template>
@@ -155,5 +157,13 @@ const navigateTo = (route: string) => {
   font-size: 1.6rem;
   color: var(--aw-panel-content-color);
   margin-bottom: 20px;
+}
+
+.panels-container {
+  height: 500px; /* Adjust height as needed */
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--aw-panel-bg-color);
 }
 </style>
