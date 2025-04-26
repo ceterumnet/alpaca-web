@@ -403,6 +403,18 @@ export class StoreAdapter {
   }
 
   /**
+   * Update a device with new data (legacy API)
+   * @param deviceId - ID of the device to update
+   * @param updates - Object containing updates to apply to the device
+   * @returns Success status
+   */
+  updateDevice(deviceId: string, updates: Record<string, unknown>): boolean {
+    // Transform legacy update format to new format
+    const transformedUpdates = transformPropertyUpdate(updates)
+    return this.store.updateDevice(deviceId, transformedUpdates as Partial<Device>)
+  }
+
+  /**
    * Get a device by ID (legacy API)
    */
   getDeviceById(deviceId: string): LegacyDevice | null {

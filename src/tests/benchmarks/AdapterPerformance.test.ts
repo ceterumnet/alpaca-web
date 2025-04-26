@@ -6,11 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { shallowMount, VueWrapper } from '@vue/test-utils'
 import { defineComponent, h, computed, nextTick } from 'vue'
 import UnifiedStore from '../../stores/UnifiedStore'
 import { createStoreAdapter, type StoreAdapter } from '../../stores/StoreAdapter'
-import type { Device } from '../../types/DeviceTypes'
 
 // Helper function to measure execution time
 function measureTime(callback: () => void): number {
@@ -60,14 +59,6 @@ function generateTestDevices(count: number) {
 }
 
 // Types for component prop interfaces
-interface LegacyDeviceRecord {
-  id: string
-  deviceName: string
-  deviceType: string
-  isConnected: boolean
-  [key: string]: unknown
-}
-
 interface DeviceRecord {
   id: string
   name: string
@@ -88,15 +79,9 @@ const AdapterComponent = defineComponent({
   setup(props: { adapter: StoreAdapter }) {
     const devices = computed(() => props.adapter.discoveredDevices)
     const deviceCount = computed(() => devices.value.length)
-    const telescopes = computed(() =>
-      devices.value.filter((d: LegacyDeviceRecord) => d.deviceType === 'telescope')
-    )
-    const cameras = computed(() =>
-      devices.value.filter((d: LegacyDeviceRecord) => d.deviceType === 'camera')
-    )
-    const connectedDevices = computed(() =>
-      devices.value.filter((d: LegacyDeviceRecord) => d.isConnected)
-    )
+    const telescopes = computed(() => devices.value.filter((d) => d.deviceType === 'telescope'))
+    const cameras = computed(() => devices.value.filter((d) => d.deviceType === 'camera'))
+    const connectedDevices = computed(() => devices.value.filter((d) => d.isConnected))
 
     return () =>
       h('div', [
@@ -106,7 +91,7 @@ const AdapterComponent = defineComponent({
         h('div', { class: 'connected-count' }, `Connected: ${connectedDevices.value.length}`),
         h(
           'ul',
-          devices.value.map((device: LegacyDeviceRecord) =>
+          devices.value.map((device) =>
             h('li', { key: device.id, class: 'device-item' }, [
               h('span', device.deviceName),
               h('span', device.deviceType),
@@ -316,7 +301,8 @@ describe('Adapter Performance Benchmarks', () => {
       let adapterEvents = 0
       let directEvents = 0
 
-      adapter.on('deviceAdded', () => {
+      // Use the correct event name for the adapter - 'discovery' instead of 'deviceAdded'
+      adapter.on('discovery', () => {
         adapterEvents++
       })
 
@@ -344,6 +330,10 @@ describe('Adapter Performance Benchmarks', () => {
 
       // Reset store
       store = new UnifiedStore()
+
+      // Save adapter event count before resetting
+      const finalAdapterEvents = adapterEvents
+
       adapterEvents = 0
       directEvents = 0
 
@@ -363,7 +353,8 @@ describe('Adapter Performance Benchmarks', () => {
       console.log(
         `Event handling performance - Adapter: ${adapterTime.toFixed(2)}ms, Direct: ${directTime.toFixed(2)}ms`
       )
-      expect(adapterEvents).toBe(testDevices.length)
+
+      expect(finalAdapterEvents).toBe(testDevices.length)
       expect(directEvents).toBe(testDevices.length)
       expect(adapterTime).toBeGreaterThan(directTime)
     })
@@ -425,7 +416,7 @@ describe('Adapter Performance Benchmarks', () => {
       })
 
       // Measure render time for adapter component
-      let adapterComponent: any
+      let adapterComponent: VueWrapper
       const adapterRenderTime = measureTime(() => {
         adapterComponent = shallowMount(AdapterComponent, {
           props: {
@@ -435,10 +426,10 @@ describe('Adapter Performance Benchmarks', () => {
       })
 
       // Cleanup
-      adapterComponent.unmount()
+      adapterComponent!.unmount()
 
       // Measure render time for direct component
-      let directComponent: any
+      let directComponent: VueWrapper
       const directRenderTime = measureTime(() => {
         directComponent = shallowMount(DirectComponent, {
           props: {
@@ -448,7 +439,7 @@ describe('Adapter Performance Benchmarks', () => {
       })
 
       // Cleanup
-      directComponent.unmount()
+      directComponent!.unmount()
 
       console.log(
         `Initial render - Adapter: ${adapterRenderTime.toFixed(2)}ms, Direct: ${directRenderTime.toFixed(2)}ms`
@@ -470,7 +461,7 @@ describe('Adapter Performance Benchmarks', () => {
         // Update all devices
         for (let i = 0; i < 10; i++) {
           // Limit to 10 updates for faster benchmarking
-          adapter.updateDevice?.(`device-${i}`, {
+          adapter.updateDevice(`device-${i}`, {
             isConnected: !adapter.getDeviceById(`device-${i}`)?.isConnected
           })
         }

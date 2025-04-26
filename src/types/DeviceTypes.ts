@@ -38,6 +38,11 @@ export interface UnifiedDevice extends BaseDevice {
 }
 
 /**
+ * Standard Device type for use throughout the application
+ */
+export type Device = UnifiedDevice
+
+/**
  * Legacy device interface for backward compatibility
  */
 export interface LegacyDevice {
