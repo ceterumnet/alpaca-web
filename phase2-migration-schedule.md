@@ -197,12 +197,12 @@ Migration Steps:
 
 ## Migration Tracking
 
-| Component                  | Assignee | Start Date   | Target Completion | Status         | Blockers                         |
-| -------------------------- | -------- | ------------ | ----------------- | -------------- | -------------------------------- |
-| DiscoveryPanel.vue         | David    | May 1, 2023  | May 3, 2023       | ✅ Complete    | None                             |
-| BaseDeviceAdapter.vue      | Marcus   | May 15, 2023 | May 18, 2023      | 🏃‍♂️ In Progress | None                             |
-| AppSidebar.vue             | Elena    | May 18, 2023 | May 22, 2023      | ⏳ Pending     | BaseDeviceAdapter.vue completion |
-| EnhancedPanelComponent.vue | David    | May 22, 2023 | May 24, 2023      | ⏳ Pending     | None                             |
+| Component                  | Assignee | Start Date   | Target Completion | Status      | Blockers |
+| -------------------------- | -------- | ------------ | ----------------- | ----------- | -------- |
+| DiscoveryPanel.vue         | David    | May 1, 2023  | May 3, 2023       | ✅ Complete | None     |
+| BaseDeviceAdapter.vue      | Marcus   | May 15, 2023 | May 18, 2023      | ✅ Complete | None     |
+| AppSidebar.vue             | Elena    | May 18, 2023 | May 22, 2023      | ⏳ Pending  | None     |
+| EnhancedPanelComponent.vue | David    | May 22, 2023 | May 24, 2023      | ⏳ Pending  | None     |
 
 ## Testing Strategy
 
