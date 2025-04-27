@@ -51,10 +51,10 @@ const handleSetReadMode = (mode: number) => {
   <BaseDevicePanel ref="basePanel" :device-id="deviceId" :title="title">
     <EnhancedCameraPanel
       :panel-name="title"
-      :connected="basePanel?.connected"
+      :connected="basePanel?.connected === true"
       :device-type="basePanel?.deviceType || 'camera'"
       :device-id="deviceId"
-      :device-num="basePanel?.deviceNum"
+      :device-num="basePanel?.deviceNum || 0"
       :idx="deviceId"
       @connect="basePanel?.handleConnect"
       @mode-change="basePanel?.handleModeChange"
