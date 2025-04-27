@@ -1,352 +1,199 @@
-<script setup lang="ts">
-import { computed } from 'vue'
-import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
-import { getLegacyDevicesAdapter } from '@/stores/deviceStoreAdapter'
-import Icon from './Icon.vue'
-import type { Device } from '@/types/Device'
+<script lang="ts">
+import { defineComponent, computed } from 'vue'
+import { useSidebarStore } from '../stores/SidebarStore'
+import type { Theme } from '../stores/SidebarStore'
+import IconComponent from './Icon.vue'
+import type { IconType } from './Icon.vue'
 
-const uiStore = useUIPreferencesStore()
-const devicesStore = getLegacyDevicesAdapter()
+export default defineComponent({
+  name: 'AppSidebar',
 
-// Sidebar collapse state
-const isCollapsed = computed({
-  get: () => !uiStore.isSidebarVisible,
-  set: (value) => {
-    uiStore.isSidebarVisible = !value
-  }
-})
+  components: {
+    Icon: IconComponent
+  },
 
-// Toggle sidebar collapse
-function toggleSidebar() {
-  uiStore.toggleSidebar()
-}
+  setup() {
+    const store = useSidebarStore()
 
-// Get categorized devices for display
-const categorizedDevices = computed(() => {
-  const devicesByType: Record<string, Device[]> = {}
+    const isVisible = computed(() => store.isSidebarVisible)
+    const devices = computed(() => store.devices)
+    const selectedDeviceId = computed(() => store.selectedDeviceId)
+    const currentTheme = computed(() => store.theme)
 
-  devicesStore.devices.forEach((device: Device) => {
-    const type = device.deviceType || 'other'
-    if (!devicesByType[type]) {
-      devicesByType[type] = []
+    const themeIcon = computed(() =>
+      currentTheme.value === 'light' ? ('moon' as IconType) : ('sun' as IconType)
+    )
+
+    const themeLabel = computed(() => (currentTheme.value === 'light' ? 'Dark Mode' : 'Light Mode'))
+
+    const getDeviceIconType = (deviceType: string): IconType => {
+      if (deviceType === 'camera' || deviceType === 'dome') {
+        return deviceType as IconType
+      }
+      return 'device-unknown' as IconType
     }
-    devicesByType[type].push(device)
-  })
 
-  return devicesByType
-})
+    const toggleSidebar = () => store.toggleSidebar()
 
-// Get device icon based on type
-function getDeviceIcon(type: string): 'search' | 'camera' | 'exposure' | 'gear' {
-  switch (type.toLowerCase()) {
-    case 'telescope':
-      return 'search'
-    case 'camera':
-      return 'camera'
-    case 'focuser':
-      return 'exposure'
-    case 'filterwheel':
-      return 'gear'
-    default:
-      return 'gear'
+    const selectDevice = (deviceId: string) => {
+      store.selectDevice(deviceId)
+    }
+
+    const toggleTheme = () => {
+      const newTheme: Theme = currentTheme.value === 'light' ? 'dark' : 'light'
+      store.setTheme(newTheme)
+    }
+
+    return {
+      isVisible,
+      devices,
+      selectedDeviceId,
+      themeIcon,
+      themeLabel,
+      getDeviceIconType,
+      toggleSidebar,
+      selectDevice,
+      toggleTheme
+    }
   }
-}
-
-// Get device connection status
-function isDeviceConnected(device: Device): boolean {
-  return device.connected || false
-}
+})
 </script>
 
 <template>
-  <div class="sidebar" :class="{ 'sidebar-collapsed': isCollapsed }">
-    <!-- Sidebar header with collapse toggle -->
-    <div class="sidebar-header">
-      <h2 v-if="!isCollapsed">Devices</h2>
-      <button class="collapse-toggle" @click="toggleSidebar">
-        <Icon :type="isCollapsed ? 'arrow-right' : 'arrow-left'" />
+  <div class="app-sidebar" :class="{ 'app-sidebar--collapsed': !isVisible }">
+    <div class="app-sidebar__header">
+      <h2 class="app-sidebar__title">Alpaca</h2>
+      <button class="app-sidebar__toggle" @click="toggleSidebar">
+        {{ isVisible ? '«' : '»' }}
       </button>
     </div>
 
-    <!-- Device categories and items -->
-    <div class="sidebar-content">
-      <template v-for="(devices, category) in categorizedDevices" :key="category">
-        <div v-if="!isCollapsed" class="device-category">
-          <h3 class="category-title">{{ category }}</h3>
-          <div
+    <div v-if="isVisible" class="app-sidebar__content">
+      <div class="app-sidebar__section">
+        <h3 class="app-sidebar__section-title">Devices</h3>
+        <ul class="app-sidebar__device-list">
+          <li
             v-for="device in devices"
-            :key="`${device.deviceType}-${device.idx}`"
-            class="device-item"
-            :class="{ 'device-connected': isDeviceConnected(device) }"
+            :key="device.id"
+            class="app-sidebar__device-item"
+            :class="{ 'app-sidebar__device-item--active': device.id === selectedDeviceId }"
+            @click="selectDevice(device.id)"
           >
-            <Icon :type="getDeviceIcon(category)" class="device-icon" />
-            <span class="device-name">{{ device.deviceType }} {{ device.idx }}</span>
+            <Icon :type="getDeviceIconType(device.type)" />
+            <span>{{ device.name }}</span>
             <span
-              class="connection-status"
-              :class="{ connected: isDeviceConnected(device) }"
-            ></span>
-          </div>
-        </div>
+              class="app-sidebar__connection-status"
+              :class="{ 'app-sidebar__connection-status--connected': device.connected }"
+            >
+              {{ device.connected ? 'Connected' : 'Disconnected' }}
+            </span>
+          </li>
+        </ul>
+      </div>
 
-        <!-- Collapsed view with just icons -->
-        <div v-else class="collapsed-devices">
-          <div
-            v-for="device in devices"
-            :key="`${device.deviceType}-${device.idx}`"
-            class="collapsed-device-item"
-            :class="{ 'device-connected': isDeviceConnected(device) }"
-            :title="`${device.deviceType} ${device.idx}`"
-          >
-            <Icon :type="getDeviceIcon(category)" />
-            <span class="connection-dot" :class="{ connected: isDeviceConnected(device) }"></span>
-          </div>
-        </div>
-      </template>
-    </div>
-
-    <!-- Sidebar footer with actions -->
-    <div class="sidebar-footer">
-      <button class="action-button" title="Settings">
-        <Icon type="gear" />
-        <span v-if="!isCollapsed">Settings</span>
-      </button>
-      <button class="action-button" title="Dark/Light Toggle">
-        <Icon type="exposure" />
-        <span v-if="!isCollapsed">Theme</span>
-      </button>
+      <div class="app-sidebar__section">
+        <h3 class="app-sidebar__section-title">Settings</h3>
+        <ul class="app-sidebar__settings-list">
+          <li class="app-sidebar__setting-item" @click="toggleTheme">
+            <Icon :type="themeIcon" />
+            <span>{{ themeLabel }}</span>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  width: 240px;
-  background-color: var(--aw-panel-bg-color);
-  color: var(--aw-panel-content-color);
-  border-right: 1px solid var(--aw-panel-border-color);
+.app-sidebar {
+  width: 300px;
+  height: 100%;
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--border-color);
+  transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
-  z-index: 100;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.06);
 }
 
-.sidebar-collapsed {
-  width: 54px;
+.app-sidebar--collapsed {
+  width: 50px;
 }
 
-.sidebar-header {
-  height: 60px;
+.app-sidebar__header {
+  padding: 16px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  position: relative;
-  background-color: var(--aw-panel-menu-bar-bg-color);
-  color: var(--aw-panel-menu-bar-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.sidebar-header h2 {
+.app-sidebar__title {
   margin: 0;
   font-size: 1.2rem;
-  font-weight: 600;
-  flex: 1;
 }
 
-.collapse-toggle {
-  background: transparent;
+.app-sidebar__toggle {
+  background: none;
   border: none;
-  color: var(--aw-panel-menu-bar-color);
+  color: var(--sidebar-text);
   cursor: pointer;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  font-size: 1.2rem;
 }
 
-.collapse-toggle:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  transform: scale(1.05);
-}
-
-.sidebar-content {
+.app-sidebar__content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 0;
+  padding: 16px;
 }
 
-.device-category {
-  margin-bottom: 20px;
+.app-sidebar__section {
+  margin-bottom: 24px;
 }
 
-.category-title {
-  font-size: 0.85rem;
+.app-sidebar__section-title {
+  font-size: 0.9rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--aw-panel-content-color);
-  opacity: 0.7;
-  margin: 0 0 10px 16px;
-  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  color: var(--sidebar-title);
 }
 
-.device-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 16px;
+.app-sidebar__device-list,
+.app-sidebar__settings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.app-sidebar__device-item,
+.app-sidebar__setting-item {
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin-bottom: 4px;
   cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: all 0.2s ease;
-  margin-bottom: 2px;
-}
-
-.device-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.device-item.device-connected {
-  border-left-color: #48bb78;
-  background-color: rgba(72, 187, 120, 0.05);
-}
-
-.device-icon {
-  margin-right: 12px;
-  opacity: 0.8;
-}
-
-.device-name {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.95rem;
-}
-
-.connection-status {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #888;
-  box-shadow: 0 0 0 rgba(136, 136, 136, 0.4);
-  animation: none;
-}
-
-.connection-status.connected {
-  background-color: #48bb78;
-  box-shadow: 0 0 0 rgba(72, 187, 120, 0.4);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(72, 187, 120, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(72, 187, 120, 0);
-  }
-}
-
-/* Collapsed sidebar styles */
-.collapsed-devices {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 12px;
-}
-
-.collapsed-device-item {
-  position: relative;
-  width: 38px;
-  height: 38px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 10px;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  gap: 10px;
 }
 
-.collapsed-device-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-1px);
+.app-sidebar__device-item:hover,
+.app-sidebar__setting-item:hover {
+  background-color: var(--hover-color);
 }
 
-.collapsed-device-item.device-connected {
-  background-color: rgba(72, 187, 120, 0.08);
+.app-sidebar__device-item--active {
+  background-color: var(--active-item-bg);
+  color: var(--active-item-text);
 }
 
-.connection-dot {
-  position: absolute;
-  bottom: 3px;
-  right: 3px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #888;
+.app-sidebar__connection-status {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--disconnected-color);
 }
 
-.connection-dot.connected {
-  background-color: #48bb78;
-  box-shadow: 0 0 0 rgba(72, 187, 120, 0.4);
-  animation: pulse 2s infinite;
-}
-
-.sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid var(--aw-panel-border-color);
-  display: flex;
-  justify-content: space-around;
-}
-
-.sidebar-collapsed .sidebar-footer {
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-}
-
-.action-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  border: none;
-  color: var(--aw-panel-content-color);
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.action-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Scrollbar styling */
-.sidebar-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sidebar-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-content::-webkit-scrollbar-thumb {
-  background: var(--aw-panel-scrollbar-color-1, #4a5568);
-  border-radius: 3px;
-}
-
-.sidebar-content::-webkit-scrollbar-thumb:hover {
-  background: var(--aw-panel-scrollbar-color-2, #2d3748);
+.app-sidebar__connection-status--connected {
+  color: var(--connected-color);
 }
 </style>
