@@ -3,7 +3,7 @@ import { onMounted, ref, computed, watch } from 'vue'
 import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
 import UnifiedStore from '@/stores/UnifiedStore'
 import axios from 'axios'
-import ManualDeviceConfig from './ManualDeviceConfig.vue'
+import ManualDeviceConfigMigrated from './ManualDeviceConfigMigrated.vue'
 import type { Device } from '@/stores/UnifiedStore'
 
 // Create/get UnifiedStore instance
@@ -315,7 +315,7 @@ watch(
 
     <div class="manual-section">
       <h3>Can't find your device?</h3>
-      <ManualDeviceConfig />
+      <ManualDeviceConfigMigrated />
     </div>
   </div>
 </template>
