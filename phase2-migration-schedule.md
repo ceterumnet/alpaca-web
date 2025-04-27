@@ -6,15 +6,15 @@ This document outlines the detailed schedule for Phase 2 of the Alpaca Web migra
 
 ## Timeline
 
-| Phase                  | Duration | Start Date    | End Date      | Components                                                                                             |
-| ---------------------- | -------- | ------------- | ------------- | ------------------------------------------------------------------------------------------------------ |
-| Preparation            | 2 weeks  | May 1, 2023   | May 15, 2023  | N/A - Analysis and planning                                                                            |
-| Batch 1                | 2 weeks  | May 15, 2023  | May 29, 2023  | DiscoveryPanel.vue, BaseDeviceAdapter.vue, AppSidebar.vue, EnhancedPanelComponent.vue                  |
-| Batch 2                | 2 weeks  | May 29, 2023  | June 12, 2023 | TelescopePanelAdapter.vue, CameraPanelAdapter.vue, EnhancedTelescopePanel.vue, EnhancedCameraPanel.vue |
-| Batch 3                | 1 week   | June 12, 2023 | June 19, 2023 | DiscoveredDevices.vue, MainPanels.vue                                                                  |
-| Batch 4                | 2 weeks  | June 19, 2023 | July 3, 2023  | DiscoveryView.vue, DevicesView.vue, DeviceDetailView.vue                                               |
-| Batch 5                | 1 week   | July 3, 2023  | July 10, 2023 | ManualDeviceConfig.vue, remaining legacy components                                                    |
-| Testing & Verification | 2 weeks  | July 10, 2023 | July 24, 2023 | All components                                                                                         |
+| Phase                  | Duration | Components                                                                                             |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| Preparation            | 2 weeks  | N/A - Analysis and planning                                                                            |
+| Batch 1                | 2 weeks  | DiscoveryPanel.vue, BaseDeviceAdapter.vue, AppSidebar.vue, EnhancedPanelComponent.vue                  |
+| Batch 2                | 2 weeks  | TelescopePanelAdapter.vue, CameraPanelAdapter.vue, EnhancedTelescopePanel.vue, EnhancedCameraPanel.vue |
+| Batch 3                | 1 week   | DiscoveredDevices.vue, MainPanels.vue                                                                  |
+| Batch 4                | 2 weeks  | DiscoveryView.vue, DevicesView.vue, DeviceDetailView.vue                                               |
+| Batch 5                | 1 week   | ManualDeviceConfig.vue, remaining legacy components                                                    |
+| Testing & Verification | 2 weeks  | All components                                                                                         |
 
 ## Batch 1 Detailed Plan
 
@@ -197,12 +197,12 @@ Migration Steps:
 
 ## Migration Tracking
 
-| Component                  | Assignee | Start Date   | Target Completion | Status      | Blockers |
-| -------------------------- | -------- | ------------ | ----------------- | ----------- | -------- |
-| DiscoveryPanel.vue         | David    | May 1, 2023  | May 3, 2023       | ✅ Complete | None     |
-| BaseDeviceAdapter.vue      | Marcus   | May 15, 2023 | May 18, 2023      | ✅ Complete | None     |
-| AppSidebar.vue             | Elena    | May 18, 2023 | May 22, 2023      | ⏳ Pending  | None     |
-| EnhancedPanelComponent.vue | David    | May 22, 2023 | May 24, 2023      | ✅ Complete | None     |
+| Component                  | Assignee | Status      | Blockers |
+| -------------------------- | -------- | ----------- | -------- |
+| DiscoveryPanel.vue         | David    | ✅ Complete | None     |
+| BaseDeviceAdapter.vue      | Marcus   | ✅ Complete | None     |
+| AppSidebar.vue             | Elena    | ⏳ Pending  | None     |
+| EnhancedPanelComponent.vue | David    | ✅ Complete | None     |
 
 ## Testing Strategy
 
