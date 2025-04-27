@@ -621,5 +621,493 @@ function stopSlew() {
 </template>
 
 <style scoped>
-/* Keeping the CSS from the original component */
+/* Telescope Panel Styles */
+.telescope-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Overview Mode */
+.overview-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+/* Status Indicators */
+.status-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-label {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  width: 90px;
+}
+
+.status-value {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  gap: 6px;
+}
+
+.status-badge.active {
+  background: rgba(33, 150, 243, 0.15);
+  color: var(--aw-panel-action-color, #2196f3);
+}
+
+/* Position Section */
+.position-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.position-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.position-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.position-group h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 4px;
+}
+
+.position-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coord-label {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  width: 40px;
+}
+
+.coord-value {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Controls */
+.control-section {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--aw-panel-action-color, #2196f3);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.control-btn.active {
+  background: #4caf50;
+}
+
+.control-btn.warning {
+  background: #ff9800;
+}
+
+.slew-title {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.slew-inputs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.slew-input {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.slew-input label {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.slew-input input {
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  font-family: 'Courier New', monospace;
+}
+
+/* Detailed Mode */
+
+.detailed-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  height: 100%;
+  overflow: auto;
+}
+
+.position-details {
+  display: flex;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.position-column {
+  flex: 1;
+}
+
+.position-column h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 6px;
+}
+
+.coord-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.coord-row .label {
+  width: 80px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.coord-row .value {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+.status-controls-optimized {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.status-section,
+.quick-actions {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.status-section h3,
+.quick-actions h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 6px;
+}
+
+.status-badges-detailed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-badges-detailed .status-badge {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.status-badges-detailed .status-badge.active {
+  background: rgba(33, 150, 243, 0.15);
+}
+
+.badge-label {
+  width: 100px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.badge-value {
+  font-weight: 600;
+}
+
+.quick-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.active {
+  background: rgba(33, 150, 243, 0.15);
+  color: var(--aw-panel-action-color, #2196f3);
+}
+
+.slew-section {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.section-header {
+  margin-bottom: 16px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 6px;
+}
+
+.slew-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.target-coords,
+.directional-pad {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.target-coords h4,
+.directional-pad h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.coords-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coord-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coord-input label {
+  width: 40px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.coord-input input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  font-family: 'Courier New', monospace;
+}
+
+.slew-to-coords {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0;
+  margin-top: 8px;
+  background: var(--aw-panel-action-color, #2196f3);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slew-to-coords:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.slew-to-coords:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.slew-rate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.slew-rate label {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.slew-rate select {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+  color: inherit;
+}
+
+.direction-controls {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  justify-items: center;
+  gap: 8px;
+}
+
+.middle-row {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  gap: 8px;
+  width: 100%;
+}
+
+.dir-btn {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dir-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.dir-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dir-btn.stop {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+}
+
+.dir-btn.stop:hover:not(:disabled) {
+  background: rgba(244, 67, 54, 0.25);
+}
 </style>

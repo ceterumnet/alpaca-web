@@ -3,9 +3,9 @@ import { computed, ref, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLegacyDeviceStore } from '../stores/deviceStoreAdapter'
 import { UIMode } from '../stores/useUIPreferencesStore'
-import EnhancedTelescopePanel from '../components/EnhancedTelescopePanel.vue'
-import EnhancedCameraPanel from '../components/EnhancedCameraPanel.vue'
-import EnhancedPanelComponent from '../components/EnhancedPanelComponent.vue'
+import TelescopePanelMigrated from '../components/TelescopePanelMigrated.vue'
+import CameraPanelMigrated from '../components/CameraPanelMigrated.vue'
+import EnhancedPanelComponentMigrated from '../components/EnhancedPanelComponentMigrated.vue'
 
 defineOptions({
   name: 'DeviceDetailView'
@@ -39,11 +39,11 @@ const getPanelComponent = computed(() => {
 
   switch (device.value.type) {
     case 'telescope':
-      return markRaw(EnhancedTelescopePanel)
+      return markRaw(TelescopePanelMigrated)
     case 'camera':
-      return markRaw(EnhancedCameraPanel)
+      return markRaw(CameraPanelMigrated)
     default:
-      return markRaw(EnhancedPanelComponent)
+      return markRaw(EnhancedPanelComponentMigrated)
   }
 })
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import { onMounted, ref, watch } from 'vue'
-import EnhancedPanelComponent from './EnhancedPanelComponent.vue'
-import EnhancedTelescopePanel from './EnhancedTelescopePanel.vue'
-import EnhancedCameraPanel from './EnhancedCameraPanel.vue'
+import EnhancedPanelComponentMigrated from './EnhancedPanelComponentMigrated.vue'
+import TelescopePanelMigrated from './TelescopePanelMigrated.vue'
+import CameraPanelMigrated from './CameraPanelMigrated.vue'
 import { type Device } from '@/types/Device'
 import { getLegacyDevicesAdapter } from '@/stores/deviceStoreAdapter'
 import DiscoveredDevices from './DiscoveredDevices.vue'
@@ -21,13 +21,13 @@ const getComponent = function (lookupBy: LayoutItem | Device) {
   if (lookupBy.deviceType) {
     const deviceType = lookupBy.deviceType.toLowerCase()
     if (deviceType === 'telescope') {
-      return EnhancedTelescopePanel
+      return TelescopePanelMigrated
     }
     if (deviceType === 'camera') {
-      return EnhancedCameraPanel
+      return CameraPanelMigrated
     }
   }
-  return EnhancedPanelComponent
+  return EnhancedPanelComponentMigrated
 }
 
 // Use the adapter for compatibility with existing code
@@ -138,7 +138,7 @@ function handleConnect(connected: boolean, itemId: string) {
       <span>Reset Layout</span>
     </button>
     <button class="layout-action-button" @click="saveLayoutPreset">
-      <Icon type="files" />
+      <Icon type="gear" />
       <span>Save Layout</span>
     </button>
   </div>
@@ -161,7 +161,7 @@ function handleConnect(connected: boolean, itemId: string) {
           :connected="item.connected"
           :panel-name="getPanelName(item)"
           :device-type="item.deviceType"
-          :device-id="item.deviceNum || item.i"
+          :device-id="String(item.deviceNum || item.i)"
           :supported-modes="getSupportedModes()"
           :idx="item.i"
           :device-num="item.deviceNum"
