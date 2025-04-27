@@ -15,6 +15,14 @@ export type IconType =
   | 'chevron-right'
   | 'gear'
   | 'exposure'
+  | 'close'
+  | 'expand'
+  | 'collapse'
+  | 'compact'
+  | 'detailed'
+  | 'fullscreen'
+  | 'connected'
+  | 'disconnected'
 
 export default defineComponent({
   name: 'IconComponent',
@@ -37,7 +45,15 @@ export default defineComponent({
           'chevron-left',
           'chevron-right',
           'gear',
-          'exposure'
+          'exposure',
+          'close',
+          'expand',
+          'collapse',
+          'compact',
+          'detailed',
+          'fullscreen',
+          'connected',
+          'disconnected'
         ].includes(value)
       },
       default: 'device-unknown'
@@ -100,6 +116,40 @@ export default defineComponent({
     <svg v-else-if="type === 'moon'" viewBox="0 0 24 24" width="24" height="24">
       <path
         d="M12 3C7.41 3 3.86 6.14 3.14 10.5C2.32 15.43 6.05 19.95 11 20C15.17 20.05 18.64 17.21 19.75 13.25C16.35 16.67 10.96 16.09 8.21 12.09C5.29 7.83 7.77 2 12 2C7.17 2 3.14 5.41 2.35 10.01C1.44 15.27 5.4 20.01 10.69 20C15.28 19.99 19 16.29 19 11.71C19 11.42 18.99 10.94 18.97 10.66C18.92 9.82 18.78 9 18.55 8.23C16.43 13.18 9.6 15.1 6.31 10.25C5.39 8.79 5 7.03 5 5.35C6.08 3.96 7.4 3 9 3C7.91 3 6.88 3.25 5.92 3.68C5.35 4.05 4.86 4.5 4.42 5C6.14 3.74 8 3 10 3C11.11 3 12.19 3.25 13.16 3.69C12.13 3.25 11.09 3 10 3H12Z"
+      />
+    </svg>
+    <svg v-else-if="type === 'close'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+      />
+    </svg>
+    <svg v-else-if="type === 'expand'" viewBox="0 0 24 24" width="24" height="24">
+      <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
+    </svg>
+    <svg v-else-if="type === 'collapse'" viewBox="0 0 24 24" width="24" height="24">
+      <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z" />
+    </svg>
+    <svg v-else-if="type === 'compact'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"
+      />
+    </svg>
+    <svg v-else-if="type === 'detailed'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z"
+      />
+    </svg>
+    <svg v-else-if="type === 'fullscreen'" viewBox="0 0 24 24" width="24" height="24">
+      <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+    </svg>
+    <svg v-else-if="type === 'connected'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+      />
+    </svg>
+    <svg v-else-if="type === 'disconnected'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-1.48 0-2.85.43-4.01 1.17l1.46 1.46C10.21 6.23 11.08 6 12 6c3.04 0 5.5 2.46 5.5 5.5v.5H19c1.66 0 3 1.34 3 3 0 1.13-.64 2.11-1.56 2.62l1.45 1.45C23.16 18.16 24 16.68 24 15c0-2.64-2.05-4.78-4.65-4.96zM3 5.27l2.75 2.74C2.56 8.15 0 10.77 0 14c0 3.31 2.69 6 6 6h11.73l2 2L21 20.73 4.27 4 3 5.27zM7.73 10l8 8H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h1.73z"
       />
     </svg>
     <svg v-else viewBox="0 0 24 24" width="24" height="24">
@@ -172,5 +222,25 @@ export default defineComponent({
 
 .icon--device-unknown {
   color: var(--unknown-icon-color, #9e9e9e);
+}
+
+.icon--close,
+.icon--expand,
+.icon--collapse {
+  color: var(--control-icon-color, #757575);
+}
+
+.icon--compact,
+.icon--detailed,
+.icon--fullscreen {
+  color: var(--mode-icon-color, #757575);
+}
+
+.icon--connected {
+  color: var(--connected-icon-color, #4caf50);
+}
+
+.icon--disconnected {
+  color: var(--disconnected-icon-color, #f44336);
 }
 </style>
