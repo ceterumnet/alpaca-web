@@ -55,6 +55,19 @@ watch(
       const yPos = Math.floor(devicesAdded / 2) * 20
       devicesAdded++
 
+      // Get the device's apiBaseUrl
+      const deviceApiBaseUrl = (device as Device & { apiBaseUrl?: string }).apiBaseUrl || ''
+
+      // Get the device's ID if available (from the UnifiedStore)
+      const deviceId = (device as Device & { id?: string }).id || ''
+
+      console.log('Adding new device to layout:', {
+        deviceType: device.deviceType,
+        deviceNum: device.idx,
+        deviceId,
+        apiBaseUrl: deviceApiBaseUrl
+      })
+
       layout.value.push({
         x: xPos,
         y: yPos,
@@ -63,8 +76,9 @@ watch(
         i: `${device.deviceType}-${device.idx}`,
         deviceNum: device.idx,
         deviceType: device.deviceType,
+        deviceId: deviceId, // Store the UUID
         connected: device.connected || false,
-        apiBaseUrl: (device as Device & { apiBaseUrl?: string }).apiBaseUrl || ''
+        apiBaseUrl: deviceApiBaseUrl
       })
     }
 
@@ -161,7 +175,7 @@ function handleConnect(connected: boolean, itemId: string) {
           :connected="item.connected"
           :panel-name="getPanelName(item)"
           :device-type="item.deviceType"
-          :device-id="String(item.deviceNum || item.i)"
+          :device-id="String(item.deviceId || item.deviceNum || item.i)"
           :supported-modes="getSupportedModes()"
           :idx="item.i"
           :device-num="item.deviceNum"
@@ -169,6 +183,15 @@ function handleConnect(connected: boolean, itemId: string) {
           @close="removePanel(item.i)"
           @configure="() => {}"
           @connect="(connected: boolean) => handleConnect(connected, item.i)"
+          @mounted="
+            () =>
+              console.log('Panel mounted with props:', {
+                deviceId: item.deviceId,
+                deviceNum: item.deviceNum,
+                deviceType: item.deviceType,
+                apiBaseUrl: item.apiBaseUrl
+              })
+          "
         ></component>
       </GridItem>
     </GridLayout>

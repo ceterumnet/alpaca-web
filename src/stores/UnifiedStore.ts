@@ -8,6 +8,7 @@
 
 import type { UnifiedDevice } from '../types/DeviceTypes'
 import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 
 // Use the existing type definitions
 export type Device = UnifiedDevice
@@ -29,126 +30,99 @@ export type DeviceEvent =
 
 export type DeviceEventListener = (event: DeviceEvent) => void
 
-class UnifiedStore {
-  private _devices: Map<string, Device>
-  private _isDiscovering: boolean
-  private _discoveryTimeout: ReturnType<typeof setInterval> | null
-  private _eventListeners: DeviceEventListener[] = []
+// Create a Pinia store instead of a class
+export const useUnifiedStore = defineStore('unifiedStore', () => {
+  // State
+  const devices = ref<Map<string, Device>>(new Map())
+  const isDiscovering = ref(false)
+  const discoveryTimeout = ref<ReturnType<typeof setInterval> | null>(null)
+  const eventListeners = ref<DeviceEventListener[]>([])
 
-  constructor() {
-    // Main data storage
-    this._devices = new Map()
-    this._isDiscovering = false
-    this._discoveryTimeout = null
+  // Sidebar and UI state
+  const isSidebarVisible = ref(true)
+  const selectedDeviceId = ref<string | null>(null)
+  const theme = ref<Theme>('light')
+
+  // Computed
+  const devicesList = computed(() => Array.from(devices.value.values()))
+  const connectedDevices = computed(() => devicesList.value.filter((device) => device.isConnected))
+
+  const selectedDevice = computed(() => {
+    if (!selectedDeviceId.value) return null
+    return devices.value.get(selectedDeviceId.value) || null
+  })
+
+  // Methods
+  function addEventListener(listener: DeviceEventListener): void {
+    eventListeners.value.push(listener)
   }
 
-  /**
-   * Get all devices as an array
-   * @returns {Array} Array of all devices
-   */
-  get devices(): Device[] {
-    return Array.from(this._devices.values())
-  }
-
-  /**
-   * Check if discovery is currently active
-   * @returns {boolean} Discovery status
-   */
-  get isDiscovering(): boolean {
-    return this._isDiscovering
-  }
-
-  /**
-   * Add an event listener
-   * @param listener - Event listener function
-   */
-  addEventListener(listener: DeviceEventListener): void {
-    this._eventListeners.push(listener)
-  }
-
-  /**
-   * Remove an event listener
-   * @param listener - Event listener function to remove
-   */
-  removeEventListener(listener: DeviceEventListener): void {
-    const index = this._eventListeners.indexOf(listener)
+  function removeEventListener(listener: DeviceEventListener): void {
+    const index = eventListeners.value.indexOf(listener)
     if (index !== -1) {
-      this._eventListeners.splice(index, 1)
+      eventListeners.value.splice(index, 1)
     }
   }
 
-  /**
-   * Emit an event to all listeners
-   * @param event - Event to emit
-   */
-  private _emitEvent(event: DeviceEvent): void {
-    this._eventListeners.forEach((listener) => listener(event))
+  function _emitEvent(event: DeviceEvent): void {
+    eventListeners.value.forEach((listener) => listener(event))
   }
 
-  /**
-   * Get a device by its ID
-   * @param {string} deviceId - ID of the device to retrieve
-   * @returns {Device|null} Device object or null if not found
-   */
-  getDeviceById(deviceId: string): Device | null {
-    return this._devices.get(deviceId) || null
+  function getDeviceById(deviceId: string): Device | null {
+    return devices.value.get(deviceId) || null
   }
 
-  /**
-   * Add a device to the store
-   * @param {Device} device - Device to add
-   * @param {StoreOptions} options - Additional options
-   * @returns {boolean} Success status
-   */
-  addDevice(device: Device, options: StoreOptions = {}): boolean {
+  function addDevice(device: Device, options: StoreOptions = {}): boolean {
     if (!device || !device.id) return false
 
     // Don't add if already exists
-    if (this._devices.has(device.id)) return false
+    if (devices.value.has(device.id)) return false
 
     // Ensure device has required fields
-    const normalizedDevice = this._normalizeDevice(device)
+    const normalizedDevice = _normalizeDevice(device)
 
     // Add to store
-    this._devices.set(normalizedDevice.id, normalizedDevice)
+    devices.value.set(normalizedDevice.id, normalizedDevice)
+
+    console.log('Device added to UnifiedStore:', {
+      id: normalizedDevice.id,
+      type: normalizedDevice.type,
+      apiBaseUrl: normalizedDevice.apiBaseUrl
+    })
 
     // Emit event if not silent
     if (!options.silent) {
-      this._emitEvent({ type: 'deviceAdded', device: normalizedDevice })
+      _emitEvent({ type: 'deviceAdded', device: normalizedDevice })
     }
 
     return true
   }
 
-  /**
-   * Remove a device from the store
-   * @param {string} deviceId - Device ID to remove
-   * @param {StoreOptions} options - Additional options
-   * @returns {boolean} Success status
-   */
-  removeDevice(deviceId: string, options: StoreOptions = {}): boolean {
-    if (!deviceId || !this._devices.has(deviceId)) return false
+  function removeDevice(deviceId: string, options: StoreOptions = {}): boolean {
+    if (!deviceId || !devices.value.has(deviceId)) return false
 
-    this._devices.delete(deviceId)
+    devices.value.delete(deviceId)
+
+    // Clear selection if the removed device was selected
+    if (selectedDeviceId.value === deviceId) {
+      selectedDeviceId.value = null
+    }
 
     if (!options.silent) {
-      this._emitEvent({ type: 'deviceRemoved', deviceId })
+      _emitEvent({ type: 'deviceRemoved', deviceId })
     }
 
     return true
   }
 
-  /**
-   * Update a device in the store
-   * @param {string} deviceId - Device ID to update
-   * @param {Partial<Device>} updates - Updates to apply
-   * @param {StoreOptions} options - Additional options
-   * @returns {boolean} Success status
-   */
-  updateDevice(deviceId: string, updates: Partial<Device>, options: StoreOptions = {}): boolean {
-    if (!deviceId || !this._devices.has(deviceId)) return false
+  function updateDevice(
+    deviceId: string,
+    updates: Partial<Device>,
+    options: StoreOptions = {}
+  ): boolean {
+    if (!deviceId || !devices.value.has(deviceId)) return false
 
-    const device = this._devices.get(deviceId)
+    const device = devices.value.get(deviceId)
     if (!device) return false
 
     const updatedDevice = { ...device, ...updates }
@@ -156,26 +130,20 @@ class UnifiedStore {
     // Validate updated device
     if (!updatedDevice.id) return false
 
-    this._devices.set(deviceId, updatedDevice)
+    devices.value.set(deviceId, updatedDevice)
 
     if (!options.silent) {
-      this._emitEvent({ type: 'deviceUpdated', deviceId, updates })
+      _emitEvent({ type: 'deviceUpdated', deviceId, updates })
     }
 
     return true
   }
 
-  /**
-   * Update specific device properties
-   * @param {string} deviceId - ID of the device to update
-   * @param {Record<string, unknown>} properties - Object containing properties to update
-   * @returns {boolean} Success status
-   */
-  updateDeviceProperties(deviceId: string, properties: Record<string, unknown>): boolean {
-    const device = this._devices.get(deviceId)
+  function updateDeviceProperties(deviceId: string, properties: Record<string, unknown>): boolean {
+    const device = devices.value.get(deviceId)
     if (!device) return false
 
-    return this.updateDevice(deviceId, {
+    return updateDevice(deviceId, {
       properties: {
         ...(device.properties || {}),
         ...properties
@@ -183,17 +151,12 @@ class UnifiedStore {
     })
   }
 
-  /**
-   * Connect to a device
-   * @param {string} deviceId - Device ID to connect
-   * @returns {Promise<boolean>} Promise resolving to success status
-   */
-  async connectDevice(deviceId: string): Promise<boolean> {
-    if (!deviceId || !this._devices.has(deviceId)) {
+  async function connectDevice(deviceId: string): Promise<boolean> {
+    if (!deviceId || !devices.value.has(deviceId)) {
       return Promise.resolve(false)
     }
 
-    const device = this._devices.get(deviceId)
+    const device = devices.value.get(deviceId)
     if (!device) return Promise.resolve(false)
 
     // Already connected or connecting
@@ -201,44 +164,25 @@ class UnifiedStore {
       return Promise.resolve(true)
     }
 
-    // Update status to connecting
-    this.updateDevice(deviceId, { isConnecting: true })
+    // Update device to connecting state
+    updateDevice(deviceId, { isConnecting: true })
 
-    try {
-      // Simulate connection process (actual implementation would call hardware APIs)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Update to connected state
-      this.updateDevice(deviceId, {
-        isConnected: true,
-        isConnecting: false,
-        lastConnected: new Date().toISOString()
-      })
-
-      return true
-    } catch (error) {
-      // Reset connection state
-      this.updateDevice(deviceId, {
-        isConnected: false,
-        isConnecting: false,
-        error: error instanceof Error ? error.message : 'Connection failed'
-      })
-
-      return false
-    }
+    // In a real implementation, we would make API calls here
+    // For now we'll just simulate a successful connection
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        updateDevice(deviceId, { isConnected: true, isConnecting: false })
+        resolve(true)
+      }, 500)
+    })
   }
 
-  /**
-   * Disconnect from a device
-   * @param {string} deviceId - Device ID to disconnect
-   * @returns {Promise<boolean>} Promise resolving to success status
-   */
-  async disconnectDevice(deviceId: string): Promise<boolean> {
-    if (!deviceId || !this._devices.has(deviceId)) {
+  async function disconnectDevice(deviceId: string): Promise<boolean> {
+    if (!deviceId || !devices.value.has(deviceId)) {
       return Promise.resolve(false)
     }
 
-    const device = this._devices.get(deviceId)
+    const device = devices.value.get(deviceId)
     if (!device) return Promise.resolve(false)
 
     // Already disconnected or disconnecting
@@ -246,132 +190,79 @@ class UnifiedStore {
       return Promise.resolve(true)
     }
 
-    // Update status to disconnecting
-    this.updateDevice(deviceId, { isDisconnecting: true })
+    // Update device to disconnecting state
+    updateDevice(deviceId, { isDisconnecting: true })
 
-    try {
-      // Simulate disconnection process
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      // Update to disconnected state
-      this.updateDevice(deviceId, {
-        isConnected: false,
-        isDisconnecting: false
-      })
-
-      return true
-    } catch (error) {
-      // Reset disconnection state but leave connected
-      this.updateDevice(deviceId, {
-        isDisconnecting: false,
-        error: error instanceof Error ? error.message : 'Disconnection failed'
-      })
-
-      return false
-    }
+    // In a real implementation, we would make API calls here
+    // For now we'll just simulate a successful disconnection
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        updateDevice(deviceId, { isConnected: false, isDisconnecting: false })
+        resolve(true)
+      }, 500)
+    })
   }
 
-  /**
-   * Start device discovery
-   * @param {StoreOptions} options - Additional options
-   * @returns {boolean} Success status
-   */
-  startDiscovery(options: StoreOptions = {}): boolean {
-    if (this._isDiscovering) return true
+  function startDiscovery(options: StoreOptions = {}): boolean {
+    if (isDiscovering.value) return false
 
-    this._isDiscovering = true
-
+    isDiscovering.value = true
     if (!options.silent) {
-      this._emitEvent({ type: 'discoveryStarted' })
+      _emitEvent({ type: 'discoveryStarted' })
     }
 
-    // Simulate periodic device discovery
-    this._discoveryTimeout = setInterval(() => {
-      // In a real implementation, this would scan for new devices
-      console.log('Device discovery scan...')
-    }, 30000)
+    // In a real implementation, we would start the actual discovery process
+    // For now, we'll just set a timeout to simulate discovery
+    discoveryTimeout.value = setInterval(() => {
+      // Simulate finding devices
+    }, 5000)
 
     return true
   }
 
-  /**
-   * Stop device discovery
-   * @param {StoreOptions} options - Additional options
-   * @returns {boolean} Success status
-   */
-  stopDiscovery(options: StoreOptions = {}): boolean {
-    if (!this._isDiscovering) return true
+  function stopDiscovery(options: StoreOptions = {}): boolean {
+    if (!isDiscovering.value) return false
 
-    this._isDiscovering = false
-
-    if (this._discoveryTimeout) {
-      clearInterval(this._discoveryTimeout)
-      this._discoveryTimeout = null
+    isDiscovering.value = false
+    if (discoveryTimeout.value) {
+      clearInterval(discoveryTimeout.value)
+      discoveryTimeout.value = null
     }
 
     if (!options.silent) {
-      this._emitEvent({ type: 'discoveryStopped' })
+      _emitEvent({ type: 'discoveryStopped' })
     }
 
     return true
   }
 
-  /**
-   * Get all devices of a specific type
-   * @param {string} deviceType - Type of devices to retrieve
-   * @returns {Array<Device>} Array of devices matching the specified type
-   */
-  getDevicesByType(deviceType: string): Device[] {
-    return this.devices.filter(
+  function getDevicesByType(deviceType: string): Device[] {
+    return devicesList.value.filter(
       (device) => device.deviceType === deviceType || device.type === deviceType
     )
   }
 
-  /**
-   * Get all connected devices
-   * @returns {Array<Device>} Array of connected devices
-   */
-  getConnectedDevices(): Device[] {
-    return this.devices.filter((device) => device.isConnected)
+  function hasDevice(deviceId: string): boolean {
+    return devices.value.has(deviceId)
   }
 
-  /**
-   * Check if a device with the given ID exists
-   * @param {string} deviceId - ID to check
-   * @returns {boolean} True if the device exists
-   */
-  hasDevice(deviceId: string): boolean {
-    return this._devices.has(deviceId)
-  }
-
-  /**
-   * Clear all devices from the store
-   * @param {StoreOptions} options - Additional options
-   * @returns {boolean} Success status
-   */
-  clearDevices(options: StoreOptions = {}): boolean {
-    const deviceIds = Array.from(this._devices.keys())
+  function clearDevices(options: StoreOptions = {}): boolean {
+    const deviceIds = Array.from(devices.value.keys())
 
     // Clear devices
-    this._devices.clear()
+    devices.value.clear()
 
     // Emit events if not silent
     if (!options.silent) {
       deviceIds.forEach((deviceId) => {
-        this._emitEvent({ type: 'deviceRemoved', deviceId })
+        _emitEvent({ type: 'deviceRemoved', deviceId })
       })
     }
 
     return true
   }
 
-  /**
-   * Normalize a device object to ensure it has all required fields
-   * @param {Device} device - Device to normalize
-   * @returns {Device} Normalized device
-   * @private
-   */
-  private _normalizeDevice(device: Device): Device {
+  function _normalizeDevice(device: Device): Device {
     const normalized = { ...device }
 
     // Ensure required fields
@@ -393,146 +284,111 @@ class UnifiedStore {
     return normalized
   }
 
-  /**
-   * For compatibility with EventEmitter-style code
-   * @param event - Event name
-   * @param listener - Event listener
-   */
-  on(event: string, listener: (...args: unknown[]) => void): void {
-    this.addEventListener((deviceEvent) => {
-      if (deviceEvent.type === event) {
-        // Map the event to the expected args format
-        switch (event) {
-          case 'deviceAdded':
-            listener((deviceEvent as { type: 'deviceAdded'; device: Device }).device)
-            break
-          case 'deviceRemoved':
-            listener((deviceEvent as { type: 'deviceRemoved'; deviceId: string }).deviceId)
-            break
-          case 'deviceUpdated':
-            listener(
-              (deviceEvent as { type: 'deviceUpdated'; deviceId: string; updates: Partial<Device> })
-                .deviceId,
-              (deviceEvent as { type: 'deviceUpdated'; deviceId: string; updates: Partial<Device> })
-                .updates
-            )
-            break
-          default:
-            listener()
-            break
+  // Event emitter compatibility
+  const eventHandlers: Record<string, Array<(...args: unknown[]) => void>> = {}
+
+  function on(event: string, listener: (...args: unknown[]) => void): void {
+    if (!eventHandlers[event]) {
+      eventHandlers[event] = []
+    }
+    eventHandlers[event].push(listener)
+  }
+
+  function off(event: string, listener: (...args: unknown[]) => void): void {
+    if (!eventHandlers[event]) return
+
+    const idx = eventHandlers[event].indexOf(listener)
+    if (idx !== -1) {
+      eventHandlers[event].splice(idx, 1)
+    }
+  }
+
+  function emit(event: string, ...args: unknown[]): void {
+    if (!eventHandlers[event]) return
+
+    for (const handler of eventHandlers[event]) {
+      handler(...args)
+    }
+  }
+
+  // Sidebar actions
+  function toggleSidebar() {
+    isSidebarVisible.value = !isSidebarVisible.value
+  }
+
+  function selectDevice(deviceId: string) {
+    selectedDeviceId.value = deviceId
+  }
+
+  // Theme actions
+  function setTheme(newTheme: Theme) {
+    theme.value = newTheme
+    // Apply theme to document
+    document.documentElement.setAttribute('data-theme', newTheme)
+  }
+
+  return {
+    // State
+    devices,
+    // Computed
+    devicesList,
+    connectedDevices,
+    isDiscovering,
+    isSidebarVisible,
+    selectedDeviceId,
+    selectedDevice,
+    theme,
+    // Methods
+    addEventListener,
+    removeEventListener,
+    getDeviceById,
+    addDevice,
+    removeDevice,
+    updateDevice,
+    updateDeviceProperties,
+    connectDevice,
+    disconnectDevice,
+    startDiscovery,
+    stopDiscovery,
+    getDevicesByType,
+    hasDevice,
+    clearDevices,
+    // Sidebar and UI actions
+    toggleSidebar,
+    selectDevice,
+    setTheme,
+    // Event emitter compatibility
+    on,
+    off,
+    emit
+  }
+})
+
+// For backward compatibility with code that uses 'new UnifiedStore()'
+class UnifiedStore {
+  constructor() {
+    console.warn('Direct UnifiedStore instantiation is deprecated, use useUnifiedStore() instead')
+    return this.createProxy()
+  }
+
+  createProxy() {
+    const store = useUnifiedStore()
+    // Create a proxy that forwards all properties and methods to the Pinia store
+    return new Proxy(this, {
+      get(target, prop) {
+        if (prop === 'devices') {
+          return store.devicesList
         }
+        // @ts-expect-error - Dynamic property access
+        return store[prop] || target[prop]
+      },
+      set(target, prop, value) {
+        // @ts-expect-error - Dynamic property access
+        store[prop] = value
+        return true
       }
     })
-  }
-
-  /**
-   * Remove a listener (compatibility method)
-   * @param event - Event name
-   * @param listener - Listener to remove
-   */
-  off(event: string, listener: (...args: unknown[]) => void): void {
-    // This is a simplified version that doesn't exactly remove the specific listener
-    // In a real implementation, you'd need to track the wrappers
-    // These parameters are intentionally unused in this implementation
-    void event
-    void listener
-  }
-
-  /**
-   * Emit an event (compatibility method)
-   * @param event - Event name
-   * @param args - Event arguments
-   */
-  emit(event: string, ...args: unknown[]): void {
-    switch (event) {
-      case 'deviceAdded':
-        this._emitEvent({ type: 'deviceAdded', device: args[0] as Device })
-        break
-      case 'deviceRemoved':
-        this._emitEvent({ type: 'deviceRemoved', deviceId: args[0] as string })
-        break
-      case 'deviceUpdated':
-        this._emitEvent({
-          type: 'deviceUpdated',
-          deviceId: args[0] as string,
-          updates: args[1] as Partial<Device>
-        })
-        break
-      case 'discoveryStarted':
-        this._emitEvent({ type: 'discoveryStarted' })
-        break
-      case 'discoveryStopped':
-        this._emitEvent({ type: 'discoveryStopped' })
-        break
-    }
   }
 }
 
 export default UnifiedStore
-
-// Pinia store for sidebar and basic device functionality
-export const useUnifiedStore = defineStore('unified', {
-  state: () => ({
-    // Sidebar state
-    isSidebarVisible: true,
-
-    // Devices
-    devices: [] as Device[],
-    selectedDeviceId: null as string | null,
-
-    // UI preferences
-    theme: 'light' as Theme
-  }),
-
-  getters: {
-    selectedDevice: (state) => {
-      if (!state.selectedDeviceId) return null
-      return state.devices.find((d) => d.id === state.selectedDeviceId) || null
-    }
-  },
-
-  actions: {
-    // Sidebar actions
-    toggleSidebar() {
-      this.isSidebarVisible = !this.isSidebarVisible
-    },
-
-    // Device actions
-    addDevice(device: Device) {
-      const existingIndex = this.devices.findIndex((d) => d.id === device.id)
-      if (existingIndex >= 0) {
-        // Update existing device
-        this.devices[existingIndex] = device
-      } else {
-        // Add new device
-        this.devices.push(device)
-      }
-    },
-
-    removeDevice(deviceId: string) {
-      this.devices = this.devices.filter((d) => d.id !== deviceId)
-      if (this.selectedDeviceId === deviceId) {
-        this.selectedDeviceId = null
-      }
-    },
-
-    updateDeviceConnection(deviceId: string, connected: boolean) {
-      const deviceIndex = this.devices.findIndex((d) => d.id === deviceId)
-      if (deviceIndex >= 0) {
-        this.devices[deviceIndex].connected = connected
-      }
-    },
-
-    selectDevice(deviceId: string) {
-      this.selectedDeviceId = deviceId
-    },
-
-    // Theme actions
-    setTheme(theme: Theme) {
-      this.theme = theme
-
-      // Apply theme to document
-      document.documentElement.setAttribute('data-theme', theme)
-    }
-  }
-})

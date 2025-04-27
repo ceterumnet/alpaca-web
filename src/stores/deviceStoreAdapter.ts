@@ -54,6 +54,9 @@ function generateUUID(): string {
  */
 export function legacyDeviceToNew(legacyDevice: LegacyDevice): Device {
   // Get basic device properties
+  const apiBaseUrl = (legacyDevice as ExtendedLegacyDevice).apiBaseUrl || ''
+  console.log('Converting legacy device to new format with apiBaseUrl:', apiBaseUrl)
+
   const baseDevice: BaseDevice = {
     id: generateUUID(),
     name: `${legacyDevice.deviceType} ${legacyDevice.idx}`,
@@ -65,8 +68,10 @@ export function legacyDeviceToNew(legacyDevice: LegacyDevice): Device {
     hasError: false,
     favorite: false,
     idx: legacyDevice.idx,
-    apiBaseUrl: (legacyDevice as ExtendedLegacyDevice).apiBaseUrl
+    apiBaseUrl: apiBaseUrl
   }
+
+  console.log('Created baseDevice with apiBaseUrl:', baseDevice.apiBaseUrl)
 
   // Handle specific device types
   if (legacyDevice instanceof LegacyTelescope) {

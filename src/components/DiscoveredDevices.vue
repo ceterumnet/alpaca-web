@@ -2,6 +2,7 @@
 import { onMounted, ref, computed, watch } from 'vue'
 import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
 import { getLegacyDevicesAdapter, useLegacyDeviceStore } from '@/stores/deviceStoreAdapter'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
 import axios from 'axios'
 import { DeviceFactory, Device } from '@/types/Device'
 import { Telescope } from '@/types/Telescope'
@@ -14,6 +15,8 @@ const discoveredDevicesStore = useDiscoveredDevicesStore()
 const devicesStore = getLegacyDevicesAdapter()
 // Get the enhanced store for advanced operations
 const legacyDeviceStore = useLegacyDeviceStore()
+// Use the unified store for direct device management
+const unifiedStore = useUnifiedStore()
 
 const isLoading = ref(false)
 const selectedDeviceIndex = ref<number | null>(null)
@@ -159,14 +162,27 @@ async function connectToDevice(index: number) {
     }
 
     if (newDevice) {
-      // Set the device's API URL
-      ;(newDevice as DeviceWithApi).apiBaseUrl = alpacaDevice.apiBaseUrl || ''
+      // Set the device's API URL and ensure it doesn't already have the "connected" endpoint
+      const apiBaseUrl = alpacaDevice.apiBaseUrl || ''
+
+      // Make sure the apiBaseUrl doesn't already have the endpoint path
+      const cleanApiBaseUrl = apiBaseUrl.endsWith('/connected')
+        ? apiBaseUrl.substring(0, apiBaseUrl.length - '/connected'.length)
+        : apiBaseUrl
+
+      ;(newDevice as DeviceWithApi).apiBaseUrl = cleanApiBaseUrl
+
+      console.log('Setting device apiBaseUrl:', cleanApiBaseUrl)
 
       // Check if device is connected
       try {
-        const stateResponse = await axios.get(
-          `${(newDevice as DeviceWithApi).apiBaseUrl}/connected`
-        )
+        // Construct proper URL for connection check
+        const connectionUrl = cleanApiBaseUrl
+          ? `${cleanApiBaseUrl}/connected`
+          : `/api/v1/${(alpacaDevice.deviceType || 'unknown').toLowerCase()}/${alpacaDevice.deviceNumber || 0}/connected`
+
+        console.log('Checking connection at URL:', connectionUrl)
+        const stateResponse = await axios.get(connectionUrl)
         newDevice.connected = stateResponse.data.Value
       } catch (error) {
         console.error(`Error checking connection state:`, error)
@@ -175,6 +191,20 @@ async function connectToDevice(index: number) {
 
       // Add the device using our enhanced store's compatibility method
       legacyDeviceStore.addLegacyDevice(newDevice)
+
+      // Also add to the unified store for direct access by the new components
+      unifiedStore.addDevice({
+        id: `${alpacaDevice.deviceType}-${alpacaDevice.deviceNumber}`,
+        name: `${alpacaDevice.deviceType} ${alpacaDevice.deviceNumber}`,
+        type: alpacaDevice.deviceType || 'unknown',
+        isConnected: newDevice.connected,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {},
+        idx: Number(alpacaDevice.deviceNumber) || 0,
+        apiBaseUrl: cleanApiBaseUrl
+      })
+
       console.log('Device added to panels:', newDevice)
     }
   } catch (error) {

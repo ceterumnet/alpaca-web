@@ -4,6 +4,7 @@ import axios from 'axios'
 import EnhancedPanelComponent from './EnhancedPanelComponent.vue'
 import Icon from './Icon.vue'
 import { UIMode } from '../stores/useUIPreferencesStore'
+import { debugLog, logApiRequest, joinUrlPaths } from '../utils/debugUtils'
 
 const props = defineProps({
   panelName: { type: String, required: true },
@@ -329,8 +330,31 @@ async function disconnectCamera() {
 
 // Helper function to get API endpoint URL
 function getApiEndpoint(endpoint: string) {
+  debugLog('EnhancedCameraPanel props', {
+    apiBaseUrl: props.apiBaseUrl,
+    deviceNum: props.deviceNum,
+    deviceId: props.deviceId
+  })
+
+  // Check if apiBaseUrl actually contains the endpoint already
+  if (
+    props.apiBaseUrl &&
+    (props.apiBaseUrl.includes(`/${endpoint}`) || props.apiBaseUrl.endsWith(`/${endpoint}`))
+  ) {
+    debugLog('URL already contains endpoint, using', props.apiBaseUrl)
+    return props.apiBaseUrl
+  }
+
+  // Use apiBaseUrl if available, otherwise construct default path
   const baseUrl = props.apiBaseUrl || `/api/v1/camera/${props.deviceNum}`
-  return `${baseUrl}/${endpoint}`
+
+  // Join the paths properly using utility function
+  const finalUrl = joinUrlPaths(baseUrl, endpoint)
+
+  // Log the URL for debugging
+  logApiRequest('GET', finalUrl)
+
+  return finalUrl
 }
 
 // Functions to fetch values that only need to be retrieved once
