@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import DemoPage from '../components/ui-examples/DemoPage.vue'
-import HomeView from '../components/Home.vue'
+import DevicesViewMigrated from '../views/DevicesViewMigrated.vue'
+import DevicePageMigrated from '../views/DevicePageMigrated.vue'
+import ImageAnalysisMigrated from '../views/ImageAnalysisMigrated.vue'
+import SettingsViewMigrated from '../views/SettingsViewMigrated.vue'
+import DiscoveryViewMigrated from '../views/DiscoveryViewMigrated.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,27 +11,37 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: DevicesViewMigrated
     },
     {
       path: '/ui-demo',
-      name: 'ui-demo',
-      component: DemoPage
+      name: 'demo',
+      component: DevicesViewMigrated
     },
     {
       path: '/devices',
       name: 'devices',
-      component: () => import('../views/DevicesView.vue')
+      component: DevicesViewMigrated
     },
     {
       path: '/devices/:id',
       name: 'device-detail',
-      component: () => import('../views/DeviceDetailView.vue')
+      component: DevicePageMigrated
     },
     {
       path: '/discovery',
       name: 'discovery',
-      component: () => import('../views/DiscoveryView.vue')
+      component: DiscoveryViewMigrated
+    },
+    {
+      path: '/img-analysis',
+      name: 'image-analysis',
+      component: ImageAnalysisMigrated
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: SettingsViewMigrated
     }
   ]
 })

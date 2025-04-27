@@ -62,8 +62,9 @@ const mockDevices: MockDevice[] = [
 
 vi.mock('@/stores/UnifiedStore', () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      devices: mockDevices
+    useUnifiedStore: vi.fn(() => ({
+      devicesList: mockDevices,
+      isSidebarVisible: true
     }))
   }
 })

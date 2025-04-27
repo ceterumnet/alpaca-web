@@ -2,14 +2,50 @@ import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import TelescopePanelMigrated from '../../src/components/panels/TelescopePanelMigrated.vue'
 import { UIMode } from '../../src/stores/useUIPreferencesStore'
-import UnifiedStore from '../../src/stores/UnifiedStore'
+import { useUnifiedStore } from '../../src/stores/UnifiedStore'
 
 // Mock UnifiedStore
 vi.mock('../../src/stores/UnifiedStore', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      devices: [
-        {
+  const mockStore = {
+    devices: [
+      {
+        id: 'telescope-1',
+        name: 'Test Telescope',
+        type: 'telescope',
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {
+          tracking: true,
+          slewing: false,
+          rightAscension: '12:00:00',
+          declination: '+45:00:00',
+          altitude: 45.0,
+          azimuth: 180.0
+        }
+      }
+    ],
+    devicesList: [
+      {
+        id: 'telescope-1',
+        name: 'Test Telescope',
+        type: 'telescope',
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {
+          tracking: true,
+          slewing: false,
+          rightAscension: '12:00:00',
+          declination: '+45:00:00',
+          altitude: 45.0,
+          azimuth: 180.0
+        }
+      }
+    ],
+    getDeviceById: vi.fn((id) => {
+      if (id === 'telescope-1') {
+        return {
           id: 'telescope-1',
           name: 'Test Telescope',
           type: 'telescope',
@@ -25,79 +61,22 @@ vi.mock('../../src/stores/UnifiedStore', () => {
             azimuth: 180.0
           }
         }
-      ],
-      getDeviceById: vi.fn((id) => {
-        if (id === 'telescope-1') {
-          return {
-            id: 'telescope-1',
-            name: 'Test Telescope',
-            type: 'telescope',
-            isConnected: true,
-            isConnecting: false,
-            isDisconnecting: false,
-            properties: {
-              tracking: true,
-              slewing: false,
-              rightAscension: '12:00:00',
-              declination: '+45:00:00',
-              altitude: 45.0,
-              azimuth: 180.0
-            }
-          }
-        }
-        return null
-      }),
-      updateDeviceProperties: vi.fn(),
-      emit: vi.fn(),
-      connectDevice: vi.fn(),
-      disconnectDevice: vi.fn(),
-      on: vi.fn(),
-      off: vi.fn()
-    }))
+      }
+      return null
+    }),
+    updateDeviceProperties: vi.fn(),
+    emit: vi.fn(),
+    connectDevice: vi.fn(),
+    disconnectDevice: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn()
+  }
+
+  return {
+    default: vi.fn().mockImplementation(() => mockStore),
+    useUnifiedStore: vi.fn(() => mockStore)
   }
 })
-
-// Mock the EnhancedTelescopePanel component
-vi.mock('../../src/components/EnhancedTelescopePanel.vue', () => ({
-  default: {
-    name: 'EnhancedTelescopePanel',
-    props: {
-      panelName: String,
-      connected: Boolean,
-      deviceType: String,
-      deviceId: String,
-      deviceNum: Number,
-      idx: [String, Number]
-    },
-    template: `
-      <div class="enhanced-telescope-panel">
-        <div class="panel-title">{{ panelName }}</div>
-        <div class="status-indicator" @click="$emit('connect')">
-          {{ connected ? 'Connected' : 'Disconnected' }}
-        </div>
-        <div class="controls">
-          <button class="tracking-toggle" @click="$emit('toggle-tracking', !trackingEnabled)">
-            Toggle Tracking
-          </button>
-          <button class="slew-button" @click="$emit('slew', '12:00:00', '+45:00:00')">
-            Slew
-          </button>
-          <button class="park-button" @click="$emit('park')">
-            Park
-          </button>
-          <button class="unpark-button" @click="$emit('unpark')">
-            Unpark
-          </button>
-        </div>
-      </div>
-    `,
-    data() {
-      return {
-        trackingEnabled: true
-      }
-    }
-  }
-}))
 
 // Mock UI preferences store
 vi.mock('../../src/stores/useUIPreferencesStore', () => {
@@ -116,22 +95,27 @@ vi.mock('../../src/stores/useUIPreferencesStore', () => {
   }
 })
 
-// Mock BaseDevicePanel component
-vi.mock('../../src/components/panels/BaseDevicePanel.vue', () => ({
-  default: {
-    name: 'BaseDevicePanel',
-    props: {
-      deviceId: String,
-      title: String
-    },
-    template: '<div><slot></slot></div>',
-    expose: ['isConnected', 'deviceType', 'deviceNum', 'handleConnect', 'handleModeChange']
-  }
+// Mock EnhancedTelescopePanel component
+vi.mock('../../src/components/EnhancedTelescopePanelMigrated.vue', () => ({
+  name: 'EnhancedTelescopePanel',
+  template: `
+    <div>
+      <button class="slew-button" @click="$emit('slew')">Slew</button>
+      <button class="tracking-toggle" @click="$emit('toggleTracking')">Toggle Tracking</button>
+      <button class="park-button" @click="$emit('park')">Park</button>
+      <button class="unpark-button" @click="$emit('unpark')">Unpark</button>
+    </div>
+  `,
+  props: ['panelName', 'deviceId', 'connected', 'deviceType']
 }))
 
 describe('TelescopePanelMigrated', () => {
+  // Get the mock store to use in assertions
+  let mockStore: ReturnType<typeof useUnifiedStore>
+
   beforeEach(() => {
     vi.clearAllMocks()
+    mockStore = useUnifiedStore()
   })
 
   it('renders correctly with default props', () => {
@@ -172,8 +156,7 @@ describe('TelescopePanelMigrated', () => {
     await enhancedPanel.find('.slew-button').trigger('click')
 
     // Check that the correct store method was called
-    const storeMock = vi.mocked(UnifiedStore).mock.results[0].value
-    expect(storeMock.emit).toHaveBeenCalledWith(
+    expect(mockStore.emit).toHaveBeenCalledWith(
       'callDeviceMethod',
       'telescope-1',
       'slewToCoordinates',
@@ -194,8 +177,7 @@ describe('TelescopePanelMigrated', () => {
     await enhancedPanel.find('.tracking-toggle').trigger('click')
 
     // Check that the correct store method was called
-    const storeMock = vi.mocked(UnifiedStore).mock.results[0].value
-    expect(storeMock.updateDeviceProperties).toHaveBeenCalledWith('telescope-1', {
+    expect(mockStore.updateDeviceProperties).toHaveBeenCalledWith('telescope-1', {
       tracking: false
     })
   })
@@ -213,8 +195,7 @@ describe('TelescopePanelMigrated', () => {
     await enhancedPanel.find('.park-button').trigger('click')
 
     // Check that the correct store method was called
-    const storeMock = vi.mocked(UnifiedStore).mock.results[0].value
-    expect(storeMock.emit).toHaveBeenCalledWith('callDeviceMethod', 'telescope-1', 'park', [])
+    expect(mockStore.emit).toHaveBeenCalledWith('callDeviceMethod', 'telescope-1', 'park', [])
   })
 
   it('handles unpark action correctly', async () => {
@@ -230,7 +211,6 @@ describe('TelescopePanelMigrated', () => {
     await enhancedPanel.find('.unpark-button').trigger('click')
 
     // Check that the correct store method was called
-    const storeMock = vi.mocked(UnifiedStore).mock.results[0].value
-    expect(storeMock.emit).toHaveBeenCalledWith('callDeviceMethod', 'telescope-1', 'unpark', [])
+    expect(mockStore.emit).toHaveBeenCalledWith('callDeviceMethod', 'telescope-1', 'unpark', [])
   })
 })

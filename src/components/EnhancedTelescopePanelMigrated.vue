@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import EnhancedPanelComponentMigrated from './EnhancedPanelComponentMigrated.vue'
 import Icon from './Icon.vue'
-import { onMounted, reactive, ref, computed, watch, onUnmounted } from 'vue'
-import UnifiedStore from '../stores/UnifiedStore'
+import { onMounted, ref, computed, onUnmounted } from 'vue'
+import { useUnifiedStore } from '../stores/UnifiedStore'
 import { UIMode } from '../stores/useUIPreferencesStore'
 import type { TelescopeDevice } from '../types/DeviceTypes'
 
@@ -10,7 +10,7 @@ const props = defineProps({
   panelName: { type: String, required: true },
   connected: { type: Boolean, required: true },
   deviceType: { type: String, required: true },
-  deviceId: { type: [String, Number], required: true },
+  deviceId: { type: String, required: true },
   supportedModes: {
     type: Array as () => UIMode[],
     default: () => [UIMode.OVERVIEW, UIMode.DETAILED]
@@ -19,277 +19,255 @@ const props = defineProps({
   deviceNum: { type: Number, required: true }
 })
 
-const emit = defineEmits([
-  'close',
-  'configure',
-  'connect',
-  'modeChange',
-  'slew',
-  'toggle-tracking',
-  'park',
-  'unpark'
-])
+const emit = defineEmits(['close', 'configure', 'connect', 'modeChange', 'viewDeviceInfo'])
 
 // Initialize store
-const store = new UnifiedStore()
+const store = useUnifiedStore()
 
 // Get the telescope device directly from the store
 const telescope = computed(() => {
-  const device = store.getDeviceById(String(props.deviceId))
-  return device?.type === 'telescope' ? (device as TelescopeDevice) : null
+  return store.getDeviceById(props.deviceId) as TelescopeDevice | null
 })
 
-const currentMode = ref(UIMode.OVERVIEW)
-const trackingEnabled = computed(() => telescope.value?.properties?.trackingEnabled || false)
-const slewRateOptions = ['Guide', 'Center', 'Find', 'Max']
-const selectedSlewRate = ref('Center')
-// Define axis indices and slew rate mapping (degrees per second)
-const TelescopeAxes = { Primary: 0, Secondary: 1 }
-const slewRateMapping: Record<string, number> = {
-  Guide: 0.1,
-  Center: 0.5,
-  Find: 1.0,
-  Max: 2.0
-}
-const lastError = ref('')
-const isSlewing = computed(() => telescope.value?.properties?.isSlewing || false)
-const rightAscension = computed(() => {
-  const ra = telescope.value?.properties?.rightAscension
-  return typeof ra === 'number' || typeof ra === 'string' ? formatRA(ra) : '00:00:00'
-})
-const declination = computed(() => {
-  const dec = telescope.value?.properties?.declination
-  return typeof dec === 'number' || typeof dec === 'string' ? formatDec(dec) : '+00:00:00'
-})
-const altitude = computed(() => {
-  const alt = telescope.value?.properties?.altitude
-  return typeof alt === 'number' ? alt : 0
-})
-const azimuth = computed(() => {
-  const az = telescope.value?.properties?.azimuth
-  return typeof az === 'number' ? az : 0
-})
-// Add connected status handling for a smoother UI
-const isConnecting = computed(() => telescope.value?.isConnecting || false)
-
-// More detailed telescope data for DETAILED and FULLSCREEN modes
-const detailedData = {
-  sideOfPier: computed(() => {
-    const sideOfPier = telescope.value?.properties?.pierSide
-    return typeof sideOfPier === 'string' ? sideOfPier : 'Unknown'
-  }),
-  siderealTime: computed(() => {
-    const time = telescope.value?.properties?.siderealTime
-    return typeof time === 'number' || typeof time === 'string' ? formatRA(time) : '00:00:00'
-  }),
-  targetRightAscension: computed(() => {
-    const targetRA = telescope.value?.properties?.targetRightAscension
-    return typeof targetRA === 'number' || typeof targetRA === 'string'
-      ? formatRA(targetRA)
-      : '00:00:00'
-  }),
-  targetDeclination: computed(() => {
-    const targetDec = telescope.value?.properties?.targetDeclination
-    return typeof targetDec === 'number' || typeof targetDec === 'string'
-      ? formatDec(targetDec)
-      : '+00:00:00'
-  }),
-  parkingState: computed(() => {
-    const parked = telescope.value?.properties?.parked
-    return parked === true ? 'Parked' : 'Not Parked'
-  }),
-  trackingRate: computed(() => {
-    const rate = telescope.value?.properties?.trackingRate
-    return typeof rate === 'number' ? rate : 0
-  })
+// Define the coordinate types for TypeScript
+interface Coordinates {
+  rightAscension: number
+  declination: number
+  altitude: number
+  azimuth: number
+  lst?: string
 }
 
-// Target coordinates for manual input
-const targetRA = ref('00:00:00')
-const targetDec = ref('+00:00:00')
+// Extend TelescopeDevice interface to include coordinates
+declare module '../types/DeviceTypes' {
+  interface TelescopeDevice {
+    coordinates?: Coordinates
+  }
+}
 
-// Computed values
-const formattedRA = computed(() => rightAscension.value)
-const formattedDec = computed(() => declination.value)
-const formattedAlt = computed(() => `${altitude.value.toFixed(2)}°`)
-const formattedAz = computed(() => `${azimuth.value.toFixed(2)}°`)
+// Local state
+const currentMode = ref<UIMode>(props.supportedModes[0])
+const targetRA = ref<string>('')
+const targetDec = ref<string>('')
+const lastError = ref<string | null>(null)
+const isConnecting = ref(false)
+const isSlewing = ref(false)
 
-// Handle connection toggle
-function handleConnectionToggle() {
-  if (isConnecting.value) return // Prevent multiple rapid connection attempts
-  emit('connect', !props.connected)
+// Slew rates
+const slewRateOptions = ['Guide', 'Centering', 'Find', 'Max']
+const selectedSlewRate = ref(slewRateOptions[1]) // Default to 'Centering'
+const slewRateMapping = {
+  Guide: 1,
+  Centering: 3,
+  Find: 6,
+  Max: 9
+}
+
+// Telescope coordinate data
+const detailedData = computed(() => ({
+  rightAscension: formatRADec(telescope.value?.coordinates?.rightAscension || 0, true),
+  declination: formatRADec(telescope.value?.coordinates?.declination || 0, false),
+  altitude: formatAltAz(telescope.value?.coordinates?.altitude || 0),
+  azimuth: formatAltAz(telescope.value?.coordinates?.azimuth || 0),
+  parkingState: telescope.value?.properties?.parked ? 'Parked' : 'Not Parked'
+}))
+
+// Status computed properties
+const trackingEnabled = computed(() => {
+  return telescope.value?.properties?.tracking || false
+})
+
+// Event handlers
+async function toggleTracking() {
+  if (!props.connected) return
+
+  try {
+    if (trackingEnabled.value) {
+      // Turn tracking off
+      await store.emit('telescope.stopTracking', props.deviceId)
+    } else {
+      // Turn tracking on
+      await store.emit('telescope.startTracking', props.deviceId)
+    }
+  } catch (error) {
+    console.error('Error toggling tracking:', error)
+    lastError.value = `Failed to toggle tracking: ${error instanceof Error ? error.message : String(error)}`
+  }
+}
+
+async function slewToCoordinates() {
+  if (!props.connected || isSlewing.value) return
+
+  try {
+    isSlewing.value = true
+    // Call the device API
+    await store.emit('telescope.slewToCoordinates', props.deviceId, {
+      rightAscension: targetRA.value,
+      declination: targetDec.value
+    })
+
+    // In a real implementation, we would wait for a confirmation that the slew is complete
+    // For this example, we'll simulate it with a timeout
+    setTimeout(() => {
+      isSlewing.value = false
+    }, 5000)
+  } catch (error) {
+    console.error('Error slewing to coordinates:', error)
+    lastError.value = `Failed to slew to coordinates: ${error instanceof Error ? error.message : String(error)}`
+    isSlewing.value = false
+  }
+}
+
+async function moveNorth() {
+  if (!props.connected || isSlewing.value) return
+
+  try {
+    isSlewing.value = true
+    await store.emit('telescope.move', props.deviceId, {
+      direction: 'North',
+      rate: slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
+    })
+  } catch (error) {
+    console.error('Error moving telescope north:', error)
+    lastError.value = `Failed to move telescope north: ${error instanceof Error ? error.message : String(error)}`
+    isSlewing.value = false
+  }
+}
+
+async function moveSouth() {
+  if (!props.connected || isSlewing.value) return
+
+  try {
+    isSlewing.value = true
+    await store.emit('telescope.move', props.deviceId, {
+      direction: 'South',
+      rate: slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
+    })
+  } catch (error) {
+    console.error('Error moving telescope south:', error)
+    lastError.value = `Failed to move telescope south: ${error instanceof Error ? error.message : String(error)}`
+    isSlewing.value = false
+  }
+}
+
+async function moveEast() {
+  if (!props.connected || isSlewing.value) return
+
+  try {
+    isSlewing.value = true
+    await store.emit('telescope.move', props.deviceId, {
+      direction: 'East',
+      rate: slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
+    })
+  } catch (error) {
+    console.error('Error moving telescope east:', error)
+    lastError.value = `Failed to move telescope east: ${error instanceof Error ? error.message : String(error)}`
+    isSlewing.value = false
+  }
+}
+
+async function moveWest() {
+  if (!props.connected || isSlewing.value) return
+
+  try {
+    isSlewing.value = true
+    await store.emit('telescope.move', props.deviceId, {
+      direction: 'West',
+      rate: slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
+    })
+  } catch (error) {
+    console.error('Error moving telescope west:', error)
+    lastError.value = `Failed to move telescope west: ${error instanceof Error ? error.message : String(error)}`
+    isSlewing.value = false
+  }
+}
+
+async function stopSlew() {
+  if (!props.connected || !isSlewing.value) return
+
+  try {
+    await store.emit('telescope.abortSlew', props.deviceId)
+    isSlewing.value = false
+  } catch (error) {
+    console.error('Error stopping slew:', error)
+    lastError.value = `Failed to stop slew: ${error instanceof Error ? error.message : String(error)}`
+  }
+}
+
+async function parkTelescope() {
+  if (!props.connected || isSlewing.value) return
+
+  try {
+    isSlewing.value = true
+    await store.emit('telescope.park', props.deviceId)
+
+    // In a real implementation, we would listen for a status change
+    // Here we'll simulate it
+    setTimeout(() => {
+      isSlewing.value = false
+    }, 3000)
+  } catch (error) {
+    console.error('Error parking telescope:', error)
+    lastError.value = `Failed to park telescope: ${error instanceof Error ? error.message : String(error)}`
+    isSlewing.value = false
+  }
+}
+
+async function unparkTelescope() {
+  if (!props.connected || detailedData.value.parkingState !== 'Parked') return
+
+  try {
+    await store.emit('telescope.unpark', props.deviceId)
+  } catch (error) {
+    console.error('Error unparking telescope:', error)
+    lastError.value = `Failed to unpark telescope: ${error instanceof Error ? error.message : String(error)}`
+  }
+}
+
+// Helper functions
+function formatRADec(value: number, isRa: boolean): string {
+  // Format RA as HH:MM:SS or Dec as DD:MM:SS
+  // This is a simple placeholder - in a real app you'd use a proper astronomy library
+  const sign = !isRa && value < 0 ? '-' : ''
+  const absValue = Math.abs(value)
+
+  const hours = Math.floor(absValue)
+  const minutes = Math.floor((absValue - hours) * 60)
+  const seconds = Math.floor(((absValue - hours) * 60 - minutes) * 60)
+
+  return `${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+}
+
+function formatAltAz(value: number): string {
+  // Format altitude or azimuth as degrees
+  return `${value.toFixed(1)}°`
 }
 
 // Handle mode changes
-function onModeChange(mode: UIMode) {
-  currentMode.value = mode
-  emit('modeChange', mode)
+function handleModeChange(newMode: UIMode) {
+  currentMode.value = newMode
+  emit('modeChange', { deviceType: props.deviceType, deviceId: props.deviceId, mode: newMode })
 }
 
-// Handle component lifecycle
+// Lifecycle hooks
 onMounted(() => {
-  if (props.connected) {
-    // Add event listeners for property changes
-    store.on('devicePropertyChanged', handlePropertyChangeEvent)
-  }
-})
+  // Initialize any necessary data
+  console.log(`Telescope panel mounted for device ${props.deviceId}`)
 
-// Clean up on component unmount
-onUnmounted(() => {
-  // Remove event listeners
-  store.off('devicePropertyChanged', handlePropertyChangeEvent)
-})
-
-// Watch for connection changes
-watch(
-  () => props.connected,
-  (newValue) => {
-    if (newValue) {
-      // Add event listeners for property changes when connected
-      store.on('devicePropertyChanged', handlePropertyChangeEvent)
-    } else {
-      // Remove event listeners when disconnected
-      store.off('devicePropertyChanged', handlePropertyChangeEvent)
+  // In a real app, we might want to subscribe to device updates
+  if (telescope.value) {
+    // Populate the initial coordinates
+    if (telescope.value.coordinates) {
+      targetRA.value = formatRADec(telescope.value.coordinates.rightAscension, true)
+      targetDec.value = formatRADec(telescope.value.coordinates.declination, false)
     }
   }
-)
+})
 
-// Handle property changes from store
-function handlePropertyChangeEvent(...args: unknown[]) {
-  if (args.length < 3) return
-
-  const deviceId = args[0] as string
-  const property = args[1] as string
-  const value = args[2]
-
-  if (deviceId !== String(props.deviceId)) return
-
-  // Handle specific property updates if needed
-  if (property === 'error') {
-    lastError.value = String(value)
-  }
-}
-
-// Format RA from hours to HH:MM:SS
-function formatRA(ra: number | string): string {
-  const hours = parseFloat(String(ra))
-  if (isNaN(hours)) return '00:00:00'
-
-  const h = Math.floor(hours)
-  const m = Math.floor((hours - h) * 60)
-  const s = Math.floor(((hours - h) * 60 - m) * 60)
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-}
-
-// Format Dec from degrees to DD:MM:SS
-function formatDec(dec: number | string): string {
-  const degrees = parseFloat(String(dec))
-  if (isNaN(degrees)) return '+00:00:00'
-
-  const sign = degrees < 0 ? '-' : '+'
-  const absDeg = Math.abs(degrees)
-  const d = Math.floor(absDeg)
-  const m = Math.floor((absDeg - d) * 60)
-  const s = Math.floor(((absDeg - d) * 60 - m) * 60)
-  return `${sign}${d.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-}
-
-// Telescope control functions
-function toggleTracking() {
-  try {
-    emit('toggle-tracking', !trackingEnabled.value)
-  } catch (error) {
-    console.error('Error toggling tracking:', error)
-    lastError.value = 'Failed to toggle tracking'
-  }
-}
-
-// Slew to coordinates
-function slewToCoordinates() {
-  try {
-    emit('slew', targetRA.value, targetDec.value)
-  } catch (error) {
-    console.error('Error slewing to coordinates:', error)
-    lastError.value = 'Failed to slew to coordinates'
-  }
-}
-
-// Park/unpark functions
-function parkTelescope() {
-  try {
-    emit('park')
-  } catch (error) {
-    console.error('Error parking telescope:', error)
-    lastError.value = 'Failed to park telescope'
-  }
-}
-
-function unparkTelescope() {
-  try {
-    emit('unpark')
-  } catch (error) {
-    console.error('Error unparking telescope:', error)
-    lastError.value = 'Failed to unpark telescope'
-  }
-}
-
-// Telescope movement controls
-function moveNorth() {
-  try {
-    store.emit('callDeviceMethod', String(props.deviceId), 'moveAxis', [
-      TelescopeAxes.Secondary,
-      slewRateMapping[selectedSlewRate.value] || parseFloat(String(selectedSlewRate.value))
-    ])
-  } catch (error) {
-    console.error('Error moving telescope North:', error)
-    lastError.value = 'Failed to move telescope North'
-  }
-}
-
-function moveSouth() {
-  try {
-    store.emit('callDeviceMethod', String(props.deviceId), 'moveAxis', [
-      TelescopeAxes.Secondary,
-      -(slewRateMapping[selectedSlewRate.value] || parseFloat(String(selectedSlewRate.value)))
-    ])
-  } catch (error) {
-    console.error('Error moving telescope South:', error)
-    lastError.value = 'Failed to move telescope South'
-  }
-}
-
-function moveEast() {
-  try {
-    store.emit('callDeviceMethod', String(props.deviceId), 'moveAxis', [
-      TelescopeAxes.Primary,
-      slewRateMapping[selectedSlewRate.value] || parseFloat(String(selectedSlewRate.value))
-    ])
-  } catch (error) {
-    console.error('Error moving telescope East:', error)
-    lastError.value = 'Failed to move telescope East'
-  }
-}
-
-function moveWest() {
-  try {
-    store.emit('callDeviceMethod', String(props.deviceId), 'moveAxis', [
-      TelescopeAxes.Primary,
-      -(slewRateMapping[selectedSlewRate.value] || parseFloat(String(selectedSlewRate.value)))
-    ])
-  } catch (error) {
-    console.error('Error moving telescope West:', error)
-    lastError.value = 'Failed to move telescope West'
-  }
-}
-
-function stopSlew() {
-  try {
-    store.emit('callDeviceMethod', String(props.deviceId), 'abortSlew', [])
-  } catch (error) {
-    console.error('Error stopping telescope slew:', error)
-    lastError.value = 'Failed to stop telescope slew'
-  }
-}
+onUnmounted(() => {
+  // Clean up any subscriptions
+  console.log(`Telescope panel unmounted for device ${props.deviceId}`)
+})
 </script>
 
 <template>
@@ -299,165 +277,208 @@ function stopSlew() {
     :device-type="deviceType"
     :device-id="deviceId"
     :supported-modes="supportedModes"
+    :current-mode="currentMode"
+    :idx="idx"
     @close="$emit('close')"
     @configure="$emit('configure')"
-    @connect="handleConnectionToggle"
-    @mode-change="onModeChange"
+    @connect="$emit('connect')"
+    @mode-change="handleModeChange"
   >
-    <!-- Overview Mode - Compact, Essential Controls -->
-    <template #overview-content>
-      <div class="telescope-overview">
-        <!-- Connection status indicator at the top when disconnected -->
-        <div v-if="!connected" class="status-disconnected">
-          <Icon type="disconnected" />
-          <span>Telescope disconnected</span>
-        </div>
+    <template #actions>
+      <div class="panel-actions">
+        <button
+          class="action-button"
+          :disabled="!connected || Boolean(isSlewing)"
+          :title="trackingEnabled ? 'Stop Tracking' : 'Start Tracking'"
+          @click="toggleTracking"
+        >
+          <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
+        </button>
 
-        <div v-else-if="isConnecting" class="status-connecting">
-          <Icon type="history" class="loading-icon" />
-          <span>Connecting...</span>
-        </div>
-
-        <!-- Position display now more visually prominent -->
-        <div class="overview-position">
-          <div class="position-primary">
-            <div class="pos-box ra-dec">
-              <div class="coord-label">RA</div>
-              <div class="coord-value">{{ formattedRA }}</div>
-            </div>
-            <div class="pos-box ra-dec">
-              <div class="coord-label">Dec</div>
-              <div class="coord-value">{{ formattedDec }}</div>
-            </div>
-          </div>
-
-          <div class="position-secondary">
-            <div class="pos-box alt-az">
-              <div class="coord-label">Alt</div>
-              <div class="coord-value">{{ formattedAlt }}</div>
-            </div>
-            <div class="pos-box alt-az">
-              <div class="coord-label">Az</div>
-              <div class="coord-value">{{ formattedAz }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Status badges -->
-        <div class="status-badges">
-          <div class="status-badge" :class="{ active: trackingEnabled }">
-            <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
-            <span>{{ trackingEnabled ? 'Tracking' : 'Not Tracking' }}</span>
-          </div>
-          <div v-if="isSlewing" class="status-badge slewing">
-            <Icon type="arrow-up" />
-            <span>Slewing</span>
-          </div>
-        </div>
-
-        <!-- Controls with slew and tracking in a grid layout -->
-        <div class="overview-controls">
-          <div class="directional-controls">
-            <div class="slew-control">
-              <button class="slew-btn north" :disabled="!connected || isSlewing" @click="moveNorth">
-                <Icon type="arrow-up" />
-              </button>
-              <div class="east-west">
-                <button class="slew-btn west" :disabled="!connected || isSlewing" @click="moveWest">
-                  <Icon type="arrow-left" />
-                </button>
-                <button
-                  class="slew-btn stop"
-                  :disabled="!connected || !isSlewing"
-                  @click="stopSlew"
-                >
-                  <Icon type="stop" />
-                </button>
-                <button class="slew-btn east" :disabled="!connected || isSlewing" @click="moveEast">
-                  <Icon type="arrow-right" />
-                </button>
-              </div>
-              <button class="slew-btn south" :disabled="!connected || isSlewing" @click="moveSouth">
-                <Icon type="arrow-down" />
-              </button>
-            </div>
-          </div>
-
-          <div class="overview-actions">
-            <select
-              v-model="selectedSlewRate"
-              :disabled="!connected || isSlewing"
-              class="slew-rate-select"
-            >
-              <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
-                {{ rate }} Rate
-              </option>
-            </select>
-
-            <button
-              class="control-btn"
-              :class="{ active: trackingEnabled }"
-              :disabled="!connected || isConnecting"
-              @click="toggleTracking"
-            >
-              <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
-              <span>{{ trackingEnabled ? 'Tracking' : 'Track' }}</span>
-            </button>
-          </div>
-        </div>
+        <button
+          class="action-button"
+          :disabled="!connected || Boolean(telescope?.properties?.parked)"
+          title="Park Telescope"
+          @click="parkTelescope"
+        >
+          <Icon type="stop" />
+        </button>
       </div>
     </template>
 
-    <!-- Detailed Mode - More Controls and Data -->
-    <template #detailed-content>
-      <div class="telescope-detailed">
-        <!-- Optimized Layout: Position & Status Side-by-Side -->
-        <div class="detailed-top-section">
-          <!-- Position Information -->
-          <div class="position-info-optimized">
-            <div class="position-grid-optimized">
-              <div class="position-column">
-                <h3>Equatorial</h3>
-                <div class="coord-row">
-                  <span class="label">RA:</span>
-                  <span class="value">{{ formattedRA }}</span>
+    <template #content>
+      <div class="telescope-panel">
+        <!-- Connection Status -->
+        <div v-if="connected" class="status-connected">
+          <Icon type="connected" />
+          <span>Connected</span>
+        </div>
+
+        <div v-else-if="isConnecting" class="status-connecting">
+          <Icon type="disconnected" class="loading-icon" />
+          <span>Connecting...</span>
+        </div>
+
+        <div v-else class="status-disconnected">
+          <Icon type="disconnected" />
+          <span>Disconnected</span>
+        </div>
+
+        <!-- Error display -->
+        <div v-if="lastError" class="error-message">
+          <span>{{ lastError }}</span>
+          <button @click="lastError = null">Dismiss</button>
+        </div>
+
+        <!-- Overview Mode -->
+        <div v-if="currentMode === 'overview'" class="overview-section">
+          <!-- Position Display -->
+          <div class="position-section">
+            <h3>Position</h3>
+            <div class="position-grid">
+              <div class="position-group">
+                <h4>Equatorial</h4>
+                <div class="position-row">
+                  <span class="coord-label">RA:</span>
+                  <span class="coord-value">{{ detailedData.rightAscension }}</span>
                 </div>
-                <div class="coord-row">
-                  <span class="label">Dec:</span>
-                  <span class="value">{{ formattedDec }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Target RA:</span>
-                  <span class="value">{{ detailedData.targetRightAscension }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Target Dec:</span>
-                  <span class="value">{{ detailedData.targetDeclination }}</span>
+                <div class="position-row">
+                  <span class="coord-label">Dec:</span>
+                  <span class="coord-value">{{ detailedData.declination }}</span>
                 </div>
               </div>
-              <div class="position-column">
-                <h3>Horizontal</h3>
-                <div class="coord-row">
-                  <span class="label">Alt:</span>
-                  <span class="value">{{ formattedAlt }}</span>
+              <div class="position-group">
+                <h4>Horizontal</h4>
+                <div class="position-row">
+                  <span class="coord-label">Alt:</span>
+                  <span class="coord-value">{{ detailedData.altitude }}</span>
                 </div>
-                <div class="coord-row">
-                  <span class="label">Az:</span>
-                  <span class="value">{{ formattedAz }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">LST:</span>
-                  <span class="value">{{ detailedData.siderealTime }}</span>
-                </div>
-                <div class="coord-row">
-                  <span class="label">Side of Pier:</span>
-                  <span class="value">{{ detailedData.sideOfPier }}</span>
+                <div class="position-row">
+                  <span class="coord-label">Az:</span>
+                  <span class="coord-value">{{ detailedData.azimuth }}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Status & Controls -->
+          <!-- Status and Controls -->
+          <div class="status-section">
+            <h3>Status</h3>
+            <div class="status-badges">
+              <div class="status-badge" :class="{ active: trackingEnabled }">
+                <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
+                <span>{{ trackingEnabled ? 'Tracking' : 'Not Tracking' }}</span>
+              </div>
+              <div v-if="isSlewing" class="status-badge slewing">
+                <Icon type="arrow-right" />
+                <span>Slewing</span>
+              </div>
+            </div>
+
+            <div class="control-section">
+              <h3>Controls</h3>
+              <div class="control-grid">
+                <div class="directional-controls">
+                  <div class="slew-control">
+                    <button
+                      class="slew-btn north"
+                      :disabled="!connected || Boolean(isSlewing)"
+                      @click="moveNorth"
+                    >
+                      <Icon type="arrow-up" />
+                    </button>
+                    <div class="east-west">
+                      <button
+                        class="slew-btn west"
+                        :disabled="!connected || Boolean(isSlewing)"
+                        @click="moveWest"
+                      >
+                        <Icon type="arrow-left" />
+                      </button>
+                      <button
+                        class="slew-btn stop"
+                        :disabled="!connected || !isSlewing"
+                        @click="stopSlew"
+                      >
+                        <Icon type="stop" />
+                      </button>
+                      <button
+                        class="slew-btn east"
+                        :disabled="!connected || Boolean(isSlewing)"
+                        @click="moveEast"
+                      >
+                        <Icon type="arrow-right" />
+                      </button>
+                    </div>
+                    <button
+                      class="slew-btn south"
+                      :disabled="!connected || Boolean(isSlewing)"
+                      @click="moveSouth"
+                    >
+                      <Icon type="arrow-down" />
+                    </button>
+                  </div>
+
+                  <div class="slew-rate">
+                    <select
+                      v-model="selectedSlewRate"
+                      :disabled="!connected || Boolean(isSlewing)"
+                      class="slew-rate-select"
+                    >
+                      <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
+                        {{ rate }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <button
+                    class="control-btn"
+                    :class="{ active: trackingEnabled }"
+                    :disabled="!connected"
+                    @click="toggleTracking"
+                  >
+                    <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
+                    <span>{{ trackingEnabled ? 'Tracking' : 'Track' }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Mode -->
+        <div v-else-if="currentMode === 'detailed'" class="detailed-view">
+          <!-- Detailed Position Information -->
+          <div class="position-details">
+            <div class="position-column">
+              <h3>Equatorial Coordinates</h3>
+              <div class="coord-row">
+                <span class="label">Right Ascension:</span>
+                <span class="value">{{ detailedData.rightAscension }}</span>
+              </div>
+              <div class="coord-row">
+                <span class="label">Declination:</span>
+                <span class="value">{{ detailedData.declination }}</span>
+              </div>
+              <div class="coord-row">
+                <span class="label">Local Sidereal Time:</span>
+                <span class="value">{{ telescope?.coordinates?.lst || '00:00:00' }}</span>
+              </div>
+            </div>
+            <div class="position-column">
+              <h3>Horizontal Coordinates</h3>
+              <div class="coord-row">
+                <span class="label">Altitude:</span>
+                <span class="value">{{ detailedData.altitude }}</span>
+              </div>
+              <div class="coord-row">
+                <span class="label">Azimuth:</span>
+                <span class="value">{{ detailedData.azimuth }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status and Quick Actions -->
           <div class="status-controls-optimized">
             <div class="status-section">
               <h3>Status</h3>
@@ -490,16 +511,16 @@ function stopSlew() {
                   :disabled="!connected"
                   @click="toggleTracking"
                 >
-                  <Icon :type="trackingEnabled ? 'tracking-on' : 'tracking-off'" />
+                  <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
                   <span>{{ trackingEnabled ? 'Stop Tracking' : 'Start Tracking' }}</span>
                 </button>
 
                 <button
                   class="action-btn"
-                  :disabled="!connected || isSlewing"
+                  :disabled="!connected || Boolean(isSlewing)"
                   @click="parkTelescope"
                 >
-                  <Icon type="parking" />
+                  <Icon type="stop" />
                   <span>Park</span>
                 </button>
 
@@ -508,7 +529,7 @@ function stopSlew() {
                   :disabled="!connected || detailedData.parkingState !== 'Parked'"
                   @click="unparkTelescope"
                 >
-                  <Icon type="unparking" />
+                  <Icon type="connected" />
                   <span>Unpark</span>
                 </button>
               </div>
@@ -548,11 +569,11 @@ function stopSlew() {
                   />
                 </div>
                 <button
-                  :disabled="!connected || isSlewing"
+                  :disabled="!connected || Boolean(isSlewing)"
                   class="slew-to-coords"
                   @click="slewToCoordinates"
                 >
-                  <Icon type="target" />
+                  <Icon type="search" />
                   <span>Slew to Coordinates</span>
                 </button>
               </div>
@@ -566,7 +587,7 @@ function stopSlew() {
                 <select
                   id="slewRate"
                   v-model="selectedSlewRate"
-                  :disabled="!connected || isSlewing"
+                  :disabled="!connected || Boolean(isSlewing)"
                 >
                   <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
                     {{ rate }}
@@ -576,7 +597,7 @@ function stopSlew() {
               <div class="direction-controls">
                 <button
                   class="dir-btn north"
-                  :disabled="!connected || isSlewing"
+                  :disabled="!connected || Boolean(isSlewing)"
                   @click="moveNorth"
                 >
                   <Icon type="arrow-up" />
@@ -584,7 +605,7 @@ function stopSlew() {
                 <div class="middle-row">
                   <button
                     class="dir-btn west"
-                    :disabled="!connected || isSlewing"
+                    :disabled="!connected || Boolean(isSlewing)"
                     @click="moveWest"
                   >
                     <Icon type="arrow-left" />
@@ -598,7 +619,7 @@ function stopSlew() {
                   </button>
                   <button
                     class="dir-btn east"
-                    :disabled="!connected || isSlewing"
+                    :disabled="!connected || Boolean(isSlewing)"
                     @click="moveEast"
                   >
                     <Icon type="arrow-right" />
@@ -606,7 +627,7 @@ function stopSlew() {
                 </div>
                 <button
                   class="dir-btn south"
-                  :disabled="!connected || isSlewing"
+                  :disabled="!connected || Boolean(isSlewing)"
                   @click="moveSouth"
                 >
                   <Icon type="arrow-down" />

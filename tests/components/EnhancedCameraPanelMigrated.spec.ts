@@ -4,6 +4,9 @@ import { nextTick } from 'vue'
 import EnhancedCameraPanelMigrated from '../../src/components/EnhancedCameraPanelMigrated.vue'
 import UnifiedStore from '../../src/stores/UnifiedStore'
 import { CameraDevice } from '../../src/types/DeviceTypes'
+import { ComponentInstance } from 'vue'
+import { useUnifiedStore } from '../../src/stores/UnifiedStore'
+import type { UnifiedDevice } from '../../src/types/DeviceTypes'
 
 // Mock the UnifiedStore
 vi.mock('../../src/stores/UnifiedStore', () => {
@@ -23,6 +26,12 @@ vi.mock('../../src/stores/UnifiedStore', () => {
     }))
   }
 })
+
+// Define interface for the component instance
+interface CameraPanelInstance {
+  fetchImage: () => void
+  [key: string]: any
+}
 
 describe('EnhancedCameraPanelMigrated.vue', () => {
   let wrapper: VueWrapper
@@ -234,7 +243,7 @@ describe('EnhancedCameraPanelMigrated.vue', () => {
 
     if (handlePropertyChange) {
       // Access component instance with type assertion
-      const vm = wrapper.vm as any
+      const vm = wrapper.vm as CameraPanelInstance
 
       // Create a mock for fetchImage using type assertion
       const fetchImageMock = vi.fn()

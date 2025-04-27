@@ -3,7 +3,8 @@
 import { computed, onMounted } from 'vue'
 import { useUIPreferencesStore } from './stores/useUIPreferencesStore'
 import './assets/colors.css' // Import the CSS
-import { RouterLink } from 'vue-router'
+import NavigationBarMigrated from './components/NavigationBarMigrated.vue'
+import NotificationCenterMigrated from './components/NotificationCenterMigrated.vue'
 
 // Get stores
 const uiStore = useUIPreferencesStore()
@@ -49,25 +50,6 @@ const themeStyles = computed(() => {
   }
 })
 
-// Toggle between dark and light mode
-function toggleDarkMode() {
-  // Toggle the value in the store
-  uiStore.isDarkMode = !uiStore.isDarkMode
-
-  // Apply directly to document
-  if (uiStore.isDarkMode) {
-    document.documentElement.classList.add('dark-theme')
-  } else {
-    document.documentElement.classList.remove('dark-theme')
-  }
-
-  // Save preference
-  localStorage.setItem('dark-theme-preference', uiStore.isDarkMode.toString())
-
-  console.log('Toggled dark mode:', uiStore.isDarkMode)
-  console.log('Has dark-theme class:', document.documentElement.classList.contains('dark-theme'))
-}
-
 onMounted(() => {
   console.log('App mounted')
 
@@ -87,59 +69,14 @@ onMounted(() => {
   console.log('Initial dark mode:', uiStore.isDarkMode)
   console.log('Has dark-theme class:', document.documentElement.classList.contains('dark-theme'))
 })
-
-// Navigation links
-const navLinks = [
-  { name: 'Home', path: '/' },
-  { name: 'Devices', path: '/devices' },
-  { name: 'Discovery', path: '/discovery' },
-  { name: 'UI Demo', path: '/ui-demo' }
-]
 </script>
 
 <template>
   <div class="app-container" :style="themeStyles">
     <!-- Main content area without sidebar -->
     <div class="app-content">
-      <header class="app-header">
-        <div class="header-left">
-          <div class="app-logo">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-            </svg>
-          </div>
-          <h1 class="app-title">Alpaca Web</h1>
-
-          <!-- Navigation links -->
-          <nav class="app-nav">
-            <RouterLink v-for="link in navLinks" :key="link.path" :to="link.path">
-              {{ link.name }}
-            </RouterLink>
-          </nav>
-        </div>
-
-        <div class="header-right">
-          <button class="header-button theme-toggle" @click="toggleDarkMode">
-            <svg
-              v-if="uiStore.isDarkMode"
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="currentColor"
-            >
-              <path
-                d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41.39.39 1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41.39.39 1.03.39 1.41 0l1.06-1.06z"
-              ></path>
-            </svg>
-            <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path
-                d="M9.37 5.51c-.18.64-.27 1.31-.27 1.99 0 4.08 3.32 7.4 7.4 7.4.68 0 1.35-.09 1.99-.27C17.45 17.19 14.93 19 12 19c-3.86 0-7-3.14-7-7 0-2.93 1.81-5.45 4.37-6.49zM12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"
-              ></path>
-            </svg>
-            <span>{{ uiStore.isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
-          </button>
-        </div>
-      </header>
+      <!-- Use the migrated navigation bar component -->
+      <NavigationBarMigrated />
 
       <main class="main-content">
         <!-- Router view with transition -->
@@ -149,6 +86,9 @@ const navLinks = [
           </transition>
         </router-view>
       </main>
+
+      <!-- Global notification center -->
+      <NotificationCenterMigrated />
     </div>
   </div>
 </template>
@@ -176,29 +116,6 @@ body {
     sans-serif;
 }
 
-/* Add router link styles */
-.app-nav {
-  display: flex;
-  margin-left: 20px;
-}
-
-.app-nav a {
-  color: var(--aw-panel-menu-bar-color);
-  text-decoration: none;
-  margin-right: 15px;
-  padding: 5px 10px;
-  border-radius: 4px;
-}
-
-.app-nav a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.app-nav a.router-link-active {
-  background-color: var(--aw-panel-resize-bg-color);
-  color: var(--aw-panel-resize-color);
-}
-
 /* Add transition styles */
 .fade-enter-active,
 .fade-leave-active {
@@ -224,60 +141,6 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
-}
-
-.app-header {
-  height: var(--header-height);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  background-color: var(--aw-panel-bg-color);
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.header-left,
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
-.app-logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 12px;
-  color: var(--aw-panel-content-color);
-}
-
-.app-title {
-  margin: 0;
-  font-size: 1.5rem;
-  color: var(--aw-panel-content-color);
-  font-weight: 600;
-}
-
-.header-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background-color: var(--aw-panel-menu-bar-bg-color);
-  color: var(--aw-panel-menu-bar-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-}
-
-.header-button:hover {
-  background-color: var(--aw-panel-resize-bg-color);
-}
-
-.theme-toggle {
-  padding: 6px 12px;
 }
 
 .main-content {

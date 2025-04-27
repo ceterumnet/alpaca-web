@@ -8,7 +8,7 @@
  */
 
 import UnifiedStore from './UnifiedStore'
-import type { Device, DeviceEvent } from './UnifiedStore'
+import type { Device, DeviceEvent, UnifiedStoreType } from './UnifiedStore'
 import type { LegacyDevice as TypedLegacyDevice } from '../types/DeviceTypes'
 
 // Re-export the LegacyDevice interface from our types
@@ -168,7 +168,7 @@ function mergeDeviceUpdate(existingDevice: Device, legacyUpdate: Record<string, 
  * Adapter class for providing compatibility between legacy components and the new unified store
  */
 export class StoreAdapter {
-  private store: UnifiedStore
+  private store: UnifiedStoreType
   private _discoveredDevices: LegacyDevice[] = []
   private _connectedDevices: LegacyDevice[] = []
   private _listeners: Record<string, ((...args: unknown[]) => void)[]> = {
@@ -181,14 +181,11 @@ export class StoreAdapter {
    * Create a new StoreAdapter
    * @param existingStore Optional existing UnifiedStore instance to use
    */
-  constructor(existingStore?: UnifiedStore) {
-    this.store = existingStore || new UnifiedStore()
+  constructor(existingStore?: UnifiedStoreType) {
+    this.store = existingStore || UnifiedStore
 
     // Initialize device arrays from existing store data
-    if (existingStore) {
-      this._initializeFromStore()
-    }
-
+    this._initializeFromStore()
     this._setupStoreListeners()
   }
 
@@ -197,7 +194,7 @@ export class StoreAdapter {
    */
   private _initializeFromStore(): void {
     // Populate discovered and connected device arrays from the store
-    this.store.devices.forEach((device) => {
+    this.store.devicesList.forEach((device) => {
       const legacyDevice = newToLegacyDevice(device)
       this._addToDiscoveredDevices(legacyDevice)
 
@@ -499,7 +496,7 @@ export {
  * @param existingStore Optional existing UnifiedStore instance
  * @returns A new StoreAdapter instance
  */
-export function createStoreAdapter(existingStore?: UnifiedStore): StoreAdapter {
+export function createStoreAdapter(existingStore?: UnifiedStoreType): StoreAdapter {
   return new StoreAdapter(existingStore)
 }
 

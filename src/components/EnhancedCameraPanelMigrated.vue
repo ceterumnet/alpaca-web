@@ -3,10 +3,8 @@ import { ref, computed, watch, onMounted, onUnmounted, reactive } from 'vue'
 import EnhancedPanelComponentMigrated from './EnhancedPanelComponentMigrated.vue'
 import Icon from './Icon.vue'
 import { UIMode } from '../stores/useUIPreferencesStore'
-import UnifiedStore from '../stores/UnifiedStore'
+import { useUnifiedStore } from '../stores/UnifiedStore'
 import type { CameraDevice } from '../types/DeviceTypes'
-// Imported but used only in template
-// import type { IconType } from './Icon.vue'
 
 const props = defineProps({
   panelName: { type: String, required: true },
@@ -35,8 +33,8 @@ const emit = defineEmits([
   'set-read-mode'
 ])
 
-// Initialize store
-const store = new UnifiedStore()
+// Initialize store using Pinia composition API
+const store = useUnifiedStore()
 
 // Get the camera device directly from the store
 const camera = computed(() => {

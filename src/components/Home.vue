@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import MainPanels from './MainPanels.vue'
+import MainPanelsMigrated from './MainPanelsMigrated.vue'
 
 defineOptions({
   name: 'HomeView'
@@ -61,7 +61,7 @@ const navigateTo = (route: string) => {
     <div class="panels-section">
       <h2>Device Control Panels</h2>
       <div class="panels-container">
-        <MainPanels />
+        <MainPanelsMigrated />
       </div>
     </div>
   </div>

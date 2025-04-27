@@ -3,14 +3,54 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AppSidebarMigrated from '../../src/components/AppSidebarMigrated.vue'
 import BaseDevicePanel from '../../src/components/panels/BaseDevicePanel.vue'
 import EnhancedPanelComponentMigrated from '../../src/components/EnhancedPanelComponentMigrated.vue'
-import { UIMode, useUIPreferencesStore } from '../../src/stores/useUIPreferencesStore'
+import { UIMode } from '../../src/stores/useUIPreferencesStore'
 
 // Mock stores for integration testing
 vi.mock('../../src/stores/UnifiedStore', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      devices: [
-        {
+  const mockStore = {
+    devices: [
+      {
+        id: 'telescope-1',
+        name: 'Test Telescope',
+        type: 'telescope',
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {}
+      },
+      {
+        id: 'camera-1',
+        name: 'Test Camera',
+        type: 'camera',
+        isConnected: false,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {}
+      }
+    ],
+    devicesList: [
+      {
+        id: 'telescope-1',
+        name: 'Test Telescope',
+        type: 'telescope',
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {}
+      },
+      {
+        id: 'camera-1',
+        name: 'Test Camera',
+        type: 'camera',
+        isConnected: false,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {}
+      }
+    ],
+    getDeviceById: vi.fn((id) => {
+      if (id === 'telescope-1') {
+        return {
           id: 'telescope-1',
           name: 'Test Telescope',
           type: 'telescope',
@@ -18,8 +58,10 @@ vi.mock('../../src/stores/UnifiedStore', () => {
           isConnecting: false,
           isDisconnecting: false,
           properties: {}
-        },
-        {
+        }
+      }
+      if (id === 'camera-1') {
+        return {
           id: 'camera-1',
           name: 'Test Camera',
           type: 'camera',
@@ -28,35 +70,16 @@ vi.mock('../../src/stores/UnifiedStore', () => {
           isDisconnecting: false,
           properties: {}
         }
-      ],
-      getDeviceById: vi.fn((id) => {
-        if (id === 'telescope-1') {
-          return {
-            id: 'telescope-1',
-            name: 'Test Telescope',
-            type: 'telescope',
-            isConnected: true,
-            isConnecting: false,
-            isDisconnecting: false,
-            properties: {}
-          }
-        }
-        if (id === 'camera-1') {
-          return {
-            id: 'camera-1',
-            name: 'Test Camera',
-            type: 'camera',
-            isConnected: false,
-            isConnecting: false,
-            isDisconnecting: false,
-            properties: {}
-          }
-        }
-        return null
-      }),
-      connectDevice: vi.fn(),
-      disconnectDevice: vi.fn()
-    }))
+      }
+      return null
+    }),
+    connectDevice: vi.fn(),
+    disconnectDevice: vi.fn()
+  }
+
+  return {
+    default: vi.fn().mockImplementation(() => mockStore),
+    useUnifiedStore: vi.fn(() => mockStore)
   }
 })
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import UnifiedStore from '../../stores/UnifiedStore'
+import { useUnifiedStore } from '../../stores/UnifiedStore'
 import type { Device } from '../../types/DeviceTypes'
 import { UIMode } from '../../stores/useUIPreferencesStore'
 
@@ -15,7 +15,7 @@ const props = defineProps({
   }
 })
 
-const store = new UnifiedStore()
+const store = useUnifiedStore()
 const currentMode = ref(UIMode.OVERVIEW)
 
 // Get the device from the store

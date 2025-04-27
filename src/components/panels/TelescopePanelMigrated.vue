@@ -16,7 +16,7 @@ const props = defineProps({
 })
 
 const basePanel = ref()
-const store = new UnifiedStore()
+const store = UnifiedStore
 
 // Handle telescope actions
 const handleSlew = (ra: string, dec: string) => {

@@ -158,14 +158,14 @@ describe('YourComponent.vue (Direct Store)', () => {
     const emptyStore = new UnifiedStore()
 
     // Create a new wrapper with the empty store
-    const emptyWrapper = shallowMount(YourComponent, {
+    shallowMount(YourComponent, {
       props: {
         store: emptyStore
       }
     })
 
     // Verify empty state is handled correctly
-    // Example: expect(emptyWrapper.find('.no-devices').exists()).toBe(true)
+    // Example: expect(wrapper.find('.no-devices').exists()).toBe(true)
   })
 
   /**

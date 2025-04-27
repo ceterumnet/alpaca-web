@@ -7,10 +7,32 @@ import { UIMode } from '../../src/stores/useUIPreferencesStore'
 
 // Mock stores for integration testing
 vi.mock('../../src/stores/UnifiedStore', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      devices: [
-        {
+  const mockStore = {
+    devices: [
+      {
+        id: 'telescope-1',
+        name: 'Test Telescope',
+        type: 'telescope',
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {}
+      }
+    ],
+    devicesList: [
+      {
+        id: 'telescope-1',
+        name: 'Test Telescope',
+        type: 'telescope',
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        properties: {}
+      }
+    ],
+    getDeviceById: vi.fn((id) => {
+      if (id === 'telescope-1') {
+        return {
           id: 'telescope-1',
           name: 'Test Telescope',
           type: 'telescope',
@@ -19,24 +41,16 @@ vi.mock('../../src/stores/UnifiedStore', () => {
           isDisconnecting: false,
           properties: {}
         }
-      ],
-      getDeviceById: vi.fn((id) => {
-        if (id === 'telescope-1') {
-          return {
-            id: 'telescope-1',
-            name: 'Test Telescope',
-            type: 'telescope',
-            isConnected: true,
-            isConnecting: false,
-            isDisconnecting: false,
-            properties: {}
-          }
-        }
-        return null
-      }),
-      connectDevice: vi.fn(),
-      disconnectDevice: vi.fn()
-    }))
+      }
+      return null
+    }),
+    connectDevice: vi.fn(),
+    disconnectDevice: vi.fn()
+  }
+
+  return {
+    default: vi.fn().mockImplementation(() => mockStore),
+    useUnifiedStore: vi.fn(() => mockStore)
   }
 })
 

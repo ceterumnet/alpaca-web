@@ -3,7 +3,7 @@ import { defineComponent, computed } from 'vue'
 import Icon from '@/components/Icon.vue'
 import type { IconType } from '@/components/Icon.vue'
 import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
-import UnifiedStore from '@/stores/UnifiedStore'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { Device } from '@/stores/UnifiedStore'
 
 export default defineComponent({
@@ -14,8 +14,8 @@ export default defineComponent({
   },
 
   setup() {
-    // Direct usage of UnifiedStore without adapter
-    const unifiedStore = new UnifiedStore()
+    // Use the Pinia store with the composition API
+    const unifiedStore = useUnifiedStore()
 
     // UI Preferences store for sidebar visibility state
     const uiPreferencesStore = useUIPreferencesStore()
@@ -24,7 +24,8 @@ export default defineComponent({
     const devicesByCategory = computed(() => {
       const categories: Record<string, Device[]> = {}
 
-      unifiedStore.devices.forEach((device) => {
+      // Use the devicesList computed property from the store
+      unifiedStore.devicesList.forEach((device) => {
         if (!categories[device.type]) {
           categories[device.type] = []
         }
@@ -96,7 +97,7 @@ export default defineComponent({
 
     <!-- Collapsed view -->
     <div v-else class="sidebar-collapsed-content">
-      <div v-for="device in unifiedStore.devices" :key="device.id">
+      <div v-for="device in unifiedStore.devicesList" :key="device.id">
         <div
           class="collapsed-device-item"
           :class="{ 'device-connected': device.isConnected }"

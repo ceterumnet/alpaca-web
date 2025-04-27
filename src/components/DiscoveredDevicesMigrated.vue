@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from 'vue'
 import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
-import UnifiedStore from '@/stores/UnifiedStore'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
 import axios from 'axios'
 import ManualDeviceConfigMigrated from './ManualDeviceConfigMigrated.vue'
 import type { Device } from '@/stores/UnifiedStore'
 
-// Create/get UnifiedStore instance
-const unifiedStore = new UnifiedStore()
+// Create/get UnifiedStore instance using Pinia
+const unifiedStore = useUnifiedStore()
 // Keep using the discovery store until it's also migrated
 const discoveredDevicesStore = useDiscoveredDevicesStore()
 
@@ -21,7 +21,7 @@ const lastRefreshTime = ref<Date | null>(null)
 // Check if a device is already added to the devices store
 function isDeviceAdded(alpacaDevice: Device) {
   // We consider a device added if any device in the store has the same API base URL
-  return unifiedStore.devices.some((device) => {
+  return unifiedStore.devicesList.some((device) => {
     const deviceApiUrl = device.properties?.apiBaseUrl as string | undefined
     const alpacaApiUrl = alpacaDevice.properties?.apiBaseUrl as string | undefined
     return deviceApiUrl === alpacaApiUrl

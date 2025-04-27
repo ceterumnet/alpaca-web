@@ -118,7 +118,7 @@ describe('COMPONENT_NAME', () => {
   })
 
   it('emits events correctly when device methods are called', async () => {
-    const wrapper = mount(COMPONENT_NAME, {
+    mount(COMPONENT_NAME, {
       props: {
         deviceId: 'device-1',
         title: 'Test DEVICE_TYPE Panel'
@@ -135,7 +135,7 @@ describe('COMPONENT_NAME', () => {
   })
 
   it('updates UI when device properties change', async () => {
-    const wrapper = mount(COMPONENT_NAME, {
+    mount(COMPONENT_NAME, {
       props: {
         deviceId: 'device-1',
         title: 'Test DEVICE_TYPE Panel'
@@ -153,7 +153,7 @@ describe('COMPONENT_NAME', () => {
   })
 
   it('handles device connection state changes correctly', async () => {
-    const wrapper = mount(COMPONENT_NAME, {
+    mount(COMPONENT_NAME, {
       props: {
         deviceId: 'device-1',
         title: 'Test DEVICE_TYPE Panel'

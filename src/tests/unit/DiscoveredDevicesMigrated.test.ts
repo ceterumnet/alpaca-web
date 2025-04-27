@@ -58,15 +58,15 @@ const mockDevices: TestDevice[] = []
 
 vi.mock('@/stores/UnifiedStore', () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      devices: mockDevices,
+    useUnifiedStore: vi.fn(() => ({
+      devicesList: mockDevices,
       addDevice: mockAddDevice,
       connectDevice: mockConnectDevice
     }))
   }
 })
 
-// Mock axios
+// Mock axios for API calls
 vi.mock('axios', () => ({
   default: {
     get: vi.fn().mockImplementation((url) => {
@@ -97,7 +97,7 @@ vi.mock('axios', () => ({
           }
         })
       }
-      return Promise.reject(new Error('Not found'))
+      return Promise.resolve({ data: {} })
     })
   }
 }))

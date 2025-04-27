@@ -1,9 +1,9 @@
 // Add module declaration for TypeScript
 declare module '@pinia/testing' {
   export function createTestingPinia(options?: {
-    createSpy?: Function
+    createSpy?: (fn?: any) => any
     stubActions?: boolean
-    initialState?: Record<string, any>
+    initialState?: Record<string, unknown>
   }): any
 }
 

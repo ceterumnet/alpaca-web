@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import Icon from './Icon.vue'
-import type { IconType } from './Icon.vue'
 import { useUIPreferencesStore, UIMode } from '@/stores/useUIPreferencesStore'
 
 const props = defineProps({

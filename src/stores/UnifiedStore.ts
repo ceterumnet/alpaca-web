@@ -364,31 +364,90 @@ export const useUnifiedStore = defineStore('unifiedStore', () => {
   }
 })
 
-// For backward compatibility with code that uses 'new UnifiedStore()'
-class UnifiedStore {
-  constructor() {
-    console.warn('Direct UnifiedStore instantiation is deprecated, use useUnifiedStore() instead')
-    return this.createProxy()
-  }
+// Export a singleton instance of the store for direct imports
+// This allows the migration to support both composable and instance pattern
+const store = {
+  // Forwarding methods to the Pinia store
+  getDeviceById(deviceId: string): Device | null {
+    return useUnifiedStore().getDeviceById(deviceId)
+  },
+  addDevice(device: Device, options: StoreOptions = {}): boolean {
+    return useUnifiedStore().addDevice(device, options)
+  },
+  removeDevice(deviceId: string, options: StoreOptions = {}): boolean {
+    return useUnifiedStore().removeDevice(deviceId, options)
+  },
+  updateDevice(deviceId: string, updates: Partial<Device>, options: StoreOptions = {}): boolean {
+    return useUnifiedStore().updateDevice(deviceId, updates, options)
+  },
+  updateDeviceProperties(deviceId: string, properties: Record<string, unknown>): boolean {
+    return useUnifiedStore().updateDeviceProperties(deviceId, properties)
+  },
+  connectDevice(deviceId: string): Promise<boolean> {
+    return useUnifiedStore().connectDevice(deviceId)
+  },
+  disconnectDevice(deviceId: string): Promise<boolean> {
+    return useUnifiedStore().disconnectDevice(deviceId)
+  },
+  startDiscovery(options: StoreOptions = {}): boolean {
+    return useUnifiedStore().startDiscovery(options)
+  },
+  stopDiscovery(options: StoreOptions = {}): boolean {
+    return useUnifiedStore().stopDiscovery(options)
+  },
+  getDevicesByType(deviceType: string): Device[] {
+    return useUnifiedStore().getDevicesByType(deviceType)
+  },
+  hasDevice(deviceId: string): boolean {
+    return useUnifiedStore().hasDevice(deviceId)
+  },
+  clearDevices(options: StoreOptions = {}): boolean {
+    return useUnifiedStore().clearDevices(options)
+  },
+  on(event: string, listener: (...args: unknown[]) => void): void {
+    return useUnifiedStore().on(event, listener)
+  },
+  off(event: string, listener: (...args: unknown[]) => void): void {
+    return useUnifiedStore().off(event, listener)
+  },
+  emit(event: string, ...args: unknown[]): void {
+    return useUnifiedStore().emit(event, ...args)
+  },
+  addEventListener(listener: DeviceEventListener): void {
+    return useUnifiedStore().addEventListener(listener)
+  },
+  removeEventListener(listener: DeviceEventListener): void {
+    return useUnifiedStore().removeEventListener(listener)
+  },
 
-  createProxy() {
-    const store = useUnifiedStore()
-    // Create a proxy that forwards all properties and methods to the Pinia store
-    return new Proxy(this, {
-      get(target, prop) {
-        if (prop === 'devices') {
-          return store.devicesList
-        }
-        // @ts-expect-error - Dynamic property access
-        return store[prop] || target[prop]
-      },
-      set(target, prop, value) {
-        // @ts-expect-error - Dynamic property access
-        store[prop] = value
-        return true
-      }
-    })
+  // Properties
+  get devices() {
+    return useUnifiedStore().devices
+  },
+  get devicesList() {
+    return useUnifiedStore().devicesList
+  },
+  get isDiscovering() {
+    return useUnifiedStore().isDiscovering
+  },
+  get isSidebarVisible() {
+    return useUnifiedStore().isSidebarVisible
+  },
+  get selectedDeviceId() {
+    return useUnifiedStore().selectedDeviceId
+  },
+  get theme() {
+    return useUnifiedStore().theme
+  },
+  get connectedDevices() {
+    return useUnifiedStore().connectedDevices
+  },
+  get selectedDevice() {
+    return useUnifiedStore().selectedDevice
   }
 }
 
-export default UnifiedStore
+export type UnifiedStoreType = typeof store
+
+// Export the singleton instance as default
+export default store

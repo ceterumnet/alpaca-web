@@ -7,7 +7,7 @@ import axios from 'axios'
 // We still need useDiscoveredDevicesStore for discovery capabilities
 const discoveredDevicesStore = useDiscoveredDevicesStore()
 // Get the UnifiedStore instance
-const unifiedStore = new UnifiedStore()
+const unifiedStore = UnifiedStore
 
 const showForm = ref(false)
 const deviceAddress = ref('localhost')
