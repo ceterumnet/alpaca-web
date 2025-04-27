@@ -612,7 +612,7 @@ function setTargetTemperature(temp: number) {
                   :disabled="!previewImage"
                   @click="downloadPreview"
                 >
-                  <Icon type="files" class="actions-icon" />
+                  <Icon type="gear" class="actions-icon" />
                   <span>Save Image</span>
                 </button>
               </div>
@@ -702,7 +702,7 @@ function setTargetTemperature(temp: number) {
                   :disabled="!!cameraData.isExposing || !isConnected"
                   @click="startExposure"
                 >
-                  <Icon type="play" class="action-icon" />
+                  <Icon type="exposure" class="action-icon" />
                   <span>Start Exposure</span>
                 </button>
                 <button
@@ -710,7 +710,7 @@ function setTargetTemperature(temp: number) {
                   :disabled="!cameraData.isExposing || !isConnected"
                   @click="abortExposure"
                 >
-                  <Icon type="stop" class="action-icon" />
+                  <Icon type="close" class="action-icon" />
                   <span>Abort</span>
                 </button>
               </div>
