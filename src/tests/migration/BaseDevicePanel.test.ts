@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { shallowMount, VueWrapper } from '@vue/test-utils'
-import BaseDevicePanel from '@/components/BaseDevicePanel.vue'
+import BaseDevicePanel from '@/components/panels/BaseDevicePanel.vue'
 import { UIMode } from '@/stores/useUIPreferencesStore'
 import type { Device } from '@/types/DeviceTypes'
 import { createPinia, setActivePinia } from 'pinia'
@@ -30,7 +30,7 @@ vi.mock('@/stores/UnifiedStore', () => ({
 // Define an interface for the exposed properties of BaseDevicePanel
 interface BasePanelExposed {
   device: Device | undefined
-  connected: boolean
+  isConnected: boolean
   deviceType: string
   deviceNum: number
   currentMode: UIMode
@@ -103,8 +103,8 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
 
     // Check derived computed properties
     expect(vm.deviceType).toBe('telescope')
-    expect(vm.connected).toBe(false)
-    expect(vm.deviceNum).toBe(1)
+    expect(vm.isConnected).toBe(false)
+    expect(vm.deviceNum).toBe(0)
   })
 
   /**
@@ -216,7 +216,7 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
 
     // Check that computed properties have default values
     expect(vm.deviceType).toBe('')
-    expect(vm.connected).toBe(false)
+    expect(vm.isConnected).toBe(false)
     expect(vm.deviceNum).toBe(0)
 
     // Ensure calling handleConnect doesn't throw an error

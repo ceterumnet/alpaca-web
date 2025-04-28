@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file */
 import { defineComponent, h } from 'vue'
 
 // Helper function to create SVG icon components

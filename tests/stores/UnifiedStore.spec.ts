@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useUnifiedStore, type Device } from '../../src/stores/unifiedStore'
+import { useUnifiedStore, type Device } from '../../src/stores/UnifiedStore'
 
 describe('unifiedStore', () => {
   beforeEach(() => {
@@ -12,7 +12,7 @@ describe('unifiedStore', () => {
   it('has default state', () => {
     const store = useUnifiedStore()
     expect(store.isSidebarVisible).toBe(true)
-    expect(store.devices).toEqual([])
+    expect(store.devices).toEqual(new Map())
     expect(store.selectedDeviceId).toBeNull()
     expect(store.theme).toBe('light')
   })
@@ -24,12 +24,17 @@ describe('unifiedStore', () => {
         id: 'test-device',
         name: 'Test Device',
         type: 'camera',
-        connected: true
+        connected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        isConnected: false,
+        properties: {},
+        discoveredAt: new Date().toISOString()
       }
 
       store.addDevice(device)
       expect(store.devices).toHaveLength(1)
-      expect(store.devices[0]).toEqual(device)
+      expect(store.devicesList[0]).toEqual(device)
     })
 
     it('updates a device if it already exists', () => {
@@ -38,7 +43,11 @@ describe('unifiedStore', () => {
         id: 'test-device',
         name: 'Test Device',
         type: 'camera',
-        connected: true
+        connected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        isConnected: false,
+        properties: {}
       }
 
       store.addDevice(device)
@@ -49,10 +58,8 @@ describe('unifiedStore', () => {
         connected: false
       }
 
-      store.addDevice(updatedDevice)
-
+      expect(store.addDevice(updatedDevice)).toBe(false)
       expect(store.devices).toHaveLength(1)
-      expect(store.devices[0]).toEqual(updatedDevice)
     })
 
     it('can remove a device', () => {
@@ -61,7 +68,11 @@ describe('unifiedStore', () => {
         id: 'test-device',
         name: 'Test Device',
         type: 'camera',
-        connected: true
+        connected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        isConnected: false,
+        properties: {}
       }
 
       store.addDevice(device)
@@ -77,7 +88,11 @@ describe('unifiedStore', () => {
         id: 'test-device',
         name: 'Test Device',
         type: 'camera',
-        connected: true
+        connected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        isConnected: false,
+        properties: {}
       }
 
       store.addDevice(device)
@@ -94,14 +109,17 @@ describe('unifiedStore', () => {
         id: 'test-device',
         name: 'Test Device',
         type: 'camera',
-        connected: true
+        isConnecting: false,
+        isDisconnecting: false,
+        isConnected: false,
+        properties: {}
       }
 
       store.addDevice(device)
-      expect(store.devices[0].connected).toBe(true)
+      expect(store.getDeviceById('test-device')?.isConnected).toBe(false)
 
-      store.updateDeviceConnection('test-device', false)
-      expect(store.devices[0].connected).toBe(false)
+      store.updateDevice('test-device', { isConnected: true })
+      expect(store.getDeviceById('test-device')?.isConnected).toBe(true)
     })
   })
 

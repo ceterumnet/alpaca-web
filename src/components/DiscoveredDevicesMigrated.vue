@@ -142,6 +142,8 @@ async function connectToDevice(index: number) {
   selectedDeviceIndex.value = index
   const alpacaDevice = discoveredAlpacaDevices.value[index]
 
+  console.log('Connecting to device:', alpacaDevice)
+
   try {
     // Add device to the store directly
     unifiedStore.addDevice(alpacaDevice)
@@ -353,7 +355,7 @@ watch(
 
 .last-scan {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--aw-text-secondary-color, #666);
 }
 
 .discover-btn {
@@ -361,8 +363,8 @@ watch(
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #4a89dc;
-  color: white;
+  background-color: var(--aw-button-primary-bg, #4a89dc);
+  color: var(--aw-button-primary-text, white);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -370,11 +372,11 @@ watch(
 }
 
 .discover-btn:hover {
-  background-color: #3a69bc;
+  background-color: var(--aw-button-primary-hover-bg, #3a69bc);
 }
 
 .discover-btn:disabled {
-  background-color: #ccc;
+  background-color: var(--aw-input-border-color, #ccc);
   cursor: not-allowed;
 }
 
@@ -398,15 +400,18 @@ watch(
 
 .device-list {
   margin-bottom: 1.5rem;
+  background-color: var(--aw-bg-color);
+  padding: 1rem;
+  border-radius: 8px;
 }
 
 .loading-indicator,
 .no-devices {
   text-align: center;
   padding: 2rem;
-  background-color: #f9f9f9;
+  background-color: var(--aw-panel-content-bg-color, #f9f9f9);
   border-radius: 8px;
-  color: #666;
+  color: var(--aw-text-secondary-color, #666);
 }
 
 .device-grid {
@@ -416,7 +421,7 @@ watch(
 }
 
 .device-card {
-  background-color: white;
+  background-color: var(--aw-form-bg-color, white);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -446,7 +451,7 @@ watch(
 }
 
 .device-icon {
-  background-color: #eef2fa;
+  background-color: var(--aw-panel-content-bg-color, #eef2fa);
   border-radius: 50%;
   width: 48px;
   height: 48px;
@@ -454,7 +459,7 @@ watch(
   align-items: center;
   justify-content: center;
   margin-right: 1rem;
-  color: #4a89dc;
+  color: var(--aw-primary-color, #4a89dc);
 }
 
 .device-info {
@@ -465,11 +470,12 @@ watch(
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
+  color: var(--aw-text-color, inherit);
 }
 
 .device-type {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--aw-text-secondary-color, #666);
   text-transform: capitalize;
 }
 
@@ -486,12 +492,13 @@ watch(
 
 .detail-label {
   width: 110px;
-  color: #666;
+  color: var(--aw-text-secondary-color, #666);
 }
 
 .detail-value {
   flex: 1;
   word-break: break-word;
+  color: var(--aw-text-color, inherit);
 }
 
 .device-actions {
@@ -501,8 +508,8 @@ watch(
 .connect-btn {
   width: 100%;
   padding: 0.5rem;
-  background-color: #4a89dc;
-  color: white;
+  background-color: var(--aw-button-primary-bg, #4a89dc);
+  color: var(--aw-button-primary-text, white);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -510,18 +517,18 @@ watch(
 }
 
 .connect-btn:hover {
-  background-color: #3a69bc;
+  background-color: var(--aw-button-primary-hover-bg, #3a69bc);
 }
 
 .connect-btn:disabled {
-  background-color: #ccc;
+  background-color: var(--aw-input-border-color, #ccc);
   cursor: not-allowed;
 }
 
 .manual-section {
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--aw-panel-border-color, #eee);
 }
 
 .manual-section h3 {

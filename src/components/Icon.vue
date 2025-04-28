@@ -28,6 +28,11 @@ export type IconType =
   | 'arrow-left'
   | 'arrow-right'
   | 'stop'
+  | 'tracking-on'
+  | 'tracking-off'
+  | 'home'
+  | 'files'
+  | 'history'
 
 export default defineComponent({
   name: 'IconComponent',
@@ -35,7 +40,7 @@ export default defineComponent({
   props: {
     type: {
       type: String as () => IconType,
-      required: true,
+      required: false,
       validator: (value: string): boolean => {
         return [
           'camera',
@@ -63,7 +68,12 @@ export default defineComponent({
           'arrow-down',
           'arrow-left',
           'arrow-right',
-          'stop'
+          'stop',
+          'tracking-on',
+          'tracking-off',
+          'home',
+          'files',
+          'history'
         ].includes(value)
       },
       default: 'device-unknown'
@@ -177,6 +187,29 @@ export default defineComponent({
     <svg v-else-if="type === 'stop'" viewBox="0 0 24 24" width="24" height="24">
       <path d="M6 6h12v12H6z" />
     </svg>
+    <svg v-else-if="type === 'tracking-on'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 9c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4zm4.51-8.95C17.41 8.99 18 10.43 18 12c0 1.57-.59 3.01-1.49 4.95C18.68 16.8 20 14.97 20 13c0-1.97-1.32-3.8-3.49-3.95zm-9.02 0C5.32 9.05 4 10.88 4 13c0 1.97 1.32 3.8 3.49 3.95C6.59 15.01 6 13.57 6 12c0-1.57.59-3.01 1.49-4.95z"
+      />
+    </svg>
+    <svg v-else-if="type === 'tracking-off'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M12 6c-3.86 0-7 3.14-7 7s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm0 2c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5 2.24-5 5-5zm0-4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9h-2c0 3.87-3.13 7-7 7s-7-3.13-7-7 3.13-7 7-7v-2z"
+      />
+    </svg>
+    <svg v-else-if="type === 'home'" viewBox="0 0 24 24" width="24" height="24">
+      <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+    </svg>
+    <svg v-else-if="type === 'files'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"
+      />
+    </svg>
+    <svg v-else-if="type === 'history'" viewBox="0 0 24 24" width="24" height="24">
+      <path
+        d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"
+      />
+    </svg>
     <svg v-else viewBox="0 0 24 24" width="24" height="24">
       <path
         d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V11H13V17ZM13 9H11V7H13V9Z"
@@ -267,5 +300,25 @@ export default defineComponent({
 
 .icon--disconnected {
   color: var(--disconnected-icon-color, #f44336);
+}
+
+.icon--tracking-on {
+  color: var(--tracking-on-icon-color, #4caf50);
+}
+
+.icon--tracking-off {
+  color: var(--tracking-off-icon-color, #f44336);
+}
+
+.icon--home {
+  color: var(--home-icon-color, #2196f3);
+}
+
+.icon--files {
+  color: var(--files-icon-color, #ff9800);
+}
+
+.icon--history {
+  color: var(--history-icon-color, #9e9e9e);
 }
 </style>

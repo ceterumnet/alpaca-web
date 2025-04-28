@@ -1,21 +1,66 @@
 :root {
-  --aw-bg-color: white;
-  --aw-color: black;
-  --aw-panel-bg-color: white;
-  --aw-panel-menu-bar-color: white;
-  --aw-panels-bg-color: white;
-  --aw-panel-resize-bg-color: #93d4ff;
-  --aw-panel-resize-color: white;
-  --aw-panel-border-color: rgb(39, 39, 39);
-  --aw-panel-menu-bar-bg-color: #6b6b6b;
-  --aw-panel-content-bg-color: rgb(225, 225, 225);
-  --aw-panel-content-color: rgb(2, 2, 2);
-  --aw-text-color: rgb(2, 2, 2);
-  --aw-form-bg-color: white;
-  --aw-input-bg-color: white;
+  /* Light theme base colors */
+  --aw-primary-color: #4a89dc;
+  --aw-primary-light: #93d4ff;
+  --aw-primary-dark: #3a69bc;
+  --aw-accent-color: #5b9bd5;
+  --aw-success-color: #4caf50;
+  --aw-warning-color: #ff9800;
+  --aw-error-color: #f44336;
+
+  /* Light theme UI colors */
+  --aw-bg-color: #f9f9f9;
+  --aw-color: #212121;
+  --aw-panel-bg-color: #ffffff;
+  --aw-panel-menu-bar-color: #ffffff;
+  --aw-panels-bg-color: #f0f0f0;
+  --aw-panel-resize-bg-color: #4a89dc;
+  --aw-panel-resize-color: #ffffff;
+  --aw-panel-border-color: #e0e0e0;
+  --aw-panel-menu-bar-bg-color: #4a89dc;
+  --aw-panel-content-bg-color: #f5f5f5;
+  --aw-panel-content-color: #212121;
+  --aw-panel-scrollbar-color-1: #c0c0c0;
+  --aw-panel-scrollbar-color-2: #a0a0a0;
+  --aw-text-color: #212121;
+  --aw-text-secondary-color: #757575;
+  --aw-form-bg-color: #ffffff;
+  --aw-input-bg-color: #ffffff;
+  --aw-input-border-color: #e0e0e0;
+
+  /* Button colors */
+  --aw-button-primary-bg: var(--aw-primary-color);
+  --aw-button-primary-text: white;
+  --aw-button-primary-hover-bg: var(--aw-primary-dark);
+
+  --aw-button-secondary-bg: #e0e0e0;
+  --aw-button-secondary-text: #424242;
+  --aw-button-secondary-hover-bg: #d0d0d0;
+
+  --aw-button-success-bg: var(--aw-success-color);
+  --aw-button-success-text: white;
+  --aw-button-success-hover-bg: #3d9140;
+
+  --aw-button-warning-bg: var(--aw-warning-color);
+  --aw-button-warning-text: white;
+  --aw-button-warning-hover-bg: #e68a00;
+
+  --aw-button-danger-bg: var(--aw-error-color);
+  --aw-button-danger-text: white;
+  --aw-button-danger-hover-bg: #d32f2f;
 }
 
 :root .dark-theme {
+  /* Dark theme base colors - red shades for night vision */
+  --aw-primary-color: #b53f3f;
+  --aw-primary-light: #ff6b6b;
+  --aw-primary-dark: #8b0000;
+  --aw-accent-color: #d65b5b;
+  --aw-success-color: #966050;
+  --aw-warning-color: #b56e3f;
+  --aw-error-color: #9e2b2b;
+
+  /* Dark theme UI colors */
   --aw-bg-color: #1a0000;
   --aw-color: #ff9e9e;
   --aw-panel-bg-color: #2d0000;
@@ -30,6 +75,29 @@
   --aw-panel-scrollbar-color-1: #8b0000;
   --aw-panel-scrollbar-color-2: #6b0000;
   --aw-text-color: #ffd5d5;
+  --aw-text-secondary-color: #ff9e9e;
   --aw-form-bg-color: #2d0000;
   --aw-input-bg-color: #4d0000;
+  --aw-input-border-color: #5a0000;
+
+  /* Button colors - red shades for night vision */
+  --aw-button-primary-bg: #700000;
+  --aw-button-primary-text: #ffcaca;
+  --aw-button-primary-hover-bg: #8b0000;
+
+  --aw-button-secondary-bg: #4d0000;
+  --aw-button-secondary-text: #ff9e9e;
+  --aw-button-secondary-hover-bg: #5a0000;
+
+  --aw-button-success-bg: #704030;
+  --aw-button-success-text: #ffcaca;
+  --aw-button-success-hover-bg: #805040;
+
+  --aw-button-warning-bg: #804020;
+  --aw-button-warning-text: #ffcaca;
+  --aw-button-warning-hover-bg: #905030;
+
+  --aw-button-danger-bg: #800000;
+  --aw-button-danger-text: #ffcaca;
+  --aw-button-danger-hover-bg: #a00000;
 }

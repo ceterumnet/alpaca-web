@@ -2,6 +2,7 @@
 // This is a template for testing device-specific panel components in Batch 2.
 // Replace placeholders with actual implementation details.
 
+/* eslint-disable */
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import COMPONENT_NAME from '../../src/components/COMPONENT_PATH'
@@ -89,7 +90,8 @@ describe('COMPONENT_NAME', () => {
   })
 
   it('loads device data from UnifiedStore correctly', () => {
-    const wrapper = mount(COMPONENT_NAME, {
+    // Direct access to vm via mount call
+    const { vm } = mount(COMPONENT_NAME, {
       props: {
         deviceId: 'device-1',
         title: 'Test DEVICE_TYPE Panel'
@@ -97,8 +99,8 @@ describe('COMPONENT_NAME', () => {
     })
 
     // Check device data retrieval
-    expect(wrapper.vm.deviceType).toBe('DEVICE_TYPE')
-    expect(wrapper.vm.isConnected).toBe(true)
+    expect(vm.deviceType).toBe('DEVICE_TYPE')
+    expect(vm.isConnected).toBe(true)
   })
 
   it('handles device-specific properties correctly', () => {
@@ -118,6 +120,7 @@ describe('COMPONENT_NAME', () => {
   })
 
   it('emits events correctly when device methods are called', async () => {
+    // Note: We don't need to capture the mount result if not used
     mount(COMPONENT_NAME, {
       props: {
         deviceId: 'device-1',
@@ -135,6 +138,7 @@ describe('COMPONENT_NAME', () => {
   })
 
   it('updates UI when device properties change', async () => {
+    // Note: We don't need to capture the mount result if not used
     mount(COMPONENT_NAME, {
       props: {
         deviceId: 'device-1',

@@ -101,27 +101,12 @@ const totalDeviceCount = computed(() => {
 
       <!-- Theme toggle button -->
       <button
-        class="theme-toggle"
+        class="btn btn-secondary theme-toggle"
         :title="uiStore.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
         @click="toggleDarkMode"
       >
-        <svg
-          v-if="uiStore.isDarkMode"
-          viewBox="0 0 24 24"
-          width="18"
-          height="18"
-          fill="currentColor"
-        >
-          <path
-            d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41.39.39 1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41.39.39 1.03.39 1.41 0l1.06-1.06z"
-          ></path>
-        </svg>
-        <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-          <path
-            d="M9.37 5.51c-.18.64-.27 1.31-.27 1.99 0 4.08 3.32 7.4 7.4 7.4.68 0 1.35-.09 1.99-.27C17.45 17.19 14.93 19 12 19c-3.86 0-7-3.14-7-7 0-2.93 1.81-5.45 4.37-6.49zM12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"
-          ></path>
-        </svg>
-        <span v-if="!isMobile">{{ uiStore.isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+        <span v-if="uiStore.isDarkMode">☀️ Light Mode</span>
+        <span v-else>🌙 Dark Mode</span>
       </button>
     </div>
   </nav>
@@ -129,19 +114,26 @@ const totalDeviceCount = computed(() => {
 
 <style scoped>
 .navigation-bar {
+  height: var(--header-height);
+  background-color: var(--aw-panel-menu-bar-bg-color);
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  color: var(--aw-panel-menu-bar-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 60px;
-  background-color: var(--aw-panel-bg-color);
-  border-bottom: 1px solid var(--aw-panel-border-color);
   padding: 0 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
-.nav-left,
+.nav-left {
+  display: flex;
+  align-items: center;
+}
+
 .nav-right {
   display: flex;
   align-items: center;
@@ -152,14 +144,14 @@ const totalDeviceCount = computed(() => {
   align-items: center;
   justify-content: center;
   margin-right: 12px;
-  color: var(--aw-panel-content-color);
+  color: var(--aw-panel-menu-bar-color);
 }
 
 .app-title {
   margin: 0;
-  font-size: 1.5rem;
-  color: var(--aw-panel-content-color);
-  font-weight: 600;
+  font-size: var(--font-size-xl);
+  color: var(--aw-panel-menu-bar-color);
+  font-weight: var(--font-weight-bold);
   margin-right: 20px;
 }
 
@@ -176,11 +168,13 @@ const totalDeviceCount = computed(() => {
   border-radius: 4px;
   display: flex;
   align-items: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   transition: background-color 0.2s ease;
 }
 
 .nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .nav-link.active {
@@ -190,25 +184,7 @@ const totalDeviceCount = computed(() => {
 
 .nav-icon {
   margin-right: 8px;
-  font-size: 1.2rem;
-}
-
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background-color: var(--aw-panel-menu-bar-bg-color);
-  color: var(--aw-panel-menu-bar-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-}
-
-.theme-toggle:hover {
-  background-color: var(--aw-panel-resize-bg-color);
+  font-size: var(--font-size-base);
 }
 
 .device-status {
@@ -216,11 +192,12 @@ const totalDeviceCount = computed(() => {
 }
 
 .status-indicator {
-  font-size: 0.85rem;
+  font-size: var(--font-size-xs);
   color: var(--aw-panel-menu-bar-color);
-  background-color: var(--aw-panel-menu-bar-bg-color);
+  background-color: rgba(0, 0, 0, 0.2);
   padding: 4px 8px;
   border-radius: 12px;
+  font-weight: var(--font-weight-medium);
 }
 
 /* Responsive styles */
@@ -254,5 +231,9 @@ const totalDeviceCount = computed(() => {
 
 .palette::before {
   content: '🎨';
+}
+
+.gear::before {
+  content: '⚙️';
 }
 </style>

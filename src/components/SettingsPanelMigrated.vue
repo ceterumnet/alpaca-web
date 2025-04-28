@@ -436,12 +436,12 @@ function importSettings() {
             </p>
 
             <div class="setting-actions">
-              <button class="action-button" @click="exportSettings">
+              <button class="action-button btn" @click="exportSettings">
                 <Icon type="gear" />
                 Export Settings
               </button>
 
-              <button class="action-button" @click="importSettings">
+              <button class="action-button btn" @click="importSettings">
                 <Icon type="gear" />
                 Import Settings
               </button>
@@ -453,7 +453,7 @@ function importSettings() {
             <p class="setting-description warning">These actions cannot be undone. Be careful!</p>
 
             <div class="setting-actions">
-              <button class="action-button danger" @click="resetToDefaults">
+              <button class="action-button btn danger" @click="resetToDefaults">
                 Reset All Settings to Defaults
               </button>
             </div>
@@ -464,7 +464,7 @@ function importSettings() {
 
     <footer class="settings-footer">
       <div class="footer-actions">
-        <button class="action-button primary" :disabled="!hasChanges" @click="saveSettings">
+        <button class="action-button btn primary" :disabled="!hasChanges" @click="saveSettings">
           Save Changes
         </button>
       </div>
@@ -686,44 +686,27 @@ select {
 }
 
 .action-button {
-  background-color: rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--aw-panel-border-color);
-  color: var(--aw-text-color);
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.action-button:hover:not(:disabled) {
-  background-color: rgba(0, 0, 0, 0.2);
-}
-
-.action-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .action-button.primary {
-  background-color: var(--aw-panel-resize-bg-color);
-  color: white;
+  background-color: var(--aw-button-primary-bg);
+  color: var(--aw-button-primary-text);
 }
 
 .action-button.primary:hover:not(:disabled) {
-  background-color: var(--aw-panel-resize-color);
+  background-color: var(--aw-button-primary-hover-bg);
 }
 
 .action-button.danger {
-  background-color: rgba(255, 0, 0, 0.1);
-  border-color: rgba(255, 0, 0, 0.3);
-  color: #ff6b6b;
+  background-color: var(--aw-button-danger-bg);
+  color: var(--aw-button-danger-text);
 }
 
 .action-button.danger:hover:not(:disabled) {
-  background-color: rgba(255, 0, 0, 0.2);
+  background-color: var(--aw-button-danger-hover-bg);
 }
 
 .danger-zone {

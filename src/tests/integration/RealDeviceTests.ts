@@ -8,6 +8,7 @@
 
 import UnifiedStore from '../../stores/UnifiedStore'
 import StoreAdapter from '../../stores/StoreAdapter'
+import { useUnifiedStore } from '../../stores/UnifiedStore'
 
 // Types for testing
 interface TestMetric {
@@ -26,7 +27,7 @@ interface TestLogRecord {
 }
 
 type WindowWithTestEnv = Window & {
-  testStore: UnifiedStore
+  testStore: typeof UnifiedStore
   testAdapter: StoreAdapter
   testScenarios: typeof testScenarios
   createTestLog: typeof createTestLog
@@ -337,7 +338,7 @@ export function createTestLog(scenarioName: string) {
  * for manual testing from the browser console.
  */
 export function createTestingEnvironment() {
-  const store = new UnifiedStore()
+  const store = useUnifiedStore()
   const adapter = new StoreAdapter(store)
 
   // Make accessible globally for browser console testing

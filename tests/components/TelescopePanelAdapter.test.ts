@@ -1,10 +1,12 @@
 // Add module declaration for TypeScript
 declare module '@pinia/testing' {
   export function createTestingPinia(options?: {
-    createSpy?: (fn?: any) => any
+    createSpy?: <T extends (...args: unknown[]) => unknown>(
+      fn?: T
+    ) => jest.Mock<ReturnType<T>, Parameters<T>>
     stubActions?: boolean
     initialState?: Record<string, unknown>
-  }): any
+  }): unknown
 }
 
 import { mount } from '@vue/test-utils'

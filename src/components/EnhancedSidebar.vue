@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Search, Lightning, Settings, Moon, Sun } from './icons'
+import { Search, Lightning, Settings, Moon, Sun } from './ui-examples/icons'
 import DeviceTypeIcon from './DeviceTypeIcon.vue'
 
 // Types definition for devices
@@ -103,7 +103,7 @@ const devicesByLocation = computed(() => {
 })
 
 // Toggle a filter
-const toggleFilter = (filter: string) => {
+const changeFilter = (filter: string) => {
   activeFilters.value[filter as keyof typeof activeFilters.value] =
     !activeFilters.value[filter as keyof typeof activeFilters.value]
 }
@@ -217,15 +217,27 @@ const toggleFavorite = (device: Device) => {
           <div class="filter-group">
             <h4>Status</h4>
             <label class="filter-option">
-              <input v-model="activeFilters.connected" type="checkbox" />
+              <input
+                v-model="activeFilters.connected"
+                type="checkbox"
+                @change="changeFilter('connected')"
+              />
               <span>Connected</span>
             </label>
             <label class="filter-option">
-              <input v-model="activeFilters.disconnected" type="checkbox" />
+              <input
+                v-model="activeFilters.disconnected"
+                type="checkbox"
+                @change="changeFilter('disconnected')"
+              />
               <span>Disconnected</span>
             </label>
             <label class="filter-option">
-              <input v-model="activeFilters.favorites" type="checkbox" />
+              <input
+                v-model="activeFilters.favorites"
+                type="checkbox"
+                @change="changeFilter('favorites')"
+              />
               <span>Favorites</span>
             </label>
           </div>
@@ -269,17 +281,17 @@ const toggleFavorite = (device: Device) => {
         <!-- List View -->
         <div v-if="viewMode === 'list'" class="device-list">
           <div
-            v-for="(devices, location) in devicesByLocation"
+            v-for="(locationDevices, location) in devicesByLocation"
             :key="location"
             class="location-group"
           >
             <div class="location-header">
               <h3>{{ location }}</h3>
-              <span class="device-count">{{ devices.length }}</span>
+              <span class="device-count">{{ locationDevices.length }}</span>
             </div>
 
             <div
-              v-for="device in devices"
+              v-for="device in locationDevices"
               :key="device.id"
               class="device-item"
               :class="{
@@ -339,18 +351,18 @@ const toggleFavorite = (device: Device) => {
         <!-- Grid View -->
         <div v-else-if="viewMode === 'grid'" class="device-grid">
           <div
-            v-for="(devices, location) in devicesByLocation"
+            v-for="(locationDevices, location) in devicesByLocation"
             :key="location"
             class="location-group"
           >
             <div class="location-header">
               <h3>{{ location }}</h3>
-              <span class="device-count">{{ devices.length }}</span>
+              <span class="device-count">{{ locationDevices.length }}</span>
             </div>
 
             <div class="grid-layout">
               <div
-                v-for="device in devices"
+                v-for="device in locationDevices"
                 :key="device.id"
                 class="device-card"
                 :class="{

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import EnhancedSidebar from '../components/ui-examples/EnhancedSidebar.vue'
+import EnhancedSidebar from '../components/EnhancedSidebar.vue'
 import { useUIPreferencesStore } from '../stores/useUIPreferencesStore'
 import { useLegacyDeviceStore } from '../stores/deviceStoreAdapter'
 import { type Device } from '../stores/useAstroDeviceStore'

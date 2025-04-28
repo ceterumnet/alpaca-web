@@ -4,6 +4,7 @@ import DevicePageMigrated from '../views/DevicePageMigrated.vue'
 import ImageAnalysisMigrated from '../views/ImageAnalysisMigrated.vue'
 import SettingsViewMigrated from '../views/SettingsViewMigrated.vue'
 import DiscoveryViewMigrated from '../views/DiscoveryViewMigrated.vue'
+import UIDemoView from '../views/UIDemoView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,7 +17,7 @@ const router = createRouter({
     {
       path: '/ui-demo',
       name: 'demo',
-      component: DevicesViewMigrated
+      component: UIDemoView
     },
     {
       path: '/devices',

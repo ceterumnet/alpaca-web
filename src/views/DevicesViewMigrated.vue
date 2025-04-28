@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import AppSidebarMigrated from '../components/AppSidebarMigrated.vue'
+import MainPanelsMigrated from '../components/MainPanelsMigrated.vue'
 import { useUIPreferencesStore } from '../stores/useUIPreferencesStore'
 import { useUnifiedStore } from '../stores/UnifiedStore'
 import type { UnifiedDevice } from '../types/DeviceTypes'
@@ -63,6 +64,9 @@ const navigateToDeviceDetail = (deviceId: string) => {
       <div class="content-header">
         <h1>Device Management</h1>
       </div>
+
+      <MainPanelsMigrated />
+
       <div class="content-body">
         <p>Select a device from the sidebar to control it.</p>
         <p v-if="store.devicesList.length === 0" class="no-devices-message">

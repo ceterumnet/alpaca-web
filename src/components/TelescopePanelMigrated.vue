@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import EnhancedTelescopePanel from './EnhancedTelescopePanel.vue'
 import { useUnifiedStore } from '../stores/UnifiedStore'
-import BaseDevicePanel from './BaseDevicePanel.vue'
+import BaseDevicePanel from './panels/BaseDevicePanel.vue'
 import type { TelescopeDevice } from '../types/DeviceTypes'
 import { debugLog } from '../utils/debugUtils'
 
@@ -171,10 +171,15 @@ const handleUnpark = () => {
 </script>
 
 <template>
-  <BaseDevicePanel ref="basePanel" :device-id="deviceId" :title="title">
+  <BaseDevicePanel
+    ref="basePanel"
+    :device-id="deviceId"
+    :title="title"
+    :api-base-url="effectiveApiBaseUrl"
+  >
     <EnhancedTelescopePanel
       :panel-name="title"
-      :connected="basePanel?.connected"
+      :connected="basePanel?.isConnected"
       :device-type="basePanel?.deviceType || 'telescope'"
       :device-id="deviceId"
       :device-num="basePanel?.deviceNum"

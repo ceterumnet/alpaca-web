@@ -13,39 +13,13 @@ const uiStore = useUIPreferencesStore()
 const themeStyles = computed(() => {
   if (uiStore.isDarkMode) {
     return {
-      '--aw-bg-color': '#1a0000',
-      '--aw-color': '#ff9e9e',
-      '--aw-panel-bg-color': '#2d0000',
-      '--aw-panels-bg-color': '#220000',
-      '--aw-panel-resize-bg-color': '#700000',
-      '--aw-panel-resize-color': '#ff6b6b',
-      '--aw-panel-border-color': '#5a0000',
-      '--aw-panel-menu-bar-color': '#ffcaca',
-      '--aw-panel-menu-bar-bg-color': '#4d0000',
-      '--aw-panel-content-bg-color': '#2d0000',
-      '--aw-panel-content-color': '#ffd5d5',
-      '--aw-panel-scrollbar-color-1': '#8b0000',
-      '--aw-panel-scrollbar-color-2': '#6b0000',
-      '--aw-text-color': '#ffd5d5',
-      '--aw-form-bg-color': '#2d0000',
-      '--aw-input-bg-color': '#4d0000'
+      // Dark theme styling is applied via CSS class, no need to set inline styles
+      'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }
   } else {
     return {
-      '--aw-bg-color': 'white',
-      '--aw-color': 'black',
-      '--aw-panel-bg-color': 'white',
-      '--aw-panel-menu-bar-color': 'white',
-      '--aw-panels-bg-color': 'white',
-      '--aw-panel-resize-bg-color': '#93d4ff',
-      '--aw-panel-resize-color': 'white',
-      '--aw-panel-border-color': 'rgb(39, 39, 39)',
-      '--aw-panel-menu-bar-bg-color': '#6b6b6b',
-      '--aw-panel-content-bg-color': 'rgb(225, 225, 225)',
-      '--aw-panel-content-color': 'rgb(2, 2, 2)',
-      '--aw-text-color': 'rgb(2, 2, 2)',
-      '--aw-form-bg-color': 'white',
-      '--aw-input-bg-color': 'white'
+      // Light theme styling is applied via CSS class, no need to set inline styles
+      'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }
   }
 })
@@ -72,7 +46,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app-container" :style="themeStyles">
+  <div class="app-container" :class="{ 'dark-theme': uiStore.isDarkMode }" :style="themeStyles">
     <!-- Main content area without sidebar -->
     <div class="app-content">
       <!-- Use the migrated navigation bar component -->
@@ -97,6 +71,32 @@ onMounted(() => {
 /* Global styles */
 :root {
   --header-height: 60px;
+
+  /* Font sizes */
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-lg: 1.125rem; /* 18px */
+  --font-size-xl: 1.25rem; /* 20px */
+  --font-size-2xl: 1.5rem; /* 24px */
+
+  /* Font weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 700;
+
+  /* Line heights */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.5rem; /* 8px */
+  --spacing-md: 1rem; /* 16px */
+  --spacing-lg: 1.5rem; /* 24px */
+  --spacing-xl: 2rem; /* 32px */
 }
 
 body {
@@ -114,6 +114,43 @@ body {
     'Open Sans',
     'Helvetica Neue',
     sans-serif;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  background-color: var(--aw-bg-color);
+  color: var(--aw-color);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+/* Typography classes */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-top: 0;
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--aw-text-color);
+}
+
+h1 {
+  font-size: var(--font-size-2xl);
+}
+
+h2 {
+  font-size: var(--font-size-xl);
+}
+
+h3 {
+  font-size: var(--font-size-lg);
+}
+
+p {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
 }
 
 /* Add transition styles */
@@ -126,6 +163,131 @@ body {
 .fade-leave-to {
   opacity: 0;
 }
+
+/* Base form elements */
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--aw-text-color);
+}
+
+input,
+select,
+textarea {
+  background-color: var(--aw-input-bg-color);
+  border: 1px solid var(--aw-input-border-color);
+  border-radius: 4px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  transition: border-color 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--aw-primary-color);
+}
+
+/* Button styles */
+button {
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  font-weight: var(--font-weight-medium);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: 4px;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--aw-button-primary-bg);
+  color: var(--aw-button-primary-text);
+  border: 1px solid transparent;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--aw-button-primary-hover-bg);
+}
+
+.btn-secondary {
+  background-color: var(--aw-button-secondary-bg);
+  color: var(--aw-button-secondary-text);
+  border: 1px solid transparent;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--aw-button-secondary-hover-bg);
+}
+
+.btn-success {
+  background-color: var(--aw-button-success-bg);
+  color: var(--aw-button-success-text);
+  border: 1px solid transparent;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: var(--aw-button-success-hover-bg);
+}
+
+.btn-warning {
+  background-color: var(--aw-button-warning-bg);
+  color: var(--aw-button-warning-text);
+  border: 1px solid transparent;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: var(--aw-button-warning-hover-bg);
+}
+
+.btn-danger {
+  background-color: var(--aw-button-danger-bg);
+  color: var(--aw-button-danger-text);
+  border: 1px solid transparent;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--aw-button-danger-hover-bg);
+}
+
+.btn:disabled,
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Fix for scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--aw-panel-scrollbar-color-1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--aw-panel-scrollbar-color-2);
+}
 </style>
 
 <style scoped>
@@ -134,6 +296,8 @@ body {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+  background-color: var(--aw-bg-color);
+  color: var(--aw-color);
 }
 
 .app-content {

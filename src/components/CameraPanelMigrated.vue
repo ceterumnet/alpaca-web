@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import EnhancedCameraPanel from './EnhancedCameraPanel.vue'
 import { useUnifiedStore } from '../stores/UnifiedStore'
-import BaseDevicePanel from './BaseDevicePanel.vue'
+import BaseDevicePanel from './panels/BaseDevicePanel.vue'
 import { debugLog } from '../utils/debugUtils'
 
 const props = defineProps({
@@ -175,10 +175,15 @@ const handleSetReadMode = (mode: number) => {
 </script>
 
 <template>
-  <BaseDevicePanel ref="basePanel" :device-id="deviceId" :title="title">
+  <BaseDevicePanel
+    ref="basePanel"
+    :device-id="deviceId"
+    :title="title"
+    :api-base-url="effectiveApiBaseUrl"
+  >
     <EnhancedCameraPanel
       :panel-name="title"
-      :connected="basePanel?.connected === true"
+      :connected="basePanel?.isConnected"
       :device-type="basePanel?.deviceType || 'camera'"
       :device-id="deviceId"
       :device-num="basePanel?.deviceNum || 0"

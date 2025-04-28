@@ -9,7 +9,7 @@ export const DEBUG_ENABLED = true
  * @param message The message to log
  * @param data Optional data to log
  */
-export function debugLog(message: string, data?: any): void {
+export function debugLog(message: string, data?: unknown): void {
   if (DEBUG_ENABLED) {
     if (data !== undefined) {
       console.log(`[DEBUG] ${message}`, data)
@@ -25,7 +25,7 @@ export function debugLog(message: string, data?: any): void {
  * @param url The URL being requested
  * @param data Optional request data
  */
-export function logApiRequest(method: string, url: string, data?: any): void {
+export function logApiRequest(method: string, url: string, data?: unknown): void {
   if (DEBUG_ENABLED) {
     console.log(`[API ${method}] ${url}`, data || '')
   }

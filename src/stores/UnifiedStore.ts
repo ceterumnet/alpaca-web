@@ -75,10 +75,18 @@ export const useUnifiedStore = defineStore('unifiedStore', () => {
   function addDevice(device: Device, options: StoreOptions = {}): boolean {
     if (!device || !device.id) return false
 
+    console.log('Adding device to UnifiedStore:', {
+      deviceId: device.id,
+      deviceType: device.type,
+      deviceName: device.name,
+      deviceApiBaseUrl: device.apiBaseUrl
+    })
+
     // Don't add if already exists
     if (devices.value.has(device.id)) return false
 
     // Ensure device has required fields
+    console.log('Normalizing device:', device)
     const normalizedDevice = _normalizeDevice(device)
 
     // Add to store
@@ -265,6 +273,7 @@ export const useUnifiedStore = defineStore('unifiedStore', () => {
   function _normalizeDevice(device: Device): Device {
     const normalized = { ...device }
 
+    console.log('Normalizing device:', device)
     // Ensure required fields
     normalized.id =
       normalized.id || `dev-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
@@ -280,6 +289,42 @@ export const useUnifiedStore = defineStore('unifiedStore', () => {
 
     // Ensure metadata
     normalized.discoveredAt = normalized.discoveredAt || new Date().toISOString()
+
+    // Construct apiBaseUrl if not already set but we have ip/address and port
+    if (!normalized.apiBaseUrl) {
+      const ipAddress = normalized.ipAddress || normalized.address
+      const port = normalized.port || normalized.devicePort
+
+      console.log('API URL construction input parameters:', {
+        ipAddress,
+        port,
+        deviceType: normalized.type,
+        deviceNum: normalized.idx
+      })
+
+      if (ipAddress && port) {
+        // Use the proxy format for Alpaca devices
+        const deviceType = normalized.type?.toLowerCase() || 'device'
+        const deviceNum = normalized.idx !== undefined ? normalized.idx : 0
+
+        // Use the existing proxy pattern: /proxy/ipAddress/port/api/v1/deviceType/deviceNum
+        normalized.apiBaseUrl = `/proxy/${ipAddress}/${port}/api/v1/${deviceType}/${deviceNum}`
+        console.log('Constructed apiBaseUrl using proxy:', normalized.apiBaseUrl)
+      } else {
+        console.warn('Cannot construct apiBaseUrl - missing ipAddress or port:', {
+          ipAddress,
+          port,
+          device: normalized
+        })
+      }
+    }
+
+    console.log('Device normalization complete:', {
+      id: normalized.id,
+      type: normalized.type,
+      name: normalized.name,
+      apiBaseUrl: normalized.apiBaseUrl
+    })
 
     return normalized
   }
