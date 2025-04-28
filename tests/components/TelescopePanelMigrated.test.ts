@@ -1,7 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import TelescopePanelMigrated from '../../src/components/panels/TelescopePanelMigrated.vue'
-import { UIMode } from '../../src/stores/useUIPreferencesStore'
 import { useUnifiedStore } from '../../src/stores/UnifiedStore'
 
 // Mock UnifiedStore
@@ -73,40 +72,48 @@ vi.mock('../../src/stores/UnifiedStore', () => {
   }
 
   return {
-    default: vi.fn().mockImplementation(() => mockStore),
+    default: mockStore,
     useUnifiedStore: vi.fn(() => mockStore)
   }
 })
 
-// Mock UI preferences store
-vi.mock('../../src/stores/useUIPreferencesStore', () => {
-  return {
-    UIMode: {
-      OVERVIEW: 'overview',
-      DETAILED: 'detailed',
-      FULLSCREEN: 'fullscreen'
-    },
-    useUIPreferencesStore: vi.fn(() => ({
-      getDeviceUIMode: vi.fn(() => UIMode.OVERVIEW),
-      setDeviceUIMode: vi.fn(),
-      isSidebarVisible: true,
-      toggleSidebar: vi.fn()
-    }))
+// Mock BaseDevicePanel
+vi.mock('../../src/components/panels/BaseDevicePanel.vue', () => ({
+  default: {
+    name: 'BaseDevicePanel',
+    template: `
+      <div>
+        <slot></slot>
+      </div>
+    `,
+    props: ['deviceId', 'title'],
+    setup() {
+      return {
+        isConnected: true,
+        deviceType: 'telescope',
+        deviceNum: 1,
+        handleConnect: vi.fn(),
+        handleModeChange: vi.fn()
+      }
+    }
   }
-})
+}))
 
 // Mock EnhancedTelescopePanel component
-vi.mock('../../src/components/EnhancedTelescopePanelMigrated.vue', () => ({
-  name: 'EnhancedTelescopePanel',
-  template: `
-    <div>
-      <button class="slew-button" @click="$emit('slew')">Slew</button>
-      <button class="tracking-toggle" @click="$emit('toggleTracking')">Toggle Tracking</button>
-      <button class="park-button" @click="$emit('park')">Park</button>
-      <button class="unpark-button" @click="$emit('unpark')">Unpark</button>
-    </div>
-  `,
-  props: ['panelName', 'deviceId', 'connected', 'deviceType']
+vi.mock('../../src/components/EnhancedTelescopePanel.vue', () => ({
+  default: {
+    name: 'EnhancedTelescopePanel',
+    template: `
+      <div>
+        <button class="slew-button" @click="$emit('slew', '12:00:00', '+45:00:00')">Slew</button>
+        <button class="tracking-toggle" @click="$emit('toggle-tracking', false)">Toggle Tracking</button>
+        <button class="park-button" @click="$emit('park')">Park</button>
+        <button class="unpark-button" @click="$emit('unpark')">Unpark</button>
+      </div>
+    `,
+    props: ['panelName', 'deviceId', 'connected', 'deviceType', 'deviceNum', 'idx'],
+    emits: ['connect', 'mode-change', 'slew', 'toggle-tracking', 'park', 'unpark']
+  }
 }))
 
 describe('TelescopePanelMigrated', () => {

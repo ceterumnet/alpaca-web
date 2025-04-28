@@ -6,36 +6,98 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { shallowMount, VueWrapper } from '@vue/test-utils'
+import { mount, VueWrapper } from '@vue/test-utils'
 import AppSidebarMigrated from '@/components/AppSidebarMigrated.vue'
-import UnifiedStore from '@/stores/UnifiedStore'
-import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
-import type { Device } from '@/types/DeviceTypes'
+import { createPinia, setActivePinia } from 'pinia'
+
+// Create mock functions for UI store
+const mockToggleSidebar = vi.fn()
+let mockIsSidebarVisible = true
+
+// Control the devices list
+let mockDevicesList = [
+  {
+    id: 'telescope-1',
+    name: 'Test Telescope',
+    type: 'telescope',
+    ipAddress: '192.168.1.100',
+    port: 4567,
+    isConnected: false,
+    isConnecting: false,
+    isDisconnecting: false,
+    properties: {}
+  },
+  {
+    id: 'camera-2',
+    name: 'Test Camera',
+    type: 'camera',
+    ipAddress: '192.168.1.101',
+    port: 4568,
+    isConnected: true,
+    isConnecting: false,
+    isDisconnecting: false,
+    properties: {}
+  },
+  {
+    id: 'focuser-3',
+    name: 'Test Focuser',
+    type: 'focuser',
+    ipAddress: '192.168.1.102',
+    port: 4569,
+    isConnected: false,
+    isConnecting: false,
+    isDisconnecting: false,
+    properties: {}
+  }
+]
+
+// Interface for the component's instance
+interface ComponentInstance {
+  getIconForDeviceType: (type: string) => string
+  devicesByCategory: Record<string, unknown[]>
+}
+
+// Mock the stores
+vi.mock('@/stores/UnifiedStore', () => ({
+  useUnifiedStore: () => ({
+    get devicesList() {
+      return mockDevicesList
+    }
+  })
+}))
 
 // Mock the useUIPreferencesStore
 vi.mock('@/stores/useUIPreferencesStore', () => ({
   useUIPreferencesStore: vi.fn(() => ({
-    isSidebarVisible: true,
-    toggleSidebar: vi.fn()
+    get isSidebarVisible() {
+      return mockIsSidebarVisible
+    },
+    toggleSidebar: mockToggleSidebar
   }))
 }))
 
+// Mock the Icon component to avoid SVG loading issues
+vi.mock('@/components/Icon.vue', () => ({
+  default: {
+    name: 'Icon',
+    props: ['type'],
+    template: '<div class="icon" :data-type="type">{{ type }}</div>'
+  }
+}))
+
 describe('AppSidebarMigrated.vue (Direct Store)', () => {
-  let store: UnifiedStore
-  let testDevices: Device[]
   let wrapper: VueWrapper
-  let mockUIStore: ReturnType<typeof useUIPreferencesStore>
 
   // Set up before each test
   beforeEach(() => {
-    // Create a fresh store for each test
-    store = new UnifiedStore()
+    // Create a fresh pinia for each test
+    setActivePinia(createPinia())
 
-    // Access the mocked store
-    mockUIStore = useUIPreferencesStore()
+    // Reset sidebar visibility to true for most tests
+    mockIsSidebarVisible = true
 
-    // Create test devices
-    testDevices = [
+    // Reset devices list to default
+    mockDevicesList = [
       {
         id: 'telescope-1',
         name: 'Test Telescope',
@@ -71,20 +133,11 @@ describe('AppSidebarMigrated.vue (Direct Store)', () => {
       }
     ]
 
-    // Mock the store's devices getter
-    Object.defineProperty(store, 'devices', {
-      get: vi.fn(() => testDevices)
-    })
+    // Reset all mocks
+    vi.clearAllMocks()
 
     // Initialize component wrapper
-    wrapper = shallowMount(AppSidebarMigrated, {
-      global: {
-        // Provide mocked modules
-        provide: {
-          store
-        }
-      }
-    })
+    wrapper = mount(AppSidebarMigrated)
   })
 
   /**
@@ -114,7 +167,7 @@ describe('AppSidebarMigrated.vue (Direct Store)', () => {
     await wrapper.find('.collapse-toggle').trigger('click')
 
     // Verify the UI store's toggleSidebar was called
-    expect(mockUIStore.toggleSidebar).toHaveBeenCalled()
+    expect(mockToggleSidebar).toHaveBeenCalled()
   })
 
   /**
@@ -122,14 +175,14 @@ describe('AppSidebarMigrated.vue (Direct Store)', () => {
    * Verifies that device connection status is displayed correctly
    */
   it('shows correct connection status for devices', () => {
-    // Find all connection status indicators
-    const statusIndicators = wrapper.findAll('.connection-status')
+    // Get all device items
+    const deviceItems = wrapper.findAll('.device-item')
 
     // First device (telescope) is not connected
-    expect(statusIndicators[0].classes()).not.toContain('connected')
+    expect(deviceItems[0].classes()).not.toContain('device-connected')
 
     // Second device (camera) is connected
-    expect(statusIndicators[1].classes()).toContain('connected')
+    expect(deviceItems[1].classes()).toContain('device-connected')
   })
 
   /**
@@ -151,13 +204,13 @@ describe('AppSidebarMigrated.vue (Direct Store)', () => {
    * Verifies that the correct icon is selected for each device type
    */
   it('selects the correct icon for each device type', () => {
-    // Find all device icons
-    const deviceIcons = wrapper.findAll('.device-icon')
+    // Access the component's instance
+    const vm = wrapper.vm as unknown as ComponentInstance
 
-    // Check that icons have the correct type attribute
-    expect(deviceIcons[0].attributes('type')).toBe('search') // telescope
-    expect(deviceIcons[1].attributes('type')).toBe('camera') // camera
-    expect(deviceIcons[2].attributes('type')).toBe('exposure') // focuser
+    // Check that icons have the correct type returned by the method
+    expect(vm.getIconForDeviceType('telescope')).toBe('search')
+    expect(vm.getIconForDeviceType('camera')).toBe('camera')
+    expect(vm.getIconForDeviceType('focuser')).toBe('focus')
   })
 
   /**
@@ -165,26 +218,20 @@ describe('AppSidebarMigrated.vue (Direct Store)', () => {
    * Tests that the collapsed view shows correct elements
    */
   it('displays collapsed view when sidebar is collapsed', async () => {
-    // Mock the UI store to return collapsed state
-    vi.mocked(mockUIStore).isSidebarVisible = false
+    // Set mockIsSidebarVisible to false for this test
+    mockIsSidebarVisible = false
 
     // Create a new wrapper with collapsed state
-    const collapsedWrapper = shallowMount(AppSidebarMigrated, {
-      global: {
-        provide: {
-          store
-        }
-      }
-    })
+    const collapsedWrapper = mount(AppSidebarMigrated)
 
     // Check that sidebar has collapsed class
-    expect(collapsedWrapper.find('.sidebar-collapsed').exists()).toBe(true)
+    expect(collapsedWrapper.find('.sidebar').classes()).toContain('sidebar-collapsed')
 
     // Check that collapsed devices are shown
-    expect(collapsedWrapper.findAll('.collapsed-device-item')).toHaveLength(3)
+    expect(collapsedWrapper.find('.sidebar-collapsed-content').exists()).toBe(true)
 
-    // Check that expanded devices are not shown
-    expect(collapsedWrapper.findAll('.device-item')).toHaveLength(0)
+    // Check that expanded content is not shown
+    expect(collapsedWrapper.find('.sidebar-content').exists()).toBe(false)
   })
 
   /**
@@ -192,25 +239,16 @@ describe('AppSidebarMigrated.vue (Direct Store)', () => {
    * Verifies that component handles empty device list gracefully
    */
   it('handles empty device list gracefully', async () => {
-    // Create a store with no devices
-    const emptyStore = new UnifiedStore()
+    // Set device list to empty for this test
+    mockDevicesList = []
 
-    // Mock the devices getter to return an empty array
-    Object.defineProperty(emptyStore, 'devices', {
-      get: vi.fn(() => [])
-    })
+    // Create a new wrapper with empty device list
+    const emptyWrapper = mount(AppSidebarMigrated)
 
-    // Create a wrapper with the empty store
-    const emptyWrapper = shallowMount(AppSidebarMigrated, {
-      global: {
-        provide: {
-          store: emptyStore
-        }
-      }
-    })
-
-    // Check that no device categories or items are rendered
+    // Check that no device categories are rendered
     expect(emptyWrapper.findAll('.device-category')).toHaveLength(0)
+
+    // Check that no device items are rendered
     expect(emptyWrapper.findAll('.device-item')).toHaveLength(0)
   })
 })

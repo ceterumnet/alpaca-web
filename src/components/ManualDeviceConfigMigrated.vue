@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
-import UnifiedStore from '@/stores/UnifiedStore'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
 import axios from 'axios'
 
 // We still need useDiscoveredDevicesStore for discovery capabilities
 const discoveredDevicesStore = useDiscoveredDevicesStore()
 // Get the UnifiedStore instance
-const unifiedStore = UnifiedStore
+const unifiedStore = useUnifiedStore()
 
 const showForm = ref(false)
 const deviceAddress = ref('localhost')

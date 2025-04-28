@@ -3,7 +3,6 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ManualDeviceConfigMigrated from '@/components/ManualDeviceConfigMigrated.vue'
 import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
-import UnifiedStore from '@/stores/UnifiedStore'
 import axios from 'axios'
 
 // Mock the stores
@@ -18,27 +17,29 @@ const mockUnifiedStore = {
 }
 
 vi.mock('@/stores/UnifiedStore', () => ({
-  useUnifiedStore: vi.fn(() => mockUnifiedStore),
-  default: vi.fn().mockImplementation(() => mockUnifiedStore)
+  useUnifiedStore: vi.fn(() => mockUnifiedStore)
 }))
 
 // Mock axios
 vi.mock('axios')
 
-describe('ManualDeviceConfigMigrated.vue', () => {
-  let discoveredDevicesStore: {
-    addManualDevice: any
-    getProxyUrl: any
-  }
+// Define a type for our mocked store
+interface MockDiscoveredDevicesStore {
+  addManualDevice: ReturnType<typeof vi.fn>
+  getProxyUrl: ReturnType<typeof vi.fn>
+}
 
-  let unifiedStore: {
-    addDevice: any
-  }
+describe('ManualDeviceConfigMigrated.vue', () => {
+  let discoveredDevicesStore: MockDiscoveredDevicesStore
 
   beforeEach(() => {
     // Set up a fresh Pinia instance
     const pinia = createPinia()
     setActivePinia(pinia)
+
+    // Clear mocks
+    mockUnifiedStore.addDevice.mockClear()
+    mockUnifiedStore.connectDevice.mockClear()
 
     // Mock discovered devices store
     discoveredDevicesStore = {
@@ -46,14 +47,9 @@ describe('ManualDeviceConfigMigrated.vue', () => {
       getProxyUrl: vi.fn()
     }
 
-    // Mock unified store
-    unifiedStore = {
-      addDevice: vi.fn()
-    }
-
     // Setup mocks
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(useDiscoveredDevicesStore).mockReturnValue(discoveredDevicesStore as any)
-    vi.mocked(UnifiedStore).mockImplementation(() => unifiedStore as any)
 
     // Setup axios mock
     vi.mocked(axios.get).mockResolvedValue({
@@ -228,10 +224,10 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     expect(axios.get).toHaveBeenCalledWith('http://localhost:8000/management/v1/configureddevices')
 
     // Verify addDevice was called for each device
-    expect(unifiedStore.addDevice).toHaveBeenCalledTimes(2)
+    expect(mockUnifiedStore.addDevice).toHaveBeenCalledTimes(2)
 
     // Check first device
-    expect(unifiedStore.addDevice).toHaveBeenCalledWith(
+    expect(mockUnifiedStore.addDevice).toHaveBeenCalledWith(
       expect.objectContaining({
         id: '192.168.1.100:8000:telescope:0',
         name: 'Telescope 0',
@@ -240,7 +236,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     )
 
     // Check second device
-    expect(unifiedStore.addDevice).toHaveBeenCalledWith(
+    expect(mockUnifiedStore.addDevice).toHaveBeenCalledWith(
       expect.objectContaining({
         id: '192.168.1.100:8000:camera:0',
         name: 'Camera 0',
@@ -296,7 +292,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     await flushPromises()
 
     // Only telescope and camera should be added (other types should be filtered out)
-    expect(unifiedStore.addDevice).toHaveBeenCalledTimes(2)
+    expect(mockUnifiedStore.addDevice).toHaveBeenCalledTimes(2)
   })
 
   it('shows loading state during submission', async () => {
@@ -354,7 +350,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     await flushPromises()
 
     // Verify the apiBaseUrl is correctly formatted
-    expect(unifiedStore.addDevice).toHaveBeenCalledWith(
+    expect(mockUnifiedStore.addDevice).toHaveBeenCalledWith(
       expect.objectContaining({
         properties: expect.objectContaining({
           apiBaseUrl: 'http://localhost:8000/api/v1/telescope/0'
@@ -381,7 +377,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     await flushPromises()
 
     // Verify devices are marked as manual entries
-    expect(unifiedStore.addDevice).toHaveBeenCalledWith(
+    expect(mockUnifiedStore.addDevice).toHaveBeenCalledWith(
       expect.objectContaining({
         properties: expect.objectContaining({
           isManualEntry: true

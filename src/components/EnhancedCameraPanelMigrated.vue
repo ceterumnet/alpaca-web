@@ -179,6 +179,23 @@ const percentComplete = computed(() => {
   return exposureProgress.value
 })
 
+// Local reference to the bound event handler to ensure proper cleanup
+const boundPropertyChangeHandler = function (...args: unknown[]) {
+  if (args.length < 3) return
+
+  const deviceId = args[0] as string
+  const property = args[1] as string
+  const value = args[2]
+
+  if (deviceId !== String(props.deviceId)) return
+
+  // Update local state based on property changes
+  if (property === 'isExposing' && value === false) {
+    // When exposure completes, fetch the image
+    fetchImage()
+  }
+}
+
 // Method to handle connect events from EnhancedPanelComponent
 function onConnect() {
   handleConnect()
@@ -199,14 +216,15 @@ function onModeChange(mode: UIMode) {
 onMounted(() => {
   // Initialize data and set up event listeners
   if (props.connected) {
-    store.on('devicePropertyChanged', handlePropertyChange)
+    store.on('devicePropertyChanged', boundPropertyChangeHandler)
     fetchInitialData()
   }
 })
 
 // Clean up on component unmount
 onUnmounted(() => {
-  store.off('devicePropertyChanged', handlePropertyChange)
+  // Make sure we properly unregister the event listener
+  store.off('devicePropertyChanged', boundPropertyChangeHandler)
 })
 
 // Watch for connection changes
@@ -214,30 +232,15 @@ watch(
   () => props.connected,
   (newValue) => {
     if (newValue) {
-      store.on('devicePropertyChanged', handlePropertyChange)
+      store.on('devicePropertyChanged', boundPropertyChangeHandler)
       fetchInitialData()
     } else {
-      store.off('devicePropertyChanged', handlePropertyChange)
+      store.off('devicePropertyChanged', boundPropertyChangeHandler)
     }
   }
 )
 
-// Handle property changes from store
-function handlePropertyChange(...args: unknown[]) {
-  if (args.length < 3) return
-
-  const deviceId = args[0] as string
-  const property = args[1] as string
-  const value = args[2]
-
-  if (deviceId !== String(props.deviceId)) return
-
-  // Update local state based on property changes
-  if (property === 'isExposing' && value === false) {
-    // When exposure completes, fetch the image
-    fetchImage()
-  }
-}
+// Handle property changes from store function defined earlier as boundPropertyChangeHandler
 
 // Fetch initial camera data
 function fetchInitialData() {
@@ -475,6 +478,11 @@ function setTargetTemperature(temp: number) {
 
   emit('set-cooler', true, temp)
 }
+
+// Expose fetchImage for testing
+defineExpose({
+  fetchImage
+})
 </script>
 
 <template>

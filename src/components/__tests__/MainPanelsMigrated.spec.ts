@@ -308,8 +308,10 @@ describe('MainPanelsMigrated.vue', () => {
     const wrapper = mount(MainPanelsMigrated)
     await flushPromises()
 
-    // Get access to the component instance
-    const vm = wrapper.vm as any
+    // Cast to unknown first, then to the specific type
+    const vm = wrapper.vm as unknown as {
+      removePanel: (itemId: string) => void
+    }
 
     // Call the removePanel method directly
     vm.removePanel('telescope-0')
@@ -336,8 +338,10 @@ describe('MainPanelsMigrated.vue', () => {
     const wrapper = mount(MainPanelsMigrated)
     await flushPromises()
 
-    // Get access to the component instance
-    const vm = wrapper.vm as any
+    // Cast to unknown first, then to the specific type
+    const vm = wrapper.vm as unknown as {
+      handleConnect: (connected: boolean, itemId: string) => void
+    }
 
     // Call the handleConnect method with connected=true
     vm.handleConnect(true, 'telescope-0')
@@ -356,8 +360,10 @@ describe('MainPanelsMigrated.vue', () => {
     const wrapper = mount(MainPanelsMigrated)
     await flushPromises()
 
-    // Get access to the component instance
-    const vm = wrapper.vm as any
+    // Cast to unknown first, then to the specific type
+    const vm = wrapper.vm as unknown as {
+      resetLayout: () => void
+    }
 
     // Call the resetLayout method
     vm.resetLayout()
@@ -370,8 +376,10 @@ describe('MainPanelsMigrated.vue', () => {
     const wrapper = mount(MainPanelsMigrated)
     await flushPromises()
 
-    // Get access to the component instance
-    const vm = wrapper.vm as any
+    // Cast to unknown first, then to the specific type
+    const vm = wrapper.vm as unknown as {
+      saveLayoutPreset: () => void
+    }
 
     // Call the saveLayoutPreset method
     vm.saveLayoutPreset()
@@ -408,8 +416,10 @@ describe('MainPanelsMigrated.vue', () => {
     const wrapper = mount(MainPanelsMigrated)
     await flushPromises()
 
-    // Get access to the component instance
-    const vm = wrapper.vm as any
+    // Cast to unknown first, then to the specific type
+    const vm = wrapper.vm as unknown as {
+      onLayoutUpdate: (newLayout: Array<Record<string, unknown>>) => void
+    }
 
     // Call the onLayoutUpdate method with a new layout
     const updatedLayout = [...mockLayout]
@@ -425,8 +435,10 @@ describe('MainPanelsMigrated.vue', () => {
     const wrapper = mount(MainPanelsMigrated)
     await flushPromises()
 
-    // Get access to the component instance
-    const vm = wrapper.vm as any
+    // Cast to unknown first, then to the specific type
+    const vm = wrapper.vm as unknown as {
+      getPanelName: (item: Record<string, unknown>) => string
+    }
 
     // Test telescope panel name formatting
     const telescopeName = vm.getPanelName({ deviceType: 'telescope', deviceNum: 0 })

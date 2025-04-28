@@ -6,12 +6,13 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import UnifiedStore from '../../stores/UnifiedStore'
+import { useUnifiedStore } from '../../stores/UnifiedStore'
 import StoreAdapter from '../../stores/StoreAdapter'
 import type { LegacyDevice } from '../../stores/StoreAdapter'
+import { createPinia, setActivePinia } from 'pinia'
 
 describe('Store Adapter Tests', () => {
-  let store: UnifiedStore
+  let store: ReturnType<typeof useUnifiedStore>
   let adapter: StoreAdapter
 
   // Colors for console output (for pretty logging)
@@ -19,7 +20,9 @@ describe('Store Adapter Tests', () => {
   const RESET = '\x1b[0m'
 
   beforeEach(() => {
-    store = new UnifiedStore()
+    // Set up a fresh Pinia instance for each test
+    setActivePinia(createPinia())
+    store = useUnifiedStore()
     adapter = new StoreAdapter(store)
   })
 

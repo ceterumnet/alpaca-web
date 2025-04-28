@@ -8,9 +8,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { shallowMount, VueWrapper } from '@vue/test-utils'
 import BaseDevicePanel from '@/components/BaseDevicePanel.vue'
-import UnifiedStore from '@/stores/UnifiedStore'
 import { UIMode } from '@/stores/useUIPreferencesStore'
 import type { Device } from '@/types/DeviceTypes'
+import { createPinia, setActivePinia } from 'pinia'
+
+// Create mock functions for store methods
+const mockGetDeviceById = vi.fn()
+const mockConnectDevice = vi.fn().mockResolvedValue(true)
+const mockDisconnectDevice = vi.fn().mockResolvedValue(true)
+
+// Mock the Pinia store
+vi.mock('@/stores/UnifiedStore', () => ({
+  useUnifiedStore: () => ({
+    getDeviceById: mockGetDeviceById,
+    connectDevice: mockConnectDevice,
+    disconnectDevice: mockDisconnectDevice,
+    devicesList: []
+  })
+}))
 
 // Define an interface for the exposed properties of BaseDevicePanel
 interface BasePanelExposed {
@@ -24,18 +39,16 @@ interface BasePanelExposed {
 }
 
 describe('BaseDevicePanel.vue (Direct Store)', () => {
-  let store: UnifiedStore
   let testDevices: Device[]
   let wrapper: VueWrapper
 
   // Set up before each test
   beforeEach(() => {
-    // Create a fresh store for each test
-    store = new UnifiedStore()
+    // Create a fresh pinia for each test
+    setActivePinia(createPinia())
 
-    // Mock store methods as needed
-    store.connectDevice = vi.fn().mockResolvedValue(true)
-    store.disconnectDevice = vi.fn().mockResolvedValue(true)
+    // Reset all mocks
+    vi.clearAllMocks()
 
     // Create test devices
     testDevices = [
@@ -64,8 +77,8 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
     ]
 
     // Mock the getDeviceById method to return our test devices
-    store.getDeviceById = vi.fn().mockImplementation((id: string) => {
-      return testDevices.find((d) => d.id === id)
+    mockGetDeviceById.mockImplementation((id: string) => {
+      return testDevices.find((d) => d.id === id) || null
     })
 
     // Initialize component wrapper with the disconnected device
@@ -73,12 +86,6 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
       props: {
         deviceId: 'telescope-1',
         title: 'Test Telescope Panel'
-      },
-      global: {
-        // Provide the store for components that might inject it
-        provide: {
-          store
-        }
       }
     })
   })
@@ -92,7 +99,7 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
     const vm = wrapper.vm as unknown as BasePanelExposed
 
     // Check that device was retrieved correctly
-    expect(store.getDeviceById).toHaveBeenCalledWith('telescope-1')
+    expect(mockGetDeviceById).toHaveBeenCalledWith('telescope-1')
 
     // Check derived computed properties
     expect(vm.deviceType).toBe('telescope')
@@ -112,8 +119,8 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
     vm.handleConnect()
 
     // Verify connectDevice was called with the correct ID
-    expect(store.connectDevice).toHaveBeenCalledWith('telescope-1')
-    expect(store.disconnectDevice).not.toHaveBeenCalled()
+    expect(mockConnectDevice).toHaveBeenCalledWith('telescope-1')
+    expect(mockDisconnectDevice).not.toHaveBeenCalled()
   })
 
   /**
@@ -121,16 +128,20 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
    * Verifies that the component correctly handles device disconnection
    */
   it('handles connect action correctly for connected device', async () => {
+    // Reset the mock implementation for this test
+    mockGetDeviceById.mockImplementation((id: string) => {
+      const device = testDevices.find((d) => d.id === id)
+      if (device) {
+        return { ...device }
+      }
+      return null
+    })
+
     // Create a wrapper with the connected device
     const connectedWrapper = shallowMount(BaseDevicePanel, {
       props: {
         deviceId: 'camera-2',
         title: 'Test Camera Panel'
-      },
-      global: {
-        provide: {
-          store
-        }
       }
     })
 
@@ -141,8 +152,8 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
     vm.handleConnect()
 
     // Verify disconnectDevice was called with the correct ID
-    expect(store.disconnectDevice).toHaveBeenCalledWith('camera-2')
-    expect(store.connectDevice).not.toHaveBeenCalled()
+    expect(mockDisconnectDevice).toHaveBeenCalledWith('camera-2')
+    expect(mockConnectDevice).not.toHaveBeenCalled()
   })
 
   /**
@@ -189,6 +200,9 @@ describe('BaseDevicePanel.vue (Direct Store)', () => {
    * Verifies that the component handles cases where the device ID doesn't exist
    */
   it('handles invalid device IDs gracefully', async () => {
+    // Reset mock to return null for non-existent devices
+    mockGetDeviceById.mockReturnValue(null)
+
     // Create wrapper with invalid device ID
     const invalidWrapper = shallowMount(BaseDevicePanel, {
       props: {

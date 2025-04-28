@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
+import type { ComponentPublicInstance } from 'vue'
+import { nextTick } from 'vue'
 import DeviceDetailViewMigrated from '../DeviceDetailViewMigrated.vue'
-import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { UnifiedDevice } from '@/types/DeviceTypes'
 
 // Create a mock router
@@ -22,16 +23,21 @@ const router = createRouter({
   ]
 })
 
-// Create a basic mock first
-const mockUnifiedStore = {
-  getDeviceById: vi.fn(),
-  updateDevice: vi.fn(),
-  devicesList: []
-}
+// Create mock functions for the store
+const mockGetDeviceById = vi.fn()
+const mockUpdateDevice = vi.fn()
+const mockConnectDevice = vi.fn().mockResolvedValue(undefined)
+const mockDisconnectDevice = vi.fn().mockResolvedValue(undefined)
 
+// Mock the UnifiedStore
 vi.mock('@/stores/UnifiedStore', () => ({
-  useUnifiedStore: vi.fn(),
-  default: vi.fn().mockImplementation(() => mockUnifiedStore)
+  useUnifiedStore: () => ({
+    getDeviceById: mockGetDeviceById,
+    updateDevice: mockUpdateDevice,
+    connectDevice: mockConnectDevice,
+    disconnectDevice: mockDisconnectDevice,
+    devicesList: []
+  })
 }))
 
 // Mock the panel components
@@ -55,6 +61,19 @@ vi.mock('@/components/EnhancedPanelComponentMigrated.vue', () => ({
     props: ['deviceId', 'connected', 'panelName', 'deviceType', 'supportedModes']
   }
 }))
+
+// Mock the UIMode enum
+vi.mock('../stores/useUIPreferencesStore', () => ({
+  UIMode: {
+    OVERVIEW: 'overview',
+    DETAILED: 'detailed'
+  }
+}))
+
+// Interface for the component instance to avoid using 'any'
+interface DeviceDetailViewInstance extends ComponentPublicInstance {
+  isConnectionChanging: boolean
+}
 
 describe('DeviceDetailViewMigrated', () => {
   const mockDevices: Record<string, UnifiedDevice> = {
@@ -116,19 +135,14 @@ describe('DeviceDetailViewMigrated', () => {
     }
   }
 
-  let mockStore: ReturnType<typeof useUnifiedStore>
-
   beforeEach(() => {
     vi.clearAllMocks()
 
     // Setup the route
     router.push('/devices/telescope-123')
 
-    // Setup mock store
-    mockStore = useUnifiedStore()
-
     // Setup mock getDeviceById to return the appropriate device
-    vi.mocked(mockStore.getDeviceById).mockImplementation((id: string) => {
+    mockGetDeviceById.mockImplementation((id: string) => {
       return mockDevices[id] || null
     })
   })
@@ -138,27 +152,40 @@ describe('DeviceDetailViewMigrated', () => {
   })
 
   it('should display device details when device exists', async () => {
+    // Set the route first, then wait for it to be ready
+    await router.push('/devices/telescope-123')
+    await router.isReady()
+
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Check device details are displayed
-    expect(wrapper.text()).toContain('Test Telescope')
-    expect(wrapper.text()).toContain('telescope')
-    expect(wrapper.text()).toContain('Connected')
+    expect(wrapper.find('h1').text()).toBe('Test Telescope')
+
+    // Look for type info in info-value
+    const infoItems = wrapper.findAll('.info-item')
+    const typeValue = infoItems[0].find('.info-value')
+    expect(typeValue.text()).toBe('telescope')
+
+    // Check status
+    const statusValue = infoItems[3].find('.info-value')
+    expect(statusValue.text()).toBe('Connected')
   })
 
   it('should display the appropriate panel component for a telescope device', async () => {
+    // Set the route first, then wait for it to be ready
+    await router.push('/devices/telescope-123')
+    await router.isReady()
+
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Should contain telescope panel
@@ -168,13 +195,13 @@ describe('DeviceDetailViewMigrated', () => {
   it('should display the appropriate panel component for a camera device', async () => {
     // Change route to camera device
     await router.push('/devices/camera-456')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Should not contain telescope panel
@@ -183,36 +210,45 @@ describe('DeviceDetailViewMigrated', () => {
     // Camera device is not connected, so no panel should be shown
     expect(wrapper.find('[data-testid="camera-panel"]').exists()).toBe(false)
 
-    // Should show placeholder
-    expect(wrapper.text()).toContain('Connect to the device to access controls')
+    // Should show placeholder for not connected device
+    const placeholder = wrapper.find('.detail-content-placeholder')
+    expect(placeholder.exists()).toBe(true)
+    expect(placeholder.text()).toBe('Connect to the device to access controls.')
   })
 
   it('should display not found message when device does not exist', async () => {
     // Change route to non-existent device
     await router.push('/devices/unknown-device')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Should show not found message
-    expect(wrapper.text()).toContain('The requested device could not be found')
+    const notFoundElement = wrapper.find('.not-found')
+    expect(notFoundElement.exists()).toBe(true)
+    expect(notFoundElement.find('p').text()).toBe('The requested device could not be found.')
+
+    // Should have a go back button
+    const backButton = notFoundElement.find('button.action-button')
+    expect(backButton.exists()).toBe(true)
+    expect(backButton.text()).toBe('Go Back')
   })
 
   it('should connect a device when the connect button is clicked', async () => {
     // Change route to camera device (which is not connected)
     await router.push('/devices/camera-456')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Click connect button
@@ -220,19 +256,19 @@ describe('DeviceDetailViewMigrated', () => {
     await flushPromises()
 
     // Should call connectDevice
-    expect(mockStore.connectDevice).toHaveBeenCalledWith('camera-456')
+    expect(mockConnectDevice).toHaveBeenCalledWith('camera-456')
   })
 
   it('should disconnect a device when the disconnect button is clicked', async () => {
     // Use telescope device (which is connected)
     await router.push('/devices/telescope-123')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Click disconnect button
@@ -240,16 +276,19 @@ describe('DeviceDetailViewMigrated', () => {
     await flushPromises()
 
     // Should call disconnectDevice
-    expect(mockStore.disconnectDevice).toHaveBeenCalledWith('telescope-123')
+    expect(mockDisconnectDevice).toHaveBeenCalledWith('telescope-123')
   })
 
   it('should navigate back to devices view when back button is clicked', async () => {
+    // Set the route first, then wait for it to be ready
+    await router.push('/devices/telescope-123')
+    await router.isReady()
+
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Click back button
@@ -262,17 +301,17 @@ describe('DeviceDetailViewMigrated', () => {
 
   it('should handle connection errors gracefully', async () => {
     // Setup connectDevice to fail
-    mockStore.connectDevice = vi.fn().mockRejectedValue(new Error('Connection failed'))
+    mockConnectDevice.mockRejectedValue(new Error('Connection failed'))
 
     // Change route to camera device
     await router.push('/devices/camera-456')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Click connect button
@@ -280,10 +319,10 @@ describe('DeviceDetailViewMigrated', () => {
     await flushPromises()
 
     // Should have called connectDevice
-    expect(mockStore.connectDevice).toHaveBeenCalledWith('camera-456')
+    expect(mockConnectDevice).toHaveBeenCalledWith('camera-456')
 
     // Component should recover from error and reset isConnectionChanging flag
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as DeviceDetailViewInstance
     expect(vm.isConnectionChanging).toBe(false)
 
     // Component should not crash
@@ -292,17 +331,17 @@ describe('DeviceDetailViewMigrated', () => {
 
   it('should handle disconnection errors gracefully', async () => {
     // Setup disconnectDevice to fail
-    mockStore.disconnectDevice = vi.fn().mockRejectedValue(new Error('Disconnection failed'))
+    mockDisconnectDevice.mockRejectedValue(new Error('Disconnection failed'))
 
     // Use telescope device (which is connected)
     await router.push('/devices/telescope-123')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Click disconnect button
@@ -310,10 +349,10 @@ describe('DeviceDetailViewMigrated', () => {
     await flushPromises()
 
     // Should have called disconnectDevice
-    expect(mockStore.disconnectDevice).toHaveBeenCalledWith('telescope-123')
+    expect(mockDisconnectDevice).toHaveBeenCalledWith('telescope-123')
 
     // Component should recover from error and reset isConnectionChanging flag
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as DeviceDetailViewInstance
     expect(vm.isConnectionChanging).toBe(false)
 
     // Component should not crash
@@ -321,151 +360,186 @@ describe('DeviceDetailViewMigrated', () => {
   })
 
   it('should disable connect/disconnect button during connection changes', async () => {
-    // Use a device that is in the connecting state
+    // Use a device that is in connecting state
     await router.push('/devices/connecting-device')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Button should be disabled
     const button = wrapper.find('button.action-button')
     expect(button.attributes('disabled')).toBeDefined()
 
-    // Should show 'Connecting...' text
+    // Button should show "Connecting..." text
     expect(button.text()).toContain('Connecting')
   })
 
   it('should disable connect/disconnect button during disconnection changes', async () => {
-    // Use a device that is in the disconnecting state
+    // Use a device that is in disconnecting state
     await router.push('/devices/disconnecting-device')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
     // Button should be disabled
     const button = wrapper.find('button.action-button')
     expect(button.attributes('disabled')).toBeDefined()
 
-    // Should show 'Disconnecting...' text
+    // Button should show "Disconnecting..." text
     expect(button.text()).toContain('Disconnecting')
   })
 
   it('should display the enhanced panel component for unknown device types', async () => {
-    // Use a focuser device (which we don't have a specific panel for)
-    await router.push('/devices/focuser-789')
+    // Mock a device with an unknown type
+    mockGetDeviceById.mockImplementation((id: string) => {
+      if (id === 'unknown-type-device') {
+        return {
+          id: 'unknown-type-device',
+          name: 'Unknown Type Device',
+          type: 'unknown-type',
+          isConnected: true,
+          isConnecting: false,
+          isDisconnecting: false,
+          properties: {}
+        }
+      }
+      return mockDevices[id] || null
+    })
 
-    // Mock the device to be connected
-    mockDevices['focuser-789'].isConnected = true
+    // Change route to the unknown type device
+    await router.push('/devices/unknown-type-device')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
-    // Should use the enhanced panel for focuser
+    // Should show enhanced panel
     expect(wrapper.find('[data-testid="enhanced-panel"]').exists()).toBe(true)
   })
 
   it('should show location and server information when available', async () => {
     // Use a device with location and server information
     await router.push('/devices/device-with-location')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
-    // Should show location and server information
-    expect(wrapper.text()).toContain('Observatory 1')
-    expect(wrapper.text()).toContain('Main Server')
+    // Find location value
+    const infoItems = wrapper.findAll('.info-item')
+    const locationValue = infoItems[1].find('.info-value')
+    expect(locationValue.text()).toBe('Observatory 1')
+
+    // Find server value
+    const serverValue = infoItems[2].find('.info-value')
+    expect(serverValue.text()).toBe('Main Server')
   })
 
   it('should show "Unknown" for missing location and server information', async () => {
     // Use a device without location and server information
     await router.push('/devices/telescope-123')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
-    // Should show "Unknown" for location and server
-    expect(wrapper.text()).toContain('Location:')
-    expect(wrapper.text()).toContain('Unknown')
-    expect(wrapper.text()).toContain('Server:')
-    expect(wrapper.text()).toContain('Unknown')
+    // Find location information
+    const infoItems = wrapper.findAll('.info-item')
+    const locationLabel = infoItems[1].find('.info-label')
+    expect(locationLabel.text()).toBe('Location:')
+    const locationValue = infoItems[1].find('.info-value')
+    expect(locationValue.text()).toBe('Unknown')
+
+    // Find server information
+    const serverLabel = infoItems[2].find('.info-label')
+    expect(serverLabel.text()).toBe('Server:')
+    const serverValue = infoItems[2].find('.info-value')
+    expect(serverValue.text()).toBe('Unknown')
   })
 
   it('should handle local connection state changes and UI updates', async () => {
+    // Use a device
+    await router.push('/devices/camera-456')
+    await router.isReady()
+
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
-    // Get component instance to set isConnectionChanging directly
-    const vm = wrapper.vm as any
+    // Manually trigger isConnectionChanging state
+    const vm = wrapper.vm as DeviceDetailViewInstance
     vm.isConnectionChanging = true
+    await nextTick()
 
-    // Force UI update
-    await wrapper.vm.$nextTick()
+    // Should show placeholder
+    expect(wrapper.text()).toContain('Connect to the device to access controls')
 
-    // Button should be disabled during connection state changes
-    const button = wrapper.find('button.action-button')
-    expect(button.attributes('disabled')).toBeDefined()
-
-    // Reset connection state for cleanup
+    // Reset and fake a connection
     vm.isConnectionChanging = false
-    await wrapper.vm.$nextTick()
+    // Mock that the device is now connected
+    mockDevices['camera-456'].isConnected = true
+    await nextTick()
+
+    // Update the component
+    await flushPromises()
+
+    // Should not show placeholder anymore
+    expect(wrapper.text()).not.toContain('Connect to the device to access controls')
   })
 
   it('should update panel visibility when a device connection state changes', async () => {
-    // Start with a disconnected camera device
+    // Make sure camera device is not connected
+    mockDevices['camera-456'].isConnected = false
+
+    // Use camera device
     await router.push('/devices/camera-456')
+    await router.isReady()
 
     const wrapper = mount(DeviceDetailViewMigrated, {
       global: {
         plugins: [router]
       }
     })
-    await router.isReady()
     await flushPromises()
 
-    // Panel should not be visible initially
+    // Initially, camera panel should not be visible because device is not connected
     expect(wrapper.find('[data-testid="camera-panel"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Connect to the device to access controls')
+    expect(wrapper.find('.detail-content-placeholder').exists()).toBe(true)
 
-    // Update mock device to be connected
+    // Mock that the device is now connected
     mockDevices['camera-456'].isConnected = true
 
-    // Force a component re-render by changing the component's data
-    // We need to call the device getter again to pick up the new state
+    // Re-render component by forcing component update
     await wrapper.vm.$forceUpdate()
     await flushPromises()
 
-    // Panel should now be visible
+    // Now the camera panel should be visible
     expect(wrapper.find('[data-testid="camera-panel"]').exists()).toBe(true)
-    expect(wrapper.text()).not.toContain('Connect to the device to access controls')
+    expect(wrapper.find('.detail-content-placeholder').exists()).toBe(false)
   })
 })

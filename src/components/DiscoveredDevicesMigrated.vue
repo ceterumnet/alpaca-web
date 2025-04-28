@@ -21,10 +21,17 @@ const lastRefreshTime = ref<Date | null>(null)
 // Check if a device is already added to the devices store
 function isDeviceAdded(alpacaDevice: Device) {
   // We consider a device added if any device in the store has the same API base URL
+  // or if they have matching type and device numbers
   return unifiedStore.devicesList.some((device) => {
+    // Check if API URLs match
     const deviceApiUrl = device.properties?.apiBaseUrl as string | undefined
     const alpacaApiUrl = alpacaDevice.properties?.apiBaseUrl as string | undefined
-    return deviceApiUrl === alpacaApiUrl
+
+    // Check if device type and numbers match
+    const deviceTypeMatch = device.type === alpacaDevice.type
+    const deviceNumMatch = device.properties?.deviceNumber === alpacaDevice.properties?.deviceNumber
+
+    return deviceApiUrl === alpacaApiUrl || (deviceTypeMatch && deviceNumMatch)
   })
 }
 
@@ -180,7 +187,7 @@ watch(
       })
     }
   },
-  { immediate: false }
+  { immediate: true }
 )
 </script>
 

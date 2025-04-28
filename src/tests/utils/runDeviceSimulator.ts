@@ -6,13 +6,14 @@
  * to enable real device testing without actual hardware.
  */
 
-import UnifiedStore from '../../stores/UnifiedStore'
+import { useUnifiedStore } from '../../stores/UnifiedStore'
 import { createStoreAdapter } from '../../stores/StoreAdapter'
 import { createDeviceSimulator, DeviceSimulator } from './DeviceSimulator'
 import { createTestLog } from '../integration/RealDeviceTests'
+import { createPinia, setActivePinia } from 'pinia'
 
 // Global store for the simulator
-let store: UnifiedStore
+let store: ReturnType<typeof useUnifiedStore>
 let adapter: ReturnType<typeof createStoreAdapter>
 let simulator: DeviceSimulator
 
@@ -20,12 +21,15 @@ let simulator: DeviceSimulator
  * Initialize the testing environment
  */
 export function initializeTestingEnvironment(): {
-  store: UnifiedStore
+  store: ReturnType<typeof useUnifiedStore>
   adapter: ReturnType<typeof createStoreAdapter>
   simulator: DeviceSimulator
 } {
+  // Set up Pinia
+  setActivePinia(createPinia())
+
   // Create store and adapter
-  store = new UnifiedStore()
+  store = useUnifiedStore()
   adapter = createStoreAdapter(store)
 
   // Create simulator

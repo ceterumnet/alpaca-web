@@ -7,8 +7,9 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import UnifiedStore from '../../stores/UnifiedStore'
+import { useUnifiedStore } from '../../stores/UnifiedStore'
 import StoreAdapter from '../../stores/StoreAdapter'
+import { createPinia, setActivePinia } from 'pinia'
 
 // Create mock components
 const DiscoveredDevices = {
@@ -45,12 +46,12 @@ vi.mock('../../components/ui-examples/EnhancedDiscoveryPanel.vue', () => ({
 // Basic mock for a Vue component
 class MockVueComponent {
   name: string
-  store: StoreAdapter | UnifiedStore
+  store: StoreAdapter | ReturnType<typeof useUnifiedStore>
   rendered = false
   props: Record<string, unknown> = {}
   emitted: Record<string, unknown[]> = {}
 
-  constructor(name: string, store: StoreAdapter | UnifiedStore) {
+  constructor(name: string, store: StoreAdapter | ReturnType<typeof useUnifiedStore>) {
     this.name = name
     this.store = store
   }
@@ -77,11 +78,13 @@ class MockVueComponent {
 }
 
 describe('Component Compatibility Tests', () => {
-  let store: UnifiedStore
+  let store: ReturnType<typeof useUnifiedStore>
   let adapter: StoreAdapter
 
   beforeEach(() => {
-    store = new UnifiedStore()
+    // Set up a fresh Pinia instance for each test
+    setActivePinia(createPinia())
+    store = useUnifiedStore()
     adapter = new StoreAdapter(store)
   })
 

@@ -2,30 +2,33 @@ import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AppSidebarMigrated from '../../src/components/AppSidebarMigrated.vue'
 
+// Create mock device data
+const mockDevices = [
+  {
+    id: 'telescope-1',
+    name: 'Test Telescope',
+    type: 'telescope',
+    isConnected: false,
+    isConnecting: false,
+    isDisconnecting: false,
+    properties: {}
+  },
+  {
+    id: 'camera-1',
+    name: 'Test Camera',
+    type: 'camera',
+    isConnected: true,
+    isConnecting: false,
+    isDisconnecting: false,
+    properties: {}
+  }
+]
+
 // Mock the required stores
 vi.mock('../../src/stores/UnifiedStore', () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      devices: [
-        {
-          id: 'telescope-1',
-          name: 'Test Telescope',
-          type: 'telescope',
-          isConnected: false,
-          isConnecting: false,
-          isDisconnecting: false,
-          properties: {}
-        },
-        {
-          id: 'camera-1',
-          name: 'Test Camera',
-          type: 'camera',
-          isConnected: true,
-          isConnecting: false,
-          isDisconnecting: false,
-          properties: {}
-        }
-      ]
+    useUnifiedStore: vi.fn(() => ({
+      devicesList: mockDevices
     }))
   }
 })

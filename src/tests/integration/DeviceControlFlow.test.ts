@@ -8,9 +8,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent } from 'vue'
-import UnifiedStore from '../../stores/UnifiedStore'
+import { useUnifiedStore } from '../../stores/UnifiedStore'
 import { createStoreAdapter } from '../../stores/StoreAdapter'
 import type { TelescopeDevice } from '../../types/DeviceTypes'
+import { createPinia, setActivePinia } from 'pinia'
 
 // Mock TelescopeControl component for testing
 const TelescopeControl = defineComponent({
@@ -69,11 +70,11 @@ const TelescopeControl = defineComponent({
 })
 
 describe('Device Control Integration Tests', () => {
-  let store: UnifiedStore
+  let store: ReturnType<typeof useUnifiedStore>
   let adapter: ReturnType<typeof createStoreAdapter>
   let telescopeControl: ReturnType<typeof mount>
-  let slewSpy: ReturnType<typeof vi.spyOn>
-  let stopSlewSpy: ReturnType<typeof vi.spyOn>
+  let slewSpy: ReturnType<typeof vi.fn>
+  let stopSlewSpy: ReturnType<typeof vi.fn>
 
   const testTelescope = {
     id: 'telescope-1',
@@ -100,20 +101,19 @@ describe('Device Control Integration Tests', () => {
   }
 
   beforeEach(() => {
+    // Set up a fresh Pinia instance for each test
+    setActivePinia(createPinia())
+
     // Set up fresh store and adapter for each test
-    store = new UnifiedStore()
+    store = useUnifiedStore()
     adapter = createStoreAdapter(store)
 
     // Add a connected telescope
     store.addDevice(testTelescope)
     store.emit('deviceAdded', testTelescope)
 
-    // Set up spies
-    slewSpy = vi.spyOn(store, 'controlTelescopeSlew')
-    stopSlewSpy = vi.spyOn(store, 'controlTelescopeStop')
-
-    // Mock device operation methods
-    slewSpy.mockImplementation((deviceId, direction) => {
+    // Create mock functions
+    slewSpy = vi.fn((deviceId, direction) => {
       const device = store.getDeviceById(deviceId) as TelescopeDevice
       if (device && device.isConnected) {
         // Update telemetry to reflect slewing
@@ -135,7 +135,7 @@ describe('Device Control Integration Tests', () => {
       return false
     })
 
-    stopSlewSpy.mockImplementation((deviceId) => {
+    stopSlewSpy = vi.fn((deviceId) => {
       const device = store.getDeviceById(deviceId) as TelescopeDevice
       if (device && device.isConnected) {
         // Update telemetry to reflect stopped
@@ -156,6 +156,12 @@ describe('Device Control Integration Tests', () => {
       }
       return false
     })
+
+    // Add the mock methods to both the store and adapter
+    store.controlTelescopeSlew = slewSpy
+    store.controlTelescopeStop = stopSlewSpy
+    adapter.controlTelescopeSlew = slewSpy
+    adapter.controlTelescopeStop = stopSlewSpy
 
     // Mount the telescope control component
     const device = adapter.getDeviceById('telescope-1')

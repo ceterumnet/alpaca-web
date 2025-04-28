@@ -15,7 +15,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/', name: 'Home', component: EmptyComponent },
   { path: '/devices', name: 'Devices', component: EmptyComponent },
   { path: '/discovery', name: 'Discovery', component: EmptyComponent },
-  { path: '/ui-demo', name: 'UI Demo', component: EmptyComponent }
+  { path: '/ui-demo', name: 'UI Demo', component: EmptyComponent },
+  { path: '/settings', name: 'Settings', component: EmptyComponent }
 ]
 
 const router = createRouter({
@@ -74,6 +75,9 @@ describe('NavigationBarMigrated.vue', () => {
     // Properly type the mocks
     vi.spyOn(window, 'addEventListener')
     vi.spyOn(window, 'removeEventListener')
+
+    // Mock localStorage
+    vi.spyOn(Storage.prototype, 'setItem')
   })
 
   afterEach(() => {
@@ -94,10 +98,10 @@ describe('NavigationBarMigrated.vue', () => {
     expect(wrapper.find('.app-title').exists()).toBe(true)
 
     // Should show all navigation links
-    expect(wrapper.findAll('.nav-link').length).toBe(4)
+    expect(wrapper.findAll('.nav-link').length).toBe(5)
 
     // Should show text in navigation links
-    expect(wrapper.findAll('.nav-text').length).toBe(4)
+    expect(wrapper.findAll('.nav-text').length).toBe(5)
 
     // Should show device status with correct count
     expect(wrapper.find('.status-indicator').text()).toContain('1 / 2 devices connected')
@@ -128,7 +132,7 @@ describe('NavigationBarMigrated.vue', () => {
     expect(wrapper.find('.app-title').exists()).toBe(false)
 
     // Should still show all navigation links but without text
-    expect(wrapper.findAll('.nav-link').length).toBe(4)
+    expect(wrapper.findAll('.nav-link').length).toBe(5)
     expect(wrapper.findAll('.nav-text').length).toBe(0)
   })
 
@@ -154,7 +158,7 @@ describe('NavigationBarMigrated.vue', () => {
     expect(uiStore.isDarkMode).toBe(!initialTheme)
 
     // Should update localStorage
-    expect(localStorage.setItem).toHaveBeenCalled()
+    expect(Storage.prototype.setItem).toHaveBeenCalled()
 
     // Should add or remove the dark-theme class
     if (uiStore.isDarkMode) {
@@ -167,6 +171,7 @@ describe('NavigationBarMigrated.vue', () => {
   it('handles active route highlighting correctly', async () => {
     // Navigate to the devices route
     await router.push('/devices')
+    await router.isReady()
 
     const wrapper = mount(NavigationBarMigrated, {
       global: {
@@ -174,16 +179,22 @@ describe('NavigationBarMigrated.vue', () => {
       }
     })
 
-    // Find all nav links
-    const navLinks = wrapper.findAll('.nav-link')
+    // Wait for the component to update
+    await wrapper.vm.$nextTick()
 
-    // Devices link should be active
-    const devicesLink = navLinks.find((link) => link.attributes('to') === '/devices')
-    expect(devicesLink?.classes()).toContain('active')
+    // Find all links and test active status
+    const links = wrapper.findAll('.nav-link')
 
-    // Home link should not be active
-    const homeLink = navLinks.find((link) => link.attributes('to') === '/')
-    expect(homeLink?.classes()).not.toContain('active')
+    // At least one link should have the active class (the devices link)
+    const activeLink = links.find((link) => link.classes().includes('active'))
+    expect(activeLink).toBeDefined()
+
+    // The active link should be pointing to /devices
+    expect(activeLink!.attributes('href')).toContain('devices')
+
+    // There should only be one active link
+    const activeLinks = links.filter((link) => link.classes().includes('active'))
+    expect(activeLinks.length).toBe(1)
   })
 
   it('hides device status when no devices exist', async () => {

@@ -150,10 +150,11 @@ const downloadImage = () => {
 
 // Function to toggle auto stretch
 const toggleAutoStretch = () => {
+  // Toggle the auto stretch value (this is redundant with v-model, but kept for clarity)
   autoStretch.value = !autoStretch.value
-  if (autoStretch.value) {
-    applyImageStretch()
-  }
+
+  // Always apply the stretch when toggling, regardless of new state
+  applyImageStretch()
 }
 
 // Watch for changes that require stretch reapplication
@@ -282,47 +283,51 @@ onMounted(() => {
                 </label>
               </div>
 
-              <div class="adjustment-row">
-                <span class="slider-label">Black Point:</span>
-                <input
-                  v-model.number="blackPoint"
-                  type="range"
-                  min="0"
-                  max="50"
-                  step="1"
-                  :disabled="autoStretch"
-                  class="adjustment-slider"
-                />
-                <span class="slider-value">{{ blackPoint }}%</span>
-              </div>
+              <template v-if="!autoStretch">
+                <div class="adjustment-row">
+                  <span class="slider-label">Black Point:</span>
+                  <input
+                    v-model.number="blackPoint"
+                    type="range"
+                    min="0"
+                    max="50"
+                    step="1"
+                    class="adjustment-slider"
+                  />
+                  <span class="slider-value">{{ blackPoint }}%</span>
+                </div>
 
-              <div class="adjustment-row">
-                <span class="slider-label">White Point:</span>
-                <input
-                  v-model.number="whitePoint"
-                  type="range"
-                  min="50"
-                  max="100"
-                  step="1"
-                  :disabled="autoStretch"
-                  class="adjustment-slider"
-                />
-                <span class="slider-value">{{ whitePoint }}%</span>
-              </div>
+                <div class="adjustment-row">
+                  <span class="slider-label">White Point:</span>
+                  <input
+                    v-model.number="whitePoint"
+                    type="range"
+                    min="50"
+                    max="100"
+                    step="1"
+                    class="adjustment-slider"
+                  />
+                  <span class="slider-value">{{ whitePoint }}%</span>
+                </div>
 
-              <div class="adjustment-row">
-                <span class="slider-label">Midtone:</span>
-                <input
-                  v-model.number="midtonePoint"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  :disabled="autoStretch"
-                  class="adjustment-slider"
-                />
-                <span class="slider-value">{{ midtonePoint }}%</span>
-              </div>
+                <div class="adjustment-row">
+                  <span class="slider-label">Midtone:</span>
+                  <input
+                    v-model.number="midtonePoint"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    class="adjustment-slider"
+                  />
+                  <span class="slider-value">{{ midtonePoint }}%</span>
+                </div>
+              </template>
+              <template v-else>
+                <div class="adjustment-row auto-stretch-info">
+                  <span>Using automatic stretch based on histogram data</span>
+                </div>
+              </template>
             </section>
 
             <section class="analysis-section">
