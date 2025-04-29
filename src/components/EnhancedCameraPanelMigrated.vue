@@ -83,6 +83,8 @@ interface CameraCapabilities {
 
 // Core reactive state
 const exposureStartTime = ref(0)
+
+// Store-synced values (current values from the store)
 const exposureTime = computed({
   get: () => (camera.value?.properties?.exposureTime as number) || 0.1,
   set: (value: number) => setExposureTime(value)
@@ -103,6 +105,72 @@ const readMode = computed({
   set: (value: number) => setReadMode(value)
 })
 
+// Form values (local state that won't be overwritten)
+const formExposureTime = ref(0.1)
+const formGain = ref(0)
+const formOffset = ref(0)
+const formReadMode = ref(0)
+// Binning values
+const formBinningX = ref(1)
+const formBinningY = ref(1)
+
+// Initialize form values from store when component mounts
+onMounted(() => {
+  formExposureTime.value = exposureTime.value
+  formGain.value = gain.value
+  formOffset.value = offset.value
+  formReadMode.value = readMode.value
+  formBinningX.value = (camera.value?.properties?.binningX as number) || 1
+  formBinningY.value = (camera.value?.properties?.binningY as number) || 1
+  if (props.connected) {
+    store.on('devicePropertyChanged', boundPropertyChangeHandler)
+    fetchInitialData()
+  }
+})
+
+// Update form values when store values change and user is not actively editing
+watch(exposureTime, (newValue) => {
+  if (!cameraData.isExposing) {
+    formExposureTime.value = newValue
+  }
+})
+
+watch(gain, (newValue) => {
+  if (!cameraData.isExposing) {
+    formGain.value = newValue
+  }
+})
+
+watch(offset, (newValue) => {
+  if (!cameraData.isExposing) {
+    formOffset.value = newValue
+  }
+})
+
+watch(readMode, (newValue) => {
+  if (!cameraData.isExposing) {
+    formReadMode.value = newValue
+  }
+})
+
+watch(
+  () => camera.value?.properties?.binningX,
+  (newValue) => {
+    if (!cameraData.isExposing && newValue !== undefined) {
+      formBinningX.value = newValue as number
+    }
+  }
+)
+
+watch(
+  () => camera.value?.properties?.binningY,
+  (newValue) => {
+    if (!cameraData.isExposing && newValue !== undefined) {
+      formBinningY.value = newValue as number
+    }
+  }
+)
+
 const previewImage = ref<string | null>(null)
 
 // Add histogram data ref
@@ -116,10 +184,6 @@ const blackPoint = ref(0) // Percentage 0-100
 const whitePoint = ref(100) // Percentage 0-100
 const midtoneValue = ref(0.8) // Range 0.1-2.0, with 1.0 being linear
 const autoStretch = ref(true) // Auto-stretch by default
-
-// Add LUT for efficient image stretching - commented out until implemented
-// const currentLUT = ref<Uint8Array>(new Uint8Array(65536))
-// const lutInitialized = ref(false)
 
 // Track original image data for reprocessing
 const originalImageData = ref<ArrayBuffer | null>(null)
@@ -212,15 +276,6 @@ function onModeChange(mode: UIMode) {
   emit('modeChange', mode)
 }
 
-// Handle component lifecycle
-onMounted(() => {
-  // Initialize data and set up event listeners
-  if (props.connected) {
-    store.on('devicePropertyChanged', boundPropertyChangeHandler)
-    fetchInitialData()
-  }
-})
-
 // Clean up on component unmount
 onUnmounted(() => {
   // Make sure we properly unregister the event listener
@@ -273,7 +328,25 @@ function startExposure() {
     // Store the exposure start time for progress calculations
     exposureStartTime.value = Date.now()
 
-    emit('start-exposure', exposureTime.value)
+    // Apply form values to the camera settings before starting exposure
+    if (formExposureTime.value !== exposureTime.value) {
+      setExposureTime(formExposureTime.value)
+    }
+    if (formGain.value !== gain.value) {
+      setGain(formGain.value)
+    }
+    if (formOffset.value !== offset.value) {
+      setOffset(formOffset.value)
+    }
+    if (formReadMode.value !== readMode.value) {
+      setReadMode(formReadMode.value)
+    }
+    if (formBinningX.value !== cameraData.binningX || formBinningY.value !== cameraData.binningY) {
+      setBinning(formBinningX.value, formBinningY.value)
+    }
+
+    // Start the exposure using the updated settings
+    emit('start-exposure', formExposureTime.value)
 
     // In a real implementation, we would get updates from the store
     // For now, we'll just set the state manually
@@ -298,45 +371,462 @@ function abortExposure() {
 
 // Function to fetch camera image - this would be called when exposure completes
 function fetchImage() {
-  console.log('Fetching image')
+  console.log('Fetching image from camera properties')
 
-  // In a real implementation, we would get the image data from the store
-  // For now, we'll just use a placeholder
-  // This would normally involve getting binary data and converting it to a displayable format
-
-  // For the migration, we're just showing the process of how this would be handled
-  // The actual implementation would depend on how images are stored in the UnifiedStore
-
-  // Simulate getting image data from the store
+  // Get the image data from the store
   const imageData = camera.value?.properties?.imageData as ArrayBuffer | undefined
+
   if (imageData) {
+    console.log('Image data found in camera properties, size:', imageData.byteLength, 'bytes')
     // Process the image data
     displayImage(imageData)
+  } else {
+    console.log('No image data found in camera properties')
   }
 }
 
 // Function to display the image and calculate histogram
 function displayImage(imageData: ArrayBuffer) {
-  // In a real implementation, this would convert the image data to a displayable format
-  // and calculate the histogram
+  console.log('Processing image data for display, size:', imageData.byteLength, 'bytes')
 
-  // For now, we'll just use a placeholder
-  previewImage.value = 'data:image/png;base64,imageDataWouldGoHere'
+  // Process the binary image data according to ASCOM standard
+  const processedData = processImageBytes(imageData)
 
-  // Calculate histogram
-  calculateHistogram(imageData)
+  if (processedData && processedData.width > 0 && processedData.height > 0) {
+    // Store the original image data for reprocessing with different stretch settings
+    originalImageData.value = imageData
+
+    // Create a canvas to render the image
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      console.error('Could not get canvas context')
+      return
+    }
+
+    canvas.width = processedData.width
+    canvas.height = processedData.height
+
+    // Create image data to hold the pixel values
+    const canvasImageData = ctx.createImageData(processedData.width, processedData.height)
+    const outputData = canvasImageData.data
+
+    // Apply simple linear normalization to visualize the image
+    let min = Number.MAX_VALUE
+    let max = Number.MIN_VALUE
+
+    // First pass to determine range (ASCOM Alpaca sends image data in column-major order)
+    for (let y = 0; y < processedData.height; y++) {
+      for (let x = 0; x < processedData.width; x++) {
+        // Calculate source index for Alpaca data (column-major order)
+        const sourceIdx = x * processedData.height + y
+
+        if (sourceIdx < processedData.pixelData.length) {
+          // Handle potentially large numbers safely
+          const val = Number(processedData.pixelData[sourceIdx])
+          if (!isNaN(val) && isFinite(val)) {
+            min = val < min ? val : min
+            max = val > max ? val : max
+          }
+        }
+      }
+    }
+
+    console.log(
+      `Image value range: min=${min}, max=${max}, bit depth=${processedData.bitsPerPixel || 8}-bit`
+    )
+
+    // Check for potential issues with the range
+    if (!isFinite(min) || !isFinite(max) || max <= min) {
+      console.warn('Invalid pixel value range, using defaults')
+      min = 0
+      max = processedData.bitsPerPixel && processedData.bitsPerPixel > 8 ? 65535 : 255
+    }
+
+    // Store statistics for histogramming
+    histogramMin.value = min
+    histogramMax.value = max
+
+    // Create a safe scaling function that handles large values properly
+    const scaleValue = (value: number): number => {
+      // Ensure value is within expected range
+      value = Math.max(min, Math.min(max, value))
+
+      // Apply scaling based on black/white points
+      let scaledValue = 0
+      if (max > min) {
+        // Map value to 0-1 range based on black/white points
+        let rangeMin = min
+        let rangeMax = max
+
+        if (!autoStretch.value) {
+          // Apply manual black/white points (percentage based)
+          rangeMin = min + (blackPoint.value / 100.0) * (max - min)
+          rangeMax = min + (whitePoint.value / 100.0) * (max - min)
+        }
+
+        // Normalize to 0-1 range
+        const normalizedValue = (value - rangeMin) / (rangeMax - rangeMin)
+
+        // Apply midtone correction (gamma)
+        const gamma = midtoneValue.value
+        let correctedValue = normalizedValue
+        if (normalizedValue > 0) {
+          correctedValue = Math.pow(normalizedValue, 1.0 / gamma)
+        }
+
+        // Convert to 8-bit (0-255)
+        scaledValue = Math.round(correctedValue * 255)
+      }
+
+      // Clamp to 0-255 range
+      return Math.max(0, Math.min(255, scaledValue))
+    }
+
+    // Apply the transformation for each pixel
+    for (let y = 0; y < processedData.height; y++) {
+      for (let x = 0; x < processedData.width; x++) {
+        // Calculate source index (column-major) and target index (row-major for canvas)
+        const sourceIdx = x * processedData.height + y
+        const targetIdx = (y * processedData.width + x) * 4
+
+        if (sourceIdx < processedData.pixelData.length && targetIdx + 3 < outputData.length) {
+          // Get pixel value and scale it safely
+          const value = Number(processedData.pixelData[sourceIdx])
+          const displayValue = scaleValue(value)
+
+          // Set RGB values (grayscale)
+          outputData[targetIdx] = displayValue
+          outputData[targetIdx + 1] = displayValue
+          outputData[targetIdx + 2] = displayValue
+          outputData[targetIdx + 3] = 255 // Alpha
+        }
+      }
+    }
+
+    // Put the image data onto the canvas
+    ctx.putImageData(canvasImageData, 0, 0)
+
+    // Convert canvas to data URL for display
+    previewImage.value = canvas.toDataURL('image/png')
+
+    // Calculate histogram from the processed data
+    calculateHistogram(processedData)
+  } else {
+    // Just use a placeholder if processing failed
+    previewImage.value = 'data:image/png;base64,imageDataWouldGoHere'
+
+    // Create empty histogram
+    histogramData.value = new Array(256).fill(0)
+    histogramMin.value = 0
+    histogramMax.value = 65535
+    histogramMean.value = 32768
+  }
 }
 
-// Function to calculate histogram from image data
-function calculateHistogram(imageData: ArrayBuffer) {
-  // This would calculate the histogram from the image data
-  // For now, we'll just use placeholder values
-  console.log('Calculating histogram from', imageData.byteLength, 'bytes of data')
+// Function to process binary image data according to ASCOM standard
+function processImageBytes(data: ArrayBuffer) {
+  try {
+    // Parse the binary metadata according to Alpaca specification 7.6/7.7
+    const dataView = new DataView(data)
 
-  histogramData.value = new Array(256).fill(0)
-  histogramMin.value = 0
-  histogramMax.value = 65535
-  histogramMean.value = 32768
+    // Parse metadata fields
+    const metadataVersion = dataView.getInt32(0, true) // Bytes 0-3, true for little-endian
+    const errorNumber = dataView.getInt32(4, true) // Bytes 4-7
+    const dataStart = dataView.getInt32(16, true) // Bytes 16-19
+    const imageElementType = dataView.getInt32(20, true) // Bytes 20-23
+    const transmissionElementType = dataView.getInt32(24, true) // Bytes 24-27
+    const rank = dataView.getInt32(28, true) // Bytes 28-31
+    const dimension1 = dataView.getInt32(32, true) // Bytes 32-35
+    const dimension2 = dataView.getInt32(36, true) // Bytes 36-39
+    const dimension3 = dataView.getInt32(40, true) // Bytes 40-43
+
+    console.log(
+      `ImageBytes metadata: version=${metadataVersion}, error=${errorNumber}, ` +
+        `imageElementType=${imageElementType}, transmissionElementType=${transmissionElementType}, ` +
+        `dimensions=${dimension1}x${dimension2}x${dimension3}, rank=${rank}`
+    )
+
+    // Check if operation succeeded
+    if (errorNumber !== 0) {
+      // Operation failed, extract error message
+      const errorData = new Uint8Array(data, dataStart)
+      const errorMessage = new TextDecoder().decode(errorData)
+      console.error(`ImageBytes error: ${errorMessage}`)
+      return {
+        width: 0,
+        height: 0,
+        bytesPerPixel: 1,
+        pixelData: new Uint8Array(0),
+        imageType: 'monochrome',
+        bitsPerPixel: 8,
+        originalElementType: imageElementType,
+        transmissionElementType
+      }
+    }
+
+    // Determine image dimensions
+    const width = dimension1
+    const height = dimension2
+
+    // Determine original bit depth and transmission bit depth
+    let origBitsPerPixel = 8
+    let transmissionBytesPerPixel = 1
+    let pixelData:
+      | Uint8Array
+      | Uint16Array
+      | Int16Array
+      | Int32Array
+      | Uint32Array
+      | Float32Array
+      | Float64Array
+      | number[] = new Uint8Array(0)
+
+    // Determine original bit depth from imageElementType
+    switch (imageElementType) {
+      case 0: // Unknown
+        origBitsPerPixel = 8 // Assume 8-bit
+        break
+      case 1: // Int16
+        origBitsPerPixel = 16
+        break
+      case 2: // Int32
+        origBitsPerPixel = 32
+        break
+      case 3: // Double
+        origBitsPerPixel = 64 // 64-bit floating point
+        break
+      case 4: // Single
+        origBitsPerPixel = 32 // 32-bit floating point
+        break
+      case 5: // UInt64
+        origBitsPerPixel = 64
+        break
+      case 6: // Byte
+        origBitsPerPixel = 8
+        break
+      case 7: // Int64
+        origBitsPerPixel = 64
+        break
+      case 8: // UInt16
+        origBitsPerPixel = 16
+        break
+      case 9: // UInt32
+        origBitsPerPixel = 32
+        break
+      default:
+        console.warn(`Unknown imageElementType: ${imageElementType}, assuming 8-bit`)
+        origBitsPerPixel = 8
+    }
+
+    // Process data based on transmissionElementType (how the data was sent)
+    switch (transmissionElementType) {
+      case 0: // Unknown
+      case 6: // Byte (UInt8)
+        transmissionBytesPerPixel = 1
+        pixelData = new Uint8Array(data, dataStart)
+        break
+      case 1: // Int16
+        transmissionBytesPerPixel = 2
+        pixelData = new Int16Array(data, dataStart)
+        // Convert Int16 to Uint16 if needed
+        if (transmissionElementType === 1) {
+          console.log('Converting Int16 to Uint16 for proper image processing')
+
+          const tempBuffer = new ArrayBuffer(pixelData.length * 2)
+          const tempUint16 = new Uint16Array(tempBuffer)
+
+          // Copy values correctly by using bitwise operation to convert signed to unsigned
+          for (let i = 0; i < pixelData.length; i++) {
+            tempUint16[i] = pixelData[i] & 0xffff
+          }
+
+          pixelData = tempUint16
+        }
+        break
+      case 8: // UInt16
+        transmissionBytesPerPixel = 2
+        pixelData = new Uint16Array(data, dataStart)
+        break
+      case 2: {
+        // Int32
+        transmissionBytesPerPixel = 4
+        pixelData = new Int32Array(data, dataStart)
+        // Convert Int32 to Uint32 for proper visualization
+        console.log('Converting Int32 to Uint32 for proper image processing')
+
+        const tempBuffer32 = new ArrayBuffer(pixelData.length * 4)
+        const tempUint32 = new Uint32Array(tempBuffer32)
+
+        // Copy values correctly by using bitwise operation to convert signed to unsigned
+        for (let i = 0; i < pixelData.length; i++) {
+          tempUint32[i] = pixelData[i] >>> 0 // Unsigned right shift to convert to uint32
+        }
+
+        pixelData = tempUint32
+        break
+      }
+      case 9: // UInt32
+        transmissionBytesPerPixel = 4
+        pixelData = new Uint32Array(data, dataStart)
+        break
+      case 7: {
+        // Int64
+        transmissionBytesPerPixel = 8
+        console.warn(
+          '64-bit integer types not fully supported, will be converted to unsigned 32-bit'
+        )
+        // Create a view to read 64-bit values and convert to unsigned 32-bit
+        pixelData = new Array(width * height)
+
+        const dataView = new DataView(data, dataStart)
+        for (let i = 0; i < width * height; i++) {
+          // Read lower 32 bits and convert to unsigned for display
+          pixelData[i] = dataView.getInt32(i * 8, true) >>> 0
+        }
+        break
+      }
+      case 5: {
+        // UInt64
+        transmissionBytesPerPixel = 8
+        console.warn('64-bit integer types not fully supported, will be truncated')
+        // Create a view to read 64-bit values as 32-bit pairs
+        pixelData = new Array(width * height)
+
+        const dataView = new DataView(data, dataStart)
+        for (let i = 0; i < width * height; i++) {
+          // Read only lower 32 bits for display (limitation of JavaScript)
+          pixelData[i] = dataView.getUint32(i * 8, true)
+        }
+        break
+      }
+      case 4: // Single (Float32)
+        transmissionBytesPerPixel = 4
+        pixelData = new Float32Array(data, dataStart)
+        break
+      case 3: // Double (Float64)
+        transmissionBytesPerPixel = 8
+        pixelData = new Float64Array(data, dataStart)
+        break
+      default:
+        console.error(`Unsupported transmission element type: ${transmissionElementType}`)
+        return {
+          width: 0,
+          height: 0,
+          bytesPerPixel: 1,
+          pixelData: new Uint8Array(0),
+          imageType: 'monochrome',
+          bitsPerPixel: 8,
+          originalElementType: imageElementType,
+          transmissionElementType
+        }
+    }
+
+    // Determine if this is monochrome or color based on rank and dimension3
+    let imageType = 'monochrome'
+    if (rank === 3 && dimension3 === 3) {
+      imageType = 'color'
+    }
+
+    // Log min and max pixel values for debugging
+    let minVal = Number.MAX_VALUE
+    let maxVal = Number.MIN_VALUE
+
+    // Sample the data to avoid performance issues with large images
+    const sampleStep = pixelData.length > 1000000 ? Math.floor(pixelData.length / 1000) : 1
+
+    for (let i = 0; i < pixelData.length; i += sampleStep) {
+      const val = Number(pixelData[i])
+      if (!isNaN(val)) {
+        minVal = Math.min(minVal, val)
+        maxVal = Math.max(maxVal, val)
+      }
+    }
+
+    console.log(
+      `Image pixel value range: min=${minVal}, max=${maxVal}, original: ${origBitsPerPixel}-bit, transmitted: ${transmissionBytesPerPixel * 8}-bit`
+    )
+
+    return {
+      width,
+      height,
+      bytesPerPixel: transmissionBytesPerPixel,
+      pixelData,
+      imageType,
+      bitsPerPixel: origBitsPerPixel,
+      originalElementType: imageElementType,
+      transmissionElementType
+    }
+  } catch (error) {
+    console.error('Error processing ImageBytes data:', error)
+    return null
+  }
+}
+
+// Function to calculate histogram from processed image data
+function calculateHistogram(
+  processedData: {
+    width: number
+    height: number
+    pixelData:
+      | Uint8Array
+      | Uint16Array
+      | Int16Array
+      | Int32Array
+      | Uint32Array
+      | Float32Array
+      | Float64Array
+      | number[]
+    imageType: string
+    bitsPerPixel?: number
+  } | null
+) {
+  if (!processedData) {
+    histogramData.value = new Array(256).fill(0)
+    return
+  }
+
+  const { width, height, pixelData, bitsPerPixel } = processedData
+
+  // Create a histogram with appropriate size
+  // We'll use 256 bins regardless of bit depth for UI display
+  const histSize = 256
+  const histogram = new Array(histSize).fill(0)
+
+  // Calculate the scaling factor based on bit depth
+  const maxPixelValue = bitsPerPixel ? Math.pow(2, bitsPerPixel) - 1 : 255
+  const scaleFactor = (histSize - 1) / maxPixelValue
+
+  // Count pixel values
+  let sum = 0
+  let count = 0
+
+  // Sample the data to avoid performance issues with large images
+  const sampleStep = Math.max(1, Math.floor((width * height) / 10000))
+
+  // ASCOM Alpaca sends data in column-major order
+  for (let y = 0; y < height; y += sampleStep) {
+    for (let x = 0; x < width; x += sampleStep) {
+      const sourceIdx = x * height + y
+
+      if (sourceIdx < pixelData.length) {
+        const value = Number(pixelData[sourceIdx])
+        if (!isNaN(value) && isFinite(value)) {
+          // Scale the value to fit in our histogram bins
+          const scaledValue = Math.min(histSize - 1, Math.max(0, Math.floor(value * scaleFactor)))
+          histogram[scaledValue]++
+          sum += value
+          count++
+        }
+      }
+    }
+  }
+
+  // Update the histogram data
+  histogramData.value = histogram
+
+  // Calculate simple statistics
+  histogramMean.value = count > 0 ? sum / count : 0
 }
 
 // Image processing functions
@@ -357,15 +847,50 @@ function toggleAutoStretch() {
 
 // Calculate image statistics
 function calculateImageStats(imageData: ArrayBuffer) {
-  // This would calculate statistics from the image data
-  // For now, we'll just use placeholder values
-  console.log('Calculating image stats from', imageData.byteLength, 'bytes of data')
-
-  return {
-    min: 0,
-    max: 65535,
-    mean: 32768
+  // Process the image data first
+  const processedData = processImageBytes(imageData)
+  if (!processedData) {
+    return { min: 0, max: 65535, mean: 32768 }
   }
+
+  // Calculate actual min/max/mean from the processed data
+  let min = Number.MAX_VALUE
+  let max = Number.MIN_VALUE
+  let sum = 0
+  let count = 0
+
+  // Use the pixel data from the processed image
+  const { width, height, pixelData } = processedData
+
+  // Sample the data to avoid performance issues with large images
+  const sampleStep = pixelData.length > 1000000 ? Math.floor(pixelData.length / 1000) : 1
+
+  // ASCOM Alpaca sends data in column-major order
+  for (let y = 0; y < height; y += sampleStep) {
+    for (let x = 0; x < width; x += sampleStep) {
+      const sourceIdx = x * height + y
+
+      if (sourceIdx < pixelData.length) {
+        const value = Number(pixelData[sourceIdx])
+        if (!isNaN(value) && isFinite(value)) {
+          min = Math.min(min, value)
+          max = Math.max(max, value)
+          sum += value
+          count++
+        }
+      }
+    }
+  }
+
+  // Handle edge cases
+  if (!isFinite(min) || !isFinite(max) || max <= min || count === 0) {
+    console.warn('Invalid image statistics, using defaults')
+    return { min: 0, max: 65535, mean: 32768 }
+  }
+
+  const mean = sum / count
+
+  return { min, max, mean }
 }
 
 // Set black point for image stretching
@@ -478,6 +1003,17 @@ function setTargetTemperature(temp: number) {
 
   emit('set-cooler', true, temp)
 }
+
+// Watch for changes in image data from the camera
+watch(
+  () => camera.value?.properties?.imageData,
+  (newImageData) => {
+    if (newImageData && newImageData instanceof ArrayBuffer) {
+      console.log('Detected image data change, updating display')
+      displayImage(newImageData)
+    }
+  }
+)
 
 // Expose fetchImage for testing
 defineExpose({
@@ -632,7 +1168,7 @@ defineExpose({
                   <label>Exposure:</label>
                   <div class="input-with-unit">
                     <input
-                      v-model="exposureTime"
+                      v-model="formExposureTime"
                       type="number"
                       :min="minExposure"
                       :max="maxExposure"
@@ -641,57 +1177,70 @@ defineExpose({
                     />
                     <span class="unit">s</span>
                   </div>
+                  <span v-if="formExposureTime !== exposureTime" class="current-value">
+                    Current: {{ exposureTime.toFixed(1) }}s
+                  </span>
                 </div>
 
                 <div class="control-row">
                   <label>Binning:</label>
                   <div class="binning-control">
                     <input
-                      v-model.number="cameraData.binningX"
+                      v-model.number="formBinningX"
                       type="number"
                       min="1"
                       max="4"
                       :disabled="!!cameraData.isExposing || !isConnected"
-                      @change="setBinning(cameraData.binningX, cameraData.binningY)"
                     />
                     <span>×</span>
                     <input
-                      v-model.number="cameraData.binningY"
+                      v-model.number="formBinningY"
                       type="number"
                       min="1"
                       max="4"
                       :disabled="!!cameraData.isExposing || !isConnected"
-                      @change="setBinning(cameraData.binningX, cameraData.binningY)"
                     />
                   </div>
+                  <span
+                    v-if="
+                      formBinningX !== cameraData.binningX || formBinningY !== cameraData.binningY
+                    "
+                    class="current-value"
+                  >
+                    Current: {{ cameraData.binningX }}×{{ cameraData.binningY }}
+                  </span>
                 </div>
 
                 <div class="control-row">
                   <label>Gain:</label>
                   <input
-                    v-model.number="gain"
+                    v-model.number="formGain"
                     type="number"
                     :min="minGain"
                     :max="maxGain"
                     :disabled="!!cameraData.isExposing || !isConnected"
                   />
+                  <span v-if="formGain !== gain" class="current-value"> Current: {{ gain }} </span>
                 </div>
 
                 <div v-if="canAdjustOffset" class="control-row">
                   <label>Offset:</label>
                   <input
-                    v-model.number="offset"
+                    v-model.number="formOffset"
                     type="number"
                     :min="minOffset"
                     :max="maxOffset"
                     :disabled="!!cameraData.isExposing || !isConnected"
                   />
+                  <span v-if="formOffset !== offset" class="current-value">
+                    Current: {{ offset }}
+                  </span>
                 </div>
 
                 <div v-if="canAdjustReadMode" class="control-row">
                   <label>Read Mode:</label>
                   <select
-                    v-model="readMode"
+                    v-model="formReadMode"
                     :disabled="!!cameraData.isExposing || !isConnected"
                     class="read-mode-select"
                   >
@@ -699,6 +1248,9 @@ defineExpose({
                       {{ mode }}
                     </option>
                   </select>
+                  <span v-if="formReadMode !== readMode" class="current-value">
+                    Current: {{ readModeOptions[readMode] }}
+                  </span>
                 </div>
               </div>
 
@@ -944,6 +1496,15 @@ h4 {
   border-radius: 4px;
   padding: 6px 8px;
   font-size: 0.9rem;
+}
+
+.current-value {
+  font-size: 0.8rem;
+  color: var(--aw-panel-secondary-color, #999);
+  margin-left: auto;
+  white-space: nowrap;
+  min-width: 100px;
+  text-align: right;
 }
 
 .input-with-unit {

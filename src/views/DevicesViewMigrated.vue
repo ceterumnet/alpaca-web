@@ -5,6 +5,7 @@ import MainPanelsMigrated from '../components/MainPanelsMigrated.vue'
 import { useUIPreferencesStore } from '../stores/useUIPreferencesStore'
 import { useUnifiedStore } from '../stores/UnifiedStore'
 import type { UnifiedDevice } from '../types/DeviceTypes'
+import { ref, onMounted } from 'vue'
 
 defineOptions({
   name: 'DevicesViewMigrated'
@@ -14,6 +15,15 @@ defineOptions({
 const uiStore = useUIPreferencesStore()
 const store = useUnifiedStore()
 const router = useRouter()
+const isLoading = ref(true)
+
+// Initialize component
+onMounted(() => {
+  // Simulate loading time or actual data fetching
+  setTimeout(() => {
+    isLoading.value = false
+  }, 500)
+})
 
 // Event handlers
 const handleToggleTheme = () => {
@@ -65,14 +75,20 @@ const navigateToDeviceDetail = (deviceId: string) => {
         <h1>Device Management</h1>
       </div>
 
-      <MainPanelsMigrated />
-
       <div class="content-body">
         <p>Select a device from the sidebar to control it.</p>
-        <p v-if="store.devicesList.length === 0" class="no-devices-message">
-          No devices available. Go to the <a @click="router.push('/discovery')">Discovery</a> page
-          to add devices.
-        </p>
+
+        <div v-if="isLoading" class="loading-indicator">
+          <span>Loading devices...</span>
+        </div>
+
+        <template v-else-if="store.devicesList.length === 0">
+          <p class="no-devices-message">
+            No devices available. Go to the <a @click="router.push('/discovery')">Discovery</a> page
+            to add devices.
+          </p>
+        </template>
+
         <div v-else>
           <div class="device-stats">
             <div class="stat-item">
@@ -88,7 +104,7 @@ const navigateToDeviceDetail = (deviceId: string) => {
             <div class="stat-item">
               <span class="stat-label">Favorite:</span>
               <span class="stat-value">{{
-                store.devicesList.filter((d) => d.properties?.isFavorite).length
+                store.devicesList.filter((d) => d.properties && d.properties.isFavorite).length
               }}</span>
             </div>
           </div>
@@ -104,9 +120,11 @@ const navigateToDeviceDetail = (deviceId: string) => {
               <div class="device-info">
                 <h3>{{ device.name }}</h3>
                 <div class="device-meta">
-                  <span class="device-type">{{ device.type }}</span>
+                  <span class="device-type">{{ device.type || 'Unknown' }}</span>
                   <span class="device-location">{{
-                    device.properties?.location || 'Unknown'
+                    device.properties && device.properties.location
+                      ? device.properties.location
+                      : 'Unknown'
                   }}</span>
                 </div>
                 <div class="device-status" :class="{ connected: device.isConnected }">
@@ -117,6 +135,7 @@ const navigateToDeviceDetail = (deviceId: string) => {
           </div>
         </div>
       </div>
+      <MainPanelsMigrated />
     </div>
   </div>
 </template>
@@ -291,5 +310,13 @@ const navigateToDeviceDetail = (deviceId: string) => {
 .device-status.connected {
   background-color: rgba(76, 175, 80, 0.1);
   color: #4caf50;
+}
+
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  font-style: italic;
+  color: var(--aw-panel-content-subtle-color);
 }
 </style>

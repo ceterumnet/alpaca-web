@@ -2,7 +2,7 @@
  * Debug utilities for helping diagnose issues during development
  */
 
-export const DEBUG_ENABLED = true
+export const DEBUG_ENABLED = false
 
 /**
  * Log a message with optional data if debugging is enabled

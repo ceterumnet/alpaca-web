@@ -58,16 +58,44 @@ onMounted(() => {
 // Event handlers
 const handleConnect = () => {
   if (device.value) {
+    debugLog('BaseDevicePanel: Handling connect/disconnect', {
+      deviceId: device.value.id,
+      currentlyConnected: device.value.isConnected,
+      apiBaseUrl: device.value.apiBaseUrl,
+      effectiveApiBaseUrl: effectiveApiBaseUrl.value
+    })
+
     if (device.value.isConnected) {
+      debugLog('Disconnecting device:', device.value.id)
       store.disconnectDevice(device.value.id)
     } else {
-      store.connectDevice(device.value.id)
+      debugLog('Connecting device:', device.value.id)
+      store.connectDevice(device.value.id).then((success) => {
+        debugLog('Connect result:', success)
+        if (success) {
+          // Force a sync of device properties with the API
+          store.fetchDeviceProperties(device.value!.id)
+        }
+      })
     }
+  } else {
+    debugLog('BaseDevicePanel: No device found for connect/disconnect', {
+      deviceId: props.deviceId
+    })
   }
 }
 
 const handleModeChange = (mode: UIMode) => {
   currentMode.value = mode
+}
+
+// Function to manually refresh device properties from the API
+const refreshDeviceProperties = () => {
+  if (device.value && device.value.isConnected) {
+    debugLog('Manually refreshing device properties for', device.value.id)
+    return store.fetchDeviceProperties(device.value.id)
+  }
+  return Promise.resolve()
 }
 
 // Export variables and functions for composition
@@ -79,7 +107,8 @@ defineExpose({
   currentMode,
   apiBaseUrl: effectiveApiBaseUrl,
   handleConnect,
-  handleModeChange
+  handleModeChange,
+  refreshDeviceProperties
 })
 </script>
 

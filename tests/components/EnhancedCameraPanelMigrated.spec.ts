@@ -45,6 +45,8 @@ const mockGetDeviceById = vi.fn((id) => {
   return null
 })
 const mockUpdateDeviceProperties = vi.fn()
+const mockFetchDeviceProperties = vi.fn()
+const mockCallDeviceMethod = vi.fn().mockResolvedValue(true)
 
 vi.mock('../../src/stores/UnifiedStore', () => {
   return {
@@ -53,7 +55,9 @@ vi.mock('../../src/stores/UnifiedStore', () => {
       updateDeviceProperties: mockUpdateDeviceProperties,
       emit: mockEmit,
       on: mockOn,
-      off: mockOff
+      off: mockOff,
+      fetchDeviceProperties: mockFetchDeviceProperties,
+      callDeviceMethod: mockCallDeviceMethod
     })
   }
 })
@@ -196,8 +200,9 @@ describe('EnhancedCameraPanelMigrated.vue', () => {
         // Verify the handler can be called without errors
         propertyChangeFn('camera1', 'isExposing', false)
 
-        // Check that the fetchImage method was called indirectly via console.log
-        expect(console.log).toHaveBeenCalledWith('Fetching image')
+        // Since the actual message has changed in the implementation,
+        // we should check for the updated message instead
+        expect(console.log).toHaveBeenCalledWith('Fetching image from camera properties')
       }
     } finally {
       // Restore console.log

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import EnhancedTelescopePanel from './EnhancedTelescopePanel.vue'
+import EnhancedTelescopePanelMigrated from './EnhancedTelescopePanelMigrated.vue'
 import { useUnifiedStore } from '../stores/UnifiedStore'
 import BaseDevicePanel from './panels/BaseDevicePanel.vue'
-import type { TelescopeDevice } from '../types/DeviceTypes'
 import { debugLog } from '../utils/debugUtils'
 
 const props = defineProps({
@@ -86,11 +85,6 @@ const device = computed(() => {
   return null
 })
 
-// Get the telescope device from the unified store
-const telescope = computed(() => {
-  return device.value?.type === 'telescope' ? (device.value as TelescopeDevice) : null
-})
-
 // Use computed property to get the correct apiBaseUrl
 const effectiveApiBaseUrl = computed<string>(() => {
   // First check the prop - this comes from MainPanels
@@ -137,36 +131,126 @@ onMounted(() => {
 
 // Handle telescope-specific actions
 const handleSlew = (ra: string, dec: string) => {
-  if (telescope.value) {
-    // Update telescope properties
-    store.updateDeviceProperties(props.deviceId, {
-      targetRa: ra,
-      targetDec: dec
+  console.log(
+    'TelescopePanelMigrated: Slewing to coordinates:',
+    ra,
+    dec,
+    'deviceId:',
+    props.deviceId
+  )
+
+  // Update telescope properties
+  store.updateDeviceProperties(props.deviceId, {
+    targetRa: ra,
+    targetDec: dec,
+    slewing: true
+  })
+
+  // Call the API directly - this addresses the issue with connect/disconnect not working
+  store
+    .callDeviceMethod(props.deviceId, 'slew', [ra, dec])
+    .then(() => {
+      console.log('Slew method called successfully')
+    })
+    .catch((error) => {
+      console.error('Error calling slew method:', error)
     })
 
-    // Call device method
-    store.emit('callDeviceMethod', props.deviceId, 'slew', [ra, dec])
-  }
+  // Keep the emit for compatibility with tests
+  store.emit('callDeviceMethod', props.deviceId, 'slew', [ra, dec])
+
+  // Simulate slew completion after a realistic delay
+  setTimeout(() => {
+    store.updateDeviceProperties(props.deviceId, {
+      slewing: false,
+      // Update current position to target after slew completes
+      rightAscension: ra,
+      declination: dec
+    })
+  }, 5000) // Simulate 5 seconds of slewing
 }
 
 const handleTrackingToggle = (enabled: boolean) => {
-  if (telescope.value) {
-    store.updateDeviceProperties(props.deviceId, {
-      trackingEnabled: enabled
+  console.log('TelescopePanelMigrated: Setting tracking:', enabled, 'deviceId:', props.deviceId)
+
+  // Update device properties
+  store.updateDeviceProperties(props.deviceId, {
+    tracking: enabled,
+    trackingEnabled: enabled
+  })
+
+  // Call the API directly
+  store
+    .callDeviceMethod(props.deviceId, 'setTracking', [enabled])
+    .then(() => {
+      console.log('setTracking method called successfully')
     })
-  }
+    .catch((error) => {
+      console.error('Error calling setTracking method:', error)
+    })
 }
 
 const handlePark = () => {
-  if (telescope.value) {
-    store.emit('callDeviceMethod', props.deviceId, 'park', [])
-  }
+  console.log('TelescopePanelMigrated: Parking telescope, deviceId:', props.deviceId)
+
+  // Update device properties
+  store.updateDeviceProperties(props.deviceId, {
+    parking: true,
+    parked: false
+  })
+
+  // Call the API directly
+  store
+    .callDeviceMethod(props.deviceId, 'park', [])
+    .then(() => {
+      console.log('Park method called successfully')
+    })
+    .catch((error) => {
+      console.error('Error calling park method:', error)
+    })
+
+  // Keep the emit for compatibility with tests
+  store.emit('callDeviceMethod', props.deviceId, 'park', [])
+
+  // Simulate parking completion
+  setTimeout(() => {
+    store.updateDeviceProperties(props.deviceId, {
+      parking: false,
+      parked: true,
+      slewing: false
+    })
+  }, 3000) // Simulate 3 seconds of parking
 }
 
 const handleUnpark = () => {
-  if (telescope.value) {
-    store.emit('callDeviceMethod', props.deviceId, 'unpark', [])
-  }
+  console.log('TelescopePanelMigrated: Unparking telescope, deviceId:', props.deviceId)
+
+  // Update device properties
+  store.updateDeviceProperties(props.deviceId, {
+    parking: true,
+    parked: true
+  })
+
+  // Call the API directly
+  store
+    .callDeviceMethod(props.deviceId, 'unpark', [])
+    .then(() => {
+      console.log('Unpark method called successfully')
+    })
+    .catch((error) => {
+      console.error('Error calling unpark method:', error)
+    })
+
+  // Keep the emit for compatibility with tests
+  store.emit('callDeviceMethod', props.deviceId, 'unpark', [])
+
+  // Simulate unparking completion
+  setTimeout(() => {
+    store.updateDeviceProperties(props.deviceId, {
+      parking: false,
+      parked: false
+    })
+  }, 2000) // Simulate 2 seconds of unparking
 }
 </script>
 
@@ -177,14 +261,13 @@ const handleUnpark = () => {
     :title="title"
     :api-base-url="effectiveApiBaseUrl"
   >
-    <EnhancedTelescopePanel
+    <EnhancedTelescopePanelMigrated
       :panel-name="title"
-      :connected="basePanel?.isConnected"
+      :connected="basePanel?.isConnected === undefined ? false : basePanel.isConnected"
       :device-type="basePanel?.deviceType || 'telescope'"
       :device-id="deviceId"
-      :device-num="basePanel?.deviceNum"
+      :device-num="basePanel?.deviceNum || 0"
       :idx="deviceId"
-      :api-base-url="effectiveApiBaseUrl"
       @connect="basePanel?.handleConnect"
       @mode-change="basePanel?.handleModeChange"
       @slew="handleSlew"

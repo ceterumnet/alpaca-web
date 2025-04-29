@@ -1,118 +1,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import DiscoveryPanelMigrated from '../components/DiscoveryPanelMigrated.vue'
+import DiscoveredDevicesMigrated from '../components/DiscoveredDevicesMigrated.vue'
 import ToastNotification from '../components/ui/ToastNotification.vue'
-import { useUnifiedStore } from '../stores/UnifiedStore'
-import type { UnifiedDevice } from '../types/DeviceTypes'
-
-// Define the ServerInfo interface that's needed for handleAddServer
-interface ServerInfo {
-  id: string
-  address: string
-  port: number
-  name: string
-  manufacturer: string
-  location: string
-  version: string
-  isOnline: boolean
-  isManualEntry: boolean
-  lastSeen: Date
-}
 
 defineOptions({
   name: 'DiscoveryViewMigrated'
 })
 
-// Get stores and router
-const store = useUnifiedStore()
+// Get router
 const router = useRouter()
 
 // Toast management
 const toasts = ref<{ id: number; message: string; type: string }[]>([])
-let toastIdCounter = 0
-
-const addToast = (message: string, type = 'success') => {
-  const id = toastIdCounter++
-  toasts.value.push({ id, message, type })
-
-  // Auto-remove after toast is closed
-  setTimeout(() => {
-    removeToast(id)
-  }, 3500) // Slightly longer than the toast duration
-}
 
 const removeToast = (id: number) => {
   const index = toasts.value.findIndex((toast) => toast.id === id)
   if (index !== -1) {
     toasts.value.splice(index, 1)
   }
-}
-
-// Event handlers
-const handleDiscover = () => {
-  if (store.isDiscovering) {
-    store.stopDiscovery()
-  } else {
-    const success = store.startDiscovery()
-    if (success) {
-      addToast('Device discovery started', 'info')
-    } else {
-      addToast('Failed to start discovery', 'error')
-    }
-  }
-}
-
-const handleConnectDevice = (device: UnifiedDevice) => {
-  // Add device to managed devices if not already added
-  if (!store.hasDevice(device.id)) {
-    const success = store.addDevice(device)
-
-    // Show success toast
-    if (success) {
-      addToast(`Added device: ${device.name}`, 'success')
-    } else {
-      addToast('Failed to add device', 'error')
-    }
-  }
-}
-
-const handleAddServer = (serverData: { address: string; port: number; name?: string }) => {
-  const newServer: ServerInfo = {
-    id: Date.now().toString(),
-    address: serverData.address,
-    port: serverData.port,
-    name: serverData.name || `${serverData.address}:${serverData.port}`,
-    manufacturer: '',
-    location: 'Custom Location',
-    version: '',
-    isOnline: true,
-    isManualEntry: true,
-    lastSeen: new Date()
-  }
-
-  // Convert server to device format to store in UnifiedStore since it doesn't have addServer method
-  const serverDevice: UnifiedDevice = {
-    id: newServer.id,
-    name: newServer.name,
-    type: 'server',
-    isConnected: true,
-    isConnecting: false,
-    isDisconnecting: false,
-    ipAddress: newServer.address,
-    port: newServer.port,
-    properties: {
-      manufacturer: newServer.manufacturer,
-      location: newServer.location,
-      version: newServer.version,
-      isManualEntry: newServer.isManualEntry,
-      lastSeen: newServer.lastSeen
-    }
-  }
-
-  // Add the server as a device to the store
-  store.addDevice(serverDevice)
-  addToast(`Server added: ${newServer.name}`, 'success')
 }
 
 // Method to go to devices view after adding devices
@@ -129,11 +35,7 @@ const goToDevicesView = () => {
         <button class="back-button" @click="goToDevicesView">Back to Devices</button>
       </div>
 
-      <DiscoveryPanelMigrated
-        @discover="handleDiscover"
-        @connect-device="handleConnectDevice"
-        @add-server="handleAddServer"
-      />
+      <DiscoveredDevicesMigrated />
     </div>
 
     <!-- Toast notifications -->

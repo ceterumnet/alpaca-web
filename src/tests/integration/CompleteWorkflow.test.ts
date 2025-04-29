@@ -13,7 +13,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { UnifiedDevice } from '../../types/DeviceTypes'
 
 // Import migrated components
-import DiscoveryPanelMigrated from '../../components/DiscoveryPanelMigrated.vue'
+import DiscoveredDevicesMigrated from '../../components/DiscoveredDevicesMigrated.vue'
 import AppSidebarMigrated from '../../components/AppSidebarMigrated.vue'
 import DevicePageMigrated from '../../views/DevicePageMigrated.vue'
 import TelescopePanelMigrated from '../../components/TelescopePanelMigrated.vue'
@@ -22,16 +22,16 @@ import SettingsPanelMigrated from '../../components/SettingsPanelMigrated.vue'
 import ManualDeviceConfigMigrated from '../../components/ManualDeviceConfigMigrated.vue'
 
 // Mock all the Vue components to avoid DOM element lookup issues
-vi.mock('../../components/DiscoveryPanelMigrated.vue', () => ({
+vi.mock('../../components/DiscoveredDevicesMigrated.vue', () => ({
   default: {
-    name: 'DiscoveryPanelMigrated',
+    name: 'DiscoveredDevicesMigrated',
     template: `
       <div>
-        <button class="discovery-button" @click="onStartDiscovery">Start Discovery</button>
-        <div class="device-list">
-          <div class="device-item" v-for="device in devices" :key="device.id">
+        <button class="discover-btn">Scan for Devices</button>
+        <div class="device-grid">
+          <div class="device-card" v-for="device in devices" :key="device.id">
             <span>{{ device.name }}</span>
-            <button class="connect-button">Connect</button>
+            <button class="connect-btn">Add to Workspace</button>
           </div>
         </div>
       </div>
@@ -46,7 +46,7 @@ vi.mock('../../components/DiscoveryPanelMigrated.vue', () => ({
       }
     },
     methods: {
-      onStartDiscovery() {
+      refreshDiscoveredDevicesList() {
         const store = useUnifiedStore()
         store.startDiscovery()
       }
@@ -333,7 +333,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
     })
 
     // Mount the discovery panel component
-    discoveryPanel = mount(DiscoveryPanelMigrated, {
+    discoveryPanel = mount(DiscoveredDevicesMigrated, {
       global: {
         plugins: [router, pinia]
       }
@@ -359,7 +359,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       expect(store.isDiscovering).toBe(false)
 
       // Start discovery through the component UI - the click will call the store method from the mock component
-      await discoveryPanel?.find('.discovery-button').trigger('click')
+      await discoveryPanel?.find('.discover-btn').trigger('click')
 
       // Manually call startDiscovery to ensure the mock is triggered
       // This simulates what would happen in the real component
@@ -379,7 +379,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       expect(store.devicesList.length).toBe(2)
 
       // Connect to the telescope device
-      await discoveryPanel?.find('.connect-button').trigger('click')
+      await discoveryPanel?.find('.connect-btn').trigger('click')
 
       // Directly call connectDevice since we're using mocked components
       await store.connectDevice('telescope-1')
@@ -580,7 +580,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
   describe('End-to-End User Flow', () => {
     it('should perform a complete user flow from discovery to control to disconnection', async () => {
       // Start with discovery
-      await discoveryPanel?.find('.discovery-button').trigger('click')
+      await discoveryPanel?.find('.discover-btn').trigger('click')
 
       // Manually call startDiscovery to ensure the mock is triggered
       store.startDiscovery()
@@ -595,7 +595,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       })
 
       // Connect to a device
-      await discoveryPanel?.find('.connect-button').trigger('click')
+      await discoveryPanel?.find('.connect-btn').trigger('click')
       // Directly connect the device
       await store.connectDevice('telescope-1')
 

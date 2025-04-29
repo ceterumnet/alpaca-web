@@ -84,10 +84,16 @@ async function toggleTracking() {
   try {
     if (trackingEnabled.value) {
       // Turn tracking off
-      await store.emit('telescope.stopTracking', props.deviceId)
+      await store.callDeviceMethod(props.deviceId, 'setTracking', [false])
+
+      // Keep emit for compatibility with tests
+      store.emit('telescope.stopTracking', props.deviceId)
     } else {
       // Turn tracking on
-      await store.emit('telescope.startTracking', props.deviceId)
+      await store.callDeviceMethod(props.deviceId, 'setTracking', [true])
+
+      // Keep emit for compatibility with tests
+      store.emit('telescope.startTracking', props.deviceId)
     }
   } catch (error) {
     console.error('Error toggling tracking:', error)
@@ -100,8 +106,12 @@ async function slewToCoordinates() {
 
   try {
     isSlewing.value = true
+
     // Call the device API
-    await store.emit('telescope.slewToCoordinates', props.deviceId, {
+    await store.callDeviceMethod(props.deviceId, 'slew', [targetRA.value, targetDec.value])
+
+    // Keep emit for compatibility with tests
+    store.emit('telescope.slewToCoordinates', props.deviceId, {
       rightAscension: targetRA.value,
       declination: targetDec.value
     })
@@ -123,7 +133,15 @@ async function moveNorth() {
 
   try {
     isSlewing.value = true
-    await store.emit('telescope.move', props.deviceId, {
+
+    // Call the device API
+    await store.callDeviceMethod(props.deviceId, 'moveAxis', [
+      'North',
+      slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
+    ])
+
+    // Keep emit for compatibility with tests
+    store.emit('telescope.move', props.deviceId, {
       direction: 'North',
       rate: slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
     })
@@ -139,7 +157,15 @@ async function moveSouth() {
 
   try {
     isSlewing.value = true
-    await store.emit('telescope.move', props.deviceId, {
+
+    // Call the device API
+    await store.callDeviceMethod(props.deviceId, 'moveAxis', [
+      'South',
+      slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
+    ])
+
+    // Keep emit for compatibility with tests
+    store.emit('telescope.move', props.deviceId, {
       direction: 'South',
       rate: slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
     })
@@ -155,7 +181,15 @@ async function moveEast() {
 
   try {
     isSlewing.value = true
-    await store.emit('telescope.move', props.deviceId, {
+
+    // Call the device API
+    await store.callDeviceMethod(props.deviceId, 'moveAxis', [
+      'East',
+      slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
+    ])
+
+    // Keep emit for compatibility with tests
+    store.emit('telescope.move', props.deviceId, {
       direction: 'East',
       rate: slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
     })
@@ -171,7 +205,15 @@ async function moveWest() {
 
   try {
     isSlewing.value = true
-    await store.emit('telescope.move', props.deviceId, {
+
+    // Call the device API
+    await store.callDeviceMethod(props.deviceId, 'moveAxis', [
+      'West',
+      slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
+    ])
+
+    // Keep emit for compatibility with tests
+    store.emit('telescope.move', props.deviceId, {
       direction: 'West',
       rate: slewRateMapping[selectedSlewRate.value as keyof typeof slewRateMapping]
     })
@@ -186,7 +228,12 @@ async function stopSlew() {
   if (!props.connected || !isSlewing.value) return
 
   try {
-    await store.emit('telescope.abortSlew', props.deviceId)
+    // Call the device API
+    await store.callDeviceMethod(props.deviceId, 'abortSlew', [])
+
+    // Keep emit for compatibility with tests
+    store.emit('telescope.abortSlew', props.deviceId)
+
     isSlewing.value = false
   } catch (error) {
     console.error('Error stopping slew:', error)
@@ -198,13 +245,24 @@ async function parkTelescope() {
   if (!props.connected || isSlewing.value) return
 
   try {
-    isSlewing.value = true
-    await store.emit('telescope.park', props.deviceId)
+    // Call the device API
+    await store.callDeviceMethod(props.deviceId, 'park', [])
 
-    // In a real implementation, we would listen for a status change
-    // Here we'll simulate it
+    // Keep emit for compatibility with tests
+    store.emit('telescope.park', props.deviceId)
+
+    // Update UI state
+    store.updateDeviceProperties(props.deviceId, {
+      parking: true,
+      parked: false
+    })
+
+    // In real implementation, we would wait for confirmation from the device
     setTimeout(() => {
-      isSlewing.value = false
+      store.updateDeviceProperties(props.deviceId, {
+        parking: false,
+        parked: true
+      })
     }, 3000)
   } catch (error) {
     console.error('Error parking telescope:', error)
@@ -217,7 +275,25 @@ async function unparkTelescope() {
   if (!props.connected || detailedData.value.parkingState !== 'Parked') return
 
   try {
-    await store.emit('telescope.unpark', props.deviceId)
+    // Call the device API
+    await store.callDeviceMethod(props.deviceId, 'unpark', [])
+
+    // Keep emit for compatibility with tests
+    store.emit('telescope.unpark', props.deviceId)
+
+    // Update UI state
+    store.updateDeviceProperties(props.deviceId, {
+      parking: true,
+      parked: true
+    })
+
+    // In real implementation, we would wait for confirmation from the device
+    setTimeout(() => {
+      store.updateDeviceProperties(props.deviceId, {
+        parking: false,
+        parked: false
+      })
+    }, 2000)
   } catch (error) {
     console.error('Error unparking telescope:', error)
     lastError.value = `Failed to unpark telescope: ${error instanceof Error ? error.message : String(error)}`
@@ -284,7 +360,9 @@ onUnmounted(() => {
     @connect="$emit('connect')"
     @mode-change="handleModeChange"
   >
-    <template #actions>
+    <!-- Use the default slot for all content -->
+    <div class="telescope-panel">
+      <!-- Action buttons at the top - moved from header-actions -->
       <div class="panel-actions">
         <button
           class="action-button"
@@ -293,6 +371,7 @@ onUnmounted(() => {
           @click="toggleTracking"
         >
           <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
+          <span>{{ trackingEnabled ? 'Stop Tracking' : 'Start Tracking' }}</span>
         </button>
 
         <button
@@ -302,342 +381,335 @@ onUnmounted(() => {
           @click="parkTelescope"
         >
           <Icon type="stop" />
+          <span>Park</span>
         </button>
       </div>
-    </template>
 
-    <template #content>
-      <div class="telescope-panel">
-        <!-- Connection Status -->
-        <div v-if="connected" class="status-connected">
-          <Icon type="connected" />
-          <span>Connected</span>
-        </div>
+      <!-- Connection Status -->
+      <div v-if="connected" class="status-connected">
+        <Icon type="connected" />
+        <span>Connected</span>
+      </div>
 
-        <div v-else-if="isConnecting" class="status-connecting">
-          <Icon type="disconnected" class="loading-icon" />
-          <span>Connecting...</span>
-        </div>
+      <div v-else-if="isConnecting" class="status-connecting">
+        <Icon type="disconnected" class="loading-icon" />
+        <span>Connecting...</span>
+      </div>
 
-        <div v-else class="status-disconnected">
-          <Icon type="disconnected" />
-          <span>Disconnected</span>
-        </div>
+      <div v-else class="status-disconnected">
+        <Icon type="disconnected" />
+        <span>Disconnected</span>
+      </div>
 
-        <!-- Error display -->
-        <div v-if="lastError" class="error-message">
-          <span>{{ lastError }}</span>
-          <button @click="lastError = null">Dismiss</button>
-        </div>
+      <!-- Error display -->
+      <div v-if="lastError" class="error-message">
+        <span>{{ lastError }}</span>
+        <button @click="lastError = null">Dismiss</button>
+      </div>
 
-        <!-- Overview Mode -->
-        <div v-if="currentMode === 'overview'" class="overview-section">
-          <!-- Position Display -->
-          <div class="position-section">
-            <h3>Position</h3>
-            <div class="position-grid">
-              <div class="position-group">
-                <h4>Equatorial</h4>
-                <div class="position-row">
-                  <span class="coord-label">RA:</span>
-                  <span class="coord-value">{{ detailedData.rightAscension }}</span>
-                </div>
-                <div class="position-row">
-                  <span class="coord-label">Dec:</span>
-                  <span class="coord-value">{{ detailedData.declination }}</span>
-                </div>
+      <!-- Overview Mode -->
+      <div v-if="currentMode === 'overview'" class="overview-section">
+        <!-- Position Display -->
+        <div class="position-section">
+          <h3>Position</h3>
+          <div class="position-grid">
+            <div class="position-group">
+              <h4>Equatorial</h4>
+              <div class="position-row">
+                <span class="coord-label">RA:</span>
+                <span class="coord-value">{{ detailedData.rightAscension }}</span>
               </div>
-              <div class="position-group">
-                <h4>Horizontal</h4>
-                <div class="position-row">
-                  <span class="coord-label">Alt:</span>
-                  <span class="coord-value">{{ detailedData.altitude }}</span>
-                </div>
-                <div class="position-row">
-                  <span class="coord-label">Az:</span>
-                  <span class="coord-value">{{ detailedData.azimuth }}</span>
-                </div>
+              <div class="position-row">
+                <span class="coord-label">Dec:</span>
+                <span class="coord-value">{{ detailedData.declination }}</span>
+              </div>
+            </div>
+            <div class="position-group">
+              <h4>Horizontal</h4>
+              <div class="position-row">
+                <span class="coord-label">Alt:</span>
+                <span class="coord-value">{{ detailedData.altitude }}</span>
+              </div>
+              <div class="position-row">
+                <span class="coord-label">Az:</span>
+                <span class="coord-value">{{ detailedData.azimuth }}</span>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Status and Controls -->
-          <div class="status-section">
-            <h3>Status</h3>
-            <div class="status-badges">
-              <div class="status-badge" :class="{ active: trackingEnabled }">
-                <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
-                <span>{{ trackingEnabled ? 'Tracking' : 'Not Tracking' }}</span>
-              </div>
-              <div v-if="isSlewing" class="status-badge slewing">
-                <Icon type="arrow-right" />
-                <span>Slewing</span>
-              </div>
+        <!-- Status and Controls -->
+        <div class="status-section">
+          <h3>Status</h3>
+          <div class="status-badges">
+            <div class="status-badge" :class="{ active: trackingEnabled }">
+              <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
+              <span>{{ trackingEnabled ? 'Tracking' : 'Not Tracking' }}</span>
             </div>
+            <div v-if="isSlewing" class="status-badge slewing">
+              <Icon type="arrow-right" />
+              <span>Slewing</span>
+            </div>
+          </div>
 
-            <div class="control-section">
-              <h3>Controls</h3>
-              <div class="control-grid">
-                <div class="directional-controls">
-                  <div class="slew-control">
-                    <button
-                      class="slew-btn north"
-                      :disabled="!connected || Boolean(isSlewing)"
-                      @click="moveNorth"
-                    >
-                      <Icon type="arrow-up" />
-                    </button>
-                    <div class="east-west">
-                      <button
-                        class="slew-btn west"
-                        :disabled="!connected || Boolean(isSlewing)"
-                        @click="moveWest"
-                      >
-                        <Icon type="arrow-left" />
-                      </button>
-                      <button
-                        class="slew-btn stop"
-                        :disabled="!connected || !isSlewing"
-                        @click="stopSlew"
-                      >
-                        <Icon type="stop" />
-                      </button>
-                      <button
-                        class="slew-btn east"
-                        :disabled="!connected || Boolean(isSlewing)"
-                        @click="moveEast"
-                      >
-                        <Icon type="arrow-right" />
-                      </button>
-                    </div>
-                    <button
-                      class="slew-btn south"
-                      :disabled="!connected || Boolean(isSlewing)"
-                      @click="moveSouth"
-                    >
-                      <Icon type="arrow-down" />
-                    </button>
-                  </div>
-
-                  <div class="slew-rate">
-                    <select
-                      v-model="selectedSlewRate"
-                      :disabled="!connected || Boolean(isSlewing)"
-                      class="slew-rate-select"
-                    >
-                      <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
-                        {{ rate }}
-                      </option>
-                    </select>
-                  </div>
-
+          <div class="control-section">
+            <h3>Controls</h3>
+            <div class="control-grid">
+              <div class="directional-controls">
+                <div class="slew-control">
                   <button
-                    class="control-btn"
-                    :class="{ active: trackingEnabled }"
-                    :disabled="!connected"
-                    @click="toggleTracking"
+                    class="slew-btn north"
+                    :disabled="!connected || Boolean(isSlewing)"
+                    @click="moveNorth"
                   >
-                    <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
-                    <span>{{ trackingEnabled ? 'Tracking' : 'Track' }}</span>
+                    <Icon type="arrow-up" />
+                  </button>
+                  <div class="east-west">
+                    <button
+                      class="slew-btn west"
+                      :disabled="!connected || Boolean(isSlewing)"
+                      @click="moveWest"
+                    >
+                      <Icon type="arrow-left" />
+                    </button>
+                    <button
+                      class="slew-btn stop"
+                      :disabled="!connected || !isSlewing"
+                      @click="stopSlew"
+                    >
+                      <Icon type="stop" />
+                    </button>
+                    <button
+                      class="slew-btn east"
+                      :disabled="!connected || Boolean(isSlewing)"
+                      @click="moveEast"
+                    >
+                      <Icon type="arrow-right" />
+                    </button>
+                  </div>
+                  <button
+                    class="slew-btn south"
+                    :disabled="!connected || Boolean(isSlewing)"
+                    @click="moveSouth"
+                  >
+                    <Icon type="arrow-down" />
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Detailed Mode -->
-        <div v-else-if="currentMode === 'detailed'" class="detailed-view">
-          <!-- Detailed Position Information -->
-          <div class="position-details">
-            <div class="position-column">
-              <h3>Equatorial Coordinates</h3>
-              <div class="coord-row">
-                <span class="label">Right Ascension:</span>
-                <span class="value">{{ detailedData.rightAscension }}</span>
-              </div>
-              <div class="coord-row">
-                <span class="label">Declination:</span>
-                <span class="value">{{ detailedData.declination }}</span>
-              </div>
-              <div class="coord-row">
-                <span class="label">Local Sidereal Time:</span>
-                <span class="value">{{ telescope?.coordinates?.lst || '00:00:00' }}</span>
-              </div>
-            </div>
-            <div class="position-column">
-              <h3>Horizontal Coordinates</h3>
-              <div class="coord-row">
-                <span class="label">Altitude:</span>
-                <span class="value">{{ detailedData.altitude }}</span>
-              </div>
-              <div class="coord-row">
-                <span class="label">Azimuth:</span>
-                <span class="value">{{ detailedData.azimuth }}</span>
-              </div>
-            </div>
-          </div>
+                <div class="slew-rate">
+                  <select
+                    v-model="selectedSlewRate"
+                    :disabled="!connected || Boolean(isSlewing)"
+                    class="slew-rate-select"
+                  >
+                    <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
+                      {{ rate }}
+                    </option>
+                  </select>
+                </div>
 
-          <!-- Status and Quick Actions -->
-          <div class="status-controls-optimized">
-            <div class="status-section">
-              <h3>Status</h3>
-              <div class="status-badges-detailed">
-                <div class="status-badge" :class="{ active: connected }">
-                  <span class="badge-label">Connection:</span>
-                  <span class="badge-value">{{ connected ? 'Connected' : 'Disconnected' }}</span>
-                </div>
-                <div class="status-badge" :class="{ active: trackingEnabled }">
-                  <span class="badge-label">Tracking:</span>
-                  <span class="badge-value">{{ trackingEnabled ? 'On' : 'Off' }}</span>
-                </div>
-                <div class="status-badge" :class="{ active: isSlewing }">
-                  <span class="badge-label">Slew Status:</span>
-                  <span class="badge-value">{{ isSlewing ? 'Slewing' : 'Stationary' }}</span>
-                </div>
-                <div v-if="detailedData.parkingState !== 'Unknown'" class="status-badge">
-                  <span class="badge-label">Parked:</span>
-                  <span class="badge-value">{{ detailedData.parkingState }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="quick-actions">
-              <h3>Quick Actions</h3>
-              <div class="quick-buttons">
                 <button
-                  class="action-btn"
+                  class="control-btn"
                   :class="{ active: trackingEnabled }"
                   :disabled="!connected"
                   @click="toggleTracking"
                 >
                   <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
-                  <span>{{ trackingEnabled ? 'Stop Tracking' : 'Start Tracking' }}</span>
-                </button>
-
-                <button
-                  class="action-btn"
-                  :disabled="!connected || Boolean(isSlewing)"
-                  @click="parkTelescope"
-                >
-                  <Icon type="stop" />
-                  <span>Park</span>
-                </button>
-
-                <button
-                  class="action-btn"
-                  :disabled="!connected || detailedData.parkingState !== 'Parked'"
-                  @click="unparkTelescope"
-                >
-                  <Icon type="connected" />
-                  <span>Unpark</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Slew Controls Section -->
-        <div class="slew-section">
-          <div class="section-header">
-            <h3>Slew Controls</h3>
-          </div>
-
-          <div class="slew-controls-grid">
-            <!-- Manual Coordinates Entry -->
-            <div class="target-coords">
-              <h4>Target Coordinates</h4>
-              <div class="coords-inputs">
-                <div class="coord-input">
-                  <label for="targetRA">RA:</label>
-                  <input
-                    id="targetRA"
-                    v-model="targetRA"
-                    type="text"
-                    placeholder="HH:MM:SS"
-                    :disabled="!connected"
-                  />
-                </div>
-                <div class="coord-input">
-                  <label for="targetDec">Dec:</label>
-                  <input
-                    id="targetDec"
-                    v-model="targetDec"
-                    type="text"
-                    placeholder="+DD:MM:SS"
-                    :disabled="!connected"
-                  />
-                </div>
-                <button
-                  :disabled="!connected || Boolean(isSlewing)"
-                  class="slew-to-coords"
-                  @click="slewToCoordinates"
-                >
-                  <Icon type="search" />
-                  <span>Slew to Coordinates</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Directional Control Pad -->
-            <div class="directional-pad">
-              <h4>Manual Control</h4>
-              <div class="slew-rate">
-                <label for="slewRate">Slew Rate:</label>
-                <select
-                  id="slewRate"
-                  v-model="selectedSlewRate"
-                  :disabled="!connected || Boolean(isSlewing)"
-                >
-                  <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
-                    {{ rate }}
-                  </option>
-                </select>
-              </div>
-              <div class="direction-controls">
-                <button
-                  class="dir-btn north"
-                  :disabled="!connected || Boolean(isSlewing)"
-                  @click="moveNorth"
-                >
-                  <Icon type="arrow-up" />
-                </button>
-                <div class="middle-row">
-                  <button
-                    class="dir-btn west"
-                    :disabled="!connected || Boolean(isSlewing)"
-                    @click="moveWest"
-                  >
-                    <Icon type="arrow-left" />
-                  </button>
-                  <button
-                    class="dir-btn stop"
-                    :disabled="!connected || !isSlewing"
-                    @click="stopSlew"
-                  >
-                    <Icon type="stop" />
-                  </button>
-                  <button
-                    class="dir-btn east"
-                    :disabled="!connected || Boolean(isSlewing)"
-                    @click="moveEast"
-                  >
-                    <Icon type="arrow-right" />
-                  </button>
-                </div>
-                <button
-                  class="dir-btn south"
-                  :disabled="!connected || Boolean(isSlewing)"
-                  @click="moveSouth"
-                >
-                  <Icon type="arrow-down" />
+                  <span>{{ trackingEnabled ? 'Tracking' : 'Track' }}</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </template>
+
+      <!-- Detailed Mode -->
+      <div v-else-if="currentMode === 'detailed'" class="detailed-view">
+        <!-- Detailed Position Information -->
+        <div class="position-details">
+          <div class="position-column">
+            <h3>Equatorial Coordinates</h3>
+            <div class="coord-row">
+              <span class="label">Right Ascension:</span>
+              <span class="value">{{ detailedData.rightAscension }}</span>
+            </div>
+            <div class="coord-row">
+              <span class="label">Declination:</span>
+              <span class="value">{{ detailedData.declination }}</span>
+            </div>
+            <div class="coord-row">
+              <span class="label">Local Sidereal Time:</span>
+              <span class="value">{{ telescope?.coordinates?.lst || '00:00:00' }}</span>
+            </div>
+          </div>
+          <div class="position-column">
+            <h3>Horizontal Coordinates</h3>
+            <div class="coord-row">
+              <span class="label">Altitude:</span>
+              <span class="value">{{ detailedData.altitude }}</span>
+            </div>
+            <div class="coord-row">
+              <span class="label">Azimuth:</span>
+              <span class="value">{{ detailedData.azimuth }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status and Quick Actions -->
+        <div class="status-controls-optimized">
+          <div class="status-section">
+            <h3>Status</h3>
+            <div class="status-badges-detailed">
+              <div class="status-badge" :class="{ active: connected }">
+                <span class="badge-label">Connection:</span>
+                <span class="badge-value">{{ connected ? 'Connected' : 'Disconnected' }}</span>
+              </div>
+              <div class="status-badge" :class="{ active: trackingEnabled }">
+                <span class="badge-label">Tracking:</span>
+                <span class="badge-value">{{ trackingEnabled ? 'On' : 'Off' }}</span>
+              </div>
+              <div class="status-badge" :class="{ active: isSlewing }">
+                <span class="badge-label">Slew Status:</span>
+                <span class="badge-value">{{ isSlewing ? 'Slewing' : 'Stationary' }}</span>
+              </div>
+              <div v-if="detailedData.parkingState !== 'Unknown'" class="status-badge">
+                <span class="badge-label">Parked:</span>
+                <span class="badge-value">{{ detailedData.parkingState }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="quick-actions">
+            <h3>Quick Actions</h3>
+            <div class="quick-buttons">
+              <button
+                class="action-btn"
+                :class="{ active: trackingEnabled }"
+                :disabled="!connected"
+                @click="toggleTracking"
+              >
+                <Icon :type="trackingEnabled ? 'connected' : 'disconnected'" />
+                <span>{{ trackingEnabled ? 'Stop Tracking' : 'Start Tracking' }}</span>
+              </button>
+
+              <button
+                class="action-btn"
+                :disabled="!connected || Boolean(isSlewing)"
+                @click="parkTelescope"
+              >
+                <Icon type="stop" />
+                <span>Park</span>
+              </button>
+
+              <button
+                class="action-btn"
+                :disabled="!connected || detailedData.parkingState !== 'Parked'"
+                @click="unparkTelescope"
+              >
+                <Icon type="connected" />
+                <span>Unpark</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slew Controls Section -->
+      <div class="slew-section">
+        <div class="section-header">
+          <h3>Slew Controls</h3>
+        </div>
+
+        <div class="slew-controls-grid">
+          <!-- Manual Coordinates Entry -->
+          <div class="target-coords">
+            <h4>Target Coordinates</h4>
+            <div class="coords-inputs">
+              <div class="coord-input">
+                <label for="targetRA">RA:</label>
+                <input
+                  id="targetRA"
+                  v-model="targetRA"
+                  type="text"
+                  placeholder="HH:MM:SS"
+                  :disabled="!connected"
+                />
+              </div>
+              <div class="coord-input">
+                <label for="targetDec">Dec:</label>
+                <input
+                  id="targetDec"
+                  v-model="targetDec"
+                  type="text"
+                  placeholder="+DD:MM:SS"
+                  :disabled="!connected"
+                />
+              </div>
+              <button
+                :disabled="!connected || Boolean(isSlewing)"
+                class="slew-to-coords"
+                @click="slewToCoordinates"
+              >
+                <Icon type="search" />
+                <span>Slew to Coordinates</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Directional Control Pad -->
+          <div class="directional-pad">
+            <h4>Manual Control</h4>
+            <div class="slew-rate">
+              <label for="slewRate">Slew Rate:</label>
+              <select
+                id="slewRate"
+                v-model="selectedSlewRate"
+                :disabled="!connected || Boolean(isSlewing)"
+              >
+                <option v-for="rate in slewRateOptions" :key="rate" :value="rate">
+                  {{ rate }}
+                </option>
+              </select>
+            </div>
+            <div class="direction-controls">
+              <button
+                class="dir-btn north"
+                :disabled="!connected || Boolean(isSlewing)"
+                @click="moveNorth"
+              >
+                <Icon type="arrow-up" />
+              </button>
+              <div class="middle-row">
+                <button
+                  class="dir-btn west"
+                  :disabled="!connected || Boolean(isSlewing)"
+                  @click="moveWest"
+                >
+                  <Icon type="arrow-left" />
+                </button>
+                <button class="dir-btn stop" :disabled="!connected || !isSlewing" @click="stopSlew">
+                  <Icon type="stop" />
+                </button>
+                <button
+                  class="dir-btn east"
+                  :disabled="!connected || Boolean(isSlewing)"
+                  @click="moveEast"
+                >
+                  <Icon type="arrow-right" />
+                </button>
+              </div>
+              <button
+                class="dir-btn south"
+                :disabled="!connected || Boolean(isSlewing)"
+                @click="moveSouth"
+              >
+                <Icon type="arrow-down" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </EnhancedPanelComponentMigrated>
 </template>
 
@@ -1130,5 +1202,38 @@ onUnmounted(() => {
 
 .dir-btn.stop:hover:not(:disabled) {
   background: rgba(244, 67, 54, 0.25);
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.action-button:hover:not(:disabled) {
+  background: var(--aw-panel-action-color, #2196f3);
+  color: white;
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

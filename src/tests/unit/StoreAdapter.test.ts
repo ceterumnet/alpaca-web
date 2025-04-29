@@ -94,28 +94,39 @@ describe('Store Adapter Tests', () => {
       store.addDevice(testDevice)
       store.emit('deviceAdded', testDevice)
 
+      // Mock connectDevice to bypass actual API call
+      const originalConnectDevice = store.connectDevice
+      store.connectDevice = async (deviceId: string) => {
+        // First set connecting state
+        store.updateDevice(deviceId, { isConnecting: true })
+
+        // Simulate successful connection after a short delay
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        // Update the connection state
+        store.updateDevice(deviceId, {
+          isConnected: true,
+          isConnecting: false
+        })
+
+        // Emit the event to trigger adapter updates
+        store.emit('deviceUpdated', deviceId, {
+          isConnected: true,
+          isConnecting: false
+        })
+
+        return true
+      }
+
       // Connect using adapter (legacy) API
       const connectPromise = adapter.connectToDevice('test-device-1')
 
       // Verify connecting state
-      let device = store.getDeviceById('test-device-1')
+      const device = store.getDeviceById('test-device-1')
       expect(device?.isConnecting).toBe(true)
       console.log(
         `${GREEN}✓ Connection request via adapter updates connection status in new store${RESET}`
       )
-
-      // Simulate connection success
-      device = store.getDeviceById('test-device-1')
-      if (device) {
-        store.updateDevice(device.id, {
-          isConnected: true,
-          isConnecting: false
-        })
-        store.emit('deviceUpdated', device.id, {
-          isConnected: true,
-          isConnecting: false
-        })
-      }
 
       // Wait for connection to complete
       await connectPromise
@@ -124,6 +135,9 @@ describe('Store Adapter Tests', () => {
       const legacyDevice = adapter.getDeviceById('test-device-1')
       expect(legacyDevice?.isConnected).toBe(true)
       console.log(`${GREEN}✓ Connection state in new store is reflected in adapter${RESET}`)
+
+      // Restore original method
+      store.connectDevice = originalConnectDevice
     })
   })
 

@@ -13,6 +13,17 @@ import { createStoreAdapter } from '../../stores/StoreAdapter'
 import type { TelescopeDevice } from '../../types/DeviceTypes'
 import { createPinia, setActivePinia } from 'pinia'
 
+// Extend types for testing
+type UnifiedStoreWithTelescopeControl = ReturnType<typeof useUnifiedStore> & {
+  controlTelescopeSlew: (deviceId: string, direction: string) => boolean
+  controlTelescopeStop: (deviceId: string) => boolean
+}
+
+type StoreAdapterWithTelescopeControl = ReturnType<typeof createStoreAdapter> & {
+  controlTelescopeSlew: (deviceId: string, direction: string) => boolean
+  controlTelescopeStop: (deviceId: string) => boolean
+}
+
 // Mock TelescopeControl component for testing
 const TelescopeControl = defineComponent({
   props: {
@@ -70,8 +81,8 @@ const TelescopeControl = defineComponent({
 })
 
 describe('Device Control Integration Tests', () => {
-  let store: ReturnType<typeof useUnifiedStore>
-  let adapter: ReturnType<typeof createStoreAdapter>
+  let store: UnifiedStoreWithTelescopeControl
+  let adapter: StoreAdapterWithTelescopeControl
   let telescopeControl: ReturnType<typeof mount>
   let slewSpy: ReturnType<typeof vi.fn>
   let stopSlewSpy: ReturnType<typeof vi.fn>
@@ -105,8 +116,8 @@ describe('Device Control Integration Tests', () => {
     setActivePinia(createPinia())
 
     // Set up fresh store and adapter for each test
-    store = useUnifiedStore()
-    adapter = createStoreAdapter(store)
+    store = useUnifiedStore() as UnifiedStoreWithTelescopeControl
+    adapter = createStoreAdapter(store) as StoreAdapterWithTelescopeControl
 
     // Add a connected telescope
     store.addDevice(testTelescope)

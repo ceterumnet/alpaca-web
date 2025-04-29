@@ -5,6 +5,7 @@ import { useUnifiedStore } from '@/stores/UnifiedStore'
 import axios from 'axios'
 import ManualDeviceConfigMigrated from './ManualDeviceConfigMigrated.vue'
 import type { Device } from '@/stores/UnifiedStore'
+import { debugLog } from '@/utils/debugUtils'
 
 // Create/get UnifiedStore instance using Pinia
 const unifiedStore = useUnifiedStore()
@@ -42,7 +43,7 @@ const availableDevices = computed(() => {
 
 // Refresh the list of discovered Alpaca devices
 async function refreshDiscoveredDevicesList() {
-  console.log('Starting device list refresh')
+  debugLog('Starting device list refresh')
   discoveredAlpacaDevices.value = []
   isLoading.value = true
 
@@ -53,7 +54,7 @@ async function refreshDiscoveredDevicesList() {
     // Process each discovered server
     for (const server of discoveredDevicesStore.sortedDevices) {
       const proxyUrl = discoveredDevicesStore.getProxyUrl(server)
-      console.log(`Fetching devices from ${server.address}:${server.port}`)
+      debugLog(`Fetching devices from ${server.address}:${server.port}`)
 
       // Fetch server description
       try {
@@ -63,7 +64,7 @@ async function refreshDiscoveredDevicesList() {
         server.Manufacturer = descValue.Manufacturer
         server.ManufacturerVersion = descValue.ManufacturerVersion
         server.Location = descValue.Location
-        console.log(`Fetched description for ${server.address}:${server.port}`)
+        debugLog(`Fetched description for ${server.address}:${server.port}`)
       } catch (descError) {
         console.error(
           `Error fetching description from ${server.address}:${server.port}:`,
@@ -122,7 +123,7 @@ async function refreshDiscoveredDevicesList() {
               apiBaseUrl: `${proxyUrl}/api/v1/${deviceTypeLower}/${deviceNumber}`
             }
           })
-          console.log(
+          debugLog(
             `Added device: ${deviceType} ${deviceNumber} from ${server.address}:${server.port}`
           )
         }
@@ -130,7 +131,7 @@ async function refreshDiscoveredDevicesList() {
         console.error(`Error fetching devices from ${server.address}:${server.port}:`, error)
       }
     }
-    console.log(`Refresh complete, found ${discoveredAlpacaDevices.value.length} unique devices`)
+    debugLog(`Refresh complete, found ${discoveredAlpacaDevices.value.length} unique devices`)
   } finally {
     isLoading.value = false
   }
@@ -142,7 +143,7 @@ async function connectToDevice(index: number) {
   selectedDeviceIndex.value = index
   const alpacaDevice = discoveredAlpacaDevices.value[index]
 
-  console.log('Connecting to device:', alpacaDevice)
+  debugLog('Connecting to device:', alpacaDevice)
 
   try {
     // Add device to the store directly
@@ -150,7 +151,7 @@ async function connectToDevice(index: number) {
 
     // Connect to device
     await unifiedStore.connectDevice(alpacaDevice.id)
-    console.log('Device added and connected:', alpacaDevice)
+    debugLog('Device added and connected:', alpacaDevice)
   } catch (error) {
     console.error('Error connecting to device:', error)
   } finally {
@@ -174,7 +175,7 @@ watch(
       newTime &&
       (!lastRefreshTime.value || newTime.getTime() > lastRefreshTime.value.getTime() + 1000)
     ) {
-      console.log('Discovery time changed, refreshing device list', {
+      debugLog('Discovery time changed, refreshing device list', {
         newTime: newTime?.toISOString(),
         oldTime: oldTime?.toISOString(),
         lastRefresh: lastRefreshTime.value?.toISOString()
@@ -182,7 +183,7 @@ watch(
       lastRefreshTime.value = new Date()
       refreshDiscoveredDevicesList()
     } else if (newTime) {
-      console.log('Skipping duplicate refresh', {
+      debugLog('Skipping duplicate refresh', {
         newTime: newTime?.toISOString(),
         oldTime: oldTime?.toISOString(),
         lastRefresh: lastRefreshTime.value?.toISOString()

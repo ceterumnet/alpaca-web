@@ -30,12 +30,14 @@ const mockDevice = {
 const mockGetDeviceById = vi.fn().mockReturnValue(mockDevice)
 const mockConnectDevice = vi.fn().mockResolvedValue(true)
 const mockDisconnectDevice = vi.fn().mockResolvedValue(true)
+const mockFetchDeviceProperties = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../../src/stores/UnifiedStore', () => ({
   useUnifiedStore: vi.fn().mockImplementation(() => ({
     getDeviceById: mockGetDeviceById,
     connectDevice: mockConnectDevice,
-    disconnectDevice: mockDisconnectDevice
+    disconnectDevice: mockDisconnectDevice,
+    fetchDeviceProperties: mockFetchDeviceProperties
   }))
 }))
 

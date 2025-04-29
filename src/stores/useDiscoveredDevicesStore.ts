@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { DiscoveredDevice } from '@/types/DiscoveredDevice'
 import axios from 'axios'
+import { debugLog } from '@/utils/debugUtils'
 
 export const useDiscoveredDevicesStore = defineStore('discoveredDevices', () => {
   const devices = ref<DiscoveredDevice[]>([])
@@ -17,7 +18,7 @@ export const useDiscoveredDevicesStore = defineStore('discoveredDevices', () => 
 
   async function discoverDevices() {
     isDiscovering.value = true
-    console.log('Discovering devices...')
+    debugLog('Discovering devices...')
     try {
       // Trigger a discovery scan
       await axios.post('/discovery/scan')

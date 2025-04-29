@@ -6,7 +6,6 @@ import TelescopePanelMigrated from './TelescopePanelMigrated.vue'
 import CameraPanelMigrated from './CameraPanelMigrated.vue'
 import { type UnifiedDevice } from '@/types/DeviceTypes'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import DiscoveredDevicesMigrated from './DiscoveredDevicesMigrated.vue'
 import { UIMode } from '@/stores/useUIPreferencesStore'
 import { useLayoutStore, type LayoutItem } from '@/stores/useLayoutStore'
 import Icon from './Icon.vue'
@@ -222,8 +221,6 @@ function handleConnect(connected: boolean, itemId: string) {
 </script>
 
 <template>
-  <DiscoveredDevicesMigrated class="discovery-section" />
-
   <div class="layout-actions">
     <button class="layout-action-button" @click="resetLayout">
       <Icon type="close" />

@@ -22,7 +22,7 @@ const router = createRouter({
     {
       path: '/devices',
       name: 'devices',
-      component: DevicesViewMigrated
+      redirect: '/'
     },
     {
       path: '/devices/:id',

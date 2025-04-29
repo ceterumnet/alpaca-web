@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Search, Lightning, Settings, Moon, Sun } from './ui-examples/icons'
-import DeviceTypeIcon from './DeviceTypeIcon.vue'
+import DeviceTypeIcon from './Icon.vue'
 
 // Types definition for devices
 interface Device {
@@ -47,6 +47,16 @@ const activeFilters = ref({
 })
 const showFilterMenu = ref(false)
 const viewMode = ref('list') // list or grid
+
+// Function to map device type to IconType
+const mapDeviceTypeToIcon = (deviceType: string) => {
+  const type = deviceType.toLowerCase()
+  if (type === 'camera') return 'camera'
+  if (type === 'telescope') return 'focus'
+  if (type === 'focuser') return 'focus'
+  if (type === 'filterwheel') return 'filter'
+  return 'device-unknown'
+}
 
 // Computed properties
 const filteredDevices = computed(() => {
@@ -301,7 +311,7 @@ const toggleFavorite = (device: Device) => {
               }"
             >
               <div class="device-icon">
-                <DeviceTypeIcon :type="device.type" />
+                <DeviceTypeIcon :type="mapDeviceTypeToIcon(device.type)" />
               </div>
 
               <div class="device-info">
@@ -392,7 +402,7 @@ const toggleFavorite = (device: Device) => {
 
                 <div class="card-content">
                   <div class="device-icon-large">
-                    <DeviceTypeIcon :type="device.type" size="large" />
+                    <DeviceTypeIcon :type="mapDeviceTypeToIcon(device.type)" size="large" />
                   </div>
                   <div class="device-info">
                     <span class="device-name">{{ device.name }}</span>
@@ -442,7 +452,7 @@ const toggleFavorite = (device: Device) => {
           }"
           :title="device.name"
         >
-          <DeviceTypeIcon :type="device.type" size="small" />
+          <DeviceTypeIcon :type="mapDeviceTypeToIcon(device.type)" size="small" />
           <span
             class="connection-indicator"
             :class="{

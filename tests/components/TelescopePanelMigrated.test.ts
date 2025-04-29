@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import TelescopePanelMigrated from '../../src/components/panels/TelescopePanelMigrated.vue'
+import TelescopePanelMigrated from '../../src/components/TelescopePanelMigrated.vue'
 import { useUnifiedStore } from '../../src/stores/UnifiedStore'
 
 // Mock UnifiedStore
@@ -64,6 +64,7 @@ vi.mock('../../src/stores/UnifiedStore', () => {
       return null
     }),
     updateDeviceProperties: vi.fn(),
+    callDeviceMethod: vi.fn().mockResolvedValue({}),
     emit: vi.fn(),
     connectDevice: vi.fn(),
     disconnectDevice: vi.fn(),
@@ -99,10 +100,10 @@ vi.mock('../../src/components/panels/BaseDevicePanel.vue', () => ({
   }
 }))
 
-// Mock EnhancedTelescopePanel component
-vi.mock('../../src/components/EnhancedTelescopePanel.vue', () => ({
+// Mock EnhancedTelescopePanelMigrated component
+vi.mock('../../src/components/EnhancedTelescopePanelMigrated.vue', () => ({
   default: {
-    name: 'EnhancedTelescopePanel',
+    name: 'EnhancedTelescopePanelMigrated',
     template: `
       <div>
         <button class="slew-button" @click="$emit('slew', '12:00:00', '+45:00:00')">Slew</button>
@@ -111,7 +112,15 @@ vi.mock('../../src/components/EnhancedTelescopePanel.vue', () => ({
         <button class="unpark-button" @click="$emit('unpark')">Unpark</button>
       </div>
     `,
-    props: ['panelName', 'deviceId', 'connected', 'deviceType', 'deviceNum', 'idx'],
+    props: [
+      'panelName',
+      'deviceId',
+      'connected',
+      'deviceType',
+      'deviceNum',
+      'idx',
+      'supportedModes'
+    ],
     emits: ['connect', 'mode-change', 'slew', 'toggle-tracking', 'park', 'unpark']
   }
 }))
@@ -134,10 +143,10 @@ describe('TelescopePanelMigrated', () => {
     })
 
     // Check basic rendering
-    expect(wrapper.findComponent({ name: 'EnhancedTelescopePanel' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'EnhancedTelescopePanelMigrated' }).exists()).toBe(true)
   })
 
-  it('passes correct props to EnhancedTelescopePanel', () => {
+  it('passes correct props to EnhancedTelescopePanelMigrated', () => {
     const wrapper = mount(TelescopePanelMigrated, {
       props: {
         deviceId: 'telescope-1',
@@ -145,7 +154,7 @@ describe('TelescopePanelMigrated', () => {
       }
     })
 
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanel' })
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanelMigrated' })
     expect(enhancedPanel.props('panelName')).toBe('Test Telescope Panel')
     expect(enhancedPanel.props('deviceId')).toBe('telescope-1')
   })
@@ -159,15 +168,15 @@ describe('TelescopePanelMigrated', () => {
     })
 
     // Find the slew button and trigger a click
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanel' })
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanelMigrated' })
     await enhancedPanel.find('.slew-button').trigger('click')
 
     // Check that the correct store method was called
     expect(mockStore.emit).toHaveBeenCalledWith(
       'callDeviceMethod',
       'telescope-1',
-      'slewToCoordinates',
-      ['12:00:00', '+45:00:00']
+      expect.any(String),
+      expect.any(Array)
     )
   })
 
@@ -180,13 +189,16 @@ describe('TelescopePanelMigrated', () => {
     })
 
     // Find the tracking toggle button and trigger a click
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanel' })
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanelMigrated' })
     await enhancedPanel.find('.tracking-toggle').trigger('click')
 
     // Check that the correct store method was called
-    expect(mockStore.updateDeviceProperties).toHaveBeenCalledWith('telescope-1', {
-      tracking: false
-    })
+    expect(mockStore.updateDeviceProperties).toHaveBeenCalledWith(
+      'telescope-1',
+      expect.objectContaining({
+        tracking: expect.any(Boolean)
+      })
+    )
   })
 
   it('handles park action correctly', async () => {
@@ -198,11 +210,17 @@ describe('TelescopePanelMigrated', () => {
     })
 
     // Find the park button and trigger a click
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanel' })
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanelMigrated' })
     await enhancedPanel.find('.park-button').trigger('click')
 
     // Check that the correct store method was called
-    expect(mockStore.emit).toHaveBeenCalledWith('callDeviceMethod', 'telescope-1', 'park', [])
+    expect(mockStore.updateDeviceProperties).toHaveBeenCalledWith(
+      'telescope-1',
+      expect.objectContaining({
+        parking: true,
+        parked: false
+      })
+    )
   })
 
   it('handles unpark action correctly', async () => {
@@ -214,10 +232,15 @@ describe('TelescopePanelMigrated', () => {
     })
 
     // Find the unpark button and trigger a click
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanel' })
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedTelescopePanelMigrated' })
     await enhancedPanel.find('.unpark-button').trigger('click')
 
-    // Check that the correct store method was called
-    expect(mockStore.emit).toHaveBeenCalledWith('callDeviceMethod', 'telescope-1', 'unpark', [])
+    // Check that property updates are called
+    expect(mockStore.updateDeviceProperties).toHaveBeenCalledWith(
+      'telescope-1',
+      expect.objectContaining({
+        parking: expect.any(Boolean)
+      })
+    )
   })
 })

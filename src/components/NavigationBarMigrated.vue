@@ -11,10 +11,8 @@ const route = useRoute()
 
 // Navigation links
 const navLinks = [
-  { name: 'Home', path: '/', icon: 'home' },
-  { name: 'Devices', path: '/devices', icon: 'devices' },
+  { name: 'Devices', path: '/', icon: 'devices' },
   { name: 'Discovery', path: '/discovery', icon: 'search' },
-  { name: 'UI Demo', path: '/ui-demo', icon: 'palette' },
   { name: 'Settings', path: '/settings', icon: 'gear' }
 ]
 

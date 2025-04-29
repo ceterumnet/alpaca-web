@@ -16,6 +16,7 @@ import { createPinia, setActivePinia } from 'pinia'
 const mockGetDeviceById = vi.fn()
 const mockConnectDevice = vi.fn().mockResolvedValue(true)
 const mockDisconnectDevice = vi.fn().mockResolvedValue(true)
+const mockFetchDeviceProperties = vi.fn().mockResolvedValue(undefined)
 
 // Mock the Pinia store
 vi.mock('@/stores/UnifiedStore', () => ({
@@ -23,6 +24,7 @@ vi.mock('@/stores/UnifiedStore', () => ({
     getDeviceById: mockGetDeviceById,
     connectDevice: mockConnectDevice,
     disconnectDevice: mockDisconnectDevice,
+    fetchDeviceProperties: mockFetchDeviceProperties,
     devicesList: []
   })
 }))

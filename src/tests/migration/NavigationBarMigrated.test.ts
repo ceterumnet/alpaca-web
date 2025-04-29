@@ -98,10 +98,10 @@ describe('NavigationBarMigrated.vue', () => {
     expect(wrapper.find('.app-title').exists()).toBe(true)
 
     // Should show all navigation links
-    expect(wrapper.findAll('.nav-link').length).toBe(5)
+    expect(wrapper.findAll('.nav-link').length).toBe(3)
 
     // Should show text in navigation links
-    expect(wrapper.findAll('.nav-text').length).toBe(5)
+    expect(wrapper.findAll('.nav-text').length).toBe(3)
 
     // Should show device status with correct count
     expect(wrapper.find('.status-indicator').text()).toContain('1 / 2 devices connected')
@@ -132,7 +132,7 @@ describe('NavigationBarMigrated.vue', () => {
     expect(wrapper.find('.app-title').exists()).toBe(false)
 
     // Should still show all navigation links but without text
-    expect(wrapper.findAll('.nav-link').length).toBe(5)
+    expect(wrapper.findAll('.nav-link').length).toBe(3)
     expect(wrapper.findAll('.nav-text').length).toBe(0)
   })
 
@@ -169,8 +169,8 @@ describe('NavigationBarMigrated.vue', () => {
   })
 
   it('handles active route highlighting correctly', async () => {
-    // Navigate to the devices route
-    await router.push('/devices')
+    // Navigate to the devices route - change to root path since that's the devices route now
+    await router.push('/')
     await router.isReady()
 
     const wrapper = mount(NavigationBarMigrated, {
@@ -189,8 +189,8 @@ describe('NavigationBarMigrated.vue', () => {
     const activeLink = links.find((link) => link.classes().includes('active'))
     expect(activeLink).toBeDefined()
 
-    // The active link should be pointing to /devices
-    expect(activeLink!.attributes('href')).toContain('devices')
+    // The active link should be pointing to / (devices is now root path)
+    expect(activeLink!.attributes('href')).toBe('/')
 
     // There should only be one active link
     const activeLinks = links.filter((link) => link.classes().includes('active'))

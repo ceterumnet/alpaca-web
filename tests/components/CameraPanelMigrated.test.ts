@@ -1,6 +1,7 @@
 import { mount, VueWrapper } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import CameraPanelMigrated from '../../src/components/CameraPanelMigrated.vue'
+import { createTestingPinia } from '@pinia/testing'
 
 // Create a mock device and store functions
 const mockDevice = {
@@ -30,6 +31,7 @@ const mockGetDeviceById = vi.fn((id) => {
 
 const mockUpdateDeviceProperties = vi.fn()
 const mockEmit = vi.fn()
+const mockCallDeviceMethod = vi.fn().mockResolvedValue(true)
 const mockDevicesList = [mockDevice]
 
 // Mock UnifiedStore with correct export and structure
@@ -42,19 +44,35 @@ vi.mock('../../src/stores/UnifiedStore', () => ({
     connectDevice: vi.fn(),
     disconnectDevice: vi.fn(),
     on: vi.fn(),
-    off: vi.fn()
+    off: vi.fn(),
+    callDeviceMethod: mockCallDeviceMethod,
+    fetchDeviceProperties: vi.fn()
   }))
 }))
 
+// Mock the UIPreferencesStore (needed by EnhancedPanelComponentMigrated)
+vi.mock('../../src/stores/useUIPreferencesStore', () => ({
+  useUIPreferencesStore: vi.fn(() => ({
+    getDeviceUIMode: () => 'detailed',
+    setDeviceUIMode: vi.fn(),
+    isSidebarVisible: false
+  })),
+  UIMode: {
+    OVERVIEW: 'overview',
+    DETAILED: 'detailed',
+    FULLSCREEN: 'fullscreen'
+  }
+}))
+
 // Mock BaseDevicePanel component
-vi.mock('../../src/components/BaseDevicePanel.vue', () => ({
+vi.mock('../../src/components/panels/BaseDevicePanel.vue', () => ({
   default: {
     name: 'BaseDevicePanel',
     template: '<div><slot></slot></div>',
-    props: ['deviceId', 'title'],
+    props: ['deviceId', 'title', 'apiBaseUrl'],
     setup() {
       return {
-        connected: true,
+        isConnected: true,
         deviceType: 'camera',
         deviceNum: 1,
         handleConnect: vi.fn(),
@@ -64,22 +82,32 @@ vi.mock('../../src/components/BaseDevicePanel.vue', () => ({
   }
 }))
 
-// Mock EnhancedCameraPanel component
-vi.mock('../../src/components/EnhancedCameraPanel.vue', () => ({
+// Mock EnhancedCameraPanelMigrated component
+vi.mock('../../src/components/EnhancedCameraPanelMigrated.vue', () => ({
   default: {
-    name: 'EnhancedCameraPanel',
+    name: 'EnhancedCameraPanelMigrated',
     template: '<div class="camera-panel">Camera Panel Content</div>',
-    props: ['panelName', 'connected', 'deviceType', 'deviceId', 'deviceNum', 'idx', 'apiBaseUrl'],
+    props: ['panelName', 'connected', 'deviceType', 'deviceId', 'deviceNum', 'idx'],
     emits: [
       'connect',
       'modeChange',
-      'startExposure',
-      'abortExposure',
-      'setCooler',
-      'setGain',
-      'setOffset',
-      'setReadMode'
+      'start-exposure',
+      'abort-exposure',
+      'set-cooler',
+      'set-gain',
+      'set-offset',
+      'set-read-mode'
     ]
+  }
+}))
+
+// Mock EnhancedPanelComponentMigrated to prevent Pinia issues
+vi.mock('../../src/components/EnhancedPanelComponentMigrated.vue', () => ({
+  default: {
+    name: 'EnhancedPanelComponentMigrated',
+    template: '<div class="panel"><slot></slot></div>',
+    props: ['panelName', 'connected', 'deviceType', 'deviceId', 'supportedModes'],
+    emits: ['close', 'configure', 'connect', 'modeChange']
   }
 }))
 
@@ -93,6 +121,13 @@ describe('CameraPanelMigrated', () => {
       props: {
         deviceId: 'camera-1',
         title: 'Test Camera Panel'
+      },
+      global: {
+        plugins: [
+          createTestingPinia({
+            createSpy: vi.fn
+          })
+        ]
       }
     })
   })
@@ -102,8 +137,8 @@ describe('CameraPanelMigrated', () => {
     expect(wrapper.text()).toContain('Camera Panel Content')
   })
 
-  it('passes correct props to EnhancedCameraPanel', () => {
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanel' })
+  it('passes correct props to EnhancedCameraPanelMigrated', () => {
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanelMigrated' })
     expect(enhancedPanel.props()).toMatchObject({
       panelName: 'Test Camera Panel',
       connected: true,
@@ -113,22 +148,22 @@ describe('CameraPanelMigrated', () => {
   })
 
   it('handles start exposure correctly', async () => {
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanel' })
-    await enhancedPanel.vm.$emit('startExposure', 10)
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanelMigrated' })
+    await enhancedPanel.vm.$emit('start-exposure', 10)
 
     expect(mockEmit).toHaveBeenCalledWith('callDeviceMethod', 'camera-1', 'startExposure', [10])
   })
 
   it('handles abort exposure correctly', async () => {
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanel' })
-    await enhancedPanel.vm.$emit('abortExposure')
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanelMigrated' })
+    await enhancedPanel.vm.$emit('abort-exposure')
 
     expect(mockEmit).toHaveBeenCalledWith('callDeviceMethod', 'camera-1', 'abortExposure', [])
   })
 
   it('handles set cooler correctly', async () => {
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanel' })
-    await enhancedPanel.vm.$emit('setCooler', true, -15)
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanelMigrated' })
+    await enhancedPanel.vm.$emit('set-cooler', true, -15)
 
     expect(mockUpdateDeviceProperties).toHaveBeenCalledWith('camera-1', {
       coolerEnabled: true,
@@ -137,22 +172,22 @@ describe('CameraPanelMigrated', () => {
   })
 
   it('handles set gain correctly', async () => {
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanel' })
-    await enhancedPanel.vm.$emit('setGain', 200)
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanelMigrated' })
+    await enhancedPanel.vm.$emit('set-gain', 200)
 
     expect(mockUpdateDeviceProperties).toHaveBeenCalledWith('camera-1', { gain: 200 })
   })
 
   it('handles set offset correctly', async () => {
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanel' })
-    await enhancedPanel.vm.$emit('setOffset', 15)
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanelMigrated' })
+    await enhancedPanel.vm.$emit('set-offset', 15)
 
     expect(mockUpdateDeviceProperties).toHaveBeenCalledWith('camera-1', { offset: 15 })
   })
 
   it('handles set read mode correctly', async () => {
-    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanel' })
-    await enhancedPanel.vm.$emit('setReadMode', 2)
+    const enhancedPanel = wrapper.findComponent({ name: 'EnhancedCameraPanelMigrated' })
+    await enhancedPanel.vm.$emit('set-read-mode', 2)
 
     expect(mockUpdateDeviceProperties).toHaveBeenCalledWith('camera-1', { readoutMode: 2 })
   })

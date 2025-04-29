@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import EnhancedCameraPanel from '../EnhancedCameraPanel.vue'
+import EnhancedCameraPanelMigrated from '../EnhancedCameraPanelMigrated.vue'
 import { useLegacyDeviceStore } from '../../stores/deviceStoreAdapter'
 import BaseDeviceAdapter from './BaseDeviceAdapter.vue'
 
@@ -52,7 +52,7 @@ const handleSetReadMode = (mode: number) => {
 
 <template>
   <BaseDeviceAdapter ref="baseAdapter" :device-id="deviceId" :title="title">
-    <EnhancedCameraPanel
+    <EnhancedCameraPanelMigrated
       :panel-name="title"
       :connected="baseAdapter?.connected"
       :device-type="baseAdapter?.deviceType || 'camera'"
