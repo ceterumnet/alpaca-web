@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // import '@primevue/themes'
 import { computed, onMounted } from 'vue'
-import { useUIPreferencesStore } from './stores/useUIPreferencesStore'
-import './assets/colors.css' // Import the CSS
-import NavigationBarMigrated from './components/NavigationBarMigrated.vue'
-import NotificationCenterMigrated from './components/NotificationCenterMigrated.vue'
+import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
+import '@/assets/colors.css' // Import the CSS
+import NavigationBarMigrated from '@/components/layout/NavigationBarMigrated.vue'
+import NotificationCenterMigrated from '@/components/ui/NotificationCenterMigrated.vue'
 
 // Get stores
 const uiStore = useUIPreferencesStore()

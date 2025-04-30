@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import AppSidebarMigrated from '../components/AppSidebarMigrated.vue'
-import MainPanelsMigrated from '../components/MainPanelsMigrated.vue'
-import { useUIPreferencesStore } from '../stores/useUIPreferencesStore'
-import { useUnifiedStore } from '../stores/UnifiedStore'
-import type { UnifiedDevice } from '../types/DeviceTypes'
+import AppSidebarMigrated from '@/components/layout/AppSidebarMigrated.vue'
+import MainPanelsMigrated from '@/components/layout/MainPanelsMigrated.vue'
+import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
+import type { UnifiedDevice } from '@/types/DeviceTypes'
 import { ref, onMounted } from 'vue'
 
 defineOptions({

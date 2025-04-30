@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import EnhancedCameraPanelMigrated from '../EnhancedCameraPanelMigrated.vue'
-import { useLegacyDeviceStore } from '../../stores/deviceStoreAdapter'
+import EnhancedCameraPanelMigrated from '@/components/devices/EnhancedCameraPanelMigrated.vue'
+import { useLegacyDeviceStore } from '@/stores/deviceStoreAdapter'
 import BaseDeviceAdapter from './BaseDeviceAdapter.vue'
 
 const props = defineProps({

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import DiscoveredDevicesMigrated from '../components/DiscoveredDevicesMigrated.vue'
-import ToastNotification from '../components/ui/ToastNotification.vue'
+import DiscoveredDevicesMigrated from '@/components/devices/DiscoveredDevicesMigrated.vue'
+import ToastNotification from '@/components/ui/ToastNotification.vue'
 
 defineOptions({
   name: 'DiscoveryViewMigrated'

@@ -12,6 +12,7 @@ This document provides a summary of all components and stores in the AlpacaWeb a
 
 - **Usage**: Central store for managing devices, device properties, and application state
 - **Pattern**: Pinia store using the composition API with exposed methods
+- **Documentation**: Now includes comprehensive JSDoc comments explaining the store's purpose and architecture
 - **Features**:
   - Device management (add, remove, update)
   - Device connection handling
@@ -20,12 +21,14 @@ This document provides a summary of all components and stores in the AlpacaWeb a
   - Event system for components to listen to changes
   - API interaction for device control
   - Device method calling with simulated fallbacks
+  - Type-safe interfaces for all operations
 - **Key Functions**:
   - `addDevice`, `removeDevice`, `updateDevice`
   - `connectDevice`, `disconnectDevice`
   - `startDiscovery`, `stopDiscovery`
   - `callDeviceMethod`, `fetchDeviceProperties`
-  - `addEventListener`, `removeEventListener`
+  - `addEventListener`, `removeEventListener`, `_emitEvent`
+  - Typed event handling with `DeviceEvent` and `DeviceEventListener` types
 - **Where Used**: Throughout the application in migrated components
 
 #### StoreAdapter
@@ -196,12 +199,6 @@ This document provides a summary of all components and stores in the AlpacaWeb a
 - **Where Used**: MainPanelsMigrated.vue, DeviceDetailViewMigrated.vue, CompleteWorkflow.test.ts
 - **Action Taken**: Updated to use EnhancedTelescopePanelMigrated
 
-#### EnhancedTelescopePanel
-
-- **Status**: ✅ DELETED
-- **Description**: Enhanced controls for telescope devices that used direct API calls
-- **Action Taken**: Component has been successfully deleted from the codebase
-
 #### EnhancedTelescopePanelMigrated
 
 - **Usage**: Now the main implementation for telescope controls that uses the unified store architecture
@@ -239,13 +236,6 @@ This document provides a summary of all components and stores in the AlpacaWeb a
 - **Recommendations**: Keep this component and remove the original ManualDeviceConfig
 - **Where Used**: DiscoveredDevicesMigrated.vue, CompleteWorkflow.test.ts
 
-#### DiscoveryPanel
-
-- **Usage**: Component for device discovery process
-- **Tests**: None found specifically for this component
-- **Recommendations**: Assess relationship with DiscoveredDevicesMigrated; consider consolidation
-- **Where Used**: Used in tests: DiscoveryPanel.test.ts, DiscoveryConnectionFlow.test.ts, DeviceWorkflow.test.ts
-
 ### UI Components
 
 #### NotificationCenterMigrated
@@ -255,12 +245,28 @@ This document provides a summary of all components and stores in the AlpacaWeb a
 - **Recommendations**: Keep this component; ensure tests are added for this critical UI element
 - **Where Used**: App.vue
 
-#### Icon
+#### Icon System
 
-- **Usage**: Generic icon component used throughout the application
-- **Tests**: None found specifically for this component
-- **Recommendations**: Keep as a utility component, consider adding tests for critical icon functionality
-- **Where Used**: Widely used across many components including EnhancedPanelComponentMigrated, SettingsPanelMigrated, EnhancedCameraPanelMigrated, Button, AppSidebarMigrated, MainPanelsMigrated
+- **Status**: ✅ STANDARDIZED
+- **Description**: Consolidated icon system that provides consistent SVG icons throughout the application
+- **Implementation**:
+  - Created a modular icon system in `src/components/icons/index.ts`
+  - Each icon is implemented as a Vue functional component using the `defineComponent` and `h` functions
+  - All icon components share a consistent API with `size` and `color` props
+  - Documentation provided in `src/components/icons/README.md`
+- **Tests**: None specifically for icons, consider adding tests
+- **Components**:
+  - **Icon.vue**: Core component that wraps individual icon components with consistent styling
+  - **icons/index.ts**: Contains all icon definitions exported as individual components
+- **Usage Patterns**:
+  1. Direct import of specific icons: `import { Camera, Telescope } from '@/components/icons'`
+  2. Using the Icon component: `<Icon type="camera" />`
+- **Where Used**: Throughout the application in various components, especially in navigation, device controls, and UI elements
+- **Benefits**:
+  - Consistent styling and behavior across the application
+  - Centralized maintenance of icons
+  - Type-safe icon usage with TypeScript
+  - Smaller bundle size through code sharing
 
 #### Button
 
@@ -304,9 +310,18 @@ This document provides a summary of all components and stores in the AlpacaWeb a
 
 2. **Store Documentation**:
 
-   - Add JSDoc comments to all store files explaining their purpose and API
-   - Create separate store documentation with examples of common patterns
-   - Document store interaction patterns for developers
+   - Add comprehensive JSDoc comments to all store files explaining:
+     - The store's purpose and responsibility
+     - All exposed state properties and their types
+     - All methods, their parameters, return values, and side effects
+     - Event handling patterns
+   - Create a separate store documentation guide that includes:
+     - Common usage patterns with code examples
+     - Best practices for store interactions
+     - Integration with Vue components using the Composition API
+     - Error handling and state management recommendations
+   - Document inter-store relationships and dependencies
+   - Provide migration guidance for components still using legacy store patterns
 
 3. **Testing Strategy**:
    - Add comprehensive unit tests for all stores
@@ -324,11 +339,15 @@ This document provides a summary of all components and stores in the AlpacaWeb a
 
 3. **Component Directory Structure**:
 
-   - Reorganize components into logical groups:
-     - `/components/layout` - Navigation, sidebars, panels
-     - `/components/devices` - Device-specific components
-     - `/components/ui` - Reusable UI elements
-     - `/components/forms` - Form-related components
+   - Complete the reorganization of components into the established directory structure:
+     - `/components/layout` - Navigation, sidebars, panels layout components
+     - `/components/devices` - Device-specific components and controls
+     - `/components/ui` - Reusable UI elements and primitive components
+     - `/components/forms` - Form components and input controls
+     - `/components/icons` - Icon components and icon system (✅ COMPLETED)
+   - Move all existing components from the root components directory into these subdirectories
+   - Update imports across the codebase to reflect new component locations
+   - Consider adding index.ts barrel files to simplify imports
 
 4. **Test Coverage Expansion**:
 
@@ -342,24 +361,77 @@ This document provides a summary of all components and stores in the AlpacaWeb a
 
 ### Priority Actions
 
-1. Remove duplicate non-migrated components that are still present:
-
-   - ✅ EnhancedCameraPanel.vue (COMPLETED)
-   - ✅ EnhancedTelescopePanel.vue (COMPLETED)
-   - ✅ EnhancedPanelComponent.vue (COMPLETED)
-   - ✅ DiscoveredDevices.vue (COMPLETED)
-   - ✅ ManualDeviceConfig.vue (COMPLETED)
+1. ✅ Remove duplicate non-migrated components that are still present (COMPLETED)
 
 2. ✅ Fix test issues in EnhancedTelescopePanelMigrated tests (COMPLETED)
 
 3. ✅ Consolidate duplicate TelescopePanelMigrated implementations (COMPLETED)
 
-4. Remove duplicate test files and standardize test locations/naming
+4. ✅ Standardize the icon system (COMPLETED)
 
-5. Reorganize component directory structure
+5. ✅ Remove duplicate test files and standardize test locations/naming (COMPLETED)
 
-6. Rename all components to remove "Migrated" suffix
+   - ✅ Moved all test files to their standardized locations
+   - ✅ Renamed all `.spec.ts` files to `.test.ts`
+   - ✅ Removed duplicate test files
+   - ✅ Fixed import paths in all relocated files
+   - ✅ All tests now running successfully
+   - Verification steps:
+     - ✅ `npm run lint` - passed
+     - ✅ `npm run type-check` - passed
+     - ✅ `npm run test:unit` - passed
 
-7. Document the component API for each component
+6. Reorganize component directory structure
+
+   - Move components and their respective tests to their appropriate subdirectories based on their purpose
+
+7. Rename all components to remove "Migrated" suffix
+
+   - Create a comprehensive plan for renaming components
+   - Update all imports, references, and test files
+   - Consider using script automation to handle the renaming
+   - Verification steps:
+     - `npm run lint`
+     - `npm run type-check`
+     - `npm run test:unit`
+
+8. Handle simulated functionality
+
+   - Perform analysis of all "simulated" calls in the codebase (exposure, tracking, etc.)
+   - Document which simulations are purely for fallback vs. UX improvements
+   - Create implementation plan for replacing simulations with real functionality
+   - Consider preserving simulations that enhance UX (like progress indicators)
+
+9. Implement full event handling system for UnifiedStore
+
+   - Design comprehensive event system architecture
+   - Implement event emission, subscription, and handling
+   - Add documentation for event system usage
+   - Update components to use event system consistently
+
+10. Simplify and improve user interface
+
+    - Review and redesign panel concept for better user experience
+    - Create mockups for improved UI layout and component relationships
+    - Implement UI improvements following design system principles
+    - Add responsive design considerations
+
+11. Conduct gap analysis against Alpaca API specification
+
+    - Compare current implementation against `docs/alpaca/AlpacaDeviceAPI_v1.yaml`
+    - Document missing endpoints and functionality
+    - Prioritize implementation of missing features
+
+12. Complete event handling and API implementation
+
+    - Based on gap analysis, implement missing event handling
+    - Add complete API coverage for all device types
+    - Update UI components to utilize new functionality
+
+13. Document component API
+    - Create comprehensive component documentation
+    - Include prop types, events, slots, and examples
+    - Consider using a documentation tool (Storybook, VuePress, etc.)
+    - Add usage examples for each component
 
 This cleanup will result in a more maintainable codebase with clearer component relationships and improved developer experience.

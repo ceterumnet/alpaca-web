@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useUnifiedStore } from '../stores/UnifiedStore'
-import { UIMode } from '../stores/useUIPreferencesStore'
-import TelescopePanelMigrated from '../components/TelescopePanelMigrated.vue'
-import CameraPanelMigrated from '../components/CameraPanelMigrated.vue'
-import EnhancedPanelComponentMigrated from '../components/EnhancedPanelComponentMigrated.vue'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
+import { UIMode } from '@/stores/useUIPreferencesStore'
+import TelescopePanelMigrated from '@/components/devices/TelescopePanelMigrated.vue'
+import CameraPanelMigrated from '@/components/devices/CameraPanelMigrated.vue'
+import EnhancedPanelComponentMigrated from '@/components/ui/EnhancedPanelComponentMigrated.vue'
 
 defineOptions({
   name: 'DeviceDetailViewMigrated'

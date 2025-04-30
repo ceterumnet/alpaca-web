@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SettingsPanelMigrated from '@/components/SettingsPanelMigrated.vue'
+import SettingsPanelMigrated from '@/components/ui/SettingsPanelMigrated.vue'
 </script>
 
 <template>
