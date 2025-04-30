@@ -158,12 +158,6 @@ This document provides a summary of all components and stores in the AlpacaWeb a
      - Updates device properties in the UnifiedStore to ensure UI properly reflects state changes
   3. This approach bridges the gap in the migration process until the full event handling system is implemented in the UnifiedStore
 
-#### EnhancedCameraPanel
-
-- **Status**: ✅ DELETED
-- **Description**: Enhanced controls for camera devices that used direct axios API calls
-- **Action Taken**: Component has been successfully deleted from the main codebase (only exists in backup directory)
-
 #### EnhancedCameraPanelMigrated
 
 - **Usage**: Now the main implementation for camera controls that uses the unified store architecture
@@ -229,13 +223,6 @@ This document provides a summary of all components and stores in the AlpacaWeb a
   1. Fixed tests to properly render and validate component content
   2. Improved test stability by using HTML content verification rather than text content
 
-#### DiscoveredDevices
-
-- **Status**: ✅ DELETED
-- **Description**: Legacy component for device discovery listing
-- **Action Taken**: Component has been successfully deleted from the codebase
-- **Replacement**: DiscoveredDevicesMigrated
-
 #### DiscoveredDevicesMigrated
 
 - **Usage**: Used in DiscoveryViewMigrated.vue for device discovery
@@ -244,14 +231,6 @@ This document provides a summary of all components and stores in the AlpacaWeb a
   - `src/components/__tests__/DiscoveredDevicesMigrated.spec.ts.bak` (backup version)
 - **Recommendations**: Keep this component and remove backup test files
 - **Where Used**: DiscoveryViewMigrated.vue, CompleteWorkflow.test.ts
-
-#### ManualDeviceConfig
-
-- **Status**: ✅ DELETED
-- **Description**: Legacy component for manual device configuration
-- **Tests**: None found specifically for this component
-- **Action Taken**: Component has been deleted as it was not used anywhere in the codebase
-- **Replacement**: ManualDeviceConfigMigrated
 
 #### ManualDeviceConfigMigrated
 
