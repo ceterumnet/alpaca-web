@@ -1,3 +1,11 @@
+// Status: Good - Core Store
+// This is the device store that:
+// - Manages ASCOM device connections
+// - Handles device state and properties
+// - Provides device control actions
+// - Supports device discovery
+// - Maintains device configuration
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 

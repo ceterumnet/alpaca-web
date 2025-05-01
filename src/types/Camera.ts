@@ -1,3 +1,11 @@
+// Status: Legacy - To Be Refactored
+// This module provides legacy camera class definition that:
+// - Will be replaced by CameraDevice interface from DeviceTypes.ts
+// - Currently used for backward compatibility
+// - Should be migrated to use UnifiedDevice interface
+// - Will be consolidated with DeviceTypes.ts
+// - Will be removed once migration is complete
+
 import { DeviceFactory, type Device } from './Device'
 
 export class Camera implements Device {

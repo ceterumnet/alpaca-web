@@ -6,9 +6,8 @@
  * with real hardware.
  */
 
-import UnifiedStore from '@/stores/UnifiedStore'
 import StoreAdapter from '@/stores/StoreAdapter'
-import { useUnifiedStore } from '@/stores/UnifiedStore'
+import { useUnifiedStore, type UnifiedStoreType } from '@/stores/UnifiedStore'
 
 // Types for testing
 interface TestMetric {
@@ -27,7 +26,7 @@ interface TestLogRecord {
 }
 
 type WindowWithTestEnv = Window & {
-  testStore: typeof UnifiedStore
+  testStore: UnifiedStoreType
   testAdapter: StoreAdapter
   testScenarios: typeof testScenarios
   createTestLog: typeof createTestLog
@@ -338,24 +337,29 @@ export function createTestLog(scenarioName: string) {
  * for manual testing from the browser console.
  */
 export function createTestingEnvironment() {
+  // Use 'unknown' as an intermediate cast to avoid type errors
+  const typedWindow = window as unknown as WindowWithTestEnv
+
+  // Create a test instance of the store
   const store = useUnifiedStore()
+
+  // Assign to window for console access during manual testing
+  typedWindow.testStore = store
+
+  // Create a test adapter instance
   const adapter = new StoreAdapter(store)
+  typedWindow.testAdapter = adapter
 
-  // Make accessible globally for browser console testing
-  if (typeof window !== 'undefined') {
-    // Use type assertion through unknown to avoid strict type checking issues
-    const typedWindow = window as unknown as WindowWithTestEnv
-    typedWindow.testStore = store
-    typedWindow.testAdapter = adapter
-    typedWindow.testScenarios = testScenarios
-    typedWindow.createTestLog = createTestLog
+  // Expose test scenarios
+  typedWindow.testScenarios = testScenarios
+  typedWindow.createTestLog = createTestLog
 
-    console.log('Testing environment created. Access via window.testStore, window.testAdapter')
-    console.log('Test scenarios available via window.testScenarios')
-    console.log('Create a test log with window.createTestLog("scenarioName")')
+  console.log('Test environment created. Access via window.testStore and window.testAdapter')
+
+  return {
+    store,
+    adapter
   }
-
-  return { store, adapter }
 }
 
 // Auto-initialize when imported in a browser environment

@@ -1,3 +1,11 @@
+// Status: Good - Core Service
+// This is the notification service that:
+// - Manages application-wide notifications
+// - Provides toast and alert functionality
+// - Handles notification queuing and display
+// - Supports different notification types
+// - Maintains notification state management
+
 import { useNotificationStore, type NotificationOptions } from '@/stores/useNotificationStore'
 
 /**

@@ -1,3 +1,8 @@
+// Status: Good - Core UI Component // This is the toast notification implementation that: // -
+Provides user feedback through notifications // - Supports multiple notification types (success,
+error, info, warning) // - Handles auto-dismissal and manual close // - Implements proper
+positioning and animations // - Supports customizable duration and position
+
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
@@ -66,34 +71,38 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="toast-notification"
-    :class="[`toast-${type}`, `toast-${position}`, { 'toast-visible': isVisible }]"
+    class="aw-toast"
+    :class="[
+      `aw-toast--${type}`, 
+      `aw-toast--${position}`, 
+      { 'aw-toast--visible': isVisible }
+    ]"
   >
-    <div class="toast-content">
-      <div v-if="type === 'success'" class="toast-icon success">✓</div>
-      <div v-else-if="type === 'error'" class="toast-icon error">✗</div>
-      <div v-else-if="type === 'warning'" class="toast-icon warning">!</div>
-      <div v-else-if="type === 'info'" class="toast-icon info">i</div>
+    <div class="aw-toast__content">
+      <div v-if="type === 'success'" class="aw-toast__icon aw-toast__icon--success">✓</div>
+      <div v-else-if="type === 'error'" class="aw-toast__icon aw-toast__icon--error">✗</div>
+      <div v-else-if="type === 'warning'" class="aw-toast__icon aw-toast__icon--warning">!</div>
+      <div v-else-if="type === 'info'" class="aw-toast__icon aw-toast__icon--info">i</div>
 
-      <div class="toast-message">{{ message }}</div>
+      <div class="aw-toast__message">{{ message }}</div>
 
-      <button class="toast-close" @click="close">×</button>
+      <button class="aw-toast__close" @click="close">×</button>
     </div>
-    <div class="toast-progress" :style="{ animationDuration: `${duration}ms` }"></div>
+    <div class="aw-toast__progress" :style="{ animationDuration: `${duration}ms` }"></div>
   </div>
 </template>
 
 <style scoped>
-.toast-notification {
+.aw-toast {
   position: fixed;
   min-width: 300px;
   max-width: 400px;
   background-color: var(--aw-panel-bg-color);
   color: var(--aw-panel-content-color);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  padding: 16px;
-  z-index: 1000;
+  box-shadow: var(--aw-shadow-md);
+  border-radius: var(--aw-border-radius-md);
+  padding: var(--aw-spacing-md);
+  z-index: 9999;
   transition: all 0.3s ease;
   opacity: 0;
   transform: translateY(-20px);
@@ -101,155 +110,165 @@ onBeforeUnmount(() => {
   border-left: 4px solid transparent;
 }
 
-.toast-visible {
+.aw-toast--visible {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
 }
 
 /* Position styles */
-.toast-top-right {
-  top: 20px;
-  right: 20px;
+.aw-toast--top-right {
+  top: 80px;
+  right: var(--aw-spacing-md);
 }
 
-.toast-top-left {
-  top: 20px;
-  left: 20px;
+.aw-toast--top-left {
+  top: 80px;
+  left: var(--aw-spacing-md);
 }
 
-.toast-bottom-right {
-  bottom: 20px;
-  right: 20px;
+.aw-toast--bottom-right {
+  bottom: var(--aw-spacing-md);
+  right: var(--aw-spacing-md);
 }
 
-.toast-bottom-left {
-  bottom: 20px;
-  left: 20px;
+.aw-toast--bottom-left {
+  bottom: var(--aw-spacing-md);
+  left: var(--aw-spacing-md);
 }
 
-.toast-top-center {
-  top: 20px;
+.aw-toast--top-center {
+  top: 80px;
   left: 50%;
   transform: translateX(-50%);
 }
 
-.toast-bottom-center {
-  bottom: 20px;
+.aw-toast--bottom-center {
+  bottom: var(--aw-spacing-md);
   left: 50%;
   transform: translateX(-50%);
 }
 
-.toast-visible.toast-top-center,
-.toast-visible.toast-bottom-center {
+.aw-toast--visible.aw-toast--top-center,
+.aw-toast--visible.aw-toast--bottom-center {
   transform: translateX(-50%) translateY(0);
 }
 
 /* Type styles */
-.toast-success {
-  border-left-color: #4caf50;
+.aw-toast--success {
+  border-left-color: var(--aw-color-success-500);
 }
 
-.toast-error {
-  border-left-color: #f44336;
+.aw-toast--error {
+  border-left-color: var(--aw-color-error-500);
 }
 
-.toast-warning {
-  border-left-color: #ff9800;
+.aw-toast--warning {
+  border-left-color: var(--aw-color-warning-500);
 }
 
-.toast-info {
-  border-left-color: #2196f3;
+.aw-toast--info {
+  border-left-color: var(--aw-color-primary-500);
 }
 
-.toast-content {
+.aw-toast__content {
   display: flex;
   align-items: center;
 }
 
-.toast-icon {
+.aw-toast__icon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  margin-right: 12px;
+  margin-right: var(--aw-spacing-md);
   font-weight: bold;
 }
 
-.toast-icon.success {
-  background-color: #4caf50;
+.aw-toast__icon--success {
+  background-color: var(--aw-color-success-500);
   color: white;
 }
 
-.toast-icon.error {
-  background-color: #f44336;
+.aw-toast__icon--error {
+  background-color: var(--aw-color-error-500);
   color: white;
 }
 
-.toast-icon.warning {
-  background-color: #ff9800;
+.aw-toast__icon--warning {
+  background-color: var(--aw-color-warning-500);
   color: white;
 }
 
-.toast-icon.info {
-  background-color: #2196f3;
+.aw-toast__icon--info {
+  background-color: var(--aw-color-primary-500);
   color: white;
 }
 
-.toast-message {
+.aw-toast__message {
   flex: 1;
 }
 
-.toast-close {
+.aw-toast__close {
   background: none;
   border: none;
   color: var(--aw-panel-content-color);
   opacity: 0.5;
   font-size: 20px;
   cursor: pointer;
-  margin-left: 8px;
+  margin-left: var(--aw-spacing-sm);
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 24px;
   height: 24px;
+  transition: opacity 0.2s ease;
 }
 
-.toast-close:hover {
+.aw-toast__close:hover {
   opacity: 1;
 }
 
-.toast-progress {
+.aw-toast__progress {
   position: absolute;
   bottom: 0;
   left: 0;
   height: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.1);
   width: 100%;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 var(--aw-border-radius-md) var(--aw-border-radius-md);
   overflow: hidden;
 }
 
-.toast-progress::after {
+.aw-toast__progress::after {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
   height: 100%;
   width: 100%;
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: var(--aw-color-primary-300, rgba(0, 0, 0, 0.2));
   animation: progress-animation linear forwards;
 }
 
 @keyframes progress-animation {
   0% {
-    width: 100%;
+    transform: translateX(0);
   }
   100% {
-    width: 0%;
+    transform: translateX(100%);
   }
+}
+
+/* Dark theme adjustments */
+:root .dark-theme .aw-toast__progress {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+:root .dark-theme .aw-toast__progress::after {
+  background-color: var(--aw-color-primary-300, rgba(255, 255, 255, 0.2));
 }
 </style>

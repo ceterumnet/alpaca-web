@@ -1,0 +1,9 @@
+{
+  "preferences": {
+    "autoStartServer": false
+  },
+  "projectInfo": {
+    "name": "alpaca-web",
+    "description": "Web interface for ASCOM Alpaca astronomical equipment"
+  }
+}

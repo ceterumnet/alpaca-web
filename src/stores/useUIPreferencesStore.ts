@@ -1,3 +1,11 @@
+// Status: Good - Core Store
+// This is the UI preferences store that:
+// - Manages user interface settings
+// - Handles theme and appearance
+// - Provides customization options
+// - Supports preference persistence
+// - Maintains user preferences
+
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 

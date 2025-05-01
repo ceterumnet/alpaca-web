@@ -1,3 +1,11 @@
+// Status: Transitional - To Be Replaced
+// This is a temporary debugging utility that will be replaced by the new logging system:
+// - Will be integrated into the unified logging service
+// - Current debug functions will be replaced with proper log levels
+// - Will support the new debug panel UI
+// - Will be enhanced with log persistence and filtering
+// - Will be part of the comprehensive developer tools
+
 /**
  * Debug utilities for helping diagnose issues during development
  */

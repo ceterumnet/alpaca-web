@@ -1,3 +1,11 @@
+// Status: Good - Core Store
+// This is the notification store that:
+// - Manages global notification state
+// - Handles notification queuing and lifecycle
+// - Provides notification actions and getters
+// - Supports different notification types
+// - Maintains notification history
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
@@ -20,6 +28,8 @@ export interface Notification {
     | 'bottom-left'
     | 'top-center'
     | 'bottom-center'
+  acknowledged?: boolean
+  requiresAcknowledgment?: boolean
 }
 
 export interface NotificationOptions {
@@ -32,6 +42,17 @@ export interface NotificationOptions {
     | 'bottom-left'
     | 'top-center'
     | 'bottom-center'
+  requiresAcknowledgment?: boolean
+}
+
+export interface NotificationFilter {
+  types?: NotificationType[]
+  readState?: boolean
+  acknowledgedState?: boolean
+  timeRange?: {
+    start?: number
+    end?: number
+  }
 }
 
 export const useNotificationStore = defineStore('notifications', () => {
@@ -52,6 +73,44 @@ export const useNotificationStore = defineStore('notifications', () => {
     return [...notifications.value].sort((a, b) => b.timestamp - a.timestamp)
   })
 
+  // Filter notifications based on criteria
+  function filterNotifications(filter: NotificationFilter = {}) {
+    return notifications.value.filter((notification) => {
+      // Filter by type
+      if (filter.types && filter.types.length > 0) {
+        if (!filter.types.includes(notification.type)) {
+          return false
+        }
+      }
+
+      // Filter by read state
+      if (typeof filter.readState === 'boolean') {
+        if (notification.read !== filter.readState) {
+          return false
+        }
+      }
+
+      // Filter by acknowledged state
+      if (typeof filter.acknowledgedState === 'boolean') {
+        if ((notification.acknowledged ?? false) !== filter.acknowledgedState) {
+          return false
+        }
+      }
+
+      // Filter by time range
+      if (filter.timeRange) {
+        if (filter.timeRange.start && notification.timestamp < filter.timeRange.start) {
+          return false
+        }
+        if (filter.timeRange.end && notification.timestamp > filter.timeRange.end) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }
+
   // Add a notification
   function addNotification(
     message: string,
@@ -67,7 +126,9 @@ export const useNotificationStore = defineStore('notifications', () => {
       duration: options.duration ?? 5000, // Default 5 seconds
       read: false,
       autoDismiss: options.autoDismiss ?? true,
-      position: options.position ?? 'top-right'
+      position: options.position ?? 'top-right',
+      requiresAcknowledgment: options.requiresAcknowledgment ?? false,
+      acknowledged: false
     }
 
     notifications.value.push(notification)
@@ -113,6 +174,28 @@ export const useNotificationStore = defineStore('notifications', () => {
     }
   }
 
+  // Acknowledge a notification
+  function acknowledgeNotification(id: string): void {
+    const notification = notifications.value.find((n) => n.id === id)
+    if (notification) {
+      notification.acknowledged = true
+      // If it doesn't require being kept visible after acknowledgment, mark as read
+      if (!notification.requiresAcknowledgment) {
+        notification.read = true
+      }
+    }
+  }
+
+  // Acknowledge all notifications
+  function acknowledgeAll(): void {
+    notifications.value.forEach((n) => {
+      n.acknowledged = true
+      if (!n.requiresAcknowledgment) {
+        n.read = true
+      }
+    })
+  }
+
   // Dismiss a notification
   function dismissNotification(id: string): void {
     markAsRead(id)
@@ -127,6 +210,24 @@ export const useNotificationStore = defineStore('notifications', () => {
   function clearHistory(): void {
     // Keep unread notifications
     notifications.value = notifications.value.filter((n) => !n.read)
+  }
+
+  // Export notification history to JSON file
+  function exportNotificationHistory(): string {
+    const historyData = notificationHistory.value.map((notification) => ({
+      id: notification.id,
+      message: notification.message,
+      type: notification.type,
+      timestamp: notification.timestamp,
+      time: new Date(notification.timestamp).toISOString(),
+      read: notification.read,
+      acknowledged: notification.acknowledged
+    }))
+
+    const dataStr = JSON.stringify(historyData, null, 2)
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
+
+    return dataUri
   }
 
   // Set up listeners for UnifiedStore events
@@ -185,6 +286,10 @@ export const useNotificationStore = defineStore('notifications', () => {
     markAsRead,
     dismissNotification,
     dismissAllNotifications,
-    clearHistory
+    clearHistory,
+    filterNotifications,
+    acknowledgeNotification,
+    acknowledgeAll,
+    exportNotificationHistory
   }
 })

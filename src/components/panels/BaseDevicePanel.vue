@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useUnifiedStore } from '../../stores/UnifiedStore'
-import type { Device } from '../../types/DeviceTypes'
+import type { Device } from '@/types/device.types'
 import { UIMode } from '../../stores/useUIPreferencesStore'
 import { debugLog } from '../../utils/debugUtils'
 

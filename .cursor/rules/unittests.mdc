@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+"npm run test:unit | cat" is the command for running all of the unit tests when you need it

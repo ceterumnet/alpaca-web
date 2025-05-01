@@ -1,3 +1,11 @@
+// Status: Good - Core Store
+// This is the astronomy device store that:
+// - Manages ASCOM device state
+// - Handles device-specific operations
+// - Provides astronomy device features
+// - Supports device coordination
+// - Maintains device synchronization
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { Device as DeviceClass, DeviceFactory } from '@/types/Device'

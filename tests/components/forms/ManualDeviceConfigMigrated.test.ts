@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import ManualDeviceConfigMigrated from '../../../src/components/devices/ManualDeviceConfigMigrated.vue'
-import { useDiscoveredDevicesStore } from '../../../src/stores/useDiscoveredDevicesStore'
+import ManualDeviceConfig from '@/components/devices/ManualDeviceConfig.vue'
+import { useDiscoveredDevicesStore } from '@/stores/useDiscoveredDevicesStore'
 import axios from 'axios'
 
 // Mock the stores
-vi.mock('../../../src/stores/useDiscoveredDevicesStore', () => ({
+vi.mock('@/stores/useDiscoveredDevicesStore', () => ({
   useDiscoveredDevicesStore: vi.fn()
 }))
 
@@ -16,7 +16,7 @@ const mockUnifiedStore = {
   connectDevice: vi.fn().mockResolvedValue(true)
 }
 
-vi.mock('../../../src/stores/UnifiedStore', () => ({
+vi.mock('@/stores/UnifiedStore', () => ({
   useUnifiedStore: vi.fn(() => mockUnifiedStore)
 }))
 
@@ -73,7 +73,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
   })
 
   it('renders correctly with initially hidden form', () => {
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // Should render the component
     expect(wrapper.find('.manual-device-config').exists()).toBe(true)
@@ -88,7 +88,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
   })
 
   it('shows the form when button is clicked', async () => {
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // Click the button to show the form
     await wrapper.find('.toggle-btn').trigger('click')
@@ -101,7 +101,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
   })
 
   it('hides the form when Cancel is clicked', async () => {
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // First show the form
     await wrapper.find('.toggle-btn').trigger('click')
@@ -113,7 +113,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
   })
 
   it('shows validation error for empty fields', async () => {
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // Show the form
     await wrapper.find('.toggle-btn').trigger('click')
@@ -137,7 +137,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     // Setup mock to throw an error
     discoveredDevicesStore.addManualDevice.mockRejectedValue(new Error('Connection failed'))
 
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // Show the form
     await wrapper.find('.toggle-btn').trigger('click')
@@ -171,7 +171,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     // Setup axios to throw an error
     vi.mocked(axios.get).mockRejectedValue(new Error('API error'))
 
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // Show the form
     await wrapper.find('.toggle-btn').trigger('click')
@@ -203,7 +203,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     // Setup getProxyUrl to return a URL
     discoveredDevicesStore.getProxyUrl.mockReturnValue('http://localhost:8000')
 
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // Show the form
     await wrapper.find('.toggle-btn').trigger('click')
@@ -239,7 +239,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     // Setup getProxyUrl to return a URL
     discoveredDevicesStore.getProxyUrl.mockReturnValue('http://localhost:8000')
 
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // Show the form
     await wrapper.find('.toggle-btn').trigger('click')
@@ -290,7 +290,7 @@ describe('ManualDeviceConfigMigrated.vue', () => {
     // Setup getProxyUrl to return a URL
     discoveredDevicesStore.getProxyUrl.mockReturnValue('http://localhost:8000')
 
-    const wrapper = mount(ManualDeviceConfigMigrated)
+    const wrapper = mount(ManualDeviceConfig)
 
     // Show the form
     await wrapper.find('.toggle-btn').trigger('click')

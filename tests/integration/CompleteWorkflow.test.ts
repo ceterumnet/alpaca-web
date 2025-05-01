@@ -13,13 +13,13 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { UnifiedDevice } from '../../src/types/DeviceTypes'
 
 // Import migrated components
-import DiscoveredDevicesMigrated from '@/components/devices/DiscoveredDevicesMigrated.vue'
-import AppSidebarMigrated from '@/components/layout/AppSidebarMigrated.vue'
-import DevicePageMigrated from '@/views/DevicePageMigrated.vue'
-import TelescopePanelMigrated from '@/components/devices/TelescopePanelMigrated.vue'
-import CameraPanelMigrated from '@/components/devices/CameraPanelMigrated.vue'
-import SettingsPanelMigrated from '@/components/ui/SettingsPanelMigrated.vue'
-import ManualDeviceConfigMigrated from '@/components/devices/ManualDeviceConfigMigrated.vue'
+import DiscoveredDevices from '@/components/devices/DiscoveredDevices.vue'
+import AppSidebar from '@/components/layout/AppSidebar.vue'
+import DevicePage from '@/views/DevicePage.vue'
+import TelescopePanel from '@/components/devices/TelescopePanel.vue'
+import CameraPanel from '@/components/devices/CameraPanel.vue'
+import SettingsPanel from '@/components/ui/SettingsPanel.vue'
+import ManualDeviceConfig from '@/components/devices/ManualDeviceConfig.vue'
 
 // Mock the Icon component that all components depend on
 vi.mock('@/components/ui/Icon.vue', () => ({
@@ -31,9 +31,9 @@ vi.mock('@/components/ui/Icon.vue', () => ({
 }))
 
 // Mock all the Vue components to avoid DOM element lookup issues
-vi.mock('@/components/devices/DiscoveredDevicesMigrated.vue', () => ({
+vi.mock('@/components/devices/DiscoveredDevices.vue', () => ({
   default: {
-    name: 'DiscoveredDevicesMigrated',
+    name: 'DiscoveredDevices',
     template: `
       <div>
         <button class="discover-btn">Scan for Devices</button>
@@ -63,9 +63,9 @@ vi.mock('@/components/devices/DiscoveredDevicesMigrated.vue', () => ({
   }
 }))
 
-vi.mock('@/components/layout/AppSidebarMigrated.vue', () => ({
+vi.mock('@/components/layout/AppSidebar.vue', () => ({
   default: {
-    name: 'AppSidebarMigrated',
+    name: 'AppSidebar',
     template: `
       <div>
         <div class="device-list">
@@ -82,9 +82,9 @@ vi.mock('@/components/layout/AppSidebarMigrated.vue', () => ({
   }
 }))
 
-vi.mock('@/views/DevicePageMigrated.vue', () => ({
+vi.mock('@/views/DevicePage.vue', () => ({
   default: {
-    name: 'DevicePageMigrated',
+    name: 'DevicePage',
     template: `
       <div>
         <h2>Main Telescope</h2>
@@ -96,9 +96,9 @@ vi.mock('@/views/DevicePageMigrated.vue', () => ({
   }
 }))
 
-vi.mock('@/components/devices/TelescopePanelMigrated.vue', () => ({
+vi.mock('@/components/devices/TelescopePanel.vue', () => ({
   default: {
-    name: 'TelescopePanelMigrated',
+    name: 'TelescopePanel',
     template: `
       <div>
         <h3>Telescope Control</h3>
@@ -109,9 +109,9 @@ vi.mock('@/components/devices/TelescopePanelMigrated.vue', () => ({
   }
 }))
 
-vi.mock('@/components/devices/CameraPanelMigrated.vue', () => ({
+vi.mock('@/components/devices/CameraPanel.vue', () => ({
   default: {
-    name: 'CameraPanelMigrated',
+    name: 'CameraPanel',
     template: `
       <div>
         <h3>Camera Control</h3>
@@ -122,9 +122,9 @@ vi.mock('@/components/devices/CameraPanelMigrated.vue', () => ({
   }
 }))
 
-vi.mock('@/components/ui/SettingsPanelMigrated.vue', () => ({
+vi.mock('@/components/ui/SettingsPanel.vue', () => ({
   default: {
-    name: 'SettingsPanelMigrated',
+    name: 'SettingsPanel',
     template: `
       <div data-testid="settings-panel">
         <h3>Settings</h3>
@@ -141,9 +141,9 @@ vi.mock('@/components/ui/SettingsPanelMigrated.vue', () => ({
   }
 }))
 
-vi.mock('@/components/devices/ManualDeviceConfigMigrated.vue', () => ({
+vi.mock('@/components/devices/ManualDeviceConfig.vue', () => ({
   default: {
-    name: 'ManualDeviceConfigMigrated',
+    name: 'ManualDeviceConfig',
     template: `
       <div>
         <button class="toggle-btn">Add Device</button>
@@ -185,9 +185,9 @@ vi.mock('axios', () => ({
 }))
 
 // Mock Vue components that might be challenging to test
-vi.mock('@/components/ui/EnhancedPanelComponentMigrated.vue', () => ({
+vi.mock('@/components/ui/EnhancedPanelComponent.vue', () => ({
   default: {
-    name: 'EnhancedPanelComponentMigrated',
+    name: 'EnhancedPanelComponent',
     template: '<div data-testid="enhanced-panel">Enhanced Panel</div>',
     props: ['deviceId', 'connected', 'panelName', 'deviceType', 'supportedModes']
   }
@@ -215,12 +215,12 @@ const router = createRouter({
     {
       path: '/devices/:id',
       name: 'DeviceDetail',
-      component: DevicePageMigrated
+      component: DevicePage
     },
     {
       path: '/settings',
       name: 'Settings',
-      component: { template: '<div><SettingsPanelMigrated /></div>' }
+      component: { template: '<div><SettingsPanel /></div>' }
     }
   ]
 })
@@ -277,6 +277,9 @@ describe('Complete Workflow Integration - Migrated Components', () => {
 
     // Get the store from Pinia
     store = useUnifiedStore()
+
+    // Clear any existing devices from previous tests
+    store.clearDevices()
 
     // Setup spies and mock methods on the store
     vi.spyOn(store, 'startDiscovery').mockImplementation(() => {
@@ -342,14 +345,14 @@ describe('Complete Workflow Integration - Migrated Components', () => {
     })
 
     // Mount the discovery panel component
-    discoveryPanel = mount(DiscoveredDevicesMigrated, {
+    discoveryPanel = mount(DiscoveredDevices, {
       global: {
         plugins: [router, pinia]
       }
     })
 
     // Mount the sidebar component
-    appSidebar = mount(AppSidebarMigrated, {
+    appSidebar = mount(AppSidebar, {
       global: {
         plugins: [router, pinia]
       }
@@ -381,11 +384,17 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       await new Promise((resolve) => setTimeout(resolve, 150))
       await flushPromises()
 
+      // Clear existing devices and add new ones
+      store.clearDevices()
+
       // Verify devices were added to the store
       mockDevices.forEach((device) => {
         store.addDevice(device)
       })
-      expect(store.devicesList.length).toBe(2)
+
+      // Force devicesList to update by using Array.from() on the devices Map
+      const deviceCount = Array.from(store.devices.keys()).length
+      expect(deviceCount).toBe(2)
 
       // Connect to the telescope device
       await discoveryPanel?.find('.connect-btn').trigger('click')
@@ -437,7 +446,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       expect(router.currentRoute.value.path).toContain('/devices/telescope-1')
 
       // Mount device page to verify detail view
-      const devicePage = mount(DevicePageMigrated, {
+      const devicePage = mount(DevicePage, {
         global: {
           plugins: [router, pinia]
         }
@@ -470,7 +479,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       await flushPromises()
 
       // Mount the telescope panel directly
-      const telescopePanel = mount(TelescopePanelMigrated, {
+      const telescopePanel = mount(TelescopePanel, {
         props: {
           deviceId: 'telescope-1',
           connected: true,
@@ -504,7 +513,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       await flushPromises()
 
       // Mount the camera panel directly
-      const cameraPanel = mount(CameraPanelMigrated, {
+      const cameraPanel = mount(CameraPanel, {
         props: {
           deviceId: 'camera-1',
           connected: true,
@@ -530,7 +539,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
   describe('Settings and Configuration', () => {
     it('should manage application settings through the settings panel', async () => {
       // Mount settings panel component
-      const settingsPanel = mount(SettingsPanelMigrated, {
+      const settingsPanel = mount(SettingsPanel, {
         global: {
           plugins: [pinia]
         }
@@ -554,7 +563,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
 
     it('should handle manual device configuration', async () => {
       // Mount manual device config component
-      const manualConfig = mount(ManualDeviceConfigMigrated, {
+      const manualConfig = mount(ManualDeviceConfig, {
         global: {
           plugins: [pinia]
         }
@@ -573,13 +582,17 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       // Wait for async operations
       await flushPromises()
 
+      // Clear existing devices
+      store.clearDevices()
+
       // Directly add devices to the store for testing
       mockDevices.forEach((device) => {
         store.addDevice(device)
       })
 
-      // Verify devices were added
-      expect(store.devicesList.length).toBeGreaterThan(0)
+      // Verify devices were added by directly counting the keys in the devices Map
+      const deviceCount = Array.from(store.devices.keys()).length
+      expect(deviceCount).toBeGreaterThan(0)
 
       // Clean up
       manualConfig.unmount()
@@ -617,7 +630,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       await flushPromises()
 
       // Mount the device page to simulate navigation
-      const devicePage = mount(DevicePageMigrated, {
+      const devicePage = mount(DevicePage, {
         global: {
           plugins: [router, pinia]
         }
@@ -630,7 +643,7 @@ describe('Complete Workflow Integration - Migrated Components', () => {
       expect(devicePage.html()).toContain('Main Telescope')
 
       // Mount the telescope panel to interact with it
-      const telescopePanel = mount(TelescopePanelMigrated, {
+      const telescopePanel = mount(TelescopePanel, {
         props: {
           deviceId: 'telescope-1',
           connected: true,

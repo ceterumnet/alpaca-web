@@ -127,3 +127,27 @@ To manually create a distribution package:
    # or
    tar -czf ../alpaca-web-v1.0.0.tar.gz .
    ```
+
+## Features
+
+### Responsive Panel System
+
+The application includes a responsive panel system that adapts to different screen sizes and device capabilities. The system provides:
+
+- Responsive layout that adapts to available space
+- Feature prioritization based on screen size
+- Collapsible sections for related settings
+- Dynamic component resolution
+
+For more information, see the [Responsive Panels Documentation](docs/ResponsivePanels.md).
+
+### ASCOM Alpaca Integration
+
+This application provides a user-friendly interface for controlling astronomical equipment through the ASCOM Alpaca protocol. It supports various device types including:
+
+- Cameras
+- Telescopes
+- Focusers
+- Filter Wheels
+- Domes
+- And more...

@@ -4,6 +4,14 @@
  * with the new store with minimal changes.
  */
 
+// Status: Good - Core Store
+// This is the device store adapter that:
+// - Provides store compatibility layer
+// - Handles store version migrations
+// - Adapts device store interfaces
+// - Supports legacy compatibility
+// - Maintains store consistency
+
 import {
   useAstroDeviceStore,
   type Device,

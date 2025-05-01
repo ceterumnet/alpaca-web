@@ -1,0 +1,270 @@
+/**
+ * Alpaca Web Design Token System
+ * 
+ * This file defines the core design tokens used throughout the application.
+ * It follows a structured approach with:
+ * 1. Base color palettes (neutral, primary, semantic)
+ * 2. Semantic tokens that map to specific UI elements
+ * 3. Component-specific tokens
+ * 4. Dark theme overrides
+ */
+
+:root {
+  /* ============================================================
+     BASE COLOR PALETTES
+     ============================================================ */
+
+  /* Neutral colors - grayscale palette */
+  --aw-color-neutral-50: #f8fafd;
+  --aw-color-neutral-100: #f5f7fa;
+  --aw-color-neutral-200: #edf0f5;
+  --aw-color-neutral-300: #e0e6ef;
+  --aw-color-neutral-400: #c0c8d0;
+  --aw-color-neutral-500: #a0a8b0;
+  --aw-color-neutral-600: #5a6270;
+  --aw-color-neutral-700: #424857;
+  --aw-color-neutral-800: #212121;
+  --aw-color-neutral-900: #0a0a0a;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-neutral-rgb: 90, 98, 112; /* --aw-color-neutral-600 */
+
+  /* Primary colors - blue palette */
+  --aw-color-primary-50: #e8f0ff;
+  --aw-color-primary-100: #c9d9f7;
+  --aw-color-primary-200: #a8c2f2;
+  --aw-color-primary-300: #789fea;
+  --aw-color-primary-400: #5b8ae0;
+  --aw-color-primary-500: #4a7adc;
+  --aw-color-primary-600: #3a6acd;
+  --aw-color-primary-700: #3a5fbc;
+  --aw-color-primary-800: #304fa0;
+  --aw-color-primary-900: #233b80;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-primary-rgb: 74, 122, 220; /* --aw-color-primary-500 */
+
+  /* Success colors - green palette */
+  --aw-color-success-50: #e8f5e9;
+  --aw-color-success-100: #c8e6c9;
+  --aw-color-success-300: #81c784;
+  --aw-color-success-500: #4caf50;
+  --aw-color-success-700: #388e3c;
+  --aw-color-success-900: #1b5e20;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-success-rgb: 76, 175, 80; /* --aw-color-success-500 */
+
+  /* Warning colors - orange palette */
+  --aw-color-warning-50: #fff3e0;
+  --aw-color-warning-100: #ffe0b2;
+  --aw-color-warning-300: #ffb74d;
+  --aw-color-warning-500: #ff9800;
+  --aw-color-warning-700: #f57c00;
+  --aw-color-warning-900: #e65100;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-warning-rgb: 255, 152, 0; /* --aw-color-warning-500 */
+
+  /* Error colors - red palette */
+  --aw-color-error-50: #ffebee;
+  --aw-color-error-100: #ffcdd2;
+  --aw-color-error-300: #e57373;
+  --aw-color-error-500: #f44336;
+  --aw-color-error-700: #d32f2f;
+  --aw-color-error-900: #b71c1c;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-error-rgb: 244, 67, 54; /* --aw-color-error-500 */
+
+  /* ============================================================
+     SEMANTIC COLOR TOKENS - map base colors to UI concepts
+     ============================================================ */
+
+  /* Background colors */
+  --aw-bg-color: var(--aw-color-neutral-100);
+  --aw-color: var(--aw-color-neutral-800);
+
+  /* Text colors */
+  --aw-text-color: var(--aw-color-neutral-800);
+  --aw-text-secondary-color: var(--aw-color-neutral-600);
+  --aw-link-color: var(--aw-color-primary-600);
+
+  /* Panel colors */
+  --aw-panel-bg-color: #ffffff;
+  --aw-panels-bg-color: var(--aw-color-neutral-200);
+  --aw-panel-border-color: var(--aw-color-neutral-300);
+  --aw-panel-hover-bg-color: var(--aw-color-neutral-50);
+  --aw-panel-content-bg-color: var(--aw-color-neutral-50);
+  --aw-panel-content-color: var(--aw-text-color);
+  --aw-panel-content-secondary-color: var(--aw-text-secondary-color);
+  --aw-panel-menu-bar-bg-color: var(--aw-color-primary-500);
+  --aw-panel-menu-bar-color: #ffffff;
+  --aw-panel-resize-bg-color: var(--aw-color-primary-500);
+  --aw-panel-resize-color: #ffffff;
+  --aw-panel-button-hover-bg: var(--aw-color-neutral-200);
+
+  /* Form colors */
+  --aw-form-bg-color: #ffffff;
+  --aw-input-bg-color: #ffffff;
+  --aw-input-border-color: var(--aw-color-neutral-300);
+
+  /* Button colors */
+  --aw-button-primary-bg: var(--aw-color-primary-500);
+  --aw-button-primary-text: #ffffff;
+  --aw-button-primary-hover-bg: var(--aw-color-primary-700);
+
+  --aw-button-secondary-bg: var(--aw-color-neutral-200);
+  --aw-button-secondary-text: var(--aw-color-neutral-700);
+  --aw-button-secondary-hover-bg: var(--aw-color-neutral-300);
+
+  --aw-button-success-bg: var(--aw-color-success-500);
+  --aw-button-success-text: #ffffff;
+  --aw-button-success-hover-bg: var(--aw-color-success-700);
+
+  --aw-button-warning-bg: var(--aw-color-warning-500);
+  --aw-button-warning-text: #ffffff;
+  --aw-button-warning-hover-bg: var(--aw-color-warning-700);
+
+  --aw-button-danger-bg: var(--aw-color-error-500);
+  --aw-button-danger-text: #ffffff;
+  --aw-button-danger-hover-bg: var(--aw-color-error-700);
+
+  /* Status indicators */
+  --aw-success-color: var(--aw-color-success-500);
+  --aw-success-muted: rgba(76, 175, 80, 0.1);
+  --aw-success-muted-hover: rgba(76, 175, 80, 0.2);
+
+  --aw-warning-color: var(--aw-color-warning-500);
+  --aw-warning-muted: rgba(255, 152, 0, 0.1);
+  --aw-warning-muted-hover: rgba(255, 152, 0, 0.2);
+
+  --aw-error-color: var(--aw-color-error-500);
+  --aw-error-muted: rgba(244, 67, 54, 0.1);
+  --aw-error-muted-hover: rgba(244, 67, 54, 0.2);
+
+  /* ============================================================
+     SPACING TOKENS
+     ============================================================ */
+  --aw-spacing-xs: 4px;
+  --aw-spacing-sm: 8px;
+  --aw-spacing-md: 16px;
+  --aw-spacing-lg: 24px;
+  --aw-spacing-xl: 32px;
+  --aw-spacing-xxl: 48px;
+
+  /* ============================================================
+     LAYOUT TOKENS
+     ============================================================ */
+  --aw-border-radius-sm: 4px;
+  --aw-border-radius-md: 8px;
+  --aw-border-radius-lg: 12px;
+
+  --aw-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --aw-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
+  --aw-shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15), 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================
+   DARK THEME OVERRIDES - RED THEME FOR ASTRONOMY
+   The red theme is specifically designed for astronomy to 
+   preserve night vision during observations.
+   ============================================================ */
+:root .dark-theme {
+  /* Base colors - red-based dark theme for astronomy */
+  --aw-color-neutral-50: #2d1010; /* Darkest background */
+  --aw-color-neutral-100: #1a0808; /* Main background */
+  --aw-color-neutral-200: #220808; /* Secondary background */
+  --aw-color-neutral-300: #5a1818; /* Borders */
+  --aw-color-neutral-400: #7a2020; /* Secondary UI elements */
+  --aw-color-neutral-500: #902828; /* Mid-level UI elements */
+  --aw-color-neutral-600: #d0a0a0; /* Secondary text */
+  --aw-color-neutral-700: #e0b0b0; /* Primary text for dark elements */
+  --aw-color-neutral-800: #f0d0d0; /* Primary text */
+  --aw-color-neutral-900: #f8e0e0; /* High contrast text */
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-neutral-rgb: 208, 160, 160; /* --aw-color-neutral-600 */
+
+  /* Primary colors - red theme for astronomy */
+  --aw-color-primary-300: #d45a5a;
+  --aw-color-primary-500: #b53f3f; /* Main brand color in dark mode */
+  --aw-color-primary-700: #8b2020;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-primary-rgb: 181, 63, 63; /* --aw-color-primary-500 */
+
+  /* Success colors - reddish success for astronomy night vision */
+  --aw-color-success-500: #a04030;
+  --aw-color-success-700: #7a3020;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-success-rgb: 160, 64, 48; /* --aw-color-success-500 */
+
+  /* Warning colors - reddish warning for astronomy night vision */
+  --aw-color-warning-500: #b55030;
+  --aw-color-warning-700: #7a3820;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-warning-rgb: 181, 80, 48; /* --aw-color-warning-500 */
+
+  /* Error - darker red for astronomy night vision */
+  --aw-color-error-500: #9e2b2b;
+  --aw-color-error-700: #8b1010;
+
+  /* RGB variants for alpha operations (box-shadows, etc) */
+  --aw-color-error-rgb: 158, 43, 43; /* --aw-color-error-500 */
+
+  /* Semantic colors for dark theme */
+  --aw-bg-color: var(--aw-color-neutral-100);
+  --aw-color: var(--aw-color-neutral-800);
+
+  --aw-text-color: var(--aw-color-neutral-800);
+  --aw-text-secondary-color: var(--aw-color-neutral-600);
+
+  --aw-panel-bg-color: var(--aw-color-neutral-50);
+  --aw-panels-bg-color: var(--aw-color-neutral-200);
+  --aw-panel-border-color: var(--aw-color-neutral-300);
+  --aw-panel-hover-bg-color: var(--aw-color-neutral-300);
+  --aw-panel-content-bg-color: var(--aw-color-neutral-50);
+  --aw-panel-menu-bar-bg-color: #4d1818;
+  --aw-panel-menu-bar-color: var(--aw-color-neutral-900);
+
+  --aw-form-bg-color: var(--aw-color-neutral-50);
+  --aw-input-bg-color: #3a1818;
+  --aw-input-border-color: var(--aw-color-neutral-300);
+
+  /* Button colors - red theme for astronomy */
+  --aw-button-primary-bg: #7a2020;
+  --aw-button-primary-text: var(--aw-color-neutral-900);
+  --aw-button-primary-hover-bg: #8b2020;
+
+  --aw-button-secondary-bg: #3a1818;
+  --aw-button-secondary-text: var(--aw-color-neutral-600);
+  --aw-button-secondary-hover-bg: #4d1818;
+
+  --aw-button-success-bg: #7a3020;
+  --aw-button-success-text: var(--aw-color-neutral-900);
+  --aw-button-success-hover-bg: #8b3020;
+
+  --aw-button-warning-bg: #7a3820;
+  --aw-button-warning-text: var(--aw-color-neutral-900);
+  --aw-button-warning-hover-bg: #8b3820;
+
+  --aw-button-danger-bg: #8b1010;
+  --aw-button-danger-text: var(--aw-color-neutral-900);
+  --aw-button-danger-hover-bg: #9e1010;
+
+  /* Status indicators */
+  --aw-success-color: #a04030;
+  --aw-success-muted: rgba(160, 64, 48, 0.2);
+  --aw-success-muted-hover: rgba(160, 64, 48, 0.3);
+
+  --aw-warning-color: #b55030;
+  --aw-warning-muted: rgba(181, 80, 48, 0.2);
+  --aw-warning-muted-hover: rgba(181, 80, 48, 0.3);
+
+  --aw-error-color: #9e2b2b;
+  --aw-error-muted: rgba(158, 43, 43, 0.2);
+  --aw-error-muted-hover: rgba(158, 43, 43, 0.3);
+}

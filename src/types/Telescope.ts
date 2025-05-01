@@ -1,3 +1,11 @@
+// Status: Legacy - To Be Refactored
+// This module provides legacy telescope class definition that:
+// - Will be replaced by TelescopeDevice interface from DeviceTypes.ts
+// - Currently used for backward compatibility
+// - Should be migrated to use UnifiedDevice interface
+// - Will be consolidated with DeviceTypes.ts
+// - Will be removed once migration is complete
+
 import { Device, DeviceFactory } from './Device'
 
 // COMMON

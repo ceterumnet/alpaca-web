@@ -1,0 +1,252 @@
+/**
+ * Alpaca Web - Global Button Styles
+ * 
+ * This file defines consistent button styles across the application
+ * following the design token system and UI Style Consistency Plan.
+ * 
+ * Usage:
+ * <button class="aw-button aw-button--primary">Primary Button</button>
+ * <button class="aw-button aw-button--secondary">Secondary Button</button>
+ * <button class="aw-button aw-button--tertiary">Tertiary Button</button>
+ * <button class="aw-button aw-button--danger">Danger Button</button>
+ * <button class="aw-button aw-button--success">Success Button</button>
+ * <button class="aw-button aw-button--warning">Warning Button</button>
+ */
+
+/* Base button styles */
+.aw-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+  border-radius: var(--aw-border-radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* Button sizes */
+.aw-button--small {
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  font-size: 0.875rem;
+}
+
+.aw-button--medium {
+  /* Default size, no additional styles needed */
+}
+
+.aw-button--large {
+  padding: var(--aw-spacing-md) var(--aw-spacing-lg);
+  font-size: 1.125rem;
+}
+
+/* Primary button */
+.aw-button--primary {
+  background-color: var(--aw-button-primary-bg);
+  color: var(--aw-button-primary-text);
+  border-color: var(--aw-button-primary-bg);
+}
+
+.aw-button--primary:hover:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-button-primary-hover-bg);
+  border-color: var(--aw-button-primary-hover-bg);
+}
+
+.aw-button--primary:focus:not(.aw-button--disabled):not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-primary-rgb, 74, 122, 220), 0.3);
+}
+
+.aw-button--primary:active:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-color-primary-800);
+  border-color: var(--aw-color-primary-800);
+}
+
+/* Secondary button */
+.aw-button--secondary {
+  background-color: var(--aw-button-secondary-bg);
+  color: var(--aw-button-secondary-text);
+  border-color: var(--aw-input-border-color);
+}
+
+.aw-button--secondary:hover:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-button-secondary-hover-bg);
+}
+
+.aw-button--secondary:focus:not(.aw-button--disabled):not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-neutral-rgb, 90, 98, 112), 0.15);
+}
+
+.aw-button--secondary:active:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-color-neutral-300);
+}
+
+/* Tertiary button - minimal/ghost */
+.aw-button--tertiary {
+  background-color: transparent;
+  color: var(--aw-color-primary-500);
+  border-color: transparent;
+}
+
+.aw-button--tertiary:hover:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-panel-hover-bg-color);
+}
+
+.aw-button--tertiary:focus:not(.aw-button--disabled):not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-primary-rgb, 74, 122, 220), 0.15);
+}
+
+.aw-button--tertiary:active:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-color-neutral-200);
+}
+
+/* Success button */
+.aw-button--success {
+  background-color: var(--aw-button-success-bg);
+  color: var(--aw-button-success-text);
+  border-color: var(--aw-button-success-bg);
+}
+
+.aw-button--success:hover:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-button-success-hover-bg);
+  border-color: var(--aw-button-success-hover-bg);
+}
+
+.aw-button--success:focus:not(.aw-button--disabled):not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-success-rgb, 76, 175, 80), 0.3);
+}
+
+.aw-button--success:active:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-color-success-900);
+  border-color: var(--aw-color-success-900);
+}
+
+/* Warning button */
+.aw-button--warning {
+  background-color: var(--aw-button-warning-bg);
+  color: var(--aw-button-warning-text);
+  border-color: var(--aw-button-warning-bg);
+}
+
+.aw-button--warning:hover:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-button-warning-hover-bg);
+  border-color: var(--aw-button-warning-hover-bg);
+}
+
+.aw-button--warning:focus:not(.aw-button--disabled):not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-warning-rgb, 255, 152, 0), 0.3);
+}
+
+.aw-button--warning:active:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-color-warning-900);
+  border-color: var(--aw-color-warning-900);
+}
+
+/* Danger button */
+.aw-button--danger {
+  background-color: var(--aw-button-danger-bg);
+  color: var(--aw-button-danger-text);
+  border-color: var(--aw-button-danger-bg);
+}
+
+.aw-button--danger:hover:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-button-danger-hover-bg);
+  border-color: var(--aw-button-danger-hover-bg);
+}
+
+.aw-button--danger:focus:not(.aw-button--disabled):not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-error-rgb, 244, 67, 54), 0.3);
+}
+
+.aw-button--danger:active:not(.aw-button--disabled):not(:disabled) {
+  background-color: var(--aw-color-error-900);
+  border-color: var(--aw-color-error-900);
+}
+
+/* Disabled state for all buttons */
+.aw-button--disabled,
+.aw-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Full width button variation */
+.aw-button--full-width {
+  width: 100%;
+  display: flex;
+}
+
+/* Button with icon (space for icon) */
+.aw-button--with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aw-spacing-xs);
+}
+
+/* Icon-only buttons (square aspect ratio) */
+.aw-button--icon-only {
+  aspect-ratio: 1/1;
+  padding: var(--aw-spacing-sm);
+}
+
+.aw-button--icon-only.aw-button--small {
+  padding: var(--aw-spacing-xs);
+}
+
+.aw-button--icon-only.aw-button--large {
+  padding: var(--aw-spacing-md);
+}
+
+/* Loading state */
+.aw-button--loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.aw-button--loading::after {
+  content: '';
+  position: absolute;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-color: transparent transparent currentColor currentColor;
+  border-radius: 50%;
+  animation: button-loading-spinner 0.6s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Button groups (adjacent buttons) */
+.aw-button-group {
+  display: inline-flex;
+}
+
+.aw-button-group .aw-button {
+  border-radius: 0;
+}
+
+.aw-button-group .aw-button:first-child {
+  border-top-left-radius: var(--aw-border-radius-sm);
+  border-bottom-left-radius: var(--aw-border-radius-sm);
+}
+
+.aw-button-group .aw-button:last-child {
+  border-top-right-radius: var(--aw-border-radius-sm);
+  border-bottom-right-radius: var(--aw-border-radius-sm);
+}
+
+.aw-button-group .aw-button:not(:first-child) {
+  margin-left: -1px;
+}

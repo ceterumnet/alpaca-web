@@ -1,3 +1,11 @@
+// Status: Legacy - To Be Refactored
+// This module provides legacy device class definitions that:
+// - Will be replaced by the new device type system
+// - Currently used for backward compatibility
+// - Should be migrated to use UnifiedDevice interface
+// - Will be consolidated with DeviceTypes.ts
+// - Will be removed once migration is complete
+
 export abstract class Device {
   deviceType!: string
   connected!: boolean

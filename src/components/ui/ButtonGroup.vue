@@ -1,5 +1,10 @@
+// Status: Good - Core UI Component // This is the button group implementation that: // - Provides
+consistent button grouping // - Supports vertical and horizontal layouts // - Handles proper spacing
+and borders // - Maintains consistent styling with Button component // - Supports different size
+variants
+
 <template>
-  <div class="button-group" :class="groupClass">
+  <div class="aw-button-group" :class="groupClass">
     <slot></slot>
   </div>
 </template>
@@ -24,8 +29,8 @@ export default defineComponent({
 
   setup(props) {
     const groupClass = computed(() => ({
-      [`button-group--${props.size}`]: true,
-      'button-group--vertical': props.vertical
+      [`aw-button-group--${props.size}`]: true,
+      'aw-button-group--vertical': props.vertical
     }))
 
     return {
@@ -36,26 +41,39 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.button-group {
+.aw-button-group {
   display: inline-flex;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   overflow: hidden;
 }
 
-.button-group--vertical {
+.aw-button-group--vertical {
   flex-direction: column;
 }
 
-.button-group :deep(.app-button) {
+/* Target the buttons inside the group */
+.aw-button-group :deep(.aw-button) {
   border-radius: 0;
   margin: 0;
 }
 
-.button-group--vertical :deep(.app-button:not(:last-child)) {
-  border-bottom: 1px solid var(--color-border);
+/* Add dividers between buttons */
+.aw-button-group--vertical :deep(.aw-button:not(:last-child)) {
+  border-bottom: 1px solid var(--aw-input-border-color);
 }
 
-.button-group:not(.button-group--vertical) :deep(.app-button:not(:last-child)) {
-  border-right: 1px solid var(--color-border);
+.aw-button-group:not(.aw-button-group--vertical) :deep(.aw-button:not(:last-child)) {
+  border-right: 1px solid var(--aw-input-border-color);
+}
+
+/* Size variants */
+.aw-button-group--small :deep(.aw-button) {
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  font-size: 0.85rem;
+}
+
+.aw-button-group--large :deep(.aw-button) {
+  padding: var(--aw-spacing-sm) var(--aw-spacing-lg);
+  font-size: 1.1rem;
 }
 </style>

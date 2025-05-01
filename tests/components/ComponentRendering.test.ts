@@ -7,8 +7,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { useUnifiedStore } from '../../src/stores/UnifiedStore'
-import StoreAdapter from '../../src/stores/StoreAdapter'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
+import StoreAdapter from '@/stores/StoreAdapter'
 import { createPinia, setActivePinia } from 'pinia'
 
 // Create mock components
@@ -25,11 +25,11 @@ const MainPanels = {
 }
 
 // Mock the imports
-vi.mock('../../src/components/DiscoveredDevices.vue', () => ({
+vi.mock('@/components/DiscoveredDevices.vue', () => ({
   default: DiscoveredDevices
 }))
 
-vi.mock('../../src/components/MainPanels.vue', () => ({
+vi.mock('@/components/MainPanels.vue', () => ({
   default: MainPanels
 }))
 

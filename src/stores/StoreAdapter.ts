@@ -1,3 +1,11 @@
+// Status: Good - Core Component
+// This is the store adapter implementation that:
+// - Provides backward compatibility for legacy code
+// - Adapts new store functionality to old interfaces
+// - Maintains type safety across store versions
+// - Handles store version migration
+// - Ensures smooth transition between store versions
+
 /**
  * Store Adapter
  *
@@ -182,7 +190,8 @@ export class StoreAdapter {
    * @param existingStore Optional existing UnifiedStore instance to use
    */
   constructor(existingStore?: UnifiedStoreType) {
-    this.store = existingStore || UnifiedStore
+    // Ensure we have a proper UnifiedStore instance by calling the store creation function
+    this.store = existingStore || UnifiedStore()
 
     // Initialize device arrays from existing store data
     this._initializeFromStore()

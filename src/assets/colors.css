@@ -1,41 +1,41 @@
 :root {
   /* Light theme base colors */
-  --aw-primary-color: #4a89dc;
-  --aw-primary-light: #93d4ff;
-  --aw-primary-dark: #3a69bc;
+  --aw-primary-color: #4a7adc;
+  --aw-primary-light: #789fea;
+  --aw-primary-dark: #3a5fbc;
   --aw-accent-color: #5b9bd5;
   --aw-success-color: #4caf50;
   --aw-warning-color: #ff9800;
   --aw-error-color: #f44336;
 
   /* Light theme UI colors */
-  --aw-bg-color: #f9f9f9;
+  --aw-bg-color: #f5f7fa;
   --aw-color: #212121;
   --aw-panel-bg-color: #ffffff;
   --aw-panel-menu-bar-color: #ffffff;
-  --aw-panels-bg-color: #f0f0f0;
-  --aw-panel-resize-bg-color: #4a89dc;
+  --aw-panels-bg-color: #edf0f5;
+  --aw-panel-resize-bg-color: #4a7adc;
   --aw-panel-resize-color: #ffffff;
-  --aw-panel-border-color: #e0e0e0;
-  --aw-panel-menu-bar-bg-color: #4a89dc;
-  --aw-panel-content-bg-color: #f5f5f5;
+  --aw-panel-border-color: #e0e6ef;
+  --aw-panel-menu-bar-bg-color: #4a7adc;
+  --aw-panel-content-bg-color: #f8fafd;
   --aw-panel-content-color: #212121;
-  --aw-panel-scrollbar-color-1: #c0c0c0;
-  --aw-panel-scrollbar-color-2: #a0a0a0;
+  --aw-panel-scrollbar-color-1: #c0c8d0;
+  --aw-panel-scrollbar-color-2: #a0a8b0;
   --aw-text-color: #212121;
-  --aw-text-secondary-color: #757575;
+  --aw-text-secondary-color: #5a6270;
   --aw-form-bg-color: #ffffff;
   --aw-input-bg-color: #ffffff;
-  --aw-input-border-color: #e0e0e0;
+  --aw-input-border-color: #e0e6ef;
 
   /* Button colors */
   --aw-button-primary-bg: var(--aw-primary-color);
   --aw-button-primary-text: white;
   --aw-button-primary-hover-bg: var(--aw-primary-dark);
 
-  --aw-button-secondary-bg: #e0e0e0;
-  --aw-button-secondary-text: #424242;
-  --aw-button-secondary-hover-bg: #d0d0d0;
+  --aw-button-secondary-bg: #e4e8f0;
+  --aw-button-secondary-text: #424857;
+  --aw-button-secondary-hover-bg: #d5dae0;
 
   --aw-button-success-bg: var(--aw-success-color);
   --aw-button-success-text: white;
@@ -51,53 +51,53 @@
 }
 
 :root .dark-theme {
-  /* Dark theme base colors - red shades for night vision */
+  /* Dark theme base colors - consistent red theme */
   --aw-primary-color: #b53f3f;
-  --aw-primary-light: #ff6b6b;
-  --aw-primary-dark: #8b0000;
-  --aw-accent-color: #d65b5b;
-  --aw-success-color: #966050;
-  --aw-warning-color: #b56e3f;
+  --aw-primary-light: #d45a5a;
+  --aw-primary-dark: #8b2020;
+  --aw-accent-color: #c04545;
+  --aw-success-color: #a04030; /* Reddish success */
+  --aw-warning-color: #b55030; /* Reddish warning */
   --aw-error-color: #9e2b2b;
 
   /* Dark theme UI colors */
-  --aw-bg-color: #1a0000;
-  --aw-color: #ff9e9e;
-  --aw-panel-bg-color: #2d0000;
-  --aw-panels-bg-color: #220000;
-  --aw-panel-resize-bg-color: #700000;
-  --aw-panel-resize-color: #ff6b6b;
-  --aw-panel-border-color: #5a0000;
-  --aw-panel-menu-bar-color: #ffcaca;
-  --aw-panel-menu-bar-bg-color: #4d0000;
-  --aw-panel-content-bg-color: #2d0000;
-  --aw-panel-content-color: #ffd5d5;
-  --aw-panel-scrollbar-color-1: #8b0000;
-  --aw-panel-scrollbar-color-2: #6b0000;
-  --aw-text-color: #ffd5d5;
-  --aw-text-secondary-color: #ff9e9e;
-  --aw-form-bg-color: #2d0000;
-  --aw-input-bg-color: #4d0000;
-  --aw-input-border-color: #5a0000;
+  --aw-bg-color: #1a0808;
+  --aw-color: #f0d0d0;
+  --aw-panel-bg-color: #2d1010;
+  --aw-panels-bg-color: #220808;
+  --aw-panel-resize-bg-color: #7a2020;
+  --aw-panel-resize-color: #f0d0d0;
+  --aw-panel-border-color: #5a1818;
+  --aw-panel-menu-bar-color: #f8e0e0;
+  --aw-panel-menu-bar-bg-color: #4d1818;
+  --aw-panel-content-bg-color: #2d1010;
+  --aw-panel-content-color: #f0d0d0;
+  --aw-panel-scrollbar-color-1: #7a2020;
+  --aw-panel-scrollbar-color-2: #5a1818;
+  --aw-text-color: #f0d0d0;
+  --aw-text-secondary-color: #d0a0a0;
+  --aw-form-bg-color: #2d1010;
+  --aw-input-bg-color: #3a1818;
+  --aw-input-border-color: #5a1818;
 
-  /* Button colors - red shades for night vision */
-  --aw-button-primary-bg: #700000;
-  --aw-button-primary-text: #ffcaca;
-  --aw-button-primary-hover-bg: #8b0000;
+  /* Button colors - consistent with red theme */
+  --aw-button-primary-bg: #7a2020;
+  --aw-button-primary-text: #f8e0e0;
+  --aw-button-primary-hover-bg: #8b2020;
 
-  --aw-button-secondary-bg: #4d0000;
-  --aw-button-secondary-text: #ff9e9e;
-  --aw-button-secondary-hover-bg: #5a0000;
+  --aw-button-secondary-bg: #3a1818;
+  --aw-button-secondary-text: #d0a0a0;
+  --aw-button-secondary-hover-bg: #4d1818;
 
-  --aw-button-success-bg: #704030;
-  --aw-button-success-text: #ffcaca;
-  --aw-button-success-hover-bg: #805040;
+  --aw-button-success-bg: #7a3020; /* Reddish success */
+  --aw-button-success-text: #f8e0e0;
+  --aw-button-success-hover-bg: #8b3020;
 
-  --aw-button-warning-bg: #804020;
-  --aw-button-warning-text: #ffcaca;
-  --aw-button-warning-hover-bg: #905030;
+  --aw-button-warning-bg: #7a3820; /* Reddish warning */
+  --aw-button-warning-text: #f8e0e0;
+  --aw-button-warning-hover-bg: #8b3820;
 
-  --aw-button-danger-bg: #800000;
-  --aw-button-danger-text: #ffcaca;
-  --aw-button-danger-hover-bg: #a00000;
+  --aw-button-danger-bg: #8b1010;
+  --aw-button-danger-text: #f8e0e0;
+  --aw-button-danger-hover-bg: #9e1010;
 }

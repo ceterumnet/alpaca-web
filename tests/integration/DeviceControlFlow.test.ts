@@ -8,9 +8,9 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent } from 'vue'
-import { useUnifiedStore } from '../../src/stores/UnifiedStore'
-import { createStoreAdapter } from '../../src/stores/StoreAdapter'
-import type { TelescopeDevice } from '../../src/types/DeviceTypes'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
+import { createStoreAdapter } from '@/stores/StoreAdapter'
+import type { TelescopeDevice } from '@/types/device.types'
 import { createPinia, setActivePinia } from 'pinia'
 
 // Extend types for testing

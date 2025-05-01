@@ -1,0 +1,6 @@
+---
+description: Whenever Alpaca or ASCOM are mentioned or adherence to the spec
+globs: 
+alwaysApply: false
+---
+[AlpacaDeviceAPI_v1.yaml](mdc:docs/alpaca/AlpacaDeviceAPI_v1.yaml) is the API definition for Alpaca ASCOM. 

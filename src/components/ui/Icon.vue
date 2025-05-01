@@ -1,3 +1,7 @@
+// Status: Good - Core UI Component // This is the icon system implementation that: // - Provides a
+unified interface for all app icons // - Supports custom sizing and colors // - Implements type-safe
+icon selection // - Maintains consistent styling across the app // - Integrates with the design token system
+
 <script lang="ts">
 import { defineComponent, h } from 'vue'
 import * as IconComponents from '@/components/icons'
@@ -34,6 +38,8 @@ export type IconType =
   | 'home'
   | 'files'
   | 'history'
+  | 'bell'
+  | 'reset'
 
 export default defineComponent({
   name: 'IconComponent',
@@ -74,7 +80,9 @@ export default defineComponent({
           'tracking-off',
           'home',
           'files',
-          'history'
+          'history',
+          'bell',
+          'reset'
         ].includes(value)
       },
       default: 'device-unknown'
@@ -82,6 +90,10 @@ export default defineComponent({
     size: {
       type: String,
       default: '24'
+    },
+    color: {
+      type: String,
+      default: ''
     }
   },
 
@@ -115,113 +127,139 @@ export default defineComponent({
 
     return () =>
       h(getIconComponent(), {
-        class: [`icon--${props.type}`],
+        class: [`aw-icon--${props.type}`],
         size: props.size,
-        color: 'currentColor'
+        color: props.color || 'currentColor'
       })
   }
 })
 </script>
 
 <template>
-  <div class="icon" :class="`icon--${type}`"></div>
+  <div class="aw-icon" :class="`aw-icon--${type}`"></div>
 </template>
 
 <style scoped>
-.icon {
+.aw-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--aw-icon-size, 24px);
+  height: var(--aw-icon-size, 24px);
 }
 
-.icon--camera {
-  color: var(--camera-icon-color, #4caf50);
+/* Device-related icons */
+.aw-icon--camera {
+  color: var(--aw-device-camera-color, var(--aw-color-success-500));
 }
 
-.icon--dome {
-  color: var(--dome-icon-color, #2196f3);
+.aw-icon--dome {
+  color: var(--aw-device-dome-color, var(--aw-color-primary-500));
 }
 
-.icon--sun {
-  color: var(--sun-icon-color, #ff9800);
+.aw-icon--telescope {
+  color: var(--aw-device-telescope-color, var(--aw-color-primary-700));
 }
 
-.icon--moon {
-  color: var(--moon-icon-color, #9c27b0);
+.aw-icon--filter {
+  color: var(--aw-device-filter-color, var(--aw-color-warning-700));
 }
 
-.icon--search {
-  color: var(--search-icon-color, #607d8b);
+.aw-icon--focus {
+  color: var(--aw-device-focus-color, var(--aw-color-primary-300));
 }
 
-.icon--focus {
-  color: var(--focus-icon-color, #03a9f4);
+.aw-icon--device-unknown {
+  color: var(--aw-device-unknown-color, var(--aw-color-neutral-500));
 }
 
-.icon--filter {
-  color: var(--filter-icon-color, #795548);
+/* Celestial icons */
+.aw-icon--sun {
+  color: var(--aw-celestial-sun-color, var(--aw-color-warning-500));
 }
 
-.icon--cloud {
-  color: var(--cloud-icon-color, #3f51b5);
+.aw-icon--moon {
+  color: var(--aw-celestial-moon-color, var(--aw-color-neutral-400));
 }
 
-.icon--chevron-left,
-.icon--chevron-right {
-  color: var(--chevron-icon-color, #9e9e9e);
+.aw-icon--cloud {
+  color: var(--aw-celestial-cloud-color, var(--aw-color-primary-300));
 }
 
-.icon--gear {
-  color: var(--gear-icon-color, #757575);
+/* Navigation icons */
+.aw-icon--chevron-left,
+.aw-icon--chevron-right,
+.aw-icon--arrow-up,
+.aw-icon--arrow-down,
+.aw-icon--arrow-left,
+.aw-icon--arrow-right {
+  color: var(--aw-navigation-icon-color, var(--aw-color-neutral-600));
 }
 
-.icon--exposure {
-  color: var(--exposure-icon-color, #f44336);
+.aw-icon--home {
+  color: var(--aw-navigation-home-color, var(--aw-color-primary-500));
 }
 
-.icon--device-unknown {
-  color: var(--unknown-icon-color, #9e9e9e);
+.aw-icon--search {
+  color: var(--aw-navigation-search-color, var(--aw-color-neutral-600));
 }
 
-.icon--close,
-.icon--expand,
-.icon--collapse {
-  color: var(--control-icon-color, #757575);
+.aw-icon--files {
+  color: var(--aw-navigation-files-color, var(--aw-color-warning-500));
 }
 
-.icon--compact,
-.icon--detailed,
-.icon--fullscreen {
-  color: var(--mode-icon-color, #757575);
+.aw-icon--history {
+  color: var(--aw-navigation-history-color, var(--aw-color-neutral-500));
 }
 
-.icon--connected {
-  color: var(--connected-icon-color, #4caf50);
+/* Control icons */
+.aw-icon--gear {
+  color: var(--aw-control-gear-color, var(--aw-color-neutral-600));
 }
 
-.icon--disconnected {
-  color: var(--disconnected-icon-color, #f44336);
+.aw-icon--exposure {
+  color: var(--aw-control-exposure-color, var(--aw-color-error-500));
 }
 
-.icon--tracking-on {
-  color: var(--tracking-on-icon-color, #4caf50);
+.aw-icon--close,
+.aw-icon--expand,
+.aw-icon--collapse {
+  color: var(--aw-control-ui-color, var(--aw-color-neutral-600));
 }
 
-.icon--tracking-off {
-  color: var(--tracking-off-icon-color, #f44336);
+.aw-icon--compact,
+.aw-icon--detailed,
+.aw-icon--fullscreen {
+  color: var(--aw-control-view-color, var(--aw-color-neutral-600));
 }
 
-.icon--home {
-  color: var(--home-icon-color, #2196f3);
+.aw-icon--stop {
+  color: var(--aw-control-stop-color, var(--aw-color-error-500));
 }
 
-.icon--files {
-  color: var(--files-icon-color, #ff9800);
+/* Status icons */
+.aw-icon--connected {
+  color: var(--aw-status-connected-color, var(--aw-color-success-500));
 }
 
-.icon--history {
-  color: var(--history-icon-color, #9e9e9e);
+.aw-icon--disconnected {
+  color: var(--aw-status-disconnected-color, var(--aw-color-error-500));
+}
+
+.aw-icon--tracking-on {
+  color: var(--aw-status-tracking-on-color, var(--aw-color-success-500));
+}
+
+.aw-icon--tracking-off {
+  color: var(--aw-status-tracking-off-color, var(--aw-color-error-500));
+}
+
+/* Added notification icons */
+.aw-icon--bell {
+  color: var(--aw-notification-bell-color, var(--aw-color-warning-500));
+}
+
+.aw-icon--reset {
+  color: var(--aw-control-reset-color, var(--aw-color-error-500));
 }
 </style>

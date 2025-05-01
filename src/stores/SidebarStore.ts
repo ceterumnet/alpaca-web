@@ -1,3 +1,11 @@
+// Status: Good - Core Store
+// This is the sidebar store that:
+// - Manages sidebar visibility state
+// - Handles sidebar content switching
+// - Provides sidebar customization
+// - Supports responsive behavior
+// - Maintains sidebar preferences
+
 import { defineStore } from 'pinia'
 
 // Types

@@ -1,28 +1,49 @@
+// Status: Good - Core Component 
+// This is the main application component that: 
+// - Serves as the application root 
+// - Manages global layout and routing 
+// - Handles device connection state 
+// - Provides global UI components 
+// - Maintains application-wide state
+
 <script setup lang="ts">
 // import '@primevue/themes'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
+import { useNotificationStore } from '@/stores/useNotificationStore'
 import '@/assets/colors.css' // Import the CSS
-import NavigationBarMigrated from '@/components/layout/NavigationBarMigrated.vue'
-import NotificationCenterMigrated from '@/components/ui/NotificationCenterMigrated.vue'
+import NavigationBar from '@/components/layout/NavigationBar.vue'
+import NotificationCenter from '@/components/ui/NotificationCenter.vue'
+import NotificationManager from '@/components/ui/NotificationManager.vue'
+import EnhancedSidebar from '@/components/layout/EnhancedSidebar.vue'
 
 // Get stores
 const uiStore = useUIPreferencesStore()
+const notificationStore = useNotificationStore()
+
+// Show/hide notification manager
+const showNotificationManager = ref(false)
 
 // Define theme styles based on dark mode
 const themeStyles = computed(() => {
-  if (uiStore.isDarkMode) {
-    return {
-      // Dark theme styling is applied via CSS class, no need to set inline styles
-      'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }
-  } else {
-    return {
-      // Light theme styling is applied via CSS class, no need to set inline styles
-      'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }
+  return {
+    'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   }
 })
+
+// Toggle notification manager
+function toggleNotificationManager() {
+  showNotificationManager.value = !showNotificationManager.value
+
+  // Create a test notification when opening the manager
+  if (showNotificationManager.value) {
+    notificationStore.showInfo('Notification manager opened', {
+      autoDismiss: true,
+      position: 'top-right',
+      duration: 3000
+    })
+  }
+}
 
 onMounted(() => {
   console.log('App mounted')
@@ -42,28 +63,68 @@ onMounted(() => {
 
   console.log('Initial dark mode:', uiStore.isDarkMode)
   console.log('Has dark-theme class:', document.documentElement.classList.contains('dark-theme'))
+
+  // Create a welcome notification
+  setTimeout(() => {
+    notificationStore.showSuccess('Welcome to Alpaca Web', {
+      autoDismiss: true,
+      position: 'top-right',
+      duration: 5000
+    })
+  }, 1000)
 })
 </script>
 
 <template>
   <div class="app-container" :class="{ 'dark-theme': uiStore.isDarkMode }" :style="themeStyles">
-    <!-- Main content area without sidebar -->
-    <div class="app-content">
-      <!-- Use the migrated navigation bar component -->
-      <NavigationBarMigrated />
+    <!-- Main app structure -->
+    <div class="app-layout">
+      <EnhancedSidebar />
+      <div class="main-content-area">
+        <NavigationBar>
+          <template #actions>
+            <button
+              class="nav-icon-button"
+              title="Open Notification Manager"
+              @click="toggleNotificationManager"
+            >
+              <i class="icon-notification"></i>
+            </button>
+          </template>
+        </NavigationBar>
 
-      <main class="main-content">
-        <!-- Router view with transition -->
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
-      </main>
-
-      <!-- Global notification center -->
-      <NotificationCenterMigrated />
+        <main class="main-content">
+          <!-- Router view with transition -->
+          <router-view v-slot="{ Component }">
+            <transition name="fade" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
+        </main>
+      </div>
     </div>
+
+    <!-- Global notification center -->
+    <NotificationCenter />
+
+    <!-- Notification Manager Modal -->
+    <transition name="fade">
+      <div
+        v-if="showNotificationManager"
+        class="notification-modal-backdrop"
+        @click="showNotificationManager = false"
+      >
+        <div class="notification-modal" @click.stop>
+          <div class="notification-modal-header">
+            <h2>Notification Manager</h2>
+            <button class="close-button" @click="showNotificationManager = false">×</button>
+          </div>
+          <div class="notification-modal-body">
+            <NotificationManager />
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -97,6 +158,25 @@ onMounted(() => {
   --spacing-md: 1rem; /* 16px */
   --spacing-lg: 1.5rem; /* 24px */
   --spacing-xl: 2rem; /* 32px */
+
+  /* Border radius */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-circle: 50%;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
 }
 
 body {
@@ -121,6 +201,38 @@ body {
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
+}
+
+.app-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--aw-bg-color);
+  color: var(--aw-text-color);
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.main-content-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--spacing-md);
+  background-color: var(--aw-bg-color);
 }
 
 /* Typography classes */
@@ -164,129 +276,85 @@ p {
   opacity: 0;
 }
 
-/* Base form elements */
-input,
-select,
-textarea,
-button {
-  font-family: inherit;
-  font-size: var(--font-size-base);
-  color: var(--aw-text-color);
-}
-
-input,
-select,
-textarea {
-  background-color: var(--aw-input-bg-color);
-  border: 1px solid var(--aw-input-border-color);
-  border-radius: 4px;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  transition: border-color 0.2s ease;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--aw-primary-color);
-}
-
-/* Button styles */
-button {
-  cursor: pointer;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 4px;
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
-  font-weight: var(--font-weight-medium);
-}
-
-.btn {
-  display: inline-flex;
+/* Notification Modal */
+.notification-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 4px;
-  font-weight: var(--font-weight-medium);
+  z-index: 1000;
+}
+
+.notification-modal {
+  width: 90%;
+  max-width: 800px;
+  height: 80%;
+  max-height: 800px;
+  background-color: var(--aw-panel-bg-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notification-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--aw-panel-border-color);
+}
+
+.notification-modal-header h2 {
+  margin: 0;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--aw-panel-content-color);
   cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.btn-primary {
-  background-color: var(--aw-button-primary-bg);
-  color: var(--aw-button-primary-text);
-  border: 1px solid transparent;
+.notification-modal-body {
+  flex: 1;
+  overflow: hidden;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--aw-button-primary-hover-bg);
+.nav-icon-button {
+  background: none;
+  border: none;
+  color: var(--aw-nav-text-color);
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
 }
 
-.btn-secondary {
-  background-color: var(--aw-button-secondary-bg);
-  color: var(--aw-button-secondary-text);
-  border: 1px solid transparent;
+.nav-icon-button:hover {
+  background-color: var(--aw-nav-hover-bg-color);
 }
 
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--aw-button-secondary-hover-bg);
-}
-
-.btn-success {
-  background-color: var(--aw-button-success-bg);
-  color: var(--aw-button-success-text);
-  border: 1px solid transparent;
-}
-
-.btn-success:hover:not(:disabled) {
-  background-color: var(--aw-button-success-hover-bg);
-}
-
-.btn-warning {
-  background-color: var(--aw-button-warning-bg);
-  color: var(--aw-button-warning-text);
-  border: 1px solid transparent;
-}
-
-.btn-warning:hover:not(:disabled) {
-  background-color: var(--aw-button-warning-hover-bg);
-}
-
-.btn-danger {
-  background-color: var(--aw-button-danger-bg);
-  color: var(--aw-button-danger-text);
-  border: 1px solid transparent;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background-color: var(--aw-button-danger-hover-bg);
-}
-
-.btn:disabled,
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Fix for scrollbars */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--aw-panel-scrollbar-color-1);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--aw-panel-scrollbar-color-2);
+.icon-notification::before {
+  content: '🔔';
+  font-size: 1.2rem;
 }
 </style>
 
@@ -307,10 +375,18 @@ button:disabled {
   width: 100%;
 }
 
+.main-content-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
 .main-content {
   flex: 1;
-  overflow-y: auto;
-  padding: 0;
-  background-color: var(--aw-panels-bg-color);
+  overflow: auto;
+  padding: var(--spacing-md);
+  background-color: var(--aw-bg-color);
 }
 </style>
