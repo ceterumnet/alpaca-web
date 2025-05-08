@@ -22,7 +22,7 @@
     "grid-layout-plus": "^1.0.5",
     "pinia": "^3.0.2",
     "primeicons": "^7.0.0",
-    "primevue": "^4.0.4",
+    "primevue": "^4.3.4",
     "vue": "^3.4.29",
     "vue-router": "^4.5.1"
   },
