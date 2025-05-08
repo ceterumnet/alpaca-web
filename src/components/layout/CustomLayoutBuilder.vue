@@ -1513,39 +1513,37 @@ function handleDeviceDrop(event: DragEvent) {
 
     <div v-else class="aw-layout-builder__content">
       <div class="aw-layout-builder__panel-left">
-        <div class="aw-layout-builder__form-group">
-          <label for="layout-name" class="aw-layout-builder__label">Layout Name</label>
+        <div class="aw-form-group">
+          <label for="layout-name" class="aw-form-label">Layout Name</label>
           <input
             id="layout-name"
             v-model="layoutName"
             type="text"
-            class="aw-layout-builder__input"
+            class="aw-input"
             placeholder="Enter layout name"
           />
         </div>
 
-        <div class="aw-layout-builder__form-group">
-          <label for="layout-description" class="aw-layout-builder__label">Description</label>
+        <div class="aw-form-group">
+          <label for="layout-description" class="aw-form-label">Description</label>
           <textarea
             id="layout-description"
             v-model="layoutDescription"
-            class="aw-layout-builder__textarea"
+            class="aw-textarea"
             placeholder="Describe this layout"
           ></textarea>
         </div>
         
-        <div class="aw-layout-builder__form-group">
-          <div class="aw-layout-builder__checkbox-wrapper">
+        <div class="aw-form-group">
+          <label class="aw-checkbox-container">
+            Set as default layout
             <input
               id="is-default"
               v-model="isDefaultLayout"
               type="checkbox"
-              class="aw-layout-builder__checkbox"
             />
-            <label for="is-default" class="aw-layout-builder__checkbox-label">
-              Set as default layout
-            </label>
-          </div>
+            <span class="aw-checkbox"></span>
+          </label>
         </div>
 
         <div class="aw-layout-builder__form-group">
@@ -1573,15 +1571,15 @@ function handleDeviceDrop(event: DragEvent) {
 
           <!-- Row editor -->
           <div v-if="selectedRowId && !selectedCellId && selectedRow" class="aw-layout-builder__row-editor">
-            <div class="aw-layout-builder__form-group">
-              <label for="row-height" class="aw-layout-builder__label">Height (%)</label>
+            <div class="aw-form-group">
+              <label for="row-height" class="aw-form-label">Height (%)</label>
               <input
                 id="row-height"
                 v-model.number="selectedRow.height"
                 type="number"
                 min="10"
                 max="100"
-                class="aw-layout-builder__input"
+                class="aw-input"
               />
             </div>
 
@@ -1597,23 +1595,23 @@ function handleDeviceDrop(event: DragEvent) {
 
           <!-- Cell editor -->
           <div v-if="selectedCellId && selectedCell" class="aw-layout-builder__cell-editor">
-            <div class="aw-layout-builder__form-group">
-              <label for="cell-name" class="aw-layout-builder__label">Panel Name</label>
+            <div class="aw-form-group">
+              <label for="cell-name" class="aw-form-label">Panel Name</label>
               <input
                 id="cell-name"
                 v-model="selectedCell.name"
                 type="text"
-                class="aw-layout-builder__input"
+                class="aw-input"
                 placeholder="Panel name"
               />
             </div>
 
-            <div class="aw-layout-builder__form-group">
-              <label for="cell-device-type" class="aw-layout-builder__label">Device Type</label>
+            <div class="aw-form-group">
+              <label for="cell-device-type" class="aw-form-label">Device Type</label>
               <select
                 id="cell-device-type"
                 v-model="selectedCell.deviceType"
-                class="aw-layout-builder__select"
+                class="aw-select"
               >
                 <option
                   v-for="deviceType in deviceTypes"
@@ -1625,25 +1623,25 @@ function handleDeviceDrop(event: DragEvent) {
               </select>
             </div>
 
-            <div class="aw-layout-builder__form-group">
-              <label for="cell-width" class="aw-layout-builder__label">Width (%)</label>
+            <div class="aw-form-group">
+              <label for="cell-width" class="aw-form-label">Width (%)</label>
               <input
                 id="cell-width"
                 v-model.number="selectedCell.width"
                 type="number"
                 min="10"
                 max="100"
-                class="aw-layout-builder__input"
+                class="aw-input"
                 @change="handleCellWidthChange"
               />
             </div>
 
-            <div class="aw-layout-builder__form-group">
-              <label for="cell-priority" class="aw-layout-builder__label">Display Priority</label>
+            <div class="aw-form-group">
+              <label for="cell-priority" class="aw-form-label">Display Priority</label>
               <select
                 id="cell-priority"
                 v-model="selectedCell.priority"
-                class="aw-layout-builder__select"
+                class="aw-select"
               >
                 <option
                   v-for="priority in priorityOptions"

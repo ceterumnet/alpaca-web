@@ -307,8 +307,8 @@ watch(
 <template>
   <div class="aw-camera-exposure-control">
     <div class="aw-camera-exposure-control__settings">
-      <div class="aw-camera-exposure-control__setting-group">
-        <label for="exposure-duration">Duration (s):</label>
+      <div class="aw-form-group">
+        <label for="exposure-duration" class="aw-form-label">Duration (s):</label>
         <input
           id="exposure-duration"
           v-model.number="exposureDuration"
@@ -316,13 +316,19 @@ watch(
           min="0.001"
           max="3600"
           step="0.1"
+          class="aw-input"
           :disabled="exposureInProgress"
         />
       </div>
 
-      <div class="aw-camera-exposure-control__setting-group">
-        <label for="exposure-type">Type:</label>
-        <select id="exposure-type" v-model="isLight" :disabled="exposureInProgress">
+      <div class="aw-form-group">
+        <label for="exposure-type" class="aw-form-label">Type:</label>
+        <select 
+          id="exposure-type" 
+          v-model="isLight" 
+          class="aw-select"
+          :disabled="exposureInProgress"
+        >
           <option :value="true">Light</option>
           <option :value="false">Dark</option>
         </select>
@@ -331,8 +337,11 @@ watch(
 
     <div class="aw-camera-exposure-control__action">
       <button
-        class="aw-camera-exposure-control__button"
-        :class="{ 'aw-camera-exposure-control__button--abort': exposureInProgress }"
+        class="aw-button"
+        :class="{
+          'aw-button--primary': !exposureInProgress,
+          'aw-button--danger': exposureInProgress
+        }"
         :disabled="!isConnected"
         @click="startExposure"
       >
@@ -347,7 +356,7 @@ watch(
       <div class="aw-camera-exposure-control__progress-text">{{ percentComplete.toFixed(0) }}%</div>
     </div>
 
-    <div v-if="error" class="aw-camera-exposure-control__error">{{ error }}</div>
+    <div v-if="error" class="aw-form-error">{{ error }}</div>
   </div>
 </template>
 
@@ -365,42 +374,9 @@ watch(
   gap: var(--aw-spacing-md);
 }
 
-.aw-camera-exposure-control__setting-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aw-spacing-sm);
-}
-
 .aw-camera-exposure-control__action {
   display: flex;
   justify-content: flex-start;
-}
-
-.aw-camera-exposure-control__button {
-  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
-  background-color: var(--aw-button-primary-bg);
-  color: var(--aw-button-primary-text);
-  border: none;
-  border-radius: var(--aw-border-radius-sm, 0.25rem);
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.aw-camera-exposure-control__button:hover:not(:disabled) {
-  background-color: var(--aw-button-primary-hover-bg);
-}
-
-.aw-camera-exposure-control__button:disabled {
-  background-color: var(--aw-color-neutral-400, #cccccc);
-  cursor: not-allowed;
-}
-
-.aw-camera-exposure-control__button--abort {
-  background-color: var(--aw-button-danger-bg);
-}
-
-.aw-camera-exposure-control__button--abort:hover:not(:disabled) {
-  background-color: var(--aw-button-danger-hover-bg);
 }
 
 .aw-camera-exposure-control__progress {
@@ -412,25 +388,20 @@ watch(
 .aw-camera-exposure-control__progress-bar {
   flex: 1;
   height: 0.75rem;
-  background-color: var(--aw-color-neutral-300, #e0e0e0);
-  border-radius: var(--aw-border-radius-sm, 0.25rem);
+  background-color: var(--aw-color-neutral-300);
+  border-radius: var(--aw-border-radius-sm);
   overflow: hidden;
 }
 
 .aw-camera-exposure-control__progress-fill {
   height: 100%;
-  background-color: var(--aw-primary-color);
+  background-color: var(--aw-color-primary-500);
   transition: width 0.3s ease-in-out;
 }
 
 .aw-camera-exposure-control__progress-text {
   min-width: 3rem;
   text-align: right;
-  font-weight: bold;
-}
-
-.aw-camera-exposure-control__error {
-  color: var(--aw-error-color);
-  font-weight: bold;
+  font-weight: 500;
 }
 </style>

@@ -1,0 +1,255 @@
+/**
+ * Form Element Styles for Alpaca Web
+ * 
+ * This file defines consistent styling for form elements:
+ * - Inputs (text, number, email, etc.)
+ * - Select dropdowns
+ * - Checkboxes
+ * - Radio buttons
+ * - Textareas
+ *
+ * All form elements use design tokens from design-tokens.css
+ * and support both light and dark themes.
+ */
+
+/* ============================================================
+   BASE INPUT STYLES
+   ============================================================ */
+.aw-input,
+.aw-select,
+.aw-textarea {
+  display: block;
+  width: 100%;
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--aw-text-color);
+  background-color: var(--aw-input-bg-color);
+  background-clip: padding-box;
+  border: 1px solid var(--aw-input-border-color);
+  border-radius: var(--aw-border-radius-sm);
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+}
+
+.aw-input:focus,
+.aw-select:focus,
+.aw-textarea:focus {
+  border-color: var(--aw-color-primary-500);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-primary-rgb), 0.25);
+}
+
+.aw-input:disabled,
+.aw-select:disabled,
+.aw-textarea:disabled {
+  background-color: var(--aw-color-neutral-200);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.aw-input::placeholder,
+.aw-textarea::placeholder {
+  color: var(--aw-color-neutral-500);
+  opacity: 1;
+}
+
+/* ============================================================
+   INPUT VARIANTS
+   ============================================================ */
+
+/* Small input */
+.aw-input--sm,
+.aw-select--sm {
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  font-size: 0.875rem;
+}
+
+/* Large input */
+.aw-input--lg,
+.aw-select--lg {
+  padding: var(--aw-spacing-md) var(--aw-spacing-lg);
+  font-size: 1.125rem;
+}
+
+/* Error state */
+.aw-input--error,
+.aw-select--error,
+.aw-textarea--error {
+  border-color: var(--aw-color-error-500);
+}
+
+.aw-input--error:focus,
+.aw-select--error:focus,
+.aw-textarea--error:focus {
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-error-rgb), 0.25);
+}
+
+/* Success state */
+.aw-input--success,
+.aw-select--success,
+.aw-textarea--success {
+  border-color: var(--aw-color-success-500);
+}
+
+.aw-input--success:focus,
+.aw-select--success:focus,
+.aw-textarea--success:focus {
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-success-rgb), 0.25);
+}
+
+/* ============================================================
+   SELECT SPECIFIC STYLES
+   ============================================================ */
+.aw-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--aw-spacing-sm) center;
+  background-size: 16px;
+  padding-right: calc(var(--aw-spacing-lg) + var(--aw-spacing-sm));
+}
+
+/* ============================================================
+   CHECKBOX AND RADIO STYLES
+   ============================================================ */
+.aw-checkbox-container,
+.aw-radio-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-left: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  margin-bottom: var(--aw-spacing-sm);
+  cursor: pointer;
+  font-size: 1rem;
+  user-select: none;
+}
+
+.aw-checkbox-container input,
+.aw-radio-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.aw-checkbox,
+.aw-radio {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: var(--aw-input-bg-color);
+  border: 1px solid var(--aw-input-border-color);
+  transition: all 0.2s ease;
+}
+
+.aw-radio {
+  border-radius: 50%;
+}
+
+.aw-checkbox {
+  border-radius: var(--aw-border-radius-sm);
+}
+
+.aw-checkbox-container:hover input ~ .aw-checkbox,
+.aw-radio-container:hover input ~ .aw-radio {
+  border-color: var(--aw-color-primary-500);
+}
+
+.aw-checkbox-container input:checked ~ .aw-checkbox,
+.aw-radio-container input:checked ~ .aw-radio {
+  background-color: var(--aw-color-primary-500);
+  border-color: var(--aw-color-primary-500);
+}
+
+.aw-checkbox-container input:disabled ~ .aw-checkbox,
+.aw-radio-container input:disabled ~ .aw-radio {
+  background-color: var(--aw-color-neutral-200);
+  border-color: var(--aw-color-neutral-300);
+  cursor: not-allowed;
+}
+
+/* Checkbox mark */
+.aw-checkbox:after {
+  content: '';
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.aw-checkbox-container input:checked ~ .aw-checkbox:after {
+  display: block;
+}
+
+/* Radio mark */
+.aw-radio:after {
+  content: '';
+  position: absolute;
+  display: none;
+  top: 5px;
+  left: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+.aw-radio-container input:checked ~ .aw-radio:after {
+  display: block;
+}
+
+/* ============================================================
+   TEXTAREA SPECIFIC STYLES
+   ============================================================ */
+.aw-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* ============================================================
+   FORM GROUP AND LAYOUT
+   ============================================================ */
+.aw-form-group {
+  margin-bottom: var(--aw-spacing-md);
+}
+
+.aw-form-label {
+  display: block;
+  margin-bottom: var(--aw-spacing-xs);
+  font-weight: 500;
+  color: var(--aw-text-secondary-color);
+}
+
+.aw-form-help {
+  display: block;
+  margin-top: var(--aw-spacing-xs);
+  font-size: 0.875rem;
+  color: var(--aw-text-secondary-color);
+}
+
+.aw-form-error {
+  display: block;
+  margin-top: var(--aw-spacing-xs);
+  font-size: 0.875rem;
+  color: var(--aw-error-color);
+}
+
+/* ============================================================
+   DARK THEME SPECIFIC OVERRIDES (if needed)
+   ============================================================ */
+:root .dark-theme .aw-checkbox:after,
+:root .dark-theme .aw-radio:after {
+  /* Ensure checkbox/radio marks are visible in dark theme */
+  border-color: var(--aw-color-neutral-900);
+  background-color: var(--aw-color-neutral-900);
+}

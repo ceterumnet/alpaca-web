@@ -334,8 +334,8 @@ function resetLayoutStorage() {
               Configure default sizes and layout behavior for device panels.
             </p>
 
-            <div class="aw-settings__row">
-              <label>Default Camera Panel Size</label>
+            <div class="aw-form-group">
+              <label class="aw-form-label">Default Camera Panel Size</label>
               <div class="aw-settings__size-inputs">
                 <div class="aw-settings__size-input">
                   <label for="camera-width">W</label>
@@ -346,7 +346,7 @@ function resetLayoutStorage() {
                     type="number"
                     min="1"
                     max="12"
-                    class="aw-settings__input"
+                    class="aw-input aw-input--sm"
                   />
                 </div>
                 <div class="aw-settings__size-input">
@@ -358,14 +358,14 @@ function resetLayoutStorage() {
                     type="number"
                     min="1"
                     max="40"
-                    class="aw-settings__input"
+                    class="aw-input aw-input--sm"
                   />
                 </div>
               </div>
             </div>
 
-            <div class="aw-settings__row">
-              <label>Default Telescope Panel Size</label>
+            <div class="aw-form-group">
+              <label class="aw-form-label">Default Telescope Panel Size</label>
               <div class="aw-settings__size-inputs">
                 <div class="aw-settings__size-input">
                   <label for="telescope-width">W</label>
@@ -376,7 +376,7 @@ function resetLayoutStorage() {
                     type="number"
                     min="1"
                     max="12"
-                    class="aw-settings__input"
+                    class="aw-input aw-input--sm"
                   />
                 </div>
                 <div class="aw-settings__size-input">
@@ -388,7 +388,7 @@ function resetLayoutStorage() {
                     type="number"
                     min="1"
                     max="40"
-                    class="aw-settings__input"
+                    class="aw-input aw-input--sm"
                   />
                 </div>
               </div>

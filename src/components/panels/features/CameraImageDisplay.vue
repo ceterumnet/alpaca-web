@@ -294,84 +294,118 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="camera-image-display">
-    <div class="image-container">
-      <canvas ref="canvasRef" class="image-canvas"></canvas>
-      <div v-if="props.imageData.byteLength === 0" class="no-image">No image available</div>
+  <div class="aw-camera-image-display">
+    <div class="aw-camera-image-display__container">
+      <canvas ref="canvasRef" class="aw-camera-image-display__canvas"></canvas>
+      <div v-if="props.imageData.byteLength === 0" class="aw-camera-image-display__no-image">No image available</div>
     </div>
 
-    <div class="image-controls">
-      <div class="stretch-controls">
-        <label>Stretch Method:</label>
-        <select v-model="stretchMethod">
+    <div class="aw-camera-image-display__controls">
+      <div class="aw-form-group">
+        <label for="stretch-method" class="aw-form-label">Stretch Method:</label>
+        <select id="stretch-method" v-model="stretchMethod" class="aw-select">
           <option value="none">None</option>
           <option value="linear">Linear</option>
           <option value="log">Logarithmic</option>
         </select>
+      </div>
 
-        <div v-if="stretchMethod !== 'none'" class="range-controls">
-          <div class="auto-stretch">
+      <div v-if="stretchMethod !== 'none'" class="aw-camera-image-display__range-controls">
+        <div class="aw-form-group">
+          <label class="aw-checkbox-container">
+            Auto Stretch
             <input id="auto-stretch" v-model="autoStretch" type="checkbox" />
-            <label for="auto-stretch">Auto Stretch</label>
-          </div>
+            <span class="aw-checkbox"></span>
+          </label>
+        </div>
 
-          <!-- Add robust stretch option -->
-          <div v-if="autoStretch" class="auto-stretch">
+        <!-- Add robust stretch option -->
+        <div v-if="autoStretch" class="aw-form-group">
+          <label class="aw-checkbox-container">
+            Robust Stretch
             <input id="robust-stretch" v-model="useRobustStretch" type="checkbox" />
-            <label for="robust-stretch">Robust Stretch</label>
+            <span class="aw-checkbox"></span>
+          </label>
 
-            <div v-if="useRobustStretch" class="slider-group">
-              <label>Percentile:</label>
-              <input v-model.number="robustPercentile" type="range" :min="50" :max="100" step="1" />
-              <span>{{ robustPercentile }}%</span>
+          <div v-if="useRobustStretch" class="aw-camera-image-display__slider-group">
+            <label for="percentile" class="aw-form-label">Percentile:</label>
+            <div class="aw-camera-image-display__slider-container">
+              <input 
+                id="percentile"
+                v-model.number="robustPercentile" 
+                type="range" 
+                :min="50" 
+                :max="100" 
+                step="1" 
+                class="aw-camera-image-display__slider"
+              />
+              <span class="aw-camera-image-display__slider-value">{{ robustPercentile }}%</span>
             </div>
           </div>
+        </div>
 
-          <div v-if="!autoStretch" class="slider-group">
-            <label>Min:</label>
-            <input v-model.number="minPixelValue" type="range" :min="0" :max="65535" />
-            <span>{{ minPixelValue }}</span>
+        <div v-if="!autoStretch" class="aw-form-group">
+          <label for="min-pixel" class="aw-form-label">Min:</label>
+          <div class="aw-camera-image-display__slider-container">
+            <input 
+              id="min-pixel"
+              v-model.number="minPixelValue" 
+              type="range" 
+              :min="0" 
+              :max="65535" 
+              class="aw-camera-image-display__slider"
+            />
+            <span class="aw-camera-image-display__slider-value">{{ minPixelValue }}</span>
           </div>
+        </div>
 
-          <div v-if="!autoStretch" class="slider-group">
-            <label>Max:</label>
-            <input v-model.number="maxPixelValue" type="range" :min="0" :max="65535" />
-            <span>{{ maxPixelValue }}</span>
+        <div v-if="!autoStretch" class="aw-form-group">
+          <label for="max-pixel" class="aw-form-label">Max:</label>
+          <div class="aw-camera-image-display__slider-container">
+            <input 
+              id="max-pixel"
+              v-model.number="maxPixelValue" 
+              type="range" 
+              :min="0" 
+              :max="65535" 
+              class="aw-camera-image-display__slider"
+            />
+            <span class="aw-camera-image-display__slider-value">{{ maxPixelValue }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <div v-if="histogram.length > 0" class="histogram-display">
-      <canvas ref="histogramCanvas" class="histogram-canvas"></canvas>
+    <div v-if="histogram.length > 0" class="aw-camera-image-display__histogram">
+      <canvas ref="histogramCanvas" class="aw-camera-image-display__histogram-canvas"></canvas>
     </div>
   </div>
 </template>
 
 <style scoped>
-.camera-image-display {
+.aw-camera-image-display {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--aw-spacing-md);
   width: 100%;
 }
 
-.image-container {
+.aw-camera-image-display__container {
   position: relative;
   width: 100%;
-  background-color: #000;
-  border-radius: 0.25rem;
+  background-color: var(--aw-color-neutral-900);
+  border-radius: var(--aw-border-radius-md);
   overflow: hidden;
   aspect-ratio: 1 / 1;
 }
 
-.image-canvas {
+.aw-camera-image-display__canvas {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.no-image {
+.aw-camera-image-display__no-image {
   position: absolute;
   top: 0;
   left: 0;
@@ -380,66 +414,72 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--aw-color-neutral-500);
   font-style: italic;
 }
 
-.image-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 0.5rem;
-  background-color: #f5f5f5;
-  border-radius: 0.25rem;
-}
-
-.stretch-controls {
+.aw-camera-image-display__controls {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
+  gap: var(--aw-spacing-sm);
+  padding: var(--aw-spacing-md);
+  background-color: var(--aw-panel-bg-color);
+  border-radius: var(--aw-border-radius-md);
+  border: 1px solid var(--aw-panel-border-color);
 }
 
-.range-controls {
+.aw-camera-image-display__range-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--aw-spacing-sm);
+  margin-top: var(--aw-spacing-sm);
 }
 
-.auto-stretch {
+.aw-camera-image-display__slider-group {
+  margin-top: var(--aw-spacing-sm);
+}
+
+.aw-camera-image-display__slider-container {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--aw-spacing-sm);
 }
 
-.slider-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.slider-group label {
-  min-width: 3rem;
-}
-
-.slider-group input {
+.aw-camera-image-display__slider {
   flex: 1;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--aw-color-neutral-300);
+  outline: none;
 }
 
-.slider-group span {
-  min-width: 2.5rem;
+.aw-camera-image-display__slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--aw-color-primary-500);
+  cursor: pointer;
+}
+
+.aw-camera-image-display__slider-value {
+  min-width: 3rem;
   text-align: right;
+  font-weight: 500;
+  color: var(--aw-text-color);
 }
 
-.histogram-display {
+.aw-camera-image-display__histogram {
   width: 100%;
   height: 100px;
-  background-color: #f5f5f5;
-  border-radius: 0.25rem;
+  background-color: var(--aw-panel-bg-color);
+  border-radius: var(--aw-border-radius-md);
   overflow: hidden;
+  border: 1px solid var(--aw-panel-border-color);
 }
 
-.histogram-canvas {
+.aw-camera-image-display__histogram-canvas {
   width: 100%;
   height: 100%;
 }
