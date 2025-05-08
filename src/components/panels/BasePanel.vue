@@ -127,45 +127,119 @@ const handleModeChange = (mode: UIMode) => {
   emit('modeChange', mode)
 }
 
+// Handle connect/disconnect
 const handleConnect = () => {
   if (!selectedDeviceId.value) return
 
-  if (device.value?.isConnected) {
-    unifiedStore.disconnectDevice(selectedDeviceId.value)
-    emit('disconnect')
-  } else {
-    unifiedStore
-      .connectDevice(selectedDeviceId.value)
-      .then((success) => {
+  try {
+    console.log(`=== CONNECTION DEBUG START ===`)
+    console.log(`Connecting to device ID: ${selectedDeviceId.value}`)
+    console.log(`Full device object:`, JSON.stringify(device.value, null, 2))
+    
+    // Check all store device clients
+    console.log(`Current device clients in store:`, 
+      Array.from(unifiedStore.deviceClients || []).map(([id, client]) => {
+        return { id, hasClient: !!client }
+      })
+    )
+
+    // Check if device is in error state that requires reset
+    if (device.value && device.value.status === 'error') {
+      console.log(`Device ${selectedDeviceId.value} is in error state, resetting before connecting`)
+      unifiedStore.updateDevice(selectedDeviceId.value, {
+        status: 'idle',
+        isConnected: false,
+        isConnecting: false,
+        isDisconnecting: false
+      })
+      
+      // Re-fetch device after update
+      console.log(`Device after reset:`, JSON.stringify(unifiedStore.getDeviceById(selectedDeviceId.value), null, 2))
+    }
+
+    // Check if there's a device client for this device
+    const deviceClient = unifiedStore.getDeviceClient(selectedDeviceId.value)
+    const apiBaseUrl = device.value?.properties?.apiBaseUrl
+
+    console.log(`Device client check result:`, {
+      deviceId: selectedDeviceId.value,
+      hasClient: !!deviceClient,
+      apiBaseUrl
+    })
+    
+    if (!deviceClient && device.value && apiBaseUrl) {
+      console.log(`No client found for device ${selectedDeviceId.value}, creating one by updating device`)
+      console.log(`API Base URL: ${apiBaseUrl}`)
+      
+      // Try explicit client creation via store action by promoting apiBaseUrl to top level
+      unifiedStore.updateDevice(selectedDeviceId.value, {
+        apiBaseUrl,
+        // Add these to ensure all required fields are present
+        type: device.value.type,
+        deviceNum: device.value.properties?.deviceNumber || 0
+      })
+      
+      // Check if client was created
+      const clientAfterUpdate = unifiedStore.getDeviceClient(selectedDeviceId.value)
+      console.log(`Client after update attempt:`, {
+        created: !!clientAfterUpdate
+      })
+    }
+
+    if (device.value?.isConnected) {
+      console.log(`Disconnecting device ${selectedDeviceId.value}`)
+      unifiedStore.disconnectDevice(selectedDeviceId.value)
+      emit('disconnect')
+    } else {
+      console.log(`Connecting to device ${selectedDeviceId.value}`)
+      console.log(`Device state before connecting:`, device.value)
+      
+      // Final client check before connect
+      const finalClient = unifiedStore.getDeviceClient(selectedDeviceId.value)
+      console.log(`Final client check before connect:`, {
+        hasClient: !!finalClient
+      })
+      
+      unifiedStore.connectDevice(selectedDeviceId.value).then((success) => {
+        console.log(`Connect result: ${success ? 'SUCCESS' : 'FAILED'}`)
         if (success) {
           emit('connect')
-          // Add to recently used devices
           addToRecentlyUsed(selectedDeviceId.value)
         }
-      })
-      .catch((error) => {
+        console.log(`=== CONNECTION DEBUG END ===`)
+      }).catch((error) => {
         console.error('Connection error:', error)
+        console.log(`=== CONNECTION DEBUG END ===`)
       })
+    }
+  } catch (error) {
+    console.error('Connection error:', error)
+    console.log(`=== CONNECTION DEBUG END ===`)
   }
 }
 
+// Handle device change
 const handleDeviceChange = (newDeviceId: string) => {
   console.log('BasePanel - handleDeviceChange called:', newDeviceId)
   console.log('BasePanel - Current selectedDeviceId:', selectedDeviceId.value)
 
   if (newDeviceId !== selectedDeviceId.value) {
-    // Disconnect from current device if connected
-    if (device.value?.isConnected) {
-      console.log('BasePanel - Disconnecting from current device')
-      unifiedStore.disconnectDevice(selectedDeviceId.value)
+    try {
+      // Disconnect from current device if connected
+      if (device.value?.isConnected) {
+        console.log('BasePanel - Disconnecting from current device')
+        unifiedStore.disconnectDevice(selectedDeviceId.value)
+      }
+
+      console.log('BasePanel - Updating selectedDeviceId to:', newDeviceId)
+      selectedDeviceId.value = newDeviceId
+      emit('deviceChange', newDeviceId)
+
+      // Add to recently used devices
+      addToRecentlyUsed(newDeviceId)
+    } catch (error) {
+      console.error('Device change error:', error)
     }
-
-    console.log('BasePanel - Updating selectedDeviceId to:', newDeviceId)
-    selectedDeviceId.value = newDeviceId
-    emit('deviceChange', newDeviceId)
-
-    // Add to recently used devices
-    addToRecentlyUsed(newDeviceId)
   }
 
   showDeviceSelector.value = false
