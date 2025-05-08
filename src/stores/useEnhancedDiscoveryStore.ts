@@ -2,22 +2,21 @@
  * Enhanced Discovery Store
  *
  * This store manages device discovery state and provides a clean interface for UI components.
- * It uses the EnhancedDeviceDiscoveryService for all discovery operations.
+ * It uses the AutoDiscoveryService for all discovery operations, which automatically adds
+ * discovered devices to the workspace.
  */
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { enhancedDeviceDiscoveryService } from '@/services/EnhancedDeviceDiscoveryService'
+import { autoDiscoveryService } from '@/services/AutoDiscoveryService'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type {
   DeviceServer,
   DeviceServerDevice,
   DiscoveryResult,
-  DiscoveryStatus,
   DiscoveryOptions,
   ManualDeviceParams
 } from '@/services/interfaces/DeviceDiscoveryInterface'
-import type { UnifiedDevice } from '@/types/device.types'
 
 export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => {
   // State
@@ -59,8 +58,8 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
   const availableDevices = computed(() => {
     return allDevices.value.filter(({ server, device }) => {
       // Create a temp UnifiedDevice to check if it's already added
-      const unifiedDevice = enhancedDeviceDiscoveryService.createUnifiedDevice(server, device)
-      return !enhancedDeviceDiscoveryService.isDeviceAdded(unifiedDevice, unifiedStore.devicesList)
+      const unifiedDevice = autoDiscoveryService.createUnifiedDevice(server, device)
+      return !autoDiscoveryService.isDeviceAdded(unifiedDevice, unifiedStore.devicesList)
     })
   })
 
@@ -77,11 +76,8 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
 
     discoveryResults.value.servers.forEach((server) => {
       const hasAvailable = server.devices.some((device) => {
-        const unifiedDevice = enhancedDeviceDiscoveryService.createUnifiedDevice(server, device)
-        return !enhancedDeviceDiscoveryService.isDeviceAdded(
-          unifiedDevice,
-          unifiedStore.devicesList
-        )
+        const unifiedDevice = autoDiscoveryService.createUnifiedDevice(server, device)
+        return !autoDiscoveryService.isDeviceAdded(unifiedDevice, unifiedStore.devicesList)
       })
 
       result.set(server.id, hasAvailable)
@@ -98,7 +94,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
    * @returns Promise with discovery results
    */
   async function discoverDevices(options?: DiscoveryOptions): Promise<DiscoveryResult> {
-    const results = await enhancedDeviceDiscoveryService.discoverDevices(options)
+    const results = await autoDiscoveryService.discoverDevices(options)
     discoveryResults.value = results
     return results
   }
@@ -109,12 +105,10 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
    * @returns Promise with added server
    */
   async function addManualDevice(params: ManualDeviceParams): Promise<DeviceServer> {
-    const server = await enhancedDeviceDiscoveryService.addManualDevice(params)
+    const server = await autoDiscoveryService.addManualDevice(params)
 
     // Update the results
-    const existingIndex = discoveryResults.value.servers.findIndex(
-      (s: DeviceServer) => s.address === server.address && s.port === server.port
-    )
+    const existingIndex = discoveryResults.value.servers.findIndex((s: DeviceServer) => s.address === server.address && s.port === server.port)
 
     if (existingIndex >= 0) {
       discoveryResults.value.servers[existingIndex] = server
@@ -130,43 +124,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
    * Use this after operations that might affect device state
    */
   function refreshDiscoveryResults(): void {
-    discoveryResults.value = enhancedDeviceDiscoveryService.getDiscoveryResults()
-  }
-
-  /**
-   * Connect to a device from discovery
-   * @param serverId Server ID
-   * @param deviceId Device ID
-   * @returns Promise that resolves when connection is complete
-   */
-  async function connectToDevice(serverId: string, deviceId: string): Promise<void> {
-    const server = discoveryResults.value.servers.find((s: DeviceServer) => s.id === serverId)
-    if (!server) {
-      throw new Error(`Server with ID ${serverId} not found`)
-    }
-
-    const device = server.devices.find((d: DeviceServerDevice) => d.id === deviceId)
-    if (!device) {
-      throw new Error(`Device with ID ${deviceId} not found on server ${serverId}`)
-    }
-
-    // Create unified device from discovered device
-    const unifiedDevice = enhancedDeviceDiscoveryService.createUnifiedDevice(server, device)
-
-    try {
-      // Add device to the store
-      const unifiedStoreInstance = useUnifiedStore()
-      unifiedStoreInstance.addDevice(unifiedDevice)
-
-      // Connect to the device
-      await unifiedStoreInstance.connectDevice(unifiedDevice.id)
-
-      // Mark as added in our local state
-      device.isAdded = true
-    } catch (error) {
-      console.error('Error connecting to device:', error)
-      throw error
-    }
+    discoveryResults.value = autoDiscoveryService.getDiscoveryResults()
   }
 
   /**
@@ -180,7 +138,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
       throw new Error(`Server with ID ${serverId} not found`)
     }
 
-    return enhancedDeviceDiscoveryService.getProxyUrl(server)
+    return autoDiscoveryService.getProxyUrl(server)
   }
 
   /**
@@ -200,12 +158,9 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
       return false
     }
 
-    const unifiedDevice = enhancedDeviceDiscoveryService.createUnifiedDevice(server, device)
+    const unifiedDevice = autoDiscoveryService.createUnifiedDevice(server, device)
     const unifiedStoreInstance = useUnifiedStore()
-    return enhancedDeviceDiscoveryService.isDeviceAdded(
-      unifiedDevice,
-      unifiedStoreInstance.devicesList
-    )
+    return autoDiscoveryService.isDeviceAdded(unifiedDevice, unifiedStoreInstance.devicesList)
   }
 
   // Return store public interface
@@ -228,7 +183,6 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
     discoverDevices,
     addManualDevice,
     refreshDiscoveryResults,
-    connectToDevice,
     getProxyUrl,
     isDeviceAdded
   }

@@ -5,21 +5,23 @@
 // - Handles device connection state 
 // - Provides global UI components 
 // - Maintains application-wide state
+// - Initiates automatic device discovery
 
 <script setup lang="ts">
 // import '@primevue/themes'
 import { computed, onMounted, ref } from 'vue'
 import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
+import { useEnhancedDiscoveryStore } from '@/stores/useEnhancedDiscoveryStore'
 import '@/assets/colors.css' // Import the CSS
 import NavigationBar from '@/components/layout/NavigationBar.vue'
 import NotificationCenter from '@/components/ui/NotificationCenter.vue'
 import NotificationManager from '@/components/ui/NotificationManager.vue'
-import EnhancedSidebar from '@/components/layout/EnhancedSidebar.vue'
 
 // Get stores
 const uiStore = useUIPreferencesStore()
 const notificationStore = useNotificationStore()
+const discoveryStore = useEnhancedDiscoveryStore()
 
 // Show/hide notification manager
 const showNotificationManager = ref(false)
@@ -43,6 +45,19 @@ function toggleNotificationManager() {
       duration: 3000
     })
   }
+}
+
+// Function to run discovery with a delay after app start
+function runInitialDiscovery() {
+  // Start an initial discovery after a short delay
+  setTimeout(async () => {
+    try {
+      await discoveryStore.discoverDevices({ timeout: 3000 })
+      console.log('Initial device discovery completed')
+    } catch (error) {
+      console.error('Initial device discovery failed:', error)
+    }
+  }, 2000) // Wait 2 seconds after app load before starting discovery
 }
 
 onMounted(() => {
@@ -72,6 +87,9 @@ onMounted(() => {
       duration: 5000
     })
   }, 1000)
+  
+  // Start automatic device discovery
+  runInitialDiscovery()
 })
 </script>
 
@@ -79,7 +97,6 @@ onMounted(() => {
   <div class="app-container" :class="{ 'dark-theme': uiStore.isDarkMode }" :style="themeStyles">
     <!-- Main app structure -->
     <div class="app-layout">
-      <EnhancedSidebar />
       <div class="main-content-area">
         <NavigationBar>
           <template #actions>

@@ -51,6 +51,65 @@ const toggleConnection = async () => {
       // @ts-expect-error - TypeScript error with store implementation, but works at runtime
       await store.disconnectDevice(device.value.id)
     } else {
+      // First, check if the device is in an error state
+      if (device.value.status === 'error') {
+        // Create a temporary device object with updated state
+        const updatedDevice = { ...device.value };
+        updatedDevice.status = 'idle';
+        
+        // Use direct store method to replace the device
+        // This bypasses the store.updateDevice method that's causing the type error
+        store.devices.set(device.value.id, updatedDevice);
+        
+        // Update the device array too for consistency
+        const index = store.devicesArray.findIndex(d => d.id === device.value?.id);
+        if (index >= 0) {
+          store.devicesArray[index] = updatedDevice;
+        }
+        
+        // Wait a brief moment for the state to update
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      // Check if the device has a valid API URL
+      if (!device.value.apiBaseUrl) {
+        console.error('Device is missing apiBaseUrl property:', device.value);
+        
+        // Try to construct a valid API URL from device properties
+        if (device.value.ipAddress && device.value.port && device.value.type) {
+          const deviceNum = device.value.deviceNum || 0;
+          const apiBaseUrl = `/proxy/${device.value.ipAddress}/${device.value.port}/api/v1/${device.value.type.toLowerCase()}/${deviceNum}`;
+          
+          console.log(`Generated API URL: ${apiBaseUrl}`);
+          
+          // Update the device with the new API URL
+          const updatedDevice = { ...device.value, apiBaseUrl };
+          store.devices.set(device.value.id, updatedDevice);
+          
+          // Update the device array too
+          const index = store.devicesArray.findIndex(d => d.id === device.value?.id);
+          if (index >= 0) {
+            store.devicesArray[index] = updatedDevice;
+          }
+          
+          // Make sure the client gets created
+          // @ts-expect-error - TypeScript error with store implementation, but works at runtime
+          const client = store.createDeviceClient(updatedDevice);
+          if (client) {
+            // @ts-expect-error - TypeScript error with store implementation, but works at runtime
+            store.deviceClients.set(device.value.id, client);
+          } else {
+            throw new Error(`Failed to create client for device ${device.value.id}`);
+          }
+          
+          // Wait a brief moment for the state to update
+          await new Promise(resolve => setTimeout(resolve, 50));
+        } else {
+          throw new Error(`Device ${device.value.id} has insufficient connection information`);
+        }
+      }
+      
+      // Now connect to the device
       // @ts-expect-error - TypeScript error with store implementation, but works at runtime
       await store.connectDevice(device.value.id)
     }

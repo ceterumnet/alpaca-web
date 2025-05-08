@@ -1,10 +1,14 @@
-// Status: New - Discovery Navigation Integration // This component provides discovery status
-indicators and triggers in the navigation area
+// Status: New - Discovery Navigation Integration
+// This component provides discovery status indicators and triggers in the navigation area
+// - Runs discovery automatically when the app loads
+// - Performs periodic discovery checks
+// - Shows spinner during discovery
+// - Generates notifications when new devices are found
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useEnhancedDiscoveryStore } from '@/stores/useEnhancedDiscoveryStore'
+import { useNotificationStore } from '@/stores/useNotificationStore'
 import Icon from '@/components/ui/Icon.vue'
 
 defineOptions({
@@ -19,12 +23,14 @@ const props = defineProps({
   }
 })
 
-// Get router and discovery store
-const router = useRouter()
+// Get stores
 const discoveryStore = useEnhancedDiscoveryStore()
+const notificationStore = useNotificationStore()
 
 // Animation control
 const isAnimating = ref(false)
+const discoveryInterval = ref<number | null>(null)
+const previousDeviceCount = ref(0)
 
 // Show loading animation for 1 second when clicked
 function animateDiscovery() {
@@ -48,26 +54,72 @@ const formattedLastDiscoveryTime = computed(() => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 })
 
-// Handle discovery trigger click
+// Handle discovery trigger click - just trigger discovery, don't navigate
 function handleDiscoveryClick() {
-  // If we're already on the discovery page, just trigger discovery
-  if (router.currentRoute.value.path.startsWith('/discovery')) {
-    triggerDiscovery()
-  } else {
-    // Navigate to discovery page
-    router.push('/discovery')
-  }
+  triggerDiscovery()
 }
 
 // Trigger device discovery
 async function triggerDiscovery() {
   animateDiscovery()
   try {
+    const prevCount = discoveryStore.availableDevices.length
     await discoveryStore.discoverDevices()
+    
+    // Get new count after discovery
+    const newCount = discoveryStore.availableDevices.length
+    const newDevicesFound = newCount - prevCount
+    
+    // Notify if new devices were found
+    if (newDevicesFound > 0) {
+      notificationStore.showSuccess(
+        `${newDevicesFound} new ${newDevicesFound === 1 ? 'device' : 'devices'} discovered`,
+        {
+          autoDismiss: true,
+          position: 'top-right',
+          duration: 5000
+        }
+      )
+    }
   } catch (error) {
     console.error('Discovery failed:', error)
+    notificationStore.showError(`Discovery failed: ${error}`, {
+      autoDismiss: false,
+      position: 'top-right'
+    })
   }
 }
+
+// Set up periodic discovery (every 60 seconds)
+function setupPeriodicDiscovery() {
+  // Clear any existing interval
+  if (discoveryInterval.value) {
+    clearInterval(discoveryInterval.value)
+  }
+  
+  // Run discovery immediately on mount
+  triggerDiscovery()
+  
+  // Set up interval (every minute)
+  discoveryInterval.value = window.setInterval(() => {
+    triggerDiscovery()
+  }, 60000) // 60 seconds
+}
+
+// Lifecycle hooks
+onMounted(() => {
+  setupPeriodicDiscovery()
+  
+  // Track initial device count
+  previousDeviceCount.value = discoveryStore.availableDevices.length
+})
+
+onUnmounted(() => {
+  // Clean up interval on component unmount
+  if (discoveryInterval.value) {
+    clearInterval(discoveryInterval.value)
+  }
+})
 </script>
 
 <template>
