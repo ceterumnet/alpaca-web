@@ -17,7 +17,6 @@ export function useBaseControl(deviceIdProp: string) {
 
   // Handle empty deviceIdProp case
   const initialId = deviceIdProp || '';
-  console.log(`BaseControlMixin: Initializing with deviceId: ${initialId}`);
 
   // Create a proper ref for the device ID that can be updated
   const deviceId = ref(initialId)
@@ -29,31 +28,21 @@ export function useBaseControl(deviceIdProp: string) {
   watch(
     () => deviceIdProp,
     (newDeviceId, oldDeviceId) => {
-      console.log(`BaseControlMixin: deviceId changed from ${oldDeviceId} to ${newDeviceId}`)
-
-      // Update the ref value
+      // Update deviceId ref when prop changes
       deviceId.value = newDeviceId
 
       // Mark as initialized after first device ID is processed
       if (!isInitialized.value) {
         isInitialized.value = true
-        console.log(`BaseControlMixin: Initialized with device ID ${newDeviceId}`)
       }
 
-      // Trigger connection check
+      // Trigger connection check silently
       if (newDeviceId) {
-        console.log(`BaseControlMixin: Checking connection for device ${newDeviceId}`)
         const dev = store.getDeviceById(newDeviceId)
 
-        if (dev) {
-          console.log(`BaseControlMixin: Device found in store: connected=${dev.isConnected}, properties=${Object.keys(dev.properties || {}).length}`)
-        } else {
+        if (!dev) {
+          // Only log warning when device not found (important for debugging)
           console.warn(`BaseControlMixin: Device ${newDeviceId} not found in store`)
-          // Debug all available devices
-          const allDevices = store.devicesList
-          console.log(`Available devices (${allDevices.length}):`,
-            allDevices.map(d => d.id).join(', ')
-          )
         }
       }
     },
@@ -65,24 +54,17 @@ export function useBaseControl(deviceIdProp: string) {
     // Ensure we're using the most current device ID
     const currentId = deviceId.value
     if (!currentId) {
-      console.warn('BaseControlMixin: No device ID provided')
       return null
     }
 
     // Get the device from the store
     const dev = store.getDeviceById(currentId)
 
+    // Only log warnings when device not found (important for debugging)
     if (!dev) {
       console.warn(`BaseControlMixin: Device not found for ID ${currentId}`)
-
-      // Debug all available devices
-      const allDevices = store.devicesList
-      console.log(`Available devices (${allDevices.length}):`,
-        allDevices.map(d => d.id).join(', ')
-      )
-    } else {
-      console.log(`BaseControlMixin: Found device ${currentId}, connected: ${dev.isConnected}, lastUpdate: ${dev.lastUpdate}`)
     }
+
     return dev
   })
 
@@ -92,10 +74,7 @@ export function useBaseControl(deviceIdProp: string) {
 
     // Direct store lookup for maximum reliability
     const dev = store.getDeviceById(deviceId.value);
-    const connected = !!dev?.isConnected;
-
-    console.log(`isConnected computed for ${deviceId.value}: direct store check = ${connected}`);
-    return connected;
+    return !!dev?.isConnected;
   })
 
   // Check if the device exists - directly check store
@@ -173,19 +152,12 @@ export function useBaseControl(deviceIdProp: string) {
 
     // Early check for device ID to avoid undefined error in safeExecute
     if (!currentId) {
-      console.warn(`getDeviceProperty: No device ID provided when fetching ${property}`)
       error.value = 'Device ID missing'
       return null
     }
 
-    // Log the current device state to help with debugging
+    // Get current device data
     const currentDevice = store.getDeviceById(currentId)
-    console.log(`getDeviceProperty(${property}): Current device state:`, {
-      id: currentId,
-      exists: !!currentDevice,
-      connected: currentDevice?.isConnected,
-      hasProperties: !!(currentDevice?.properties && Object.keys(currentDevice.properties || {}).length > 0)
-    })
 
     // Skip the safeExecute wrapper for direct access to avoid any issues
     try {
@@ -194,33 +166,27 @@ export function useBaseControl(deviceIdProp: string) {
 
       // Check if device exists - direct store check
       if (!currentDevice) {
-        console.warn(`getDeviceProperty: Device ${currentId} not found in store`);
         error.value = 'Device not found';
         return null;
       }
 
       // Check if device is connected - direct store check
       if (!currentDevice.isConnected) {
-        console.warn(`getDeviceProperty: Device ${currentId} exists but not connected`);
         error.value = 'Device not connected';
         return null;
       }
 
       // Try cached value first
       if (currentDevice.properties && property in currentDevice.properties) {
-        console.log(`getDeviceProperty: Using cached value for ${property}`);
         return currentDevice.properties[property];
       }
 
       // Otherwise direct API call
-      console.log(`getDeviceProperty: Making direct API call for ${property}`);
       return await store.getDeviceProperty(currentId, property);
     } catch (err) {
       if (err instanceof Error) {
-        console.error(`getDeviceProperty: Error fetching ${property}: ${err.message}`);
         error.value = `Failed to get ${property}: ${err.message}`;
       } else {
-        console.error(`getDeviceProperty: Unknown error fetching ${property}`, err);
         error.value = `Failed to get ${property}: Unknown error`;
       }
       return null;

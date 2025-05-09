@@ -43,6 +43,7 @@ const emit = defineEmits(['change', 'success', 'error'])
 // Use the base control mixin
 const {
   store,
+  deviceId,
   isConnected,
   isLoading,
   error,
@@ -72,53 +73,45 @@ const displayValue = computed(() => {
 // Fetch the current value from the device
 async function fetchValue() {
   // Bail out immediately if no device ID 
-  if (!props.deviceId) {
-    console.warn(`NumericSetting: No device ID provided when fetching ${props.property}`);
+  if (!deviceId.value) {
+    error.value = 'No device ID';
     return;
   }
   
   try {
     // Get device directly from store - avoid any reactivity issues
-    const storeDevice = store.getDeviceById(props.deviceId);
+    const storeDevice = store.getDeviceById(deviceId.value);
     const deviceExists = !!storeDevice;
     const isDeviceConnected = storeDevice?.isConnected || false;
     
-    console.log(`NumericSetting: Fetching ${props.property} for device ${props.deviceId}`, {
-      deviceExists,
-      isConnected: isDeviceConnected,
-      storeDeviceCount: store.devicesList.length,
-      hasProperties: storeDevice ? Object.keys(storeDevice.properties || {}).length > 0 : 0
-    });
-    
     // If device doesn't exist or isn't connected in store, don't attempt fetch
     if (!deviceExists) {
-      console.warn(`NumericSetting: Device ${props.deviceId} not found in store, skipping fetch`);
+      error.value = 'Device not found';
       return;
     }
     
     if (!isDeviceConnected) {
-      console.warn(`NumericSetting: Device ${props.deviceId} exists but not connected, skipping fetch`);
+      error.value = 'Device not connected';
       return;
     }
     
     // Try to get the property directly from store cache first
     if (storeDevice.properties && props.property in storeDevice.properties) {
-      console.log(`NumericSetting: Using cached value for ${props.property} from store`);
       processReceivedValue(storeDevice.properties[props.property]);
       return;
     }
     
-    // Otherwise try to get the property via API
-    console.log(`NumericSetting: Fetching ${props.property} from API`);
-    const result = await store.getDeviceProperty(props.deviceId, props.property);
-    
-    console.log(`NumericSetting: Fetch result for ${props.property}: ${result !== null ? 'success' : 'failure'}`)
+    // Try to get from API
+    const result = await getDeviceProperty(props.property);
     if (result !== null) {
       processReceivedValue(result);
     }
   } catch (err) {
-    console.error(`NumericSetting: Error fetching ${props.property}:`, err);
-    error.value = `Failed to fetch ${props.property}: ${err instanceof Error ? err.message : 'Unknown error'}`;
+    if (err instanceof Error) {
+      error.value = err.message;
+    } else {
+      error.value = 'Unknown error occurred';
+    }
   }
 }
 
@@ -196,22 +189,17 @@ function handleSave() {
 const setupForceUpdateListener = () => {
   const handleForceUpdate = (event: CustomEvent) => {
     // Check if this event is for our device
-    if (event.detail && event.detail.deviceId === props.deviceId) {
-      console.log(`NumericSetting: Force update received for ${props.property}, deviceId: ${props.deviceId}`);
-      
+    if (event.detail && event.detail.deviceId === deviceId.value) {
       // Wait a brief moment for store updates to propagate
       setTimeout(() => {
         // Get fresh device data directly from store
-        const deviceData = store.getDeviceById(props.deviceId);
-        console.log(`NumericSetting: Device status direct check: exists=${!!deviceData}, connected=${deviceData?.isConnected}`);
+        const deviceData = store.getDeviceById(deviceId.value);
         
         // Only fetch if device exists and is connected
         if (deviceData && deviceData.isConnected) {
-          fetchValue().catch(err => {
-            console.error(`Force update failed for ${props.property}:`, err);
+          fetchValue().catch(() => {
+            // Silent catch - error is set in fetchValue
           });
-        } else {
-          console.warn(`NumericSetting: Skipping fetch for ${props.property} - device not ready yet`);
         }
       }, 100);
     }
@@ -229,14 +217,14 @@ const setupForceUpdateListener = () => {
 // Watch for device ID changes
 watch(
   () => props.deviceId,
-  (newDeviceId, oldDeviceId) => {
-    console.log(`NumericSetting: deviceId changed from ${oldDeviceId} to ${newDeviceId}`)
+  (newDeviceId) => {
+    // Update local ref
+    deviceId.value = newDeviceId;
+    
     if (newDeviceId) {
       // Clear values first
       currentValue.value = null
       editedValue.value = null
-      // Log store state for debugging
-      logStoreState()
       // Wait briefly for client initialization and then fetch values
       setTimeout(() => fetchValue(), 50)
     }
@@ -248,30 +236,16 @@ onMounted(() => {
   // Setup force update listener
   const cleanup = setupForceUpdateListener();
   
-  // Debug current store state
-  console.log(`NumericSetting(${props.property}): Mounted with deviceId ${props.deviceId || 'none'}`)
-  
   if (props.deviceId) {
-    logStoreState();
-    
     // Add a tiered retry strategy to handle initialization timing issues
     setTimeout(() => {
-      console.log(`NumericSetting: First attempt for ${props.property} on device ${props.deviceId}`)
-      fetchValue().catch(err => {
-        console.log(`NumericSetting: First attempt failed for ${props.property}, retrying...`)
-        
+      fetchValue().catch(() => {
         // First retry after 300ms
         setTimeout(() => {
-          console.log(`NumericSetting: Retry 1 for ${props.property} on device ${props.deviceId}`)
-          fetchValue().catch(err => {
-            console.log(`NumericSetting: Retry 1 failed for ${props.property}, retrying...`)
-            
+          fetchValue().catch(() => {
             // Second retry after 1000ms
             setTimeout(() => {
-              console.log(`NumericSetting: Retry 2 for ${props.property} on device ${props.deviceId}`)
-              fetchValue().catch(err => {
-                console.error(`NumericSetting: All retries failed for ${props.property}:`, err);
-              });
+              fetchValue();
             }, 1000);
           });
         }, 300);

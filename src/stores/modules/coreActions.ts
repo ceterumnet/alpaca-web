@@ -74,8 +74,6 @@ export function createCoreActions() {
 
       createDeviceClient(this: CoreState, device: Device): AlpacaClient | null {
         if (!device.apiBaseUrl || typeof device.apiBaseUrl !== 'string') {
-          console.warn(`No apiBaseUrl found for device ${device.id}, attempting to construct one from device ID`)
-
           // Special handling for device IDs in the format "192.168.4.169:8080:camera:0"
           if (device.id && device.id.includes(':')) {
             try {
@@ -89,21 +87,10 @@ export function createCoreActions() {
                 if (!isNaN(deviceNum)) {
                   // Construct API URL directly from device ID parts
                   const apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`
-                  console.log(`Parsed device ID ${device.id} into API URL: ${apiBaseUrl}`)
 
                   // Try to create a client with these values
                   try {
-                    console.log(`Creating AlpacaClient from parsed device ID with:`, {
-                      apiBaseUrl,
-                      deviceType: type,
-                      deviceNum
-                    })
-
                     const client = createAlpacaClient(apiBaseUrl, type, deviceNum)
-
-                    // Log success
-                    console.log(`Successfully created AlpacaClient for ${type} device ${device.id} from ID parsing`)
-
                     return client
                   } catch (parseError) {
                     console.error(`Failed to create client from parsed device ID:`, parseError)
@@ -120,21 +107,11 @@ export function createCoreActions() {
         }
 
         try {
-          console.log(`Creating AlpacaClient for device ${device.id} with:`, {
-            apiBaseUrl: device.apiBaseUrl,
-            deviceType: device.type,
-            deviceNum: device.deviceNum
-          })
-
           // Ensure we have a valid deviceNum
           const deviceNum = typeof device.deviceNum === 'number' ? device.deviceNum : 0
 
           // Create the client
           const client = createAlpacaClient(device.apiBaseUrl, device.type, deviceNum)
-
-          // Log success
-          console.log(`Successfully created AlpacaClient for ${device.type} device ${device.id}`)
-
           return client
         } catch (error) {
           console.error(`Failed to create client for device ${device.id}:`, error)
@@ -395,41 +372,20 @@ export function createCoreActions() {
 
         if (!device || !device.id) return false
 
-        console.log('Adding device to UnifiedStore:', {
-          deviceId: device.id,
-          deviceType: device.type,
-          deviceName: device.name,
-          deviceApiBaseUrl: device.apiBaseUrl
-        })
-
         // Ensure device has required fields
-        console.log('Normalizing device:', device)
         const normalizedDevice = this._normalizeDevice(defaultDevice)
 
         // Add to both Map and Array
         this.devices.set(normalizedDevice.id, normalizedDevice)
         this.devicesArray.push(normalizedDevice)
 
-        console.log('DEBUG - After adding to store:')
-        console.log('- Map size:', this.devices.size)
-        console.log('- Array length:', this.devicesArray.length)
-
         // Create and store client if device has apiBaseUrl
         if (normalizedDevice.apiBaseUrl && typeof normalizedDevice.apiBaseUrl === 'string') {
           const client = this.createDeviceClient(normalizedDevice)
           if (client) {
             this.deviceClients.set(normalizedDevice.id, client)
-            console.log(`Created API client for device ${normalizedDevice.id}`)
           }
         }
-
-        console.log('Device added to UnifiedStore:', {
-          id: normalizedDevice.id,
-          type: normalizedDevice.type,
-          apiBaseUrl: normalizedDevice.apiBaseUrl
-        })
-        console.log('Current store size:', this.devices.size)
-        console.log('Current devices:', Array.from(this.devices.keys()))
 
         // Emit event if not silent
         if (!options.silent) {
@@ -579,17 +535,6 @@ export function createCoreActions() {
         const device = this.devices.get(deviceId)
         if (!device) return false
 
-        // Add special tracing for gain and offset
-        if ('gain' in properties || 'offset' in properties) {
-          console.log(`%c[TRACE] Updating critical properties for ${deviceId}:`, 'background: #ff9; color: #363; font-weight: bold')
-          console.log(`%c[TRACE] gain:`, 'color: #363', properties.gain)
-          console.log(`%c[TRACE] offset:`, 'color: #363', properties.offset)
-          console.trace(`Property update stack trace (gain/offset)`)
-        }
-
-        // Log the incoming property update for debugging
-        // console.log(`Updating device properties for ${deviceId}:`, properties)
-
         // Create a merged properties object to update the device
         const updatedProperties = {
           ...(device.properties || {}),
@@ -605,12 +550,6 @@ export function createCoreActions() {
         if (result) {
           // Loop over new properties and emit change events
           Object.entries(properties).forEach(([key, value]) => {
-            // Special logging for gain/offset
-            if (key === 'gain' || key === 'offset') {
-              console.log(`%c[TRACE] Emitting event for ${deviceId}.${key} = ${value}`, 'background: #ff9; color: #363; font-weight: bold')
-            }
-
-            // console.log(`Emitting devicePropertyChanged event for ${deviceId}.${key} = ${value}`)
             this._emitEvent({
               type: 'devicePropertyChanged',
               deviceId,
@@ -645,14 +584,6 @@ export function createCoreActions() {
       },
 
       _normalizeDevice(device: Device): Device {
-        // Debug before normalization
-        console.log('_normalizeDevice - BEFORE:', {
-          id: device.id,
-          type: device.type,
-          typeUpperCase: device.type?.toUpperCase(),
-          typeLowerCase: device.type?.toLowerCase()
-        })
-
         const normalized = {
           id: device.id,
           name: device.name,
@@ -677,28 +608,19 @@ export function createCoreActions() {
           stateHistory: device.stateHistory
         }
 
-        // Debug after normalization
-        console.log('_normalizeDevice - AFTER:', {
-          id: normalized.id,
-          type: normalized.type
-        })
-
         return normalized
       },
 
       // UI state management methods
       toggleSidebar(this: CoreState): void {
-        console.log('Toggling sidebar from', this.isSidebarVisible, 'to', !this.isSidebarVisible)
         this.isSidebarVisible = !this.isSidebarVisible
       },
 
       selectDevice(this: CoreState, deviceId: string): void {
-        console.log('Selecting device:', deviceId)
         this.selectedDeviceId = deviceId
       },
 
       setTheme(this: CoreState, newTheme: 'light' | 'dark'): void {
-        console.log('Setting theme from', this.theme, 'to', newTheme)
         this.theme = newTheme
       },
 
@@ -948,23 +870,10 @@ export function createCoreActions() {
         // Get the client for this device
         let client = this.getDeviceClient(deviceId)
 
-        // If no client exists, try to create one - with enhanced logging and error handling
+        // If no client exists, try to create one
         if (!client && device) {
-          console.warn(`No API client found for device ${deviceId}, attempting to create one`)
-
-          console.log('Device data:', {
-            id: device.id,
-            type: device.type,
-            apiBaseUrl: device.apiBaseUrl,
-            properties: device.properties || {},
-            ipAddress: device.ipAddress,
-            port: device.port
-          })
-
           // Check if the device has an API base URL, or try to construct one from available properties
           if (!device.apiBaseUrl) {
-            console.log(`Device ${deviceId} has no API base URL, attempting to construct one from properties`)
-
             // Try multiple approaches to construct the API URL
             let apiBaseUrl: string | undefined = undefined
             let deviceNum = device.deviceNum !== undefined ? device.deviceNum : 0
@@ -972,7 +881,6 @@ export function createCoreActions() {
             // Approach 1: Use ipAddress and port if available
             if (device.ipAddress && device.port) {
               apiBaseUrl = `http://${device.ipAddress}:${device.port}/api/v1/${device.type.toLowerCase()}/${deviceNum}`
-              console.log(`Constructed API URL from IP/port: ${apiBaseUrl}`)
             }
             // Approach 2: Check for apiBaseUrl in properties
             else if (device.properties && device.properties.apiBaseUrl) {
@@ -980,12 +888,10 @@ export function createCoreActions() {
               if (device.properties.deviceNumber !== undefined) {
                 deviceNum = device.properties.deviceNumber as number
               }
-              console.log(`Found apiBaseUrl in properties: ${apiBaseUrl}, deviceNum: ${deviceNum}`)
             }
             // Approach 3: Look for address and devicePort
             else if (device.address && device.devicePort) {
               apiBaseUrl = `http://${device.address}:${device.devicePort}/api/v1/${device.type.toLowerCase()}/${deviceNum}`
-              console.log(`Constructed API URL from address/devicePort: ${apiBaseUrl}`)
             }
             // Approach 4: Last resort - try to parse from device ID if it follows a pattern
             else if (device.id && device.id.includes(':')) {
@@ -999,7 +905,6 @@ export function createCoreActions() {
                   deviceNum = parseInt(parts[3], 10)
                   if (!isNaN(deviceNum)) {
                     apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`
-                    console.log(`Constructed API URL from device ID parts: ${apiBaseUrl}`)
                   }
                 }
               } catch (err) {
@@ -1009,7 +914,6 @@ export function createCoreActions() {
 
             // If we found an API URL, update the device
             if (apiBaseUrl) {
-              console.log(`Updating device ${deviceId} with API URL: ${apiBaseUrl} and deviceNum: ${deviceNum}`)
               this.updateDevice(deviceId, {
                 apiBaseUrl,
                 deviceNum
@@ -1027,19 +931,13 @@ export function createCoreActions() {
             if (client) {
               // Store the client in the map
               this.deviceClients.set(deviceId, client)
-              console.log(`Successfully created client for device ${deviceId}`)
-            } else {
-              console.error(`Failed to create client for device ${deviceId} even with apiBaseUrl: ${updatedDevice.apiBaseUrl}`)
             }
           }
         }
 
         if (!client) {
-          console.warn(`No API client available for device ${deviceId}`)
-
           // If a fallback is provided, use it
           if (fallback) {
-            console.log(`Using fallback for operation on device ${deviceId}`)
             return await fallback()
           }
 
@@ -1060,7 +958,6 @@ export function createCoreActions() {
        */
       async getDeviceProperty(this: CoreState, deviceId: string, property: string): Promise<unknown> {
         return this.executeDeviceOperation(deviceId, async (client: AlpacaClient) => {
-          console.log(`Getting property ${property} from device ${deviceId}`)
           return await client.getProperty(property)
         })
       },
@@ -1077,7 +974,6 @@ export function createCoreActions() {
         value: unknown
       ): Promise<unknown> {
         const result = await this.executeDeviceOperation(deviceId, async (client: AlpacaClient) => {
-          console.log(`Setting property ${property} on device ${deviceId} to`, value)
           return await client.setProperty(property, value)
         })
 
@@ -1105,12 +1001,6 @@ export function createCoreActions() {
         method: string,
         args: unknown[] = []
       ): Promise<unknown> {
-        // Debug logging for camera state and imageready method calls
-        if (method === 'camerastate' || method === 'imageready') {
-          console.log(`%c📞 Method Call: ${method} for device ${deviceId}`, 'color: orange; font-weight: bold')
-          console.log('Call stack:', new Error().stack)
-        }
-
         // Try to execute the operation with the client
         return this.executeDeviceOperation(
           deviceId,
@@ -1120,7 +1010,6 @@ export function createCoreActions() {
           // Fallback to simulation if appropriate
           async () => {
             if (this.shouldFallbackToSimulation(deviceId, method)) {
-              console.log(`Falling back to simulation for ${method} on device ${deviceId}`)
               return await this.simulateDeviceMethod(deviceId, method, args)
             }
             throw new Error(`No API client available for device ${deviceId} and no simulation available`)
