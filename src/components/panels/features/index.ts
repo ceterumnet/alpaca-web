@@ -24,6 +24,7 @@ import CameraExposureControl from './CameraExposureControl.vue'
 import CameraImageDisplay from './CameraImageDisplay.vue'
 import DirectionalControl from './DirectionalControl.vue'
 import type { App, Component } from 'vue'
+import { useBaseControl } from './BaseControlMixin'
 
 // Export all feature components
 export {
@@ -37,7 +38,9 @@ export {
   ContextSensitiveControl,
   CameraExposureControl,
   CameraImageDisplay,
-  DirectionalControl
+  DirectionalControl,
+  // Utility exports
+  useBaseControl
 }
 
 // Define component mapping for panel definitions - use type annotation to avoid issues

@@ -33,3 +33,5 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+**/.claude/settings.local.json

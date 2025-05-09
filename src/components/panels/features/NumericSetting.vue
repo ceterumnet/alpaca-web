@@ -1,11 +1,11 @@
 // Status: Good - Core Component // This is the numeric setting implementation that: // - Provides
-type-safe numeric value control // - Handles proper value validation and constraints // - Supports
-both slider and direct input // - Implements proper error handling // - Provides real-time value
-updates /** * Numeric Setting Component * * Provides numeric value control with slider and direct
-input */
+// type-safe numeric value control // - Handles proper value validation and constraints // - Supports
+// both slider and direct input // - Implements proper error handling // - Provides real-time value
+// updates /** * Numeric Setting Component * * Provides numeric value control with slider and direct
+// input */
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
-import { useUnifiedStore } from '@/stores/UnifiedStore'
+import { useBaseControl } from './BaseControlMixin'
 
 const props = defineProps({
   deviceId: {
@@ -40,12 +40,21 @@ const props = defineProps({
 
 const emit = defineEmits(['change', 'success', 'error'])
 
-const store = useUnifiedStore()
+// Use the base control mixin
+const {
+  store,
+  isConnected,
+  isLoading,
+  error,
+  safeExecute,
+  getDeviceProperty,
+  setDeviceProperty,
+  logStoreState
+} = useBaseControl(props.deviceId)
+
 const currentValue = ref<number | null>(null)
 const editedValue = ref<number | null>(null)
-const isLoading = ref(true)
 const isSaving = ref(false)
-const error = ref('')
 
 // Formatted display value with units
 const displayValue = computed(() => {
@@ -62,115 +71,61 @@ const displayValue = computed(() => {
 
 // Fetch the current value from the device
 async function fetchValue() {
-  isLoading.value = true
-  error.value = ''
-
-  // Special tracing for gain and offset
-  const isCriticalProperty = props.property === 'gain' || props.property === 'offset';
-  if (isCriticalProperty) {
-    console.log(`%c[TRACE] NumericSetting: Fetching ${props.property} for device ${props.deviceId}`, 'background: #ffd; color: #363; font-weight: bold');
+  // Bail out immediately if no device ID 
+  if (!props.deviceId) {
+    console.warn(`NumericSetting: No device ID provided when fetching ${props.property}`);
+    return;
   }
-
+  
   try {
-    // Get the property value
-    console.log(`NumericSetting: Fetching property ${props.property} for device ${props.deviceId}`);
+    // Get device directly from store - avoid any reactivity issues
+    const storeDevice = store.getDeviceById(props.deviceId);
+    const deviceExists = !!storeDevice;
+    const isDeviceConnected = storeDevice?.isConnected || false;
     
-    // Get the device to check for apiBaseUrl
-    const device = store.getDeviceById(props.deviceId);
+    console.log(`NumericSetting: Fetching ${props.property} for device ${props.deviceId}`, {
+      deviceExists,
+      isConnected: isDeviceConnected,
+      storeDeviceCount: store.devicesList.length,
+      hasProperties: storeDevice ? Object.keys(storeDevice.properties || {}).length > 0 : 0
+    });
     
-    // Special tracing for device state
-    if (isCriticalProperty && device) {
-      console.log(`%c[TRACE] Device state for ${props.deviceId}:`, 'background: #ffd; color: #363;');
-      console.log(`- isConnected: ${device.isConnected}`);
-      console.log(`- apiBaseUrl: ${device.apiBaseUrl}`);
-      console.log(`- properties:`, device.properties);
-      
-      // Check if property is in device properties
-      if (device.properties && props.property in device.properties) {
-        console.log(`%c[TRACE] ${props.property} FOUND in device.properties: ${device.properties[props.property]}`, 
-                    'background: #dfd; color: #363; font-weight: bold');
-      } else {
-        console.log(`%c[TRACE] ${props.property} NOT FOUND in device.properties`, 
-                    'background: #fdd; color: #633; font-weight: bold');
-      }
+    // If device doesn't exist or isn't connected in store, don't attempt fetch
+    if (!deviceExists) {
+      console.warn(`NumericSetting: Device ${props.deviceId} not found in store, skipping fetch`);
+      return;
     }
     
-    // Try the store method first - with error handling for TypeScript issues
-    try {
-      const result = await store.getDeviceProperty(props.deviceId, props.property);
-      
-      if (isCriticalProperty) {
-        console.log(`%c[TRACE] NumericSetting: Received ${props.property} value:`, 
-                   'background: #dfd; color: #363; font-weight: bold', result);
-      } else {
-        console.log(`NumericSetting: Received value for ${props.property}:`, result);
-      }
-      
-      // Process the result
+    if (!isDeviceConnected) {
+      console.warn(`NumericSetting: Device ${props.deviceId} exists but not connected, skipping fetch`);
+      return;
+    }
+    
+    // Try to get the property directly from store cache first
+    if (storeDevice.properties && props.property in storeDevice.properties) {
+      console.log(`NumericSetting: Using cached value for ${props.property} from store`);
+      processReceivedValue(storeDevice.properties[props.property]);
+      return;
+    }
+    
+    // Otherwise try to get the property via API
+    console.log(`NumericSetting: Fetching ${props.property} from API`);
+    const result = await store.getDeviceProperty(props.deviceId, props.property);
+    
+    console.log(`NumericSetting: Fetch result for ${props.property}: ${result !== null ? 'success' : 'failure'}`)
+    if (result !== null) {
       processReceivedValue(result);
-      return; // Exit if successful
-    } catch (storeError) {
-      console.warn(`NumericSetting: Store method failed, trying direct API call:`, storeError);
-      
-      // If the store method fails, try a direct API call if we have the URL
-      if (device?.apiBaseUrl) {
-        // Use direct API call as fallback
-        const endpoint = `${device.apiBaseUrl}/${props.property.toLowerCase()}`;
-        console.log(`NumericSetting: Direct fetch from ${endpoint}`);
-        
-        const response = await fetch(endpoint, {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'AlpacaWeb'
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`NumericSetting: Direct fetch returned:`, data);
-          
-          if (data && data.Value !== undefined) {
-            // Process the result from the direct API call
-            processReceivedValue(data.Value);
-            return; // Exit if successful
-          }
-        } else {
-          console.error(`Direct API call failed with status ${response.status}`);
-          throw new Error(`HTTP error ${response.status}`);
-        }
-      } else {
-        // Re-throw the original error if we couldn't do a direct call
-        throw storeError;
-      }
     }
   } catch (err) {
-    console.error('Error in NumericSetting.fetchValue:', err);
-    if (err instanceof Error) {
-      error.value = err.message
-    } else {
-      error.value = 'Unknown error occurred'
-    }
-  } finally {
-    isLoading.value = false
+    console.error(`NumericSetting: Error fetching ${props.property}:`, err);
+    error.value = `Failed to fetch ${props.property}: ${err instanceof Error ? err.message : 'Unknown error'}`;
   }
 }
 
 // Helper to process and set the received value
 function processReceivedValue(result: unknown) {
-  // Special tracing for gain and offset
-  const isCriticalProperty = props.property === 'gain' || props.property === 'offset';
-  
-  if (isCriticalProperty) {
-    console.log(`%c[TRACE] NumericSetting: Processing ${props.property} value:`, 
-               'background: #ffd; color: #363; font-weight: bold', result);
-  }
-
   // Convert to number if possible
   if (typeof result === 'number') {
-    if (isCriticalProperty) {
-      console.log(`%c[TRACE] NumericSetting: Setting ${props.property} to numeric value ${result}`, 
-                 'background: #dfd; color: #363; font-weight: bold');
-    }
     currentValue.value = result
     if (editedValue.value === null) {
       editedValue.value = result
@@ -179,10 +134,6 @@ function processReceivedValue(result: unknown) {
     // Try to parse as number
     const parsed = parseFloat(result)
     if (!isNaN(parsed)) {
-      if (isCriticalProperty) {
-        console.log(`%c[TRACE] NumericSetting: Converting string to number: ${result} -> ${parsed}`, 
-                   'background: #dfd; color: #363; font-weight: bold');
-      }
       currentValue.value = parsed
       if (editedValue.value === null) {
         editedValue.value = parsed
@@ -202,61 +153,20 @@ async function saveValue() {
   }
 
   isSaving.value = true
-  error.value = ''
 
-  try {
-    console.log(`NumericSetting: Setting property ${props.property} to ${editedValue.value} for device ${props.deviceId}`);
-    
-    // Get the device
-    const device = store.getDeviceById(props.deviceId);
-    
-    // Try the store method first with TypeScript error handling
-    try {
-      // @ts-expect-error - The store has context typing issues that need to be fixed in a larger refactor
-      await store.setDeviceProperty(props.deviceId, props.property, editedValue.value)
-      console.log(`NumericSetting: Successfully set ${props.property}`);
-    } catch (storeError) {
-      console.warn(`NumericSetting: Store method failed, trying direct API call:`, storeError);
-      
-      // Fallback to direct API call if store method fails
-      if (device?.apiBaseUrl) {
-        const endpoint = `${device.apiBaseUrl}/${props.property.toLowerCase()}`;
-        console.log(`NumericSetting: Direct PUT to ${endpoint}`);
-        
-        const response = await fetch(endpoint, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'AlpacaWeb',
-          },
-          body: JSON.stringify({ Value: editedValue.value, ClientID: 1, ClientTransactionID: Date.now() })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Direct API call failed with status ${response.status}`);
-        }
-        
-        console.log(`NumericSetting: Successfully set ${props.property} via direct API call`);
-      } else {
-        throw new Error('No API URL available for direct call');
-      }
-    }
+  const success = await setDeviceProperty(props.property, editedValue.value)
 
+  if (success) {
     // Update current value and emit success
     currentValue.value = editedValue.value
     emit('success', editedValue.value)
     emit('change', editedValue.value)
-  } catch (err) {
-    console.error('Error in NumericSetting.saveValue:', err);
-    if (err instanceof Error) {
-      error.value = err.message
-    } else {
-      error.value = 'Unknown error occurred'
-    }
+  } else if (error.value) {
+    // Error already set by mixin, just forward it
     emit('error', error.value)
-  } finally {
-    isSaving.value = false
   }
+
+  isSaving.value = false
 }
 
 // Handle slider/input change
@@ -287,16 +197,29 @@ const setupForceUpdateListener = () => {
   const handleForceUpdate = (event: CustomEvent) => {
     // Check if this event is for our device
     if (event.detail && event.detail.deviceId === props.deviceId) {
-      console.log(`NumericSetting: Received force update event for ${props.property}`);
-      fetchValue().catch(err => {
-        console.warn(`Error during forced update: ${err}`);
-      });
+      console.log(`NumericSetting: Force update received for ${props.property}, deviceId: ${props.deviceId}`);
+      
+      // Wait a brief moment for store updates to propagate
+      setTimeout(() => {
+        // Get fresh device data directly from store
+        const deviceData = store.getDeviceById(props.deviceId);
+        console.log(`NumericSetting: Device status direct check: exists=${!!deviceData}, connected=${deviceData?.isConnected}`);
+        
+        // Only fetch if device exists and is connected
+        if (deviceData && deviceData.isConnected) {
+          fetchValue().catch(err => {
+            console.error(`Force update failed for ${props.property}:`, err);
+          });
+        } else {
+          console.warn(`NumericSetting: Skipping fetch for ${props.property} - device not ready yet`);
+        }
+      }, 100);
     }
   };
-  
+
   // Add event listener
   window.addEventListener('alpaca-force-update', handleForceUpdate as EventListener);
-  
+
   // Return cleanup function
   return () => {
     window.removeEventListener('alpaca-force-update', handleForceUpdate as EventListener);
@@ -306,41 +229,56 @@ const setupForceUpdateListener = () => {
 // Watch for device ID changes
 watch(
   () => props.deviceId,
-  () => {
-    if (props.deviceId) {
-      fetchValue()
+  (newDeviceId, oldDeviceId) => {
+    console.log(`NumericSetting: deviceId changed from ${oldDeviceId} to ${newDeviceId}`)
+    if (newDeviceId) {
+      // Clear values first
+      currentValue.value = null
+      editedValue.value = null
+      // Log store state for debugging
+      logStoreState()
+      // Wait briefly for client initialization and then fetch values
+      setTimeout(() => fetchValue(), 50)
     }
   }
 )
 
 // Initial fetch on component mount with retry logic
 onMounted(() => {
-  if (!props.deviceId) return;
-
-  console.log(`NumericSetting: Mounted for ${props.property} on device ${props.deviceId}`);
-  
-  // Check if device exists
-  console.log(`NumericSetting: Device exists:`, !!store.getDeviceById(props.deviceId));
-  
   // Setup force update listener
   const cleanup = setupForceUpdateListener();
   
-  // Add a small delay to give time for client creation in parent components
-  setTimeout(() => {
-    fetchValue()
-      .catch(err => {
-        console.warn(`NumericSetting: Initial fetch failed, retrying in 500ms...`, err);
-        
-        // Retry after a short delay - parent components might still be setting up connections
-        setTimeout(() => {
-          console.log(`NumericSetting: Retrying fetch for ${props.property}`);
-          fetchValue().catch(err => {
-            console.error(`NumericSetting: Retry fetch also failed`, err);
-          });
-        }, 500);
-      });
-  }, 100);
+  // Debug current store state
+  console.log(`NumericSetting(${props.property}): Mounted with deviceId ${props.deviceId || 'none'}`)
   
+  if (props.deviceId) {
+    logStoreState();
+    
+    // Add a tiered retry strategy to handle initialization timing issues
+    setTimeout(() => {
+      console.log(`NumericSetting: First attempt for ${props.property} on device ${props.deviceId}`)
+      fetchValue().catch(err => {
+        console.log(`NumericSetting: First attempt failed for ${props.property}, retrying...`)
+        
+        // First retry after 300ms
+        setTimeout(() => {
+          console.log(`NumericSetting: Retry 1 for ${props.property} on device ${props.deviceId}`)
+          fetchValue().catch(err => {
+            console.log(`NumericSetting: Retry 1 failed for ${props.property}, retrying...`)
+            
+            // Second retry after 1000ms
+            setTimeout(() => {
+              console.log(`NumericSetting: Retry 2 for ${props.property} on device ${props.deviceId}`)
+              fetchValue().catch(err => {
+                console.error(`NumericSetting: All retries failed for ${props.property}:`, err);
+              });
+            }, 1000);
+          });
+        }, 300);
+      });
+    }, 100);
+  }
+
   // Cleanup on unmount
   onBeforeUnmount(() => {
     cleanup();
