@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 
 interface Option {
@@ -55,9 +55,55 @@ async function fetchValue() {
 
   try {
     // Get the property value
-    const result = await store.getDeviceProperty(props.deviceId, props.property)
-    currentValue.value = result as string | number
+    console.log(`SelectSetting: Fetching property ${props.property} for device ${props.deviceId}`);
+    
+    // Get the device to check for apiBaseUrl
+    const device = store.getDeviceById(props.deviceId);
+    
+    // Try the store method first - with error handling for TypeScript issues
+    try {
+      const result = await store.getDeviceProperty(props.deviceId, props.property);
+      console.log(`SelectSetting: Received value for ${props.property}:`, result);
+      
+      // Process the result
+      processReceivedValue(result);
+      return; // Exit if successful
+    } catch (storeError) {
+      console.warn(`SelectSetting: Store method failed, trying direct API call:`, storeError);
+      
+      // If the store method fails, try a direct API call if we have the URL
+      if (device?.apiBaseUrl) {
+        // Use direct API call as fallback
+        const endpoint = `${device.apiBaseUrl}/${props.property.toLowerCase()}`;
+        console.log(`SelectSetting: Direct fetch from ${endpoint}`);
+        
+        const response = await fetch(endpoint, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'AlpacaWeb'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`SelectSetting: Direct fetch returned:`, data);
+          
+          if (data && data.Value !== undefined) {
+            // Process the result from the direct API call
+            processReceivedValue(data.Value);
+            return; // Exit if successful
+          }
+        } else {
+          console.error(`Direct API call failed with status ${response.status}`);
+          throw new Error(`HTTP error ${response.status}`);
+        }
+      } else {
+        // Re-throw the original error if we couldn't do a direct call
+        throw storeError;
+      }
+    }
   } catch (err) {
+    console.error('Error in SelectSetting.fetchValue:', err);
     if (err instanceof Error) {
       error.value = err.message
     } else {
@@ -65,6 +111,18 @@ async function fetchValue() {
     }
   } finally {
     isLoading.value = false
+  }
+}
+
+// Helper to process and set the received value
+function processReceivedValue(result: unknown) {
+  // Store the raw value - handle unknown type from API
+  if (typeof result === 'string' || typeof result === 'number') {
+    currentValue.value = result;
+  } else {
+    // Try to convert to string as fallback
+    currentValue.value = String(result);
+    console.warn(`SelectSetting: Unexpected type for ${props.property}, converted to string:`, result);
   }
 }
 
@@ -78,14 +136,49 @@ async function saveValue(newValue: string | number) {
   error.value = ''
 
   try {
-    // Use the put method to set the property
-    await store.setDeviceProperty(props.deviceId, props.property, newValue)
+    console.log(`SelectSetting: Setting property ${props.property} to ${newValue} for device ${props.deviceId}`);
+    
+    // Get the device
+    const device = store.getDeviceById(props.deviceId);
+    
+    // Try the store method first with TypeScript error handling
+    try {
+      // @ts-expect-error - The store has context typing issues that need to be fixed in a larger refactor
+      await store.setDeviceProperty(props.deviceId, props.property, newValue)
+      console.log(`SelectSetting: Successfully set ${props.property}`);
+    } catch (storeError) {
+      console.warn(`SelectSetting: Store method failed, trying direct API call:`, storeError);
+      
+      // Fallback to direct API call if store method fails
+      if (device?.apiBaseUrl) {
+        const endpoint = `${device.apiBaseUrl}/${props.property.toLowerCase()}`;
+        console.log(`SelectSetting: Direct PUT to ${endpoint}`);
+        
+        const response = await fetch(endpoint, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'AlpacaWeb',
+          },
+          body: JSON.stringify({ Value: newValue, ClientID: 1, ClientTransactionID: Date.now() })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Direct API call failed with status ${response.status}`);
+        }
+        
+        console.log(`SelectSetting: Successfully set ${props.property} via direct API call`);
+      } else {
+        throw new Error('No API URL available for direct call');
+      }
+    }
 
     // Update current value and emit success
     currentValue.value = newValue
     emit('success', newValue)
     emit('change', newValue)
   } catch (err) {
+    console.error('Error in SelectSetting.saveValue:', err);
     if (err instanceof Error) {
       error.value = err.message
     } else {
@@ -109,6 +202,27 @@ function handleChange(event: Event) {
   }
 }
 
+// Listen for global force update events
+const setupForceUpdateListener = () => {
+  const handleForceUpdate = (event: CustomEvent) => {
+    // Check if this event is for our device
+    if (event.detail && event.detail.deviceId === props.deviceId) {
+      console.log(`SelectSetting: Received force update event for ${props.property}`);
+      fetchValue().catch(err => {
+        console.warn(`Error during forced update: ${err}`);
+      });
+    }
+  };
+  
+  // Add event listener
+  window.addEventListener('alpaca-force-update', handleForceUpdate as EventListener);
+  
+  // Return cleanup function
+  return () => {
+    window.removeEventListener('alpaca-force-update', handleForceUpdate as EventListener);
+  };
+};
+
 // Watch for device ID changes
 watch(
   () => props.deviceId,
@@ -119,11 +233,41 @@ watch(
   }
 )
 
-// Initial fetch on component mount
+// Initial fetch on component mount with retry logic
 onMounted(() => {
-  if (props.deviceId) {
-    fetchValue()
+  if (!props.deviceId) return;
+
+  console.log(`SelectSetting: Mounted for ${props.property} on device ${props.deviceId}`);
+  
+  // Try to ensure client exists before fetching
+  const device = store.getDeviceById(props.deviceId);
+  if (device) {
+    console.log(`SelectSetting: Found device ${props.deviceId} with apiBaseUrl:`, device.apiBaseUrl);
   }
+  
+  // Setup force update listener
+  const cleanup = setupForceUpdateListener();
+  
+  // Add a small delay to give time for client creation in parent components
+  setTimeout(() => {
+    fetchValue()
+      .catch(err => {
+        console.warn(`SelectSetting: Initial fetch failed, retrying in 500ms...`, err);
+        
+        // Retry after a short delay - parent components might still be setting up connections
+        setTimeout(() => {
+          console.log(`SelectSetting: Retrying fetch for ${props.property}`);
+          fetchValue().catch(err => {
+            console.error(`SelectSetting: Retry fetch also failed`, err);
+          });
+        }, 500);
+      });
+  }, 100);
+  
+  // Cleanup on unmount
+  onBeforeUnmount(() => {
+    cleanup();
+  });
 })
 </script>
 

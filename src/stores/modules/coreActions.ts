@@ -26,6 +26,8 @@ export interface CoreState {
   theme: 'light' | 'dark'
   isSidebarVisible: boolean
   getDeviceById: (deviceId: string) => Device | null
+  getDeviceClient: (deviceId: string) => AlpacaClient | null
+  executeDeviceOperation: <T>(deviceId: string, operation: (client: AlpacaClient) => Promise<T>, fallback?: () => Promise<T>) => Promise<T>
   deviceStateCache: Map<string, { timestamp: number; data: Record<string, unknown> }>
   _propertyPollingIntervals: Map<string, number>
   _deviceStateAvailableProps: Map<string, Set<string>>
@@ -44,6 +46,10 @@ export function createCoreActions() {
       theme: 'light',
       isSidebarVisible: true,
       getDeviceById: () => null, // This will be overridden by the action
+      getDeviceClient: () => null, // This will be overridden by the action
+      executeDeviceOperation: async () => {
+        throw new Error('Not implemented')
+      }, // This will be overridden by the action
       deviceStateCache: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),
       _propertyPollingIntervals: new Map<string, number>(),
       _deviceStateAvailableProps: new Map<string, Set<string>>(),
@@ -68,9 +74,48 @@ export function createCoreActions() {
 
       createDeviceClient(this: CoreState, device: Device): AlpacaClient | null {
         if (!device.apiBaseUrl || typeof device.apiBaseUrl !== 'string') {
-          console.error(
-            `Cannot create API client: missing or invalid apiBaseUrl for device ${device.id}`
-          )
+          console.warn(`No apiBaseUrl found for device ${device.id}, attempting to construct one from device ID`)
+
+          // Special handling for device IDs in the format "192.168.4.169:8080:camera:0"
+          if (device.id && device.id.includes(':')) {
+            try {
+              const parts = device.id.split(':')
+              if (parts.length >= 4) {
+                const ip = parts[0]
+                const port = parts[1]
+                const type = parts[2].toLowerCase()
+                const deviceNum = parseInt(parts[3], 10)
+
+                if (!isNaN(deviceNum)) {
+                  // Construct API URL directly from device ID parts
+                  const apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`
+                  console.log(`Parsed device ID ${device.id} into API URL: ${apiBaseUrl}`)
+
+                  // Try to create a client with these values
+                  try {
+                    console.log(`Creating AlpacaClient from parsed device ID with:`, {
+                      apiBaseUrl,
+                      deviceType: type,
+                      deviceNum
+                    })
+
+                    const client = createAlpacaClient(apiBaseUrl, type, deviceNum)
+
+                    // Log success
+                    console.log(`Successfully created AlpacaClient for ${type} device ${device.id} from ID parsing`)
+
+                    return client
+                  } catch (parseError) {
+                    console.error(`Failed to create client from parsed device ID:`, parseError)
+                  }
+                }
+              }
+            } catch (error) {
+              console.error(`Failed to parse device ID ${device.id}:`, error)
+            }
+          }
+
+          console.error(`Cannot create API client: missing or invalid apiBaseUrl for device ${device.id}`)
           return null
         }
 
@@ -131,10 +176,7 @@ export function createCoreActions() {
         this.updateDevice(deviceId, {
           isConnecting: true,
           status: 'connecting',
-          stateHistory: [
-            ...(device.stateHistory || []),
-            { from: device.status, to: 'connecting', timestamp: Date.now() }
-          ]
+          stateHistory: [...(device.stateHistory || []), { from: device.status, to: 'connecting', timestamp: Date.now() }]
         })
 
         try {
@@ -152,10 +194,7 @@ export function createCoreActions() {
             isConnected: true,
             isConnecting: false,
             status: 'connected',
-            stateHistory: [
-              ...(device.stateHistory || []),
-              { from: 'connecting', to: 'connected', timestamp: Date.now() }
-            ]
+            stateHistory: [...(device.stateHistory || []), { from: 'connecting', to: 'connected', timestamp: Date.now() }]
           })
 
           // Emit connect event
@@ -196,10 +235,7 @@ export function createCoreActions() {
           this.updateDevice(deviceId, {
             isConnecting: false,
             status: 'error',
-            stateHistory: [
-              ...(device.stateHistory || []),
-              { from: 'connecting', to: 'error', timestamp: Date.now() }
-            ]
+            stateHistory: [...(device.stateHistory || []), { from: 'connecting', to: 'error', timestamp: Date.now() }]
           })
 
           // Emit error event
@@ -240,10 +276,7 @@ export function createCoreActions() {
         this.updateDevice(deviceId, {
           isDisconnecting: true,
           status: 'disconnecting',
-          stateHistory: [
-            ...(device.stateHistory || []),
-            { from: device.status, to: 'disconnecting', timestamp: Date.now() }
-          ]
+          stateHistory: [...(device.stateHistory || []), { from: device.status, to: 'disconnecting', timestamp: Date.now() }]
         })
 
         try {
@@ -295,10 +328,7 @@ export function createCoreActions() {
             isConnected: false,
             isDisconnecting: false,
             status: 'idle',
-            stateHistory: [
-              ...(device.stateHistory || []),
-              { from: 'disconnecting', to: 'idle', timestamp: Date.now() }
-            ]
+            stateHistory: [...(device.stateHistory || []), { from: 'disconnecting', to: 'idle', timestamp: Date.now() }]
           })
 
           // Emit disconnect event
@@ -312,10 +342,7 @@ export function createCoreActions() {
           this.updateDevice(deviceId, {
             isDisconnecting: false,
             status: 'error',
-            stateHistory: [
-              ...(device.stateHistory || []),
-              { from: 'disconnecting', to: 'error', timestamp: Date.now() }
-            ]
+            stateHistory: [...(device.stateHistory || []), { from: 'disconnecting', to: 'error', timestamp: Date.now() }]
           })
 
           // Emit error event
@@ -552,6 +579,14 @@ export function createCoreActions() {
         const device = this.devices.get(deviceId)
         if (!device) return false
 
+        // Add special tracing for gain and offset
+        if ('gain' in properties || 'offset' in properties) {
+          console.log(`%c[TRACE] Updating critical properties for ${deviceId}:`, 'background: #ff9; color: #363; font-weight: bold')
+          console.log(`%c[TRACE] gain:`, 'color: #363', properties.gain)
+          console.log(`%c[TRACE] offset:`, 'color: #363', properties.offset)
+          console.trace(`Property update stack trace (gain/offset)`)
+        }
+
         // Log the incoming property update for debugging
         // console.log(`Updating device properties for ${deviceId}:`, properties)
 
@@ -570,6 +605,11 @@ export function createCoreActions() {
         if (result) {
           // Loop over new properties and emit change events
           Object.entries(properties).forEach(([key, value]) => {
+            // Special logging for gain/offset
+            if (key === 'gain' || key === 'offset') {
+              console.log(`%c[TRACE] Emitting event for ${deviceId}.${key} = ${value}`, 'background: #ff9; color: #363; font-weight: bold')
+            }
+
             // console.log(`Emitting devicePropertyChanged event for ${deviceId}.${key} = ${value}`)
             this._emitEvent({
               type: 'devicePropertyChanged',
@@ -593,14 +633,10 @@ export function createCoreActions() {
         }
 
         // Map some properties to more user-friendly names
-        if (updatedProperties.binx !== undefined)
-          updatedProperties.binningX = updatedProperties.binx
-        if (updatedProperties.biny !== undefined)
-          updatedProperties.binningY = updatedProperties.biny
-        if (updatedProperties.cooleron !== undefined)
-          updatedProperties.coolerEnabled = updatedProperties.cooleron
-        if (updatedProperties.ccdtemperature !== undefined)
-          updatedProperties.currentTemperature = updatedProperties.ccdtemperature
+        if (updatedProperties.binx !== undefined) updatedProperties.binningX = updatedProperties.binx
+        if (updatedProperties.biny !== undefined) updatedProperties.binningY = updatedProperties.biny
+        if (updatedProperties.cooleron !== undefined) updatedProperties.coolerEnabled = updatedProperties.cooleron
+        if (updatedProperties.ccdtemperature !== undefined) updatedProperties.currentTemperature = updatedProperties.ccdtemperature
 
         // Initialize default exposure time as it's not a standard ALPACA property
         updatedProperties.exposureTime = updatedProperties.exposureTime || 1.0 // Default to 1 second exposure
@@ -667,9 +703,7 @@ export function createCoreActions() {
       },
 
       getDevicesByType(this: CoreState, deviceType: string): Device[] {
-        return this.devicesArray.filter(
-          (device) => device.deviceType === deviceType || device.type === deviceType
-        )
+        return this.devicesArray.filter((device) => device.deviceType === deviceType || device.type === deviceType)
       },
 
       hasDevice(this: CoreState, deviceId: string): boolean {
@@ -801,16 +835,11 @@ export function createCoreActions() {
             }
 
             // Camera-specific attributes
-            if (typeof properties.camerastate !== 'undefined')
-              deviceAttributes.camerastate = properties.camerastate
-            if (typeof properties.ccdtemperature !== 'undefined')
-              deviceAttributes.temperature = properties.ccdtemperature
-            if (typeof properties.cooleron !== 'undefined')
-              deviceAttributes.cooleron = properties.cooleron
-            if (typeof properties.coolerpower !== 'undefined')
-              deviceAttributes.coolerpower = properties.coolerpower
-            if (typeof properties.hasshutter !== 'undefined')
-              deviceAttributes.hasshutter = properties.hasshutter
+            if (typeof properties.camerastate !== 'undefined') deviceAttributes.camerastate = properties.camerastate
+            if (typeof properties.ccdtemperature !== 'undefined') deviceAttributes.temperature = properties.ccdtemperature
+            if (typeof properties.cooleron !== 'undefined') deviceAttributes.cooleron = properties.cooleron
+            if (typeof properties.coolerpower !== 'undefined') deviceAttributes.coolerpower = properties.coolerpower
+            if (typeof properties.hasshutter !== 'undefined') deviceAttributes.hasshutter = properties.hasshutter
             break
 
           case 'telescope':
@@ -820,16 +849,11 @@ export function createCoreActions() {
             }
 
             // Telescope-specific attributes
-            if (typeof properties.altitude !== 'undefined')
-              deviceAttributes.altitude = properties.altitude
-            if (typeof properties.azimuth !== 'undefined')
-              deviceAttributes.azimuth = properties.azimuth
-            if (typeof properties.rightascension !== 'undefined')
-              deviceAttributes.rightascension = properties.rightascension
-            if (typeof properties.declination !== 'undefined')
-              deviceAttributes.declination = properties.declination
-            if (typeof properties.tracking !== 'undefined')
-              deviceAttributes.tracking = properties.tracking
+            if (typeof properties.altitude !== 'undefined') deviceAttributes.altitude = properties.altitude
+            if (typeof properties.azimuth !== 'undefined') deviceAttributes.azimuth = properties.azimuth
+            if (typeof properties.rightascension !== 'undefined') deviceAttributes.rightascension = properties.rightascension
+            if (typeof properties.declination !== 'undefined') deviceAttributes.declination = properties.declination
+            if (typeof properties.tracking !== 'undefined') deviceAttributes.tracking = properties.tracking
             break
         }
 
@@ -884,10 +908,7 @@ export function createCoreActions() {
        * This is a common implementation for all device types that can be more
        * efficient than polling each property individually
        */
-      async fetchDeviceState(
-        this: CoreState,
-        deviceId: string
-      ): Promise<Record<string, unknown> | null> {
+      async fetchDeviceState(this: CoreState, deviceId: string): Promise<Record<string, unknown> | null> {
         const client = this.deviceClients.get(deviceId)
         if (!client) return null
 
@@ -900,6 +921,211 @@ export function createCoreActions() {
           console.error(`Error fetching state for device ${deviceId}:`, error)
           return null
         }
+      },
+
+      /**
+       * Execute a device operation with proper error handling and client management
+       * This method serves as an abstraction layer between UI components and device clients
+       * @param deviceId The ID of the device to operate on
+       * @param operation Function that performs the actual operation using a client
+       * @param fallback Optional fallback function to handle missing clients
+       * @returns Result of the operation
+       */
+      async executeDeviceOperation<T>(
+        this: CoreState & {
+          createDeviceClient: (device: Device) => AlpacaClient | null
+          updateDevice: (deviceId: string, updates: Partial<Device>) => boolean
+        },
+        deviceId: string,
+        operation: (client: AlpacaClient) => Promise<T>,
+        fallback?: () => Promise<T>
+      ): Promise<T> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) {
+          throw new Error(`Device not found: ${deviceId}`)
+        }
+
+        // Get the client for this device
+        let client = this.getDeviceClient(deviceId)
+
+        // If no client exists, try to create one - with enhanced logging and error handling
+        if (!client && device) {
+          console.warn(`No API client found for device ${deviceId}, attempting to create one`)
+
+          console.log('Device data:', {
+            id: device.id,
+            type: device.type,
+            apiBaseUrl: device.apiBaseUrl,
+            properties: device.properties || {},
+            ipAddress: device.ipAddress,
+            port: device.port
+          })
+
+          // Check if the device has an API base URL, or try to construct one from available properties
+          if (!device.apiBaseUrl) {
+            console.log(`Device ${deviceId} has no API base URL, attempting to construct one from properties`)
+
+            // Try multiple approaches to construct the API URL
+            let apiBaseUrl: string | undefined = undefined
+            let deviceNum = device.deviceNum !== undefined ? device.deviceNum : 0
+
+            // Approach 1: Use ipAddress and port if available
+            if (device.ipAddress && device.port) {
+              apiBaseUrl = `http://${device.ipAddress}:${device.port}/api/v1/${device.type.toLowerCase()}/${deviceNum}`
+              console.log(`Constructed API URL from IP/port: ${apiBaseUrl}`)
+            }
+            // Approach 2: Check for apiBaseUrl in properties
+            else if (device.properties && device.properties.apiBaseUrl) {
+              apiBaseUrl = device.properties.apiBaseUrl as string
+              if (device.properties.deviceNumber !== undefined) {
+                deviceNum = device.properties.deviceNumber as number
+              }
+              console.log(`Found apiBaseUrl in properties: ${apiBaseUrl}, deviceNum: ${deviceNum}`)
+            }
+            // Approach 3: Look for address and devicePort
+            else if (device.address && device.devicePort) {
+              apiBaseUrl = `http://${device.address}:${device.devicePort}/api/v1/${device.type.toLowerCase()}/${deviceNum}`
+              console.log(`Constructed API URL from address/devicePort: ${apiBaseUrl}`)
+            }
+            // Approach 4: Last resort - try to parse from device ID if it follows a pattern
+            else if (device.id && device.id.includes(':')) {
+              try {
+                // Try to parse from device ID format like "192.168.4.169:8080:camera:0"
+                const parts = device.id.split(':')
+                if (parts.length >= 4) {
+                  const ip = parts[0]
+                  const port = parts[1]
+                  const type = parts[2].toLowerCase()
+                  deviceNum = parseInt(parts[3], 10)
+                  if (!isNaN(deviceNum)) {
+                    apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`
+                    console.log(`Constructed API URL from device ID parts: ${apiBaseUrl}`)
+                  }
+                }
+              } catch (err) {
+                console.error(`Failed to parse device ID ${device.id}:`, err)
+              }
+            }
+
+            // If we found an API URL, update the device
+            if (apiBaseUrl) {
+              console.log(`Updating device ${deviceId} with API URL: ${apiBaseUrl} and deviceNum: ${deviceNum}`)
+              this.updateDevice(deviceId, {
+                apiBaseUrl,
+                deviceNum
+              })
+            } else {
+              console.error(`Cannot create client: insufficient connection information for device ${deviceId}`)
+            }
+          }
+
+          // Try to get updated device after possible updates
+          const updatedDevice = this.getDeviceById(deviceId)
+          if (updatedDevice && updatedDevice.apiBaseUrl) {
+            // Try to create a client with the updated information
+            client = this.createDeviceClient(updatedDevice)
+            if (client) {
+              // Store the client in the map
+              this.deviceClients.set(deviceId, client)
+              console.log(`Successfully created client for device ${deviceId}`)
+            } else {
+              console.error(`Failed to create client for device ${deviceId} even with apiBaseUrl: ${updatedDevice.apiBaseUrl}`)
+            }
+          }
+        }
+
+        if (!client) {
+          console.warn(`No API client available for device ${deviceId}`)
+
+          // If a fallback is provided, use it
+          if (fallback) {
+            console.log(`Using fallback for operation on device ${deviceId}`)
+            return await fallback()
+          }
+
+          throw new Error(`No API client available for device ${deviceId}`)
+        }
+
+        try {
+          // Execute the operation using the client
+          return await operation(client)
+        } catch (error) {
+          console.error(`Error executing operation on device ${deviceId}:`, error)
+          throw error
+        }
+      },
+
+      /**
+       * Enhanced getDeviceProperty that uses the executeDeviceOperation abstraction
+       */
+      async getDeviceProperty(this: CoreState, deviceId: string, property: string): Promise<unknown> {
+        return this.executeDeviceOperation(deviceId, async (client: AlpacaClient) => {
+          console.log(`Getting property ${property} from device ${deviceId}`)
+          return await client.getProperty(property)
+        })
+      },
+
+      /**
+       * Enhanced setDeviceProperty that uses the executeDeviceOperation abstraction
+       */
+      async setDeviceProperty(
+        this: CoreState & {
+          _emitEvent: (event: { type: string; deviceId: string; property: string; value: unknown }) => void
+        },
+        deviceId: string,
+        property: string,
+        value: unknown
+      ): Promise<unknown> {
+        const result = await this.executeDeviceOperation(deviceId, async (client: AlpacaClient) => {
+          console.log(`Setting property ${property} on device ${deviceId} to`, value)
+          return await client.setProperty(property, value)
+        })
+
+        // Emit event about property change
+        this._emitEvent({
+          type: 'devicePropertyChanged',
+          deviceId,
+          property,
+          value
+        })
+
+        return result
+      },
+
+      /**
+       * Enhanced callDeviceMethod that uses the executeDeviceOperation abstraction
+       */
+      async callDeviceMethod(
+        this: CoreState & {
+          _emitEvent: (event: { type: string; deviceId: string; method: string; args: unknown[]; result: unknown }) => void
+          shouldFallbackToSimulation: (deviceId: string, method: string) => boolean
+          simulateDeviceMethod: (deviceId: string, method: string, args: unknown[]) => unknown
+        },
+        deviceId: string,
+        method: string,
+        args: unknown[] = []
+      ): Promise<unknown> {
+        // Debug logging for camera state and imageready method calls
+        if (method === 'camerastate' || method === 'imageready') {
+          console.log(`%c📞 Method Call: ${method} for device ${deviceId}`, 'color: orange; font-weight: bold')
+          console.log('Call stack:', new Error().stack)
+        }
+
+        // Try to execute the operation with the client
+        return this.executeDeviceOperation(
+          deviceId,
+          async (client: AlpacaClient) => {
+            return await client.callMethod(method, args)
+          },
+          // Fallback to simulation if appropriate
+          async () => {
+            if (this.shouldFallbackToSimulation(deviceId, method)) {
+              console.log(`Falling back to simulation for ${method} on device ${deviceId}`)
+              return await this.simulateDeviceMethod(deviceId, method, args)
+            }
+            throw new Error(`No API client available for device ${deviceId} and no simulation available`)
+          }
+        )
       }
     }
   }

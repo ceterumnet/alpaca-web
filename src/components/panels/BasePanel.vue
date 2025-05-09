@@ -4,11 +4,12 @@ visibility and priority // - Implements responsive layout behavior // - Supports
 resolution and rendering /** * Base Panel Component * * Core panel component that all device panels
 extend */
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { useUIPreferencesStore, UIMode } from '@/stores/useUIPreferencesStore'
 import { useEnhancedDiscoveryStore } from '@/stores/useEnhancedDiscoveryStore'
 import EnhancedPanelComponent from '@/components/ui/EnhancedPanelComponent.vue'
+import DeviceConnectionDiagnostic from '@/components/ui/DeviceConnectionDiagnostic.vue'
 import type { PanelFeatureDefinition } from '@/types/panels/FeatureTypes'
 import { PriorityLevel } from '@/types/panels/FeatureTypes'
 import { debugLog } from '@/utils/debugUtils'
@@ -60,11 +61,24 @@ const showDeviceSelector = ref(false)
 const showDiscoveryButton = ref(false)
 const recentlyUsedDevices = ref<string[]>([])
 
+// Add debug logging for reactivity
+const deviceLoadingState = ref('idle')
+const deviceLastUpdated = ref(Date.now())
+
 // Computed properties
 const device = computed(() =>
   selectedDeviceId.value ? unifiedStore.getDeviceById(selectedDeviceId.value) : null
 )
-const isConnected = computed(() => device.value?.isConnected || false)
+const isConnected = computed(() => {
+  const connected = device.value?.isConnected || false
+  console.log(`[ReactivityDebug] isConnected computed:`, {
+    deviceId: selectedDeviceId.value,
+    connected,
+    deviceLoadingState: deviceLoadingState.value,
+    lastUpdate: deviceLastUpdated.value
+  })
+  return connected
+})
 
 // Get available devices based on device type
 const availableDevices = computed(() => {
@@ -122,12 +136,54 @@ const visibleFeatures = computed(() => {
   })
 })
 
+// Add a computed property to check if a client exists for the device
+const hasClient = computed(() => {
+  if (!selectedDeviceId.value) return false;
+
+  // Use getDeviceClient to check if a client exists
+  try {
+    // Check if the method exists first before calling it
+    if (typeof unifiedStore.getDeviceClient === 'function') {
+      const client = unifiedStore.getDeviceClient(selectedDeviceId.value);
+      return !!client;
+    } else {
+      // Method not available, try alternative approaches
+      console.warn('getDeviceClient method not available in unifiedStore');
+      
+      // Alternative check: see if the device has apiBaseUrl (which is required for clients)
+      const device = unifiedStore.getDeviceById(selectedDeviceId.value);
+      return !!(device && device.apiBaseUrl);
+    }
+  } catch (error) {
+    console.warn(`Error checking for client: ${error}`);
+    return false;
+  }
+});
+
 // Event handlers
 const handleModeChange = (mode: UIMode) => {
   emit('modeChange', mode)
 }
 
-// Handle connect/disconnect
+// Add a method to force UI updates
+const forceUIUpdate = () => {
+  deviceLastUpdated.value = Date.now()
+  deviceLoadingState.value = isConnected.value ? 'connected' : 'idle'
+  console.log(`[ReactivityDebug] Forcing UI update at ${deviceLastUpdated.value}`)
+  
+  // Force components to update their values
+  if (selectedDeviceId.value) {
+    // Broadcast a custom event that components can listen for
+    const event = new CustomEvent('alpaca-force-update', { 
+      detail: { deviceId: selectedDeviceId.value, timestamp: deviceLastUpdated.value }
+    });
+    window.dispatchEvent(event);
+    
+    console.log(`[ReactivityDebug] Dispatched force update event`);
+  }
+}
+
+// Modify the handleConnect method to force updates
 const handleConnect = () => {
   if (!selectedDeviceId.value) return
 
@@ -136,16 +192,10 @@ const handleConnect = () => {
     console.log(`Connecting to device ID: ${selectedDeviceId.value}`)
     console.log(`Full device object:`, JSON.stringify(device.value, null, 2))
     
-    // Check all store device clients
-    console.log(`Current device clients in store:`, 
-      Array.from(unifiedStore.deviceClients || []).map(([id, client]) => {
-        return { id, hasClient: !!client }
-      })
-    )
-
     // Check if device is in error state that requires reset
     if (device.value && device.value.status === 'error') {
       console.log(`Device ${selectedDeviceId.value} is in error state, resetting before connecting`)
+      // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
       unifiedStore.updateDevice(selectedDeviceId.value, {
         status: 'idle',
         isConnected: false,
@@ -155,23 +205,33 @@ const handleConnect = () => {
       
       // Re-fetch device after update
       console.log(`Device after reset:`, JSON.stringify(unifiedStore.getDeviceById(selectedDeviceId.value), null, 2))
+      forceUIUpdate()
     }
-
-    // Check if there's a device client for this device
-    const deviceClient = unifiedStore.getDeviceClient(selectedDeviceId.value)
+    
+    // Check if there's a device client for this device and create one if needed
+    let deviceClient = null;
+    // Safely check if getDeviceClient exists before calling it
+    if (typeof unifiedStore.getDeviceClient === 'function') {
+      deviceClient = unifiedStore.getDeviceClient(selectedDeviceId.value)
+    }
+    
     const apiBaseUrl = device.value?.properties?.apiBaseUrl
-
+    
     console.log(`Device client check result:`, {
       deviceId: selectedDeviceId.value,
       hasClient: !!deviceClient,
-      apiBaseUrl
+      apiBaseUrl,
+      deviceType: device.value?.type,
+      deviceNum: device.value?.properties?.deviceNumber
     })
     
+    // If no client exists and we have apiBaseUrl in properties, promote it to top level
     if (!deviceClient && device.value && apiBaseUrl) {
       console.log(`No client found for device ${selectedDeviceId.value}, creating one by updating device`)
       console.log(`API Base URL: ${apiBaseUrl}`)
       
       // Try explicit client creation via store action by promoting apiBaseUrl to top level
+      // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
       unifiedStore.updateDevice(selectedDeviceId.value, {
         apiBaseUrl,
         // Add these to ensure all required fields are present
@@ -179,32 +239,34 @@ const handleConnect = () => {
         deviceNum: device.value.properties?.deviceNumber || 0
       })
       
-      // Check if client was created
-      const clientAfterUpdate = unifiedStore.getDeviceClient(selectedDeviceId.value)
-      console.log(`Client after update attempt:`, {
-        created: !!clientAfterUpdate
-      })
+      // Force UI update after client creation
+      forceUIUpdate()
     }
-
+    
+    // Connection logic
     if (device.value?.isConnected) {
       console.log(`Disconnecting device ${selectedDeviceId.value}`)
+      // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
       unifiedStore.disconnectDevice(selectedDeviceId.value)
       emit('disconnect')
+      forceUIUpdate()
     } else {
       console.log(`Connecting to device ${selectedDeviceId.value}`)
       console.log(`Device state before connecting:`, device.value)
       
-      // Final client check before connect
-      const finalClient = unifiedStore.getDeviceClient(selectedDeviceId.value)
-      console.log(`Final client check before connect:`, {
-        hasClient: !!finalClient
-      })
-      
+      // Use the store's connection method which handles client creation and setup
+      // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
       unifiedStore.connectDevice(selectedDeviceId.value).then((success) => {
         console.log(`Connect result: ${success ? 'SUCCESS' : 'FAILED'}`)
         if (success) {
           emit('connect')
           addToRecentlyUsed(selectedDeviceId.value)
+          
+          // Force UI update after successful connection
+          forceUIUpdate()
+          
+          // Update after a short delay to ensure all props are propagated
+          setTimeout(forceUIUpdate, 500)
         }
         console.log(`=== CONNECTION DEBUG END ===`)
       }).catch((error) => {
@@ -228,7 +290,9 @@ const handleDeviceChange = (newDeviceId: string) => {
       // Disconnect from current device if connected
       if (device.value?.isConnected) {
         console.log('BasePanel - Disconnecting from current device')
+        // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
         unifiedStore.disconnectDevice(selectedDeviceId.value)
+        forceUIUpdate()
       }
 
       console.log('BasePanel - Updating selectedDeviceId to:', newDeviceId)
@@ -237,6 +301,19 @@ const handleDeviceChange = (newDeviceId: string) => {
 
       // Add to recently used devices
       addToRecentlyUsed(newDeviceId)
+      
+      // Force UI update after device change
+      forceUIUpdate()
+      
+      // Check if we should auto-connect
+      const newDevice = unifiedStore.getDeviceById(newDeviceId)
+      if (newDevice && !newDevice.isConnected) {
+        console.log('BasePanel - Attempting auto-connect for newly selected device')
+        // Schedule connection after a short delay to ensure UI is updated
+        setTimeout(() => {
+          handleConnect()
+        }, 100)
+      }
     } catch (error) {
       console.error('Device change error:', error)
     }
@@ -321,6 +398,35 @@ watch(
   }
 )
 
+// Add a watcher to log device changes
+watch(() => device.value, (newDevice) => {
+  deviceLastUpdated.value = Date.now()
+  console.log(`[ReactivityDebug] Device changed:`, {
+    id: newDevice?.id,
+    isConnected: newDevice?.isConnected,
+    lastUpdate: deviceLastUpdated.value,
+    hasProperties: newDevice ? Object.keys(newDevice.properties || {}).length > 0 : false
+  })
+  
+  // Force refresh hasClient computed when device changes
+  deviceLoadingState.value = newDevice?.isConnected ? 'connected' : 'idle'
+}, { deep: true })
+
+// Add explicit watch on connection status change
+watch(() => isConnected.value, (connected) => {
+  console.log(`[ReactivityDebug] Connection status changed to: ${connected ? 'connected' : 'disconnected'}`)
+  deviceLoadingState.value = connected ? 'connected' : 'idle'
+})
+
+// Add a method to signal components to force update
+const signalComponentUpdate = () => {
+  console.log('BasePanel - Signaling component update');
+  deviceLastUpdated.value = Date.now();
+}
+
+// Add a timer to periodically refresh components to ensure they get updated
+let componentRefreshTimer: number | null = null;
+
 onMounted(() => {
   debugLog('BasePanel mounted', {
     panelId: props.panelId,
@@ -341,7 +447,105 @@ onMounted(() => {
     selectedDeviceId.value = availableDevices.value[0].id
     emit('deviceChange', selectedDeviceId.value)
   }
+  
+  // Direct client creation workaround - ensure client creation for selected device
+  if (selectedDeviceId.value) {
+    ensureClientExists(selectedDeviceId.value);
+  }
+  
+  // Setup periodic check for client existence
+  const clientCheckInterval = setInterval(() => {
+    if (selectedDeviceId.value) {
+      const device = unifiedStore.getDeviceById(selectedDeviceId.value);
+      if (device && device.isConnected && !hasClient.value) {
+        console.log('BasePanel - Periodic check: Device connected but no client, attempting to create');
+        ensureClientExists(selectedDeviceId.value);
+      }
+    }
+  }, 3000); // Check every 3 seconds
+  
+  // Setup timer to refresh components periodically
+  componentRefreshTimer = window.setInterval(() => {
+    if (selectedDeviceId.value && isConnected.value) {
+      signalComponentUpdate();
+    }
+  }, 5000); // Refresh every 5 seconds
+  
+  // Clean up interval on unmount
+  onBeforeUnmount(() => {
+    clearInterval(clientCheckInterval);
+    if (componentRefreshTimer) {
+      clearInterval(componentRefreshTimer);
+      componentRefreshTimer = null;
+    }
+  });
 })
+
+// Helper function to ensure client exists
+const ensureClientExists = (deviceId: string) => {
+  console.log('BasePanel - Attempting to ensure client exists for device:', deviceId);
+  
+  const device = unifiedStore.getDeviceById(deviceId);
+  if (!device) {
+    console.warn('BasePanel - Device not found:', deviceId);
+    return;
+  }
+  
+  if (!hasClient.value) {
+    // Check if device has apiBaseUrl or if we can construct one
+    if (!device.apiBaseUrl) {
+      // Try multiple approaches to get apiBaseUrl
+      
+      // Approach 1: Check properties
+      if (device.properties?.apiBaseUrl) {
+        console.log(`BasePanel - Found apiBaseUrl in properties, promoting to top level:`, device.properties.apiBaseUrl);
+        // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
+        unifiedStore.updateDevice(deviceId, {
+          apiBaseUrl: device.properties.apiBaseUrl as string,
+          deviceNum: (device.properties.deviceNumber as number) || 0
+        });
+      } 
+      // Approach 2: Try to parse from device ID
+      else if (device.id && device.id.includes(':')) {
+        try {
+          // Try to parse from device ID format like "192.168.4.169:8080:camera:0"
+          const parts = device.id.split(':');
+          if (parts.length >= 4) {
+            const ip = parts[0];
+            const port = parts[1];
+            const type = parts[2].toLowerCase();
+            const deviceNum = parseInt(parts[3], 10);
+            if (!isNaN(deviceNum)) {
+              const apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`;
+              console.log(`BasePanel - Constructed API URL from device ID parts: ${apiBaseUrl}`);
+              
+              // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
+              unifiedStore.updateDevice(deviceId, {
+                apiBaseUrl,
+                deviceNum
+              });
+            }
+          }
+        } catch (err) {
+          console.error(`BasePanel - Failed to parse device ID ${device.id}:`, err);
+        }
+      }
+    }
+    
+    // Force UI update
+    forceUIUpdate();
+    
+    // Set a timer to check if client creation worked
+    setTimeout(() => {
+      const updatedHasClient = hasClient.value;
+      console.log(`BasePanel - Client creation result:`, { hasClient: updatedHasClient });
+      
+      if (!updatedHasClient) {
+        console.warn('BasePanel - Client still not available after update');
+      }
+    }, 200);
+  }
+}
 </script>
 
 <template>
@@ -414,12 +618,17 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Show diagnostic component when needed -->
+      <div v-if="selectedDeviceId && !hasClient" class="panel-diagnostic-section">
+        <DeviceConnectionDiagnostic :device-id="selectedDeviceId" />
+      </div>
+
       <div class="panel-feature-container">
         <slot name="features" :features="visibleFeatures">
           <!-- Default implementation renders feature components -->
           <div
             v-for="feature in visibleFeatures"
-            :key="feature.id"
+            :key="`${feature.id}-${deviceLoadingState}-${deviceLastUpdated}`"
             class="panel-feature"
             :class="`feature-${feature.priority}`"
           >
@@ -441,6 +650,7 @@ onMounted(() => {
             <component
               :is="feature.component"
               v-bind="feature.props || {}"
+              :key="`comp-${selectedDeviceId}-${deviceLoadingState}-${deviceLastUpdated}`"
               :device-id="selectedDeviceId"
             />
           </div>
@@ -509,18 +719,24 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- Show diagnostic component when needed -->
+        <div v-if="selectedDeviceId && !hasClient" class="panel-diagnostic-section">
+          <DeviceConnectionDiagnostic :device-id="selectedDeviceId" />
+        </div>
+
         <div class="panel-feature-container">
           <slot name="features" :features="visibleFeatures">
             <!-- Detailed mode feature rendering -->
             <div
               v-for="feature in visibleFeatures"
-              :key="feature.id"
+              :key="`${feature.id}-${deviceLoadingState}-${deviceLastUpdated}`"
               class="panel-feature"
               :class="`feature-${feature.priority}`"
             >
               <component
                 :is="feature.component"
                 v-bind="feature.props || {}"
+                :key="`comp-${selectedDeviceId}-${deviceLoadingState}-${deviceLastUpdated}`"
                 :device-id="selectedDeviceId"
               />
             </div>
@@ -560,13 +776,14 @@ onMounted(() => {
             <div class="panel-feature-container fullscreen">
               <div
                 v-for="feature in visibleFeatures"
-                :key="feature.id"
+                :key="`${feature.id}-${deviceLoadingState}-${deviceLastUpdated}`"
                 class="panel-feature"
                 :class="`feature-${feature.priority}`"
               >
                 <component
                   :is="feature.component"
                   v-bind="feature.props || {}"
+                  :key="`comp-${selectedDeviceId}-${deviceLoadingState}-${deviceLastUpdated}`"
                   :device-id="selectedDeviceId"
                 />
               </div>
@@ -722,5 +939,12 @@ onMounted(() => {
 .panel-device-selector.large .selected-device {
   padding: 12px 16px;
   font-size: 1.2em;
+}
+
+.panel-diagnostic-section {
+  margin: 12px 0;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: var(--aw-panel-bg-color, #fff);
 }
 </style>
