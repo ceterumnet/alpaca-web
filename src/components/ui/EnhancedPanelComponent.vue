@@ -156,7 +156,7 @@ const getDeviceNameById = (id: unknown) => {
 <template>
   <div ref="panelRef" :class="panelClasses">
     <div class="aw-panel__header">
-      <span class="aw-panel__title vue-draggable-handle">{{ panelName }}</span>
+      <!-- <span class="aw-panel__title vue-draggable-handle">{{ panelName }}</span> -->
 
       <div class="aw-panel__header-left">
         <div
@@ -325,7 +325,7 @@ const getDeviceNameById = (id: unknown) => {
   align-items: center;
   justify-content: space-between;
   height: 30px;
-  padding: 0 var(--aw-spacing-sm);
+  padding: 0 var(--aw-spacing-sm) 0 0;
   background-color: var(--aw-panel-menu-bar-bg-color);
   color: var(--aw-panel-menu-bar-color);
   cursor: move;
@@ -426,7 +426,7 @@ const getDeviceNameById = (id: unknown) => {
   border-radius: 4px;
   cursor: pointer;
   background-color: var(--aw-panel-bg-color, #fff);
-  font-size: 0.95em;
+  font-size: 0.85em;
   margin-right: var(--aw-spacing-md);
   position: relative;
 }

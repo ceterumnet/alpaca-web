@@ -396,7 +396,7 @@ onMounted(() => {
   background-color: var(--aw-color-neutral-900);
   border-radius: var(--aw-border-radius-md);
   overflow: hidden;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: auto;
 }
 
 .aw-camera-image-display__canvas {

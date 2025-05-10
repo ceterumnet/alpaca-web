@@ -1,6 +1,12 @@
-// Status: Good - Part of new panel system // This component handles camera exposure control with
-proper ASCOM Alpaca protocol support // Features: // - Exposure start/abort // - Progress tracking
-// - Image ready polling // - Error handling // - Event emission for UI updates
+// Status: Good - Part of new panel system 
+// This component handles camera exposure control with
+// proper ASCOM Alpaca protocol support
+// Features: 
+// - Exposure start/abort 
+// - Progress tracking
+// - Image ready polling 
+// - Error handling 
+// - Event emission for UI updates
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
