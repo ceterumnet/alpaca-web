@@ -248,7 +248,7 @@ body {
 .main-content {
   flex: 1;
   overflow: auto;
-  padding: var(--spacing-md);
+  padding: 0;
   background-color: var(--aw-bg-color);
 }
 
@@ -403,7 +403,7 @@ p {
 .main-content {
   flex: 1;
   overflow: auto;
-  padding: var(--spacing-md);
+  padding: 0;
   background-color: var(--aw-bg-color);
 }
 </style>

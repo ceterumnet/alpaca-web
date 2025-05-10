@@ -226,10 +226,6 @@ watch(
 // Compute current layout and viewport
 const currentLayout = computed(() => layoutStore.currentLayout)
 const currentDeviceLayout = computed(() => layoutStore.currentDeviceLayout)
-const availableLayouts = computed(() => {
-  console.log('Computing available layouts:', layoutStore.layouts.map(l => `${l.id} (${l.name})`))
-  return layoutStore.layouts
-})
 
 // Map of device types to panels for those already connected
 type DeviceTypeMap = {
@@ -329,198 +325,10 @@ const changeLayout = (layoutId: string) => {
     }
   }
 }
-
-// Function to delete the current layout
-function deleteCurrentLayout() {
-  if (!currentLayoutId.value) return
-  
-  // Confirm deletion
-  if (confirm(`Are you sure you want to delete this layout "${availableLayouts.value.find(l => l.id === currentLayoutId.value)?.name || currentLayoutId.value}"?`)) {
-    // Delete from store
-    layoutStore.deleteLayout(currentLayoutId.value)
-    
-    // Switch to first available layout or create default if none exists
-    if (layoutStore.gridLayouts.length > 0) {
-      currentLayoutId.value = layoutStore.gridLayouts[0].id
-      layoutStore.setCurrentLayout(currentLayoutId.value)
-    } else {
-      // If we have no layouts left, create a new default one
-      createAndAddDefaultLayout()
-      currentLayoutId.value = 'default'
-      layoutStore.setCurrentLayout(currentLayoutId.value)
-    }
-  }
-}
-
-// Create and add a default layout
-function createAndAddDefaultLayout() {
-  // This should match the logic from createDefaultLayout in the component
-  const defaultLayoutId = 'default'
-  
-  // Define proper types for priority
-  type Priority = 'primary' | 'secondary' | 'tertiary';
-  
-  // Create a default grid layout
-  const defaultGridLayout = {
-    id: defaultLayoutId,
-    name: 'Default Layout',
-    description: 'Default panel layout with camera, telescope, and other panels',
-    isDefault: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    layouts: {
-      desktop: {
-        rows: [
-          {
-            id: 'row-1-desktop',
-            cells: [
-              {
-                id: 'camera',
-                deviceType: 'camera',
-                name: 'Camera',
-                priority: 'primary' as Priority,
-                width: 66.67
-              },
-              {
-                id: 'telescope',
-                deviceType: 'telescope',
-                name: 'Telescope',
-                priority: 'primary' as Priority,
-                width: 33.33
-              }
-            ],
-            height: 50
-          },
-          {
-            id: 'row-2-desktop',
-            cells: [
-              {
-                id: 'focuser',
-                deviceType: 'focuser',
-                name: 'Focuser',
-                priority: 'secondary' as Priority,
-                width: 33.33
-              },
-              {
-                id: 'filterwheel',
-                deviceType: 'filterwheel',
-                name: 'Filter Wheel',
-                priority: 'secondary' as Priority,
-                width: 33.33
-              },
-              {
-                id: 'weather',
-                deviceType: 'weather',
-                name: 'Weather',
-                priority: 'secondary' as Priority,
-                width: 33.33
-              }
-            ],
-            height: 50
-          }
-        ],
-        panelIds: ['camera', 'telescope', 'focuser', 'filterwheel', 'weather']
-      },
-      tablet: {
-        rows: [
-          {
-            id: 'row-1-tablet',
-            cells: [
-              {
-                id: 'camera',
-                deviceType: 'camera',
-                name: 'Camera',
-                priority: 'primary' as Priority,
-                width: 100
-              }
-            ],
-            height: 50
-          },
-          {
-            id: 'row-2-tablet',
-            cells: [
-              {
-                id: 'telescope',
-                deviceType: 'telescope',
-                name: 'Telescope',
-                priority: 'secondary' as Priority,
-                width: 100
-              }
-            ],
-            height: 50
-          }
-        ],
-        panelIds: ['camera', 'telescope']
-      },
-      mobile: {
-        rows: [
-          {
-            id: 'row-1-mobile',
-            cells: [
-              {
-                id: 'camera',
-                deviceType: 'camera',
-                name: 'Camera',
-                priority: 'primary' as Priority,
-                width: 100
-              }
-            ],
-            height: 100
-          }
-        ],
-        panelIds: ['camera']
-      }
-    }
-  }
-
-  // Add to store
-  layoutStore.addGridLayout(defaultGridLayout)
-}
-
-// Function to set the current layout as default
-function setAsDefaultLayout() {
-  if (!currentLayoutId.value) return
-  
-  // Update all layouts
-  layoutStore.gridLayouts.forEach(layout => {
-    if (layout.id === currentLayoutId.value) {
-      layoutStore.updateGridLayout(layout.id, { isDefault: true })
-    } else if (layout.isDefault) {
-      layoutStore.updateGridLayout(layout.id, { isDefault: false })
-    }
-  })
-}
 </script>
 
 <template>
   <div class="panel-layout-view">
-    <div class="layout-controls">
-      <div class="layout-selector">
-        <label for="layout-select">Layout:</label>
-        <select
-          id="layout-select"
-          v-model="currentLayoutId"
-          class="layout-select"
-          @change="changeLayout(currentLayoutId)"
-        >
-          <option v-for="layout in availableLayouts" :key="layout.id" :value="layout.id">
-            {{ layout.name }}{{ layout.isDefault ? ' (Default)' : '' }}
-          </option>
-        </select>
-      </div>
-      <div class="layout-actions">
-        <button class="layout-action-btn" title="Set as default layout" @click="setAsDefaultLayout">
-          <span class="icon">⭐</span>
-        </button>
-        <button class="layout-action-btn" title="Delete this layout" @click="deleteCurrentLayout">
-          <span class="icon">🗑️</span>
-        </button>
-        <button class="edit-layout-btn" @click="openLayoutBuilder">
-          <span class="icon">✏️</span> Edit Layouts
-        </button>
-      </div>
-    </div>
-
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
       <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId">
         <!-- Camera Panel Slot -->
@@ -570,76 +378,6 @@ function setAsDefaultLayout() {
   flex-direction: column;
 }
 
-.layout-controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  background-color: var(--aw-panel-menu-bar-bg-color, #252525);
-  border-bottom: 1px solid var(--aw-border-color, #333333);
-}
-
-.layout-selector {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.layout-select {
-  padding: 0.3rem 0.5rem;
-  background-color: var(--aw-input-bg-color, #333333);
-  color: var(--aw-text-color, #ffffff);
-  border: 1px solid var(--aw-border-color, #444444);
-  border-radius: 4px;
-}
-
-.layout-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.layout-action-btn {
-  padding: 0.3rem 0.5rem;
-  background-color: var(--aw-button-bg-color, #333333);
-  color: var(--aw-text-color, #ffffff);
-  border: 1px solid var(--aw-border-color, #444444);
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.layout-action-btn:hover {
-  background-color: var(--aw-button-hover-bg-color, #444444);
-}
-
-.edit-layout-btn,
-.create-layout-btn {
-  padding: 0.3rem 0.75rem;
-  background-color: var(--aw-button-bg-color, #333333);
-  color: var(--aw-text-color, #ffffff);
-  border: 1px solid var(--aw-border-color, #444444);
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  transition: all 0.2s ease;
-}
-
-.edit-layout-btn:hover,
-.create-layout-btn:hover {
-  background-color: var(--aw-button-hover-bg-color, #444444);
-  border-color: var(--aw-primary-color, #1e88e5);
-}
-
-.icon {
-  font-size: 0.9rem;
-}
-
 .layout-wrapper {
   flex: 1;
   overflow: auto;
@@ -662,26 +400,25 @@ function setAsDefaultLayout() {
 .create-layout-btn {
   font-size: 0.9rem;
   padding: 0.5rem 1rem;
+  background-color: var(--aw-button-bg-color, #333333);
+  color: var(--aw-text-color, #ffffff);
+  border: 1px solid var(--aw-border-color, #444444);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+}
+
+.create-layout-btn:hover {
+  background-color: var(--aw-button-hover-bg-color, #444444);
+  border-color: var(--aw-primary-color, #1e88e5);
 }
 
 @media (max-width: 768px) {
-  .layout-controls {
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: flex-start;
-  }
-
-  .layout-selector {
-    width: 100%;
-  }
-
-  .layout-select {
-    flex: 1;
-  }
-  
-  .layout-actions {
-    width: 100%;
-    justify-content: flex-end;
+  .panel-layout-view {
+    padding-bottom: 0.5rem;
   }
 }
 </style>
