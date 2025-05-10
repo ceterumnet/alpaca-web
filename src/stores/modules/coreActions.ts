@@ -129,6 +129,8 @@ export function createCoreActions() {
           fetchCameraProperties?: (deviceId: string) => Promise<boolean>
           fetchTelescopeProperties?: (deviceId: string) => Promise<boolean>
           updateDeviceCapabilities: (deviceId: string) => boolean
+          createDeviceClient: (device: Device) => AlpacaClient | null
+          deviceClients: Map<string, AlpacaClient>
         },
         deviceId: string
       ): Promise<boolean> {
@@ -157,8 +159,17 @@ export function createCoreActions() {
         })
 
         try {
-          // Get the client for this device
-          const client = this.getDeviceClient(deviceId)
+          // Debug: log the device object and apiBaseUrl before client creation
+          console.log('[connectDevice] Device object at connect time:', device)
+          console.log('[connectDevice] device.apiBaseUrl:', device.apiBaseUrl)
+          // Get the client for this device, or create it if missing and possible
+          let client = this.getDeviceClient(deviceId)
+          if (!client && device.apiBaseUrl) {
+            client = this.createDeviceClient(device)
+            if (client) {
+              this.deviceClients.set(deviceId, client)
+            }
+          }
           if (!client) {
             throw new Error(`No API client available for device ${deviceId}`)
           }
@@ -236,6 +247,8 @@ export function createCoreActions() {
           stopTelescopePropertyPolling?: (deviceId: string) => void
           _deviceStateAvailableProps?: Map<string, Set<string>>
           _deviceStateUnsupported?: Set<string>
+          createDeviceClient: (device: Device) => AlpacaClient | null
+          deviceClients: Map<string, AlpacaClient>
         },
         deviceId: string
       ): Promise<boolean> {
@@ -257,8 +270,14 @@ export function createCoreActions() {
         })
 
         try {
-          // Get the client for this device
-          const client = this.getDeviceClient(deviceId)
+          // Get the client for this device, or create it if missing and possible
+          let client = this.getDeviceClient(deviceId)
+          if (!client && device.apiBaseUrl) {
+            client = this.createDeviceClient(device)
+            if (client) {
+              this.deviceClients.set(deviceId, client)
+            }
+          }
           if (!client) {
             throw new Error(`No API client available for device ${deviceId}`)
           }
@@ -594,7 +613,7 @@ export function createCoreActions() {
           isDisconnecting: device.isDisconnecting || false,
           properties: device.properties || {},
           status: device.status || 'idle',
-          apiBaseUrl: device.apiBaseUrl,
+          apiBaseUrl: device.apiBaseUrl || device.properties?.apiBaseUrl,
           ipAddress: device.ipAddress,
           port: device.port,
           displayName: device.displayName,

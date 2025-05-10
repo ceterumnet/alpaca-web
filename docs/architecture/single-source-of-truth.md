@@ -98,6 +98,14 @@ The following files currently call `getDeviceClient` directly and should be refa
 - Continue to improve TypeScript typing and context in the store
 - Expand test coverage for service/store logic
 
+## Additional Future Improvements
+
+- Enforce strict separation between top-level device fields (e.g., id, name, apiBaseUrl) and the `properties` object, which should only contain raw Alpaca/ASCOM device properties.
+- Normalize all device objects on ingestion (discovery, manual add, simulation) to promote core fields to the top level and remove them from `properties`.
+- Define and use TypeScript types for device-specific properties (e.g., CameraProperties, TelescopeProperties) to improve type safety and reduce subtle bugs.
+- Add runtime or build-time checks to ensure core fields are never present in `properties` after normalization.
+- Document and enforce that all code should access core fields from the top level, not from `properties`.
+
 ---
 
 _This document is a living guide. Please update it as the architecture evolves or new lessons are learned._

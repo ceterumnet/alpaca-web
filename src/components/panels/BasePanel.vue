@@ -112,24 +112,9 @@ const visibleFeatures = computed(() => {
 const hasClient = computed(() => {
   if (!selectedDeviceId.value) return false;
 
-  // Use getDeviceClient to check if a client exists
-  try {
-    // Check if the method exists first before calling it
-    if (typeof unifiedStore.getDeviceClient === 'function') {
-      const client = unifiedStore.getDeviceClient(selectedDeviceId.value);
-      return !!client;
-    } else {
-      // Method not available, try alternative approaches
-      console.warn('getDeviceClient method not available in unifiedStore');
-      
-      // Alternative check: see if the device has apiBaseUrl (which is required for clients)
-      const device = unifiedStore.getDeviceById(selectedDeviceId.value);
-      return !!(device && device.apiBaseUrl);
-    }
-  } catch (error) {
-    console.warn(`Error checking for client: ${error}`);
-    return false;
-  }
+  // Instead of checking for a client directly, rely on device.apiBaseUrl existence
+  const deviceObj = unifiedStore.getDeviceById(selectedDeviceId.value);
+  return !!(deviceObj && deviceObj.apiBaseUrl);
 });
 
 // Event handlers
@@ -165,29 +150,6 @@ const handleConnect = () => {
         isConnected: false,
         isConnecting: false,
         isDisconnecting: false
-      })
-
-      forceUIUpdate()
-    }
-
-    // Check if there's a device client for this device and create one if needed
-    let deviceClient = null;
-    // Safely check if getDeviceClient exists before calling it
-    if (typeof unifiedStore.getDeviceClient === 'function') {
-      deviceClient = unifiedStore.getDeviceClient(selectedDeviceId.value)
-    }
-
-    const apiBaseUrl = device.value?.properties?.apiBaseUrl
-
-    // If no client exists and we have apiBaseUrl in properties, promote it to top level
-    if (!deviceClient && device.value && apiBaseUrl) {
-      // Try explicit client creation via store action by promoting apiBaseUrl to top level
-      // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
-      unifiedStore.updateDevice(selectedDeviceId.value, {
-        apiBaseUrl,
-        // Add these to ensure all required fields are present
-        type: device.value.type,
-        deviceNum: device.value.properties?.deviceNumber || 0
       })
 
       forceUIUpdate()
@@ -402,57 +364,45 @@ const ensureClientExists = (deviceId: string) => {
     return;
   }
 
-  if (!hasClient.value) {
-    // Check if device has apiBaseUrl or if we can construct one
-    if (!device.apiBaseUrl) {
-      // Try multiple approaches to get apiBaseUrl
+  // If apiBaseUrl is missing, try to promote it from properties or parse from ID
+  if (!device.apiBaseUrl) {
+    // Approach 1: Check properties
+    if (device.properties?.apiBaseUrl) {
+      // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
+      unifiedStore.updateDevice(deviceId, {
+        apiBaseUrl: device.properties.apiBaseUrl as string,
+        deviceNum: (device.properties.deviceNumber as number) || 0
+      });
+    }
+    // Approach 2: Try to parse from device ID
+    else if (device.id && device.id.includes(':')) {
+      try {
+        // Try to parse from device ID format like "192.168.4.169:8080:camera:0"
+        const parts = device.id.split(':');
+        if (parts.length >= 4) {
+          const ip = parts[0];
+          const port = parts[1];
+          const type = parts[2].toLowerCase();
+          const deviceNum = parseInt(parts[3], 10);
+          if (!isNaN(deviceNum)) {
+            const apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`;
 
-      // Approach 1: Check properties
-      if (device.properties?.apiBaseUrl) {
-        // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
-        unifiedStore.updateDevice(deviceId, {
-          apiBaseUrl: device.properties.apiBaseUrl as string,
-          deviceNum: (device.properties.deviceNumber as number) || 0
-        });
-      }
-      // Approach 2: Try to parse from device ID
-      else if (device.id && device.id.includes(':')) {
-        try {
-          // Try to parse from device ID format like "192.168.4.169:8080:camera:0"
-          const parts = device.id.split(':');
-          if (parts.length >= 4) {
-            const ip = parts[0];
-            const port = parts[1];
-            const type = parts[2].toLowerCase();
-            const deviceNum = parseInt(parts[3], 10);
-            if (!isNaN(deviceNum)) {
-              const apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`;
-
-              // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
-              unifiedStore.updateDevice(deviceId, {
-                apiBaseUrl,
-                deviceNum
-              });
-            }
+            // @ts-expect-error - The store has 'this' context typing issues that need to be fixed in a larger refactor
+            unifiedStore.updateDevice(deviceId, {
+              apiBaseUrl,
+              deviceNum
+            });
           }
-        } catch (err) {
-          console.error(`Failed to parse device ID ${device.id}:`, err);
         }
+      } catch (err) {
+        console.error(`Failed to parse device ID ${device.id}:`, err);
       }
     }
-
-    // Force UI update
-    forceUIUpdate();
-
-    // Check if client creation worked after a short delay
-    setTimeout(() => {
-      const updatedHasClient = hasClient.value;
-      if (!updatedHasClient) {
-        console.warn('Client still not available after update for device:', deviceId);
-      }
-    }, 200);
   }
-}
+
+  // Force UI update
+  forceUIUpdate();
+};
 </script>
 
 <template>
