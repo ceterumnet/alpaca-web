@@ -12,7 +12,6 @@ import EnhancedPanelComponent from '@/components/ui/EnhancedPanelComponent.vue'
 import DeviceConnectionDiagnostic from '@/components/ui/DeviceConnectionDiagnostic.vue'
 import type { PanelFeatureDefinition } from '@/types/panels/FeatureTypes'
 import { PriorityLevel } from '@/types/panels/FeatureTypes'
-import { debugLog } from '@/utils/debugUtils'
 
 const props = defineProps({
   panelId: {
@@ -412,12 +411,20 @@ const ensureClientExists = (deviceId: string) => {
     :device-type="deviceType"
     :device-id="selectedDeviceId"
     :supported-modes="supportedModes"
+    :available-devices="availableDevices"
+    :selected-device-id="selectedDeviceId"
+    :device-name="device?.name"
+    :show-device-selector="showDeviceSelector"
+    :recently-used-devices="recentlyUsedDevices"
+    :on-toggle-device-selector="toggleDeviceSelector"
+    :on-device-change="handleDeviceChange"
+    :on-open-discovery="openDiscovery"
     @close="handleClose"
     @connect="handleConnect"
     @mode-change="handleModeChange"
   >
     <template #overview-content>
-      <div class="panel-device-selector">
+      <!-- <div class="panel-device-selector">
         <div class="selected-device" @click="toggleDeviceSelector">
           <span>{{ device?.name || 'No device selected' }}</span>
           <span class="device-selector-toggle">▼</span>
@@ -473,7 +480,7 @@ const ensureClientExists = (deviceId: string) => {
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
 
       <!-- Show diagnostic component when needed -->
       <div v-if="selectedDeviceId && !hasClient" class="panel-diagnostic-section">
@@ -518,7 +525,7 @@ const ensureClientExists = (deviceId: string) => {
     <template #detailed-content>
       <slot name="detailed" :features="visibleFeatures">
         <!-- Use the same content as overview by default -->
-        <div class="panel-device-selector">
+        <!-- <div class="panel-device-selector">
           <div class="selected-device" @click="toggleDeviceSelector">
             <span>{{ device?.name || 'No device selected' }}</span>
             <span class="device-selector-toggle">▼</span>
@@ -574,7 +581,7 @@ const ensureClientExists = (deviceId: string) => {
               </div>
             </div>
           </div>
-        </div>
+        </div> -->
 
         <!-- Show diagnostic component when needed -->
         <div v-if="selectedDeviceId && !hasClient" class="panel-diagnostic-section">
@@ -607,7 +614,7 @@ const ensureClientExists = (deviceId: string) => {
         <!-- More comprehensive layout for fullscreen mode -->
         <div class="panel-fullscreen-container">
           <div class="fullscreen-header">
-            <div class="panel-device-selector large">
+            <!-- <div class="panel-device-selector large">
               <div class="selected-device" @click="toggleDeviceSelector">
                 <span>{{ device?.name || 'No device selected' }}</span>
                 <span class="device-selector-toggle">▼</span>
@@ -626,7 +633,7 @@ const ensureClientExists = (deviceId: string) => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> -->
           </div>
 
           <div class="fullscreen-content">

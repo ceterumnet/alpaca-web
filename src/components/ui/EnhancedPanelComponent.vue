@@ -10,10 +10,13 @@
 // - Better support for device-specific features
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, useSlots } from 'vue'
+import { ref, computed, onMounted, onUnmounted, useSlots } from 'vue'
+import type { PropType } from 'vue'
 import Icon from './Icon.vue'
 import { useResizeObserver } from '@vueuse/core'
 import { useUIPreferencesStore, UIMode } from '@/stores/useUIPreferencesStore'
+
+type Device = { id: string; name: string }
 
 const props = defineProps({
   panelName: { type: String, required: true },
@@ -21,7 +24,17 @@ const props = defineProps({
   deviceType: { type: String, required: true },
   deviceId: { type: String, required: true }, // Updated to String only since Device.id is string
   minContentWidth: { type: Number, default: 320 },
-  maxContentWidth: { type: Number, default: 800 }
+  maxContentWidth: { type: Number, default: 800 },
+  // Device selector integration
+  availableDevices: { type: Array as PropType<Device[]>, default: () => [] },
+  selectedDeviceId: { type: String, default: '' },
+  deviceName: { type: String, default: '' },
+  showDeviceSelector: { type: Boolean, default: false },
+  recentlyUsedDevices: { type: Array as PropType<string[]>, default: () => [] },
+  // Handlers
+  onToggleDeviceSelector: { type: Function as PropType<(e: MouseEvent) => void>, default: null },
+  onDeviceChange: { type: Function as PropType<(id: string) => void>, default: null },
+  onOpenDiscovery: { type: Function as PropType<() => void>, default: null }
 })
 
 const emit = defineEmits(['connect', 'sizeChange', 'modeChange'])
@@ -127,17 +140,72 @@ onUnmounted(() => {
   window.removeEventListener('resize', updateSizeMode)
 })
 
+const availableDevicesTyped = computed<Device[]>(() => {
+  return Array.isArray(props.availableDevices)
+    ? (props.availableDevices as Device[]).filter(d => d && typeof d.id === 'string' && typeof d.name === 'string')
+    : []
+})
+const getDeviceNameById = (id: unknown) => {
+  const idStr = String(id)
+  const found = availableDevicesTyped.value.find(d => d.id === idStr)
+  return found ? found.name : idStr
+}
+
 </script>
 
 <template>
   <div ref="panelRef" :class="panelClasses">
     <div class="aw-panel__header">
-      <!-- Left header section - panel title only -->
       <div class="aw-panel__header-left">
+        <div
+          v-if="props.availableDevices && props.onToggleDeviceSelector"
+          class="aw-panel__device-selector"
+          @click="(e: MouseEvent) => props.onToggleDeviceSelector && props.onToggleDeviceSelector(e)"
+        >
+          <span class="aw-panel__device-name">{{ props.deviceName || 'No device selected' }}</span>
+          <span class="aw-panel__device-selector-toggle">▼</span>
+          <div v-if="props.showDeviceSelector" class="aw-panel__device-selector-dropdown">
+            <div v-if="availableDevicesTyped.length > 0" class="aw-panel__device-list">
+              <div
+                v-for="dev in availableDevicesTyped"
+                :key="dev.id"
+                class="aw-panel__device-item"
+                :class="{ selected: dev.id === props.selectedDeviceId }"
+                @click.stop="props.onDeviceChange && props.onDeviceChange(dev.id)"
+              >
+                {{ dev.name }}
+              </div>
+            </div>
+            <div v-else class="aw-panel__empty-device-list">
+              <p>No {{ props.deviceType }} devices available</p>
+            </div>
+            <div class="aw-panel__device-selector-actions">
+              <button class="aw-panel__discover-button" @click.stop="props.onOpenDiscovery && props.onOpenDiscovery()">
+                <span class="icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                  </svg>
+                </span>
+                Discover Devices
+              </button>
+            </div>
+            <div v-if="props.recentlyUsedDevices.length > 0" class="aw-panel__recently-used">
+              <h4>Recently Used</h4>
+              <div
+                v-for="id in props.recentlyUsedDevices"
+                :key="id"
+                class="aw-panel__recent-device"
+                @click.stop="props.onDeviceChange && props.onDeviceChange(String(id))"
+              >
+                {{ getDeviceNameById(id) }}
+              </div>
+            </div>
+          </div>
+        </div>
         <span class="aw-panel__title vue-draggable-handle">{{ panelName }}</span>
       </div>
-
-      <!-- Right header section - connection status only -->
       <div class="aw-panel__header-right">
         <span
           v-if="connected"
@@ -347,5 +415,96 @@ onUnmounted(() => {
   .aw-panel__content {
     padding: var(--aw-spacing-sm);
   }
+}
+
+.aw-panel__device-selector {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid var(--aw-panel-border-color, #ccc);
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: var(--aw-panel-bg-color, #fff);
+  font-size: 0.95em;
+  margin-right: var(--aw-spacing-md);
+  position: relative;
+}
+.aw-panel__device-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aw-panel__device-selector-toggle {
+  margin-left: 6px;
+  font-size: 10px;
+}
+.aw-panel__device-selector-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  z-index: 100;
+  background-color: var(--aw-panel-bg-color, #fff);
+  border: 1px solid var(--aw-panel-border-color, #ccc);
+  border-radius: 4px;
+  margin-top: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
+}
+.aw-panel__device-list {
+  padding: 4px 0;
+}
+.aw-panel__device-item {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.aw-panel__device-item.selected {
+  background-color: var(--aw-panel-content-bg-color, #e0e0e0);
+}
+.aw-panel__empty-device-list {
+  padding: 12px;
+  text-align: center;
+  color: var(--aw-text-secondary-color, #666);
+}
+.aw-panel__device-selector-actions {
+  padding: 8px 12px;
+  border-top: 1px solid var(--aw-panel-border-color, #eee);
+  display: flex;
+  justify-content: center;
+}
+.aw-panel__discover-button {
+  background-color: var(--aw-primary-color, #2196f3);
+  color: var(--aw-primary-color);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.aw-panel__discover-button:hover {
+  background-color: var(--aw-primary-dark, #1976d2);
+}
+.aw-panel__recently-used {
+  padding: 8px 12px;
+  border-top: 1px solid var(--aw-panel-border-color, #eee);
+}
+.aw-panel__recently-used h4 {
+  font-size: 13px;
+  margin: 0 0 8px;
+  color: var(--aw-text-secondary-color, #666);
+}
+.aw-panel__recent-device {
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+}
+.aw-panel__recent-device:hover {
+  background-color: var(--aw-panels-bg-color, #f5f5f5);
 }
 </style>
