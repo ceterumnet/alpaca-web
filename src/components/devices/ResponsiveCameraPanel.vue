@@ -56,6 +56,8 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
   const gainMax = (deviceProps.gainmax as number) || 100
   const offsetMin = (deviceProps.offsetmin as number) || 0
   const offsetMax = (deviceProps.offsetmax as number) || 100
+  const exposureMin = (deviceProps.exposuremin as number) || 0
+  const exposureMax = (deviceProps.exposuremax as number) || 100
 
   return [
     // Integrated Camera Controls - This combines exposure control and image display
@@ -67,7 +69,9 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
       priority: PriorityLevel.Primary,
       component: 'CameraControls',
       props: {
-        deviceId: props.deviceId
+        deviceId: props.deviceId,
+        exposureMin: exposureMin,
+        exposureMax: exposureMax
       },
       section: 'primary'
     },
@@ -139,19 +143,16 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
       props: {
         label: 'Current Temp',
         property: 'ccdtemperature',
-        formatter: (value: number) => `${value.toFixed(1)}°C`,
+        formatter: (value: number | null) => {
+          if (value === null || value === undefined) {
+            return 'N/A';
+          }
+          return `${value.toFixed(1)}°C`;
+        },
         refreshRate: 5000
       },
       section: 'cooling',
-      icon: 'thermometer',
-      visibilityRules: [
-        {
-          type: 'deviceProperty',
-          property: 'cansetccdtemperature',
-          value: true,
-          condition: 'equals'
-        }
-      ]
+      icon: 'thermometer'
     },
     {
       id: 'cooler-on',
@@ -271,7 +272,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
       label: 'Binning',
       source: FeatureSource.CoreAlpaca,
       interactionType: InteractionType.Setting,
-      priority: PriorityLevel.Tertiary,
+      priority: PriorityLevel.Secondary,
       component: 'NumericSetting',
       props: {
         label: 'Binning',
@@ -280,7 +281,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
         max: 4,
         step: 1
       },
-      section: 'advanced',
+      section: 'settings',
       icon: 'cog'
     },
     {
@@ -288,7 +289,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
       label: 'Readout Mode',
       source: FeatureSource.CoreAlpaca,
       interactionType: InteractionType.Setting,
-      priority: PriorityLevel.Tertiary,
+      priority: PriorityLevel.Secondary,
       component: 'SelectSetting',
       props: {
         label: 'Readout Mode',
@@ -305,7 +306,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
           return []
         }
       },
-      section: 'advanced'
+      section: 'settings'
     }
   ]
 })

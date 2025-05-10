@@ -124,9 +124,7 @@ export function createCameraActions() {
         deviceId: string,
         exposureTime: number
       ): void {
-        console.log(
-          `Starting to track exposure progress for device ${deviceId} with exposure time ${exposureTime}s`
-        )
+        console.log(`Starting to track exposure progress for device ${deviceId} with exposure time ${exposureTime}s`)
         const startTime = Date.now()
         const duration = exposureTime * 1000 // convert to milliseconds
 
@@ -152,9 +150,7 @@ export function createCameraActions() {
 
             // Check if we've exceeded the maximum wait time
             if (elapsedTime > MAX_WAIT_TIME) {
-              console.warn(
-                `Exposure for ${deviceId} exceeded maximum wait time (${MAX_WAIT_TIME}ms), aborting`
-              )
+              console.warn(`Exposure for ${deviceId} exceeded maximum wait time (${MAX_WAIT_TIME}ms), aborting`)
               clearInterval(progressTimer)
               this.updateDeviceProperties(deviceId, {
                 isExposing: false,
@@ -241,18 +237,14 @@ export function createCameraActions() {
                   // Check if image is ready
                   const imageReady = (await client.getProperty('imageready')) as boolean
                   if (imageReady) {
-                    console.log(
-                      `Camera ${deviceId} reports image is ready while in state ${cameraState}`
-                    )
+                    console.log(`Camera ${deviceId} reports image is ready while in state ${cameraState}`)
                     clearInterval(progressTimer)
                     await this.handleExposureComplete(deviceId)
                     return
                   }
                 } else if (cameraState === 5) {
                   // Error
-                  console.error(
-                    `Camera ${deviceId} reported error state, aborting exposure tracking`
-                  )
+                  console.error(`Camera ${deviceId} reported error state, aborting exposure tracking`)
                   clearInterval(progressTimer)
                   this.updateDeviceProperties(deviceId, {
                     isExposing: false,
@@ -284,9 +276,7 @@ export function createCameraActions() {
                 fallbackToTimeBasedTracking(elapsedTime, duration)
               }
             } else {
-              console.warn(
-                `No client available for device ${deviceId}, using time-based tracking only`
-              )
+              console.warn(`No client available for device ${deviceId}, using time-based tracking only`)
               fallbackToTimeBasedTracking(elapsedTime, duration)
             }
           } catch (error) {
@@ -331,9 +321,7 @@ export function createCameraActions() {
             // Only update if progress has changed
             if (progress !== lastKnownProgress) {
               lastKnownProgress = progress
-              console.log(
-                `Exposure progress update for ${deviceId}: ${progress}% (elapsed: ${elapsedTime}ms, duration: ${duration}ms)`
-              )
+              console.log(`Exposure progress update for ${deviceId}: ${progress}% (elapsed: ${elapsedTime}ms, duration: ${duration}ms)`)
 
               // Update the device properties with the current progress
               this.updateDeviceProperties(deviceId, {
@@ -427,9 +415,7 @@ export function createCameraActions() {
 
                     // Get binary data as ArrayBuffer
                     imageData = await response.arrayBuffer()
-                    console.log(
-                      `Successfully received image data, size: ${imageData.byteLength} bytes`
-                    )
+                    console.log(`Successfully received image data, size: ${imageData.byteLength} bytes`)
                   }
                 } catch (error) {
                   console.error(`Error fetching image data: ${error}`)
@@ -447,9 +433,7 @@ export function createCameraActions() {
                 }
 
                 if (imageData) {
-                  console.log(
-                    `Downloaded image data for camera ${deviceId}, size: ${imageData.byteLength} bytes`
-                  )
+                  console.log(`Downloaded image data for camera ${deviceId}, size: ${imageData.byteLength} bytes`)
 
                   // Update device with image data
                   this.updateDeviceProperties(deviceId, {
@@ -575,9 +559,7 @@ export function createCameraActions() {
           // If target temperature is provided, set it
           if (targetTemperature !== undefined) {
             // Per Alpaca spec, use property format with named parameter
-            await this.callDeviceMethod(deviceId, 'setccdtemperature', [
-              { SetCCDTemperature: targetTemperature }
-            ])
+            await this.callDeviceMethod(deviceId, 'setccdtemperature', [{ SetCCDTemperature: targetTemperature }])
           }
 
           // Update device properties
@@ -657,10 +639,7 @@ export function createCameraActions() {
           updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
           _emitEvent: (event: DeviceEvent) => void
           startCameraPropertyPolling: (deviceId: string) => void
-          fetchDeviceState: (
-            deviceId: string,
-            options?: { forceRefresh?: boolean; cacheTtlMs?: number }
-          ) => Promise<Record<string, unknown> | null>
+          fetchDeviceState: (deviceId: string, options?: { forceRefresh?: boolean; cacheTtlMs?: number }) => Promise<Record<string, unknown> | null>
         },
         deviceId: string
       ): Promise<boolean> {
@@ -840,10 +819,7 @@ export function createCameraActions() {
           getDeviceClient: (id: string) => AlpacaClient | null
           updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
           stopCameraPropertyPolling: (deviceId: string) => void
-          fetchDeviceState: (
-            deviceId: string,
-            options?: { forceRefresh?: boolean; cacheTtlMs?: number }
-          ) => Promise<Record<string, unknown> | null>
+          fetchDeviceState: (deviceId: string, options?: { forceRefresh?: boolean; cacheTtlMs?: number }) => Promise<Record<string, unknown> | null>
         },
         deviceId: string
       ): void {
@@ -897,9 +873,7 @@ export function createCameraActions() {
             const isExposing = currentProps.isExposing === true
 
             // Log exposure state for debugging
-            console.debug(
-              `Camera ${deviceId} polling cycle - exposure state: ${isExposing ? 'EXPOSING' : 'IDLE'}`
-            )
+            console.debug(`Camera ${deviceId} polling cycle - exposure state: ${isExposing ? 'EXPOSING' : 'IDLE'}`)
 
             // Define base properties that are always polled
             const propsToFetch = [
@@ -952,8 +926,7 @@ export function createCameraActions() {
 
               if (deviceStateResult) {
                 // Update our tracking of which properties are available via devicestate
-                const deviceStateProps =
-                  this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
+                const deviceStateProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
 
                 // Add all received properties to our available props set
                 Object.keys(deviceStateResult).forEach((prop) => {
@@ -977,27 +950,19 @@ export function createCameraActions() {
             }
 
             // For any properties not received via devicestate, poll them individually
-            const deviceStateProps =
-              this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
+            const deviceStateProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
 
             // Filter properties that need to be individually fetched
-            const individualPropsToFetch = propsToFetch.filter(
-              (prop) => !deviceStateResult || !deviceStateProps.has(prop.toLowerCase())
-            )
+            const individualPropsToFetch = propsToFetch.filter((prop) => !deviceStateResult || !deviceStateProps.has(prop.toLowerCase()))
 
             if (individualPropsToFetch.length > 0) {
               // Debug log showing exactly which properties are being polled
               console.debug(`Camera ${deviceId} properties being polled:`, individualPropsToFetch)
 
               // Check if we're polling state properties and log clearly
-              const pollingStateProps = individualPropsToFetch.some(
-                (prop) => prop === 'camerastate' || prop === 'imageready'
-              )
+              const pollingStateProps = individualPropsToFetch.some((prop) => prop === 'camerastate' || prop === 'imageready')
               if (pollingStateProps) {
-                console.log(
-                  `%c Camera ${deviceId} polling state properties - isExposing: ${isExposing}`,
-                  'color: blue; font-weight: bold'
-                )
+                console.log(`%c Camera ${deviceId} polling state properties - isExposing: ${isExposing}`, 'color: blue; font-weight: bold')
               }
 
               for (const property of individualPropsToFetch) {
@@ -1012,11 +977,7 @@ export function createCameraActions() {
                 } catch (error) {
                   // Silently ignore errors for properties that might not be supported
                   // Only log in debug mode to avoid console spam
-                  if (
-                    property === 'camerastate' ||
-                    property === 'ccdtemperature' ||
-                    property === 'imageready'
-                  ) {
+                  if (property === 'camerastate' || property === 'ccdtemperature' || property === 'imageready') {
                     console.debug(`Failed to get important camera property ${property}:`, error)
                   }
                 }
@@ -1033,14 +994,10 @@ export function createCameraActions() {
               // Only map properties that exist
               if (properties.binx !== undefined) friendlyProperties.binningX = properties.binx
               if (properties.biny !== undefined) friendlyProperties.binningY = properties.biny
-              if (properties.cooleron !== undefined)
-                friendlyProperties.coolerEnabled = properties.cooleron
-              if (properties.ccdtemperature !== undefined)
-                friendlyProperties.temperature = properties.ccdtemperature
-              if (properties.setccdtemperature !== undefined)
-                friendlyProperties.targetTemperature = properties.setccdtemperature
-              if (properties.coolerpower !== undefined)
-                friendlyProperties.coolerPower = properties.coolerpower
+              if (properties.cooleron !== undefined) friendlyProperties.coolerEnabled = properties.cooleron
+              if (properties.ccdtemperature !== undefined) friendlyProperties.temperature = properties.ccdtemperature
+              if (properties.setccdtemperature !== undefined) friendlyProperties.targetTemperature = properties.setccdtemperature
+              if (properties.coolerpower !== undefined) friendlyProperties.coolerPower = properties.coolerpower
 
               // Add any non-undefined properties
               if (Object.keys(friendlyProperties).length > 0) {
@@ -1056,9 +1013,7 @@ export function createCameraActions() {
         // Note: Window.setInterval returns a number ID
         this._propertyPollingIntervals.set(deviceId, intervalId)
 
-        console.log(
-          `Property polling started for camera ${deviceId} with interval ${pollInterval}ms`
-        )
+        console.log(`Property polling started for camera ${deviceId} with interval ${pollInterval}ms`)
       },
 
       /**

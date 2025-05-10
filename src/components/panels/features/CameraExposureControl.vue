@@ -49,6 +49,14 @@ const props = defineProps({
   downloadMethod: {
     type: String,
     default: 'imagearray'
+  },
+  exposureMin: {
+    type: Number,
+    default: 0.001
+  },
+  exposureMax: {
+    type: Number,
+    default: 3600
   }
 })
 
@@ -92,6 +100,15 @@ const buttonText = computed(() => {
 const startExposure = async () => {
   if (!isConnected.value) {
     error.value = 'Device not connected'
+    emit('error', error.value)
+    return
+  }
+
+  console.log('exposureMin', props.exposureMin)
+  console.log('exposureMax', props.exposureMax)
+  // Validate exposure duration is within allowed range
+  if (exposureDuration.value < props.exposureMin || exposureDuration.value > props.exposureMax) {
+    error.value = `Exposure duration must be between ${props.exposureMin} and ${props.exposureMax} seconds`
     emit('error', error.value)
     return
   }
@@ -382,8 +399,8 @@ onMounted(() => {
           id="exposure-duration"
           v-model.number="exposureDuration"
           type="number"
-          min="0.001"
-          max="3600"
+          :min="exposureMin"
+          :max="exposureMax"
           step="0.1"
           class="aw-input"
           :disabled="exposureInProgress"

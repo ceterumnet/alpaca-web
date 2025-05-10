@@ -15,6 +15,14 @@ const props = defineProps({
   deviceId: {
     type: String,
     required: true
+  },
+  exposureMin: {
+    type: Number,
+    required: true
+  },
+  exposureMax: {
+    type: Number,
+    required: true
   }
 })
 
@@ -62,6 +70,8 @@ watch(
     <div class="aw-camera-controls__exposure-section">
       <CameraExposureControl
         :device-id="deviceId"
+        :exposure-min="exposureMin"
+        :exposure-max="exposureMax"
         @exposure-started="handleExposureStarted"
         @exposure-complete="handleExposureComplete"
         @image-downloaded="handleImageDownloaded"
