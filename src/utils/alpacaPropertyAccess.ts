@@ -130,3 +130,55 @@ export async function getAlpacaProperties<T = Record<string, unknown>>(deviceId:
 
   return result as T
 }
+
+/**
+ * Checks if a device supports a specific capability
+ * This is useful for conditionally enabling UI elements based on device support
+ *
+ * @param deviceId - The ID of the device to check
+ * @param capability - The capability to check for (e.g., 'cansetccdtemperature')
+ * @param defaultValue - The default value to return if the capability check fails
+ * @returns A promise that resolves to true if the device supports the capability, false otherwise
+ */
+export async function checkDeviceCapability(deviceId: string, capability: string, defaultValue = false): Promise<boolean> {
+  try {
+    const value = await getAlpacaProperty<boolean>(deviceId, capability)
+
+    // Return the capability value if it exists, otherwise return the default
+    return value !== null ? value : defaultValue
+  } catch (error) {
+    console.error(`Error checking device capability ${capability}:`, error)
+    return defaultValue
+  }
+}
+
+/**
+ * Gets device capabilities in a batch, more efficient than individual checks
+ * Returns an object with capability names as keys and boolean values
+ *
+ * @param deviceId - The ID of the device to check
+ * @param capabilities - Array of capability names to check
+ * @returns A promise that resolves to an object with capability results
+ */
+export async function getDeviceCapabilities(deviceId: string, capabilities: string[]): Promise<Record<string, boolean>> {
+  const result: Record<string, boolean> = {}
+
+  try {
+    const properties = await getAlpacaProperties<Record<string, unknown>>(deviceId, capabilities)
+
+    // Map the properties to boolean values
+    for (const capability of capabilities) {
+      const value = properties[capability]
+      result[capability] = typeof value === 'boolean' ? value : false
+    }
+  } catch (error) {
+    console.error(`Error getting device capabilities:`, error)
+
+    // Set all capabilities to false on error
+    for (const capability of capabilities) {
+      result[capability] = false
+    }
+  }
+
+  return result
+}
