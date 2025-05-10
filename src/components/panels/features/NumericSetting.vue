@@ -294,21 +294,21 @@ onMounted(() => {
 .numeric-setting {
   display: flex;
   flex-direction: column;
-  gap: var(--aw-spacing-sm);
-  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
-  background: var(--aw-panel-content-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-md);
-  transition: box-shadow 0.2s;
+  gap: var(--aw-spacing-sm, 8px);
+  padding: var(--aw-spacing-sm, 8px) var(--aw-spacing-md, 16px);
+  background: var(--aw-panel-content-bg-color, var(--color-background-soft));
+  border: 1px solid var(--aw-panel-border-color, var(--color-border));
+  border-radius: var(--aw-border-radius-md, 4px);
+  transition: box-shadow 0.2s, border-color 0.2s;
 }
 .numeric-setting:hover, .numeric-setting:focus-within {
-  box-shadow: 0 0 0 2px var(--aw-color-primary-300);
+  box-shadow: 0 0 0 2px var(--aw-color-primary-300, var(--color-primary-light));
 }
 
 .setting-row {
   display: flex;
   align-items: center;
-  gap: var(--aw-spacing-sm);
+  gap: var(--aw-spacing-sm, 8px);
   width: 100%;
   box-sizing: border-box;
   padding-top: 2px;
@@ -317,7 +317,7 @@ onMounted(() => {
 
 .setting-label {
   font-size: 0.8em;
-  color: var(--aw-panel-content-color);
+  color: var(--aw-panel-content-color, var(--color-text));
   font-weight: 600;
   min-width: 80px;
   flex-shrink: 0;
@@ -327,19 +327,30 @@ onMounted(() => {
   width: 56px;
   min-width: 0;
   text-align: right;
-  margin-right: var(--aw-spacing-xs);
+  margin-right: var(--aw-spacing-xs, 4px);
+  background-color: var(--aw-color-surface, var(--color-background));
+  color: var(--aw-panel-content-color, var(--color-text));
+  border: 1px solid var(--aw-panel-border-color, var(--color-border));
+  border-radius: var(--aw-border-radius-sm, 2px);
+  padding: var(--aw-spacing-xs, 4px) var(--aw-spacing-sm, 8px);
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.aw-input.numeric-input:focus {
+  border-color: var(--aw-color-primary-500, var(--color-primary));
+  outline: none;
 }
 
 .unit-label {
   font-size: 0.92em;
-  color: var(--aw-text-secondary-color);
+  color: var(--aw-text-secondary-color, var(--color-text-secondary));
   margin-left: 2px;
   margin-right: 8px;
 }
 
 .current-value {
   font-size: 0.92em;
-  color: var(--aw-color-primary-500);
+  color: var(--aw-color-primary-500, var(--color-primary));
   margin-left: auto;
   min-width: 60px;
   max-width: 100px;
@@ -355,60 +366,66 @@ onMounted(() => {
   appearance: none;
   height: 6px;
   border-radius: 3px;
-  background-color: var(--aw-color-neutral-300);
+  background-color: var(--aw-color-neutral-300, var(--color-neutral-300, #d1d5db));
   outline: none;
   margin-top: 0;
   margin-bottom: 0;
   transition: background 0.2s;
 }
 .aw-slider:hover, .aw-slider:focus {
-  background-color: var(--aw-color-primary-100);
+  background-color: var(--aw-color-primary-100, var(--color-primary-lighter));
 }
 .aw-slider::-webkit-slider-thumb {
   appearance: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background-color: var(--aw-color-primary-500);
+  background-color: var(--aw-color-primary-500, var(--color-primary));
   cursor: pointer;
-  border: 2px solid var(--aw-panel-border-color);
+  border: 2px solid var(--aw-panel-border-color, var(--color-border));
   transition: background 0.2s, border 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .aw-slider:focus::-webkit-slider-thumb {
-  background-color: var(--aw-color-primary-700);
-  border-color: var(--aw-color-primary-500);
+  background-color: var(--aw-color-primary-700, var(--color-primary-dark));
+  border-color: var(--aw-color-primary-500, var(--color-primary));
 }
 .aw-slider::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background-color: var(--aw-color-primary-500);
+  background-color: var(--aw-color-primary-500, var(--color-primary));
   cursor: pointer;
-  border: 2px solid var(--aw-panel-border-color);
+  border: 2px solid var(--aw-panel-border-color, var(--color-border));
   transition: background 0.2s, border 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .aw-slider:focus::-moz-range-thumb {
-  background-color: var(--aw-color-primary-700);
-  border-color: var(--aw-color-primary-500);
+  background-color: var(--aw-color-primary-700, var(--color-primary-dark));
+  border-color: var(--aw-color-primary-500, var(--color-primary));
 }
 .aw-slider::-ms-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background-color: var(--aw-color-primary-500);
+  background-color: var(--aw-color-primary-500, var(--color-primary));
   cursor: pointer;
-  border: 2px solid var(--aw-panel-border-color);
+  border: 2px solid var(--aw-panel-border-color, var(--color-border));
   transition: background 0.2s, border 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .aw-slider:focus::-ms-thumb {
-  background-color: var(--aw-color-primary-700);
-  border-color: var(--aw-color-primary-500);
+  background-color: var(--aw-color-primary-700, var(--color-primary-dark));
+  border-color: var(--aw-color-primary-500, var(--color-primary));
 }
 
 .error-message {
-  color: var(--aw-error-color);
+  color: var(--aw-error-color, var(--color-error));
   font-size: 0.85em;
-  margin-top: var(--aw-spacing-xs);
+  margin-top: var(--aw-spacing-xs, 4px);
+  padding: var(--aw-spacing-xs, 4px);
+  background-color: var(--aw-color-error-100, rgba(244, 67, 54, 0.1));
+  border-radius: var(--aw-border-radius-sm, 2px);
 }
 
 .numeric-setting.is-loading {
@@ -417,6 +434,35 @@ onMounted(() => {
 
 .numeric-setting.has-error .setting-label,
 .numeric-setting.has-error .current-value {
-  color: var(--aw-error-color);
+  color: var(--aw-error-color, var(--color-error));
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark) {
+  .aw-slider {
+    background-color: var(--aw-color-neutral-700, var(--color-neutral-700, #424242));
+  }
+  
+  .aw-slider:hover, 
+  .aw-slider:focus {
+    background-color: var(--aw-color-primary-900, var(--color-primary-dark));
+  }
+  
+  .aw-slider::-webkit-slider-thumb,
+  .aw-slider::-moz-range-thumb,
+  .aw-slider::-ms-thumb {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    background-color: var(--aw-color-primary-400, var(--color-primary-light));
+  }
+  
+  .numeric-setting:hover, 
+  .numeric-setting:focus-within {
+    box-shadow: 0 0 0 2px var(--aw-color-primary-600, var(--color-primary));
+  }
+  
+  .aw-input.numeric-input {
+    background-color: var(--aw-color-surface-dark, var(--color-background-mute));
+    border-color: var(--aw-panel-border-color-dark, var(--color-border-dark, #444));
+  }
 }
 </style>

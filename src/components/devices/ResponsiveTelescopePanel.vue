@@ -94,7 +94,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
       icon: 'telescope',
       params: { RightAscension: 0, Declination: 0 }
     },
-    section: 'position'
+    section: 'movement'
   },
 
   // Manual Slew Control - Primary Features
@@ -179,7 +179,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
       formatter: (value: number | null) => value !== null ? `${value.toFixed(2)}°` : 'Unknown',
       refreshRate: 1000
     },
-    section: 'movement'
+    section: 'position'
   },
   {
     id: 'azimuth',
@@ -194,7 +194,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
       formatter: (value: number | null) => value !== null ? `${value.toFixed(2)}°` : 'Unknown',
       refreshRate: 1000
     },
-    section: 'movement'
+    section: 'position'
   },
 
   // Advanced Features - Tertiary

@@ -436,15 +436,15 @@ v-for="option in internalOptions.length > 0 && props.options.length === 0 ? inte
 .select-setting {
   display: flex;
   flex-direction: column;
-  gap: var(--aw-spacing-sm);
-  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
-  background: var(--aw-panel-content-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-md);
-  transition: box-shadow 0.2s;
+  gap: var(--aw-spacing-sm, 8px);
+  padding: var(--aw-spacing-sm, 8px) var(--aw-spacing-md, 16px);
+  background: var(--aw-panel-content-bg-color, var(--color-background-soft));
+  border: 1px solid var(--aw-panel-border-color, var(--color-border));
+  border-radius: var(--aw-border-radius-md, 4px);
+  transition: box-shadow 0.2s, border-color 0.2s, background-color 0.2s;
 }
 .select-setting:hover, .select-setting:focus-within {
-  box-shadow: 0 0 0 2px var(--aw-color-primary-300);
+  box-shadow: 0 0 0 2px var(--aw-color-primary-300, var(--color-primary-light));
 }
 
 .setting-header {
@@ -455,37 +455,37 @@ v-for="option in internalOptions.length > 0 && props.options.length === 0 ? inte
 
 .setting-label {
   font-size: 0.95em;
-  color: var(--aw-panel-content-color);
+  color: var(--aw-panel-content-color, var(--color-text));
   font-weight: 600;
 }
 
 .current-value {
   font-size: 0.95em;
   font-weight: 600;
-  color: var(--aw-color-primary-500);
+  color: var(--aw-color-primary-500, var(--color-primary));
 }
 
 .aw-select {
-  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
-  border: 1px solid var(--aw-input-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  background-color: var(--aw-input-bg-color);
-  color: var(--aw-text-color);
+  padding: var(--aw-spacing-xs, 4px) var(--aw-spacing-sm, 8px);
+  border: 1px solid var(--aw-input-border-color, var(--color-border));
+  border-radius: var(--aw-border-radius-sm, 2px);
+  background-color: var(--aw-input-bg-color, var(--color-background));
+  color: var(--aw-text-color, var(--color-text));
   cursor: pointer;
   font-size: 0.95em;
-  transition: border 0.2s, box-shadow 0.2s;
+  transition: border 0.2s, box-shadow 0.2s, background-color 0.2s;
   width: 100%;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right var(--aw-spacing-sm) center;
+  background-position: right var(--aw-spacing-sm, 8px) center;
   background-size: 16px;
-  padding-right: calc(var(--aw-spacing-lg) + var(--aw-spacing-sm));
+  padding-right: calc(var(--aw-spacing-lg, 24px) + var(--aw-spacing-sm, 8px));
 }
 .aw-select:focus {
   outline: none;
-  border-color: var(--aw-color-primary-500);
-  box-shadow: 0 0 0 3px rgba(var(--aw-color-primary-rgb), 0.25);
+  border-color: var(--aw-color-primary-500, var(--color-primary));
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-primary-rgb, 74, 122, 220), 0.25);
 }
 .aw-select:disabled {
   opacity: 0.7;
@@ -493,9 +493,12 @@ v-for="option in internalOptions.length > 0 && props.options.length === 0 ? inte
 }
 
 .error-message {
-  color: var(--aw-error-color);
+  color: var(--aw-error-color, var(--color-error));
   font-size: 0.85em;
-  margin-top: var(--aw-spacing-xs);
+  margin-top: var(--aw-spacing-xs, 4px);
+  padding: var(--aw-spacing-xs, 4px);
+  background-color: var(--aw-color-error-100, rgba(244, 67, 54, 0.1));
+  border-radius: var(--aw-border-radius-sm, 2px);
 }
 
 .select-setting.is-loading {
@@ -504,6 +507,24 @@ v-for="option in internalOptions.length > 0 && props.options.length === 0 ? inte
 
 .select-setting.has-error .setting-label,
 .select-setting.has-error .current-value {
-  color: var(--aw-error-color);
+  color: var(--aw-error-color, var(--color-error));
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark) {
+  .aw-select {
+    background-color: var(--aw-color-surface-dark, var(--color-background-mute));
+    border-color: var(--aw-panel-border-color-dark, var(--color-border-dark, #444));
+  }
+  
+  .aw-select:focus {
+    border-color: var(--aw-color-primary-400, var(--color-primary-light));
+    box-shadow: 0 0 0 3px rgba(var(--aw-color-primary-rgb, 74, 122, 220), 0.4);
+  }
+  
+  .select-setting:hover, 
+  .select-setting:focus-within {
+    box-shadow: 0 0 0 2px var(--aw-color-primary-600, var(--color-primary));
+  }
 }
 </style>

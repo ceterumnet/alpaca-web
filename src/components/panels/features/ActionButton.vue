@@ -86,22 +86,31 @@ async function executeAction() {
 .action-button-feature {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--aw-spacing-sm, 8px);
 }
 
 .visible-button {
-  color: var(--color-text);
-  background-color: var(--color-background-soft);
-  border: 1px solid var(--color-border);
+  color: var(--aw-panel-content-color, var(--color-text));
+  background-color: var(--aw-panel-content-bg-color, var(--color-background-soft));
+  border: 1px solid var(--aw-panel-border-color, var(--color-border));
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-md, 4px);
   cursor: pointer;
   font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.visible-button:hover:not(:disabled) {
+  background-color: var(--aw-color-neutral-200, var(--color-background-mute));
+  border-color: var(--aw-color-primary-300, var(--color-border-hover));
 }
 
 .error-message {
-  color: var(--color-error);
+  color: var(--aw-error-color, var(--color-error));
   font-size: 0.85em;
-  margin-top: 4px;
+  padding: var(--aw-spacing-xs, 4px);
+  margin-top: var(--aw-spacing-xs, 4px);
+  background-color: rgba(244, 67, 54, 0.1);
+  border-radius: var(--aw-border-radius-sm, 2px);
 }
 </style>

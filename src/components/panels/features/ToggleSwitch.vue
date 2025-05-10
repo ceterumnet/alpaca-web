@@ -30,10 +30,8 @@ const emit = defineEmits(['change', 'success', 'error'])
 // Use the base control mixin
 const {
   store,
-  isConnected,
   isLoading,
   error,
-  safeExecute,
   getDeviceProperty,
   setDeviceProperty,
   logStoreState
@@ -220,20 +218,20 @@ onMounted(() => {
     // Add a tiered retry strategy to handle initialization timing issues
     setTimeout(() => {
       console.log(`ToggleSwitch: First attempt for ${props.property} on device ${props.deviceId}`);
-      fetchState().catch(err => {
+      fetchState().catch(() => {
         console.log(`ToggleSwitch: First attempt failed for ${props.property}, retrying...`);
         
         // First retry after 300ms
         setTimeout(() => {
           console.log(`ToggleSwitch: Retry 1 for ${props.property} on device ${props.deviceId}`);
-          fetchState().catch(err => {
+          fetchState().catch(() => {
             console.log(`ToggleSwitch: Retry 1 failed for ${props.property}, retrying...`);
             
             // Second retry after 1000ms
             setTimeout(() => {
               console.log(`ToggleSwitch: Retry 2 for ${props.property} on device ${props.deviceId}`);
-              fetchState().catch(err => {
-                console.error(`ToggleSwitch: All retries failed for ${props.property}:`, err);
+              fetchState().catch((finalErr) => {
+                console.error(`ToggleSwitch: All retries failed for ${props.property}:`, finalErr);
               });
             }, 1000);
           });
@@ -276,7 +274,12 @@ onMounted(() => {
 .toggle-switch {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--aw-spacing-sm, 8px);
+  padding: var(--aw-spacing-sm, 8px);
+  border: 1px solid var(--aw-panel-border-color, var(--color-border));
+  border-radius: var(--aw-border-radius-md, 4px);
+  background-color: var(--aw-panel-content-bg-color, var(--color-background-soft));
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .toggle-header {
@@ -287,14 +290,14 @@ onMounted(() => {
 
 .toggle-label {
   font-size: 0.9em;
-  color: var(--color-text-secondary);
+  color: var(--aw-text-secondary-color, var(--color-text-secondary));
   font-weight: 500;
 }
 
 .toggle-value {
   font-size: 0.9em;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--aw-panel-content-color, var(--color-text));
 }
 
 .toggle-button {
@@ -318,14 +321,15 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--color-background-mute);
+  background-color: var(--aw-color-neutral-300, var(--color-background-mute));
   border-radius: 24px;
-  border: 1px solid var(--color-border);
-  transition: background-color 0.2s;
+  border: 1px solid var(--aw-panel-border-color, var(--color-border));
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .toggle-button.is-on .toggle-slider {
-  background-color: var(--color-primary);
+  background-color: var(--aw-color-primary-500, var(--color-primary));
+  border-color: var(--aw-color-primary-700, var(--color-primary-dark));
 }
 
 .toggle-handle {
@@ -335,19 +339,23 @@ onMounted(() => {
   width: 18px;
   left: 3px;
   bottom: 2px;
-  background-color: var(--color-text);
+  background-color: var(--aw-panel-content-color, var(--color-text));
   border-radius: 50%;
   transition: transform 0.2s, background-color 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-button.is-on .toggle-handle {
   transform: translateX(24px);
-  background-color: white;
+  background-color: var(--aw-color-text-on-primary, white);
 }
 
 .error-message {
-  color: var(--color-error);
+  color: var(--aw-error-color, var(--color-error));
   font-size: 0.85em;
+  padding: var(--aw-spacing-xs, 4px);
+  background: var(--aw-color-error-100, rgba(244, 67, 54, 0.1));
+  border-radius: var(--aw-border-radius-sm, 2px);
 }
 
 .toggle-switch.is-loading {
@@ -356,6 +364,17 @@ onMounted(() => {
 
 .toggle-switch.has-error .toggle-label,
 .toggle-switch.has-error .toggle-value {
-  color: var(--color-error);
+  color: var(--aw-error-color, var(--color-error));
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark) {
+  .toggle-handle {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+  
+  .toggle-button.is-on .toggle-slider {
+    background-color: var(--aw-color-primary-600, var(--color-primary));
+  }
 }
 </style>

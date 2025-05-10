@@ -157,14 +157,14 @@ async function findHome() {
   display: grid;
   grid-template-rows: auto auto auto auto;
   justify-items: center;
-  gap: 8px;
-  margin-top: 10px;
+  gap: var(--aw-spacing-sm, 8px);
+  margin-top: var(--aw-spacing-sm, 10px);
 }
 
 .middle-row {
   display: grid;
   grid-template-columns: auto auto auto;
-  gap: 8px;
+  gap: var(--aw-spacing-sm, 8px);
   width: 100%;
 }
 
@@ -174,18 +174,19 @@ async function findHome() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  color: var(--color-text);
+  background: var(--aw-color-neutral-200, rgba(0, 0, 0, 0.15));
+  border: 1px solid var(--aw-panel-border-color, var(--color-border));
+  border-radius: var(--aw-border-radius-md, 4px);
+  color: var(--aw-panel-content-color, var(--color-text));
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .dir-btn:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--aw-color-neutral-300, rgba(0, 0, 0, 0.25));
   transform: translateY(-2px);
+  border-color: var(--aw-color-primary-300, var(--color-border-hover));
 }
 
 .dir-btn:disabled {
@@ -194,31 +195,31 @@ async function findHome() {
 }
 
 .dir-btn.stop {
-  background: rgba(244, 67, 54, 0.15);
-  color: #f44336;
+  background: var(--aw-color-error-100, rgba(244, 67, 54, 0.15));
+  color: var(--aw-error-color, #f44336);
 }
 
 .dir-btn.stop:hover:not(:disabled) {
-  background: rgba(244, 67, 54, 0.25);
+  background: var(--aw-color-error-200, rgba(244, 67, 54, 0.25));
 }
 
 .dir-btn.home {
-  background: rgba(33, 150, 243, 0.15);
-  color: #2196f3;
+  background: var(--aw-color-primary-100, rgba(33, 150, 243, 0.15));
+  color: var(--aw-color-primary-500, #2196f3);
   width: 100%;
-  margin-top: 8px;
+  margin-top: var(--aw-spacing-sm, 8px);
 }
 
 .dir-btn.home:hover:not(:disabled) {
-  background: rgba(33, 150, 243, 0.25);
+  background: var(--aw-color-primary-200, rgba(33, 150, 243, 0.25));
 }
 
 .error-message {
-  color: #f44336;
-  margin-top: 10px;
-  padding: 8px;
-  background: rgba(244, 67, 54, 0.1);
-  border-radius: 4px;
+  color: var(--aw-error-color, #f44336);
+  margin-top: var(--aw-spacing-sm, 10px);
+  padding: var(--aw-spacing-sm, 8px);
+  background: var(--aw-color-error-100, rgba(244, 67, 54, 0.1));
+  border-radius: var(--aw-border-radius-md, 4px);
   text-align: center;
   width: 100%;
   font-size: 0.9rem;

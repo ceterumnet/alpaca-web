@@ -51,12 +51,12 @@ const sectionClasses = computed(() => ({
 
 <style scoped>
 .collapsible-section {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  margin-bottom: 16px;
-  background-color: var(--color-background-soft);
+  border: 1px solid var(--aw-panel-border-color, var(--color-border));
+  border-radius: var(--aw-border-radius-lg, 6px);
+  margin-bottom: var(--aw-spacing-md, 16px);
+  background-color: var(--aw-panel-content-bg-color, var(--color-background-soft));
   transition: all 0.2s ease;
-  color: var(--color-text);
+  color: var(--aw-panel-content-color, var(--color-text));
 }
 
 .collapsible-section.is-open {
@@ -64,7 +64,7 @@ const sectionClasses = computed(() => ({
 }
 
 .section-header {
-  padding: 12px 16px;
+  padding: var(--aw-spacing-sm, 12px) var(--aw-spacing-md, 16px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -75,55 +75,55 @@ const sectionClasses = computed(() => ({
 .header-content {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--aw-spacing-sm, 8px);
 }
 
 .section-icon {
-  color: var(--color-text-secondary);
+  color: var(--aw-text-secondary-color, var(--color-text-secondary));
 }
 
 .section-title {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--color-heading);
+  color: var(--aw-heading-color, var(--color-heading));
 }
 
 .toggle-icon {
   font-size: 1.2rem;
-  color: var(--color-text-secondary);
+  color: var(--aw-text-secondary-color, var(--color-text-secondary));
   transition: transform 0.3s ease;
 }
 
 .section-content {
-  padding: 0 16px 16px;
-  border-top: 1px solid var(--color-border-light);
+  padding: 0 var(--aw-spacing-md, 16px) var(--aw-spacing-md, 16px);
+  border-top: 1px solid var(--aw-panel-border-light-color, var(--color-border-light));
 }
 
 /* Priority styles */
 .priority-primary {
-  border-color: var(--color-primary-light);
+  border-color: var(--aw-color-primary-300, var(--color-primary-light));
 }
 
 .priority-primary .section-header {
-  background-color: var(--color-primary-lighter);
+  background-color: var(--aw-color-primary-100, var(--color-primary-lighter));
 }
 
 .priority-primary .section-title {
-  color: var(--color-primary-dark);
+  color: var(--aw-color-primary-700, var(--color-primary-dark));
 }
 
 .priority-secondary {
-  border-color: var(--color-border);
+  border-color: var(--aw-panel-border-color, var(--color-border));
 }
 
 .priority-tertiary {
-  border-color: var(--color-border-light);
-  background-color: var(--color-background);
+  border-color: var(--aw-panel-border-light-color, var(--color-border-light));
+  background-color: var(--aw-panel-bg-color, var(--color-background));
 }
 
 .priority-tertiary .section-title {
-  color: var(--color-text);
+  color: var(--aw-panel-content-color, var(--color-text));
   font-weight: 500;
 }
 </style>
