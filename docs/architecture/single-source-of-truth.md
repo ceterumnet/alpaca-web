@@ -65,14 +65,14 @@ This document outlines the principles and migration plan for simplifying compone
 
 The following files currently call `getDeviceClient` directly and should be refactored to use the service/store abstraction methods instead:
 
-- `src/components/panels/BasePanel.vue`
-- `src/components/panels/features/CameraExposureControl.vue`
-- `src/components/ui/DeviceConnectionDiagnostic.vue`
-- `src/stores/UnifiedStore.ts`
-- `src/stores/modules/coreActions.ts`
-- `src/stores/modules/telescopeActions.ts`
-- `src/stores/modules/cameraActions.ts`
-- `tests/stores/UnifiedStore-AlpacaClient.test.ts` (unit tests, may keep for mocking/coverage)
+- ~~src/components/panels/BasePanel.vue~~ ✅
+- ~~src/components/panels/features/CameraExposureControl.vue~~ ✅
+- ~~src/components/ui/DeviceConnectionDiagnostic.vue~~ ✅
+- ~~src/stores/UnifiedStore.ts~~ ✅
+- ~~src/stores/modules/coreActions.ts~~ ✅
+- ~~src/stores/modules/telescopeActions.ts~~ ✅
+- ~~src/stores/modules/cameraActions.ts~~ ✅
+- ~~tests/stores/UnifiedStore-AlpacaClient.test.ts~~ ✅ (unit tests, reviewed and compliant)
 
 **Note:**
 

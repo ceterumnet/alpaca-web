@@ -22,8 +22,7 @@ const diagnosticResults = ref<{
 const hasIssues = computed(() => {
   if (!diagnosticResults.value) return false;
   return !diagnosticResults.value.deviceFound || 
-         !diagnosticResults.value.hasApiUrl || 
-         !diagnosticResults.value.hasClient;
+         !diagnosticResults.value.hasApiUrl;
 });
 
 // Run diagnostics on the device
@@ -47,8 +46,8 @@ const runDiagnostics = () => {
     // Check for apiBaseUrl
     const hasApiUrl = !!device.apiBaseUrl;
     
-    // Check if a client exists
-    const hasClient = !!store.getDeviceClient(props.deviceId);
+    // No longer check for a client directly; rely on apiBaseUrl
+    const hasClient = !!device.apiBaseUrl;
     
     // Get device info
     const deviceInfo = {
@@ -75,8 +74,6 @@ const runDiagnostics = () => {
     // Add error message if issues were found
     if (!hasApiUrl) {
       diagnosticResults.value.errorMessage = 'Device is missing API URL. Check device configuration.';
-    } else if (!hasClient) {
-      diagnosticResults.value.errorMessage = 'Client could not be created. Check network connectivity.';
     }
   } catch (error) {
     diagnosticResults.value = {
@@ -100,10 +97,6 @@ const suggestedFix = computed(() => {
   
   if (!diagnosticResults.value.hasApiUrl) {
     return 'Device is missing API URL. Try updating the device with a valid API URL.';
-  }
-  
-  if (!diagnosticResults.value.hasClient) {
-    return 'Client could not be created. Check if the device API is accessible at the URL.';
   }
   
   if (!diagnosticResults.value.isConnected) {
@@ -158,13 +151,12 @@ const uiUpdateCheckInterval = ref<number | null>(null)
 // Check if component props are being correctly passed
 const checkUiUpdateProps = () => {
   const device = store.getDeviceById(props.deviceId)
-  const hasClient = store.getDeviceClient(props.deviceId)
   
   const propsState = {
     deviceFound: !!device,
     deviceHasApiUrl: !!device?.apiBaseUrl,
     deviceIsConnected: device?.isConnected || false,
-    clientExists: !!hasClient,
+    clientExists: false,
     lastChecked: Date.now()
   }
   
@@ -208,25 +200,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopUiUpdateDiagnostics()
 })
-
-// Force a UI refresh by triggering reactive updates
-const forceUiRefresh = () => {
-  // Force reactive updates
-  lastUiUpdateTime.value = Date.now()
-  
-  // Run diagnostics
-  const currentState = checkUiUpdateProps()
-  
-  // Try to force component/state updates
-  if (currentState.deviceFound && currentState.deviceHasApiUrl && !currentState.clientExists) {
-    // Try to create client
-    console.log('[UIDiagnostic] Attempting to create missing client...')
-    attemptFix()
-  }
-  
-  // Return true to indicate refresh was performed
-  return true
-}
 </script>
 
 <template>
