@@ -19,7 +19,7 @@
 // - Event emission for UI updates
 // - Support for both binary and JSON image formats
 
-import type { DeviceEvent, Device } from '../types/deviceTypes'
+import type { DeviceEvent, Device } from '../types/device-store.types'
 import type { AlpacaClient } from '@/api/AlpacaClient'
 import { AlpacaClient as BaseAlpacaClient } from '@/api/alpaca/base-client'
 

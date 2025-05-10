@@ -16,13 +16,13 @@
  * not used as fallbacks for real device failures.
  */
 
-import type { Device, DeviceEvent } from '../types/deviceTypes'
+import type { Device, DeviceEvent } from '../types/device-store.types'
 
 export interface SimulationState {
   allowSimulations: boolean
 }
 
-interface SimulationContext {
+export interface SimulationContext {
   getDeviceById: (id: string) => Device | null
   _emitEvent: (event: DeviceEvent) => void
   updateDeviceProperties: (deviceId: string, props: Record<string, unknown>) => boolean
@@ -49,9 +49,7 @@ export function createSimulationActions() {
         const availableDevices = store.devicesArray || []
 
         if (Array.isArray(availableDevices)) {
-          return availableDevices.filter(
-            (device) => device && device.properties && device.properties.isSimulation === true
-          )
+          return availableDevices.filter((device) => device && device.properties && device.properties.isSimulation === true)
         }
 
         return []
@@ -64,7 +62,8 @@ export function createSimulationActions() {
         exposureTime: number,
         isLight: boolean = true
       ): Promise<boolean> {
-        const device = this.getDeviceById(deviceId)
+        // Check device exists but don't assign to unused variable
+        this.getDeviceById(deviceId)
 
         console.log(`Simulating camera exposure for ${deviceId} (${exposureTime}s)`)
 
@@ -128,12 +127,7 @@ export function createSimulationActions() {
       },
 
       // Simulate telescope movement
-      simulateTelescopeSlew(
-        this: SimulationState & SimulationContext,
-        deviceId: string,
-        ra?: number,
-        dec?: number
-      ): Promise<boolean> {
+      simulateTelescopeSlew(this: SimulationState & SimulationContext, deviceId: string, ra?: number, dec?: number): Promise<boolean> {
         const device = this.getDeviceById(deviceId)
         if (!device || !device.properties?.isSimulation) {
           throw new Error('This method can only be used with simulation devices')

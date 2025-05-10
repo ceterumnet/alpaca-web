@@ -9,6 +9,7 @@
 import { enhancedDeviceDiscoveryService } from './EnhancedDeviceDiscoveryService'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
+import { createStoreAdapter } from '@/stores/StoreAdapter'
 import type { DiscoveryResult, DiscoveryOptions, ManualDeviceParams, DeviceServer, DeviceServerDevice } from './interfaces/DeviceDiscoveryInterface'
 import type { UnifiedDevice } from '@/types/device.types'
 import type { DiscoveredDevice } from '@/types/DiscoveredDevice'
@@ -100,10 +101,8 @@ class AutoDiscoveryService {
    * @returns True if added successfully
    */
   private addDeviceToStore(device: UnifiedDevice): boolean {
-    // Get a fresh store instance for each operation
-    const store = useUnifiedStore()
-
     // Check if device is already added before attempting to add it
+    const store = useUnifiedStore()
     const isAlreadyAdded = enhancedDeviceDiscoveryService.isDeviceAdded(device, store.devicesList)
 
     if (!isAlreadyAdded) {
@@ -114,9 +113,20 @@ class AutoDiscoveryService {
           device.status = 'idle'
         }
 
-        // Add the device using the store's method
-        store.addDevice(device)
-        return true
+        // Create a store adapter to avoid 'this' context issues
+        const storeAdapter = createStoreAdapter(store)
+
+        // Convert to legacy device format and add through the adapter
+        const legacyDevice = {
+          id: device.id,
+          deviceName: device.name,
+          deviceType: device.type,
+          address: device.ipAddress,
+          devicePort: device.port,
+          properties: device.properties
+        }
+
+        return storeAdapter.addDevice(legacyDevice)
       } catch (error) {
         console.error('Error adding device to store:', error)
         return false
