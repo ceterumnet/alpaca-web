@@ -403,29 +403,54 @@ onMounted(() => {
         </select>
       </div>
     </div>
-
-    <div class="aw-camera-exposure-control__action">
-      <button
-        class="aw-button"
-        :class="{
-          'aw-button--primary': !exposureInProgress,
-          'aw-button--danger': exposureInProgress
-        }"
-        :disabled="!isConnected"
-        @click="startExposure"
-      >
-        {{ buttonText }}
-      </button>
+    
+    <div class="aw-camera-exposure-control__status-row">
+      <div class="aw-camera-exposure-control__action">
+        <button
+          class="aw-button"
+          :class="{
+            'aw-button--primary': !exposureInProgress,
+            'aw-button--danger': exposureInProgress
+          }"
+          :disabled="!isConnected"
+          @click="startExposure"
+        >
+          <span v-if="exposureInProgress" class="button-icon">⏹</span>
+          <span v-else class="button-icon">📷</span>
+          {{ buttonText }}
+        </button>
+      </div>
+      
     </div>
 
     <div v-if="exposureInProgress || percentComplete > 0" class="aw-camera-exposure-control__progress">
-      <div class="aw-camera-exposure-control__progress-bar">
-        <div class="aw-camera-exposure-control__progress-fill" :style="{ width: `${percentComplete}%` }"></div>
+      <div class="aw-progress-label">Exposure Progress:</div>
+      <div class="aw-camera-exposure-control__progress-container">
+        <div class="aw-camera-exposure-control__progress-bar">
+          <div 
+            class="aw-camera-exposure-control__progress-fill" 
+            :class="{'complete': percentComplete >= 100}"
+            :style="{ width: `${percentComplete}%` }"
+          ></div>
+        </div>
+        <div class="aw-camera-exposure-control__progress-text">{{ percentComplete.toFixed(0) }}%</div>
       </div>
-      <div class="aw-camera-exposure-control__progress-text">{{ percentComplete.toFixed(0) }}%</div>
+    </div>
+    
+    <div v-if="imageReady" class="aw-camera-exposure-control__status">
+      <div class="aw-status-indicator aw-status-indicator--success">Image ready</div>
+    </div>
+    
+    <div v-if="!imageReady && percentComplete >= 100" class="aw-camera-exposure-control__status">
+      <div class="aw-status-indicator aw-status-indicator--processing">
+        <span class="loading-dots">Processing image</span>
+      </div>
     </div>
 
-    <div v-if="error" class="aw-form-error">{{ error }}</div>
+    <div v-if="error" class="aw-form-error">
+      <span class="error-icon">⚠️</span>
+      {{ error }}
+    </div>
   </div>
 </template>
 
@@ -435,12 +460,21 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--aw-spacing-md);
   width: 100%;
+  /* padding: var(--aw-spacing-md); */
+  border-radius: var(--aw-border-radius-md);
+  background-color: var(--aw-color-neutral-50, #f8f9fa);
 }
 
 .aw-camera-exposure-control__settings {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--aw-spacing-md);
+}
+
+.aw-camera-exposure-control__status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .aw-camera-exposure-control__action {
@@ -448,7 +482,39 @@ onMounted(() => {
   justify-content: flex-start;
 }
 
+.button-icon {
+  margin-right: 0.5rem;
+}
+
+.aw-connection-status {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--aw-border-radius-sm);
+}
+
+.aw-connection-status--connected {
+  background-color: var(--aw-color-success-100, #d4edda);
+  color: var(--aw-color-success-700, #0f5132);
+}
+
+.aw-connection-status--disconnected {
+  background-color: var(--aw-color-neutral-200, #e9ecef);
+  color: var(--aw-color-neutral-700, #495057);
+}
+
 .aw-camera-exposure-control__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.aw-progress-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--aw-color-neutral-700, #495057);
+}
+
+.aw-camera-exposure-control__progress-container {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-md);
@@ -457,20 +523,80 @@ onMounted(() => {
 .aw-camera-exposure-control__progress-bar {
   flex: 1;
   height: 0.75rem;
-  background-color: var(--aw-color-neutral-300);
+  background-color: var(--aw-color-neutral-300, #dee2e6);
   border-radius: var(--aw-border-radius-sm);
   overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .aw-camera-exposure-control__progress-fill {
   height: 100%;
-  background-color: var(--aw-color-primary-500);
-  transition: width 0.3s ease-in-out;
+  background-color: var(--aw-color-primary-500, #0d6efd);
+  transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
+}
+
+.aw-camera-exposure-control__progress-fill.complete {
+  background-color: var(--aw-color-success-500, #198754);
 }
 
 .aw-camera-exposure-control__progress-text {
   min-width: 3rem;
   text-align: right;
   font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.aw-camera-exposure-control__status {
+  margin-top: 0.25rem;
+}
+
+.aw-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--aw-border-radius-sm);
+}
+
+.aw-status-indicator--success {
+  background-color: var(--aw-color-success-100, #d4edda);
+  color: var(--aw-color-success-700, #0f5132);
+}
+
+.aw-status-indicator--processing {
+  background-color: var(--aw-color-neutral-100, #f8f9fa);
+  color: var(--aw-color-neutral-800, #343a40);
+}
+
+.loading-dots::after {
+  content: "...";
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { content: "."; }
+  33% { content: ".."; }
+  66% { content: "..."; }
+}
+
+.aw-form-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--aw-color-danger-700, #842029);
+  background-color: var(--aw-color-danger-100, #f8d7da);
+  padding: 0.5rem;
+  border-radius: var(--aw-border-radius-sm);
+}
+
+.error-icon {
+  font-size: 1rem;
+}
+
+@media (max-width: 640px) {
+  .aw-camera-exposure-control__settings {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

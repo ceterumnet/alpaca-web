@@ -80,7 +80,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: var(--aw-spacing-md);
-  padding: var(--aw-spacing-md);
+  padding: 0;
   width: 100%;
 }
 
