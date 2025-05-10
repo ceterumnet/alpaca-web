@@ -13,6 +13,7 @@ import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
 import ResponsiveCameraPanel from '@/components/devices/ResponsiveCameraPanel.vue'
 import ResponsiveTelescopePanel from '@/components/devices/ResponsiveTelescopePanel.vue'
+import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePanel.vue'
 import ResponsiveFocuserPanel from '@/components/devices/ResponsiveFocuserPanel.vue'
 import type { GridLayoutDefinition } from '@/types/layouts/LayoutDefinition'
 
@@ -24,6 +25,12 @@ const route = useRoute()
 
 // Layout ID to display - default to 'default'
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
+
+// Use simplified panel flag - for experiment
+const useSimplifiedTelescopePanel = ref(false)
+const toggleTelescopePanelType = () => {
+  useSimplifiedTelescopePanel.value = !useSimplifiedTelescopePanel.value
+}
 
 // Create a default layout if none exists
 onMounted(() => {
@@ -329,6 +336,11 @@ const changeLayout = (layoutId: string) => {
 
 <template>
   <div class="panel-layout-view">
+    <div class="panel-layout-controls">
+      <button class="toggle-panel-btn" @click="toggleTelescopePanelType">
+        {{ useSimplifiedTelescopePanel ? 'Use Responsive Panel' : 'Use Simplified Panel' }}
+      </button>
+    </div>
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
       <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId">
         <!-- Camera Panel Slot -->
@@ -343,8 +355,14 @@ const changeLayout = (layoutId: string) => {
 
         <!-- Telescope Panel Slot -->
         <template #telescope="{ position }">
+          <SimplifiedTelescopePanel 
+            v-if="position && useSimplifiedTelescopePanel"
+            :device-id="deviceMap.telescope || ''"
+            title="Telescope"
+            @device-change="handleDeviceChange('telescope', $event)"
+          />
           <ResponsiveTelescopePanel
-            v-if="position"
+            v-else-if="position"
             :device-id="deviceMap.telescope || ''"
             title="Telescope"
             @device-change="handleDeviceChange('telescope', $event)"
@@ -420,5 +438,27 @@ const changeLayout = (layoutId: string) => {
   .panel-layout-view {
     padding-bottom: 0.5rem;
   }
+}
+
+.panel-layout-controls {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px;
+  background-color: var(--aw-secondary-bg-color, #1e1e1e);
+  border-bottom: 1px solid var(--aw-border-color, #333);
+}
+
+.toggle-panel-btn {
+  background-color: var(--aw-primary-color, #0077cc);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.toggle-panel-btn:hover {
+  background-color: var(--aw-primary-hover-color, #0066b3);
 }
 </style>
