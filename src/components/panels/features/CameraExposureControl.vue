@@ -162,6 +162,10 @@ const startExposure = async () => {
       await unifiedStore.callDeviceMethod(props.deviceId, props.method, [
         { Duration: exposureDuration.value, Light: isLight.value }
       ])
+    } else {
+      // Use the store/service abstraction
+      console.log('Using store/service abstraction for startexposure')
+      await unifiedStore.startCameraExposure(props.deviceId, exposureDuration.value, isLight.value)
     }
 
     emit('exposureStarted', { duration: exposureDuration.value, isLight: isLight.value })

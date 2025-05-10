@@ -49,16 +49,6 @@ const router = createRouter({
       component: () => import('../views/PanelLayoutView.vue')
     },
     {
-      path: '/prototypes/panel-system',
-      name: 'panel-system-prototype',
-      component: () => import('../prototypes/panel-system/PanelSystemPrototype.vue')
-    },
-    {
-      path: '/prototypes/catalog-demo',
-      name: 'catalog-demo',
-      component: () => import('../prototypes/catalog-demo')
-    },
-    {
       path: '/ui-components',
       name: 'component-showcase',
       component: () => import('../views/ComponentShowcase.vue')
