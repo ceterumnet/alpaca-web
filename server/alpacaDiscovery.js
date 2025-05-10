@@ -51,8 +51,8 @@ class AlpacaDiscoveryService {
     // Start listening on a random port to receive responses
     // We use port 0 to let the OS assign an available port
     // This way we don't need to be on the standard Alpaca discovery port
-    // this.server.bind(0)
-    this.server.bind({address: "192.168.4.221", port: 0})
+    this.server.bind(0)
+    // this.server.bind({address: "192.168.4.221", port: 0})
   }
 
   broadcastDiscovery() {
@@ -74,7 +74,6 @@ class AlpacaDiscoveryService {
     // We send TO port 32227 but listen on a different port for responses
     this.server.send(messageBuffer, 0, messageBuffer.length, this.port, '255.255.255.255')
     console.log('Sent discovery broadcast to port', this.port)
-    
   }
 
   getDiscoveredDevices() {
