@@ -156,6 +156,8 @@ const getDeviceNameById = (id: unknown) => {
 <template>
   <div ref="panelRef" :class="panelClasses">
     <div class="aw-panel__header">
+      <span class="aw-panel__title vue-draggable-handle">{{ panelName }}</span>
+
       <div class="aw-panel__header-left">
         <div
           v-if="props.availableDevices && props.onToggleDeviceSelector"
@@ -204,7 +206,6 @@ const getDeviceNameById = (id: unknown) => {
             </div>
           </div>
         </div>
-        <span class="aw-panel__title vue-draggable-handle">{{ panelName }}</span>
       </div>
       <div class="aw-panel__header-right">
         <span

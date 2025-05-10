@@ -206,10 +206,10 @@ const toggleSection = (section: string) => {
 
 <template>
   <div ref="panelRef" class="aw-panel aw-panel--responsive" :class="`aw-panel--size-${sizeMode}`">
-    <div class="aw-panel__header">
+    <!-- <div class="aw-panel__header">
       <h2 class="aw-panel__title">{{ title }}</h2>
       <div class="aw-panel__mode-indicator">{{ sizeMode }}</div>
-    </div>
+    </div> -->
     <div class="aw-panel__content aw-panel__content--grid">
       <div style="display: none">
         <slot name="components"></slot>
@@ -296,7 +296,7 @@ const toggleSection = (section: string) => {
 
 .aw-panel__content {
   flex: 1;
-  padding: var(--aw-spacing-lg);
+  /* padding: var(--aw-spacing-lg); */
   overflow-y: auto;
   background-color: var(--aw-panel-background);
 }
