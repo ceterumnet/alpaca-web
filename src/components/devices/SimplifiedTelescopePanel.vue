@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useUnifiedStore } from '@/stores/UnifiedStore'
+import { setAlpacaProperty, callAlpacaMethod, getAlpacaProperties } from '@/utils/alpacaPropertyAccess'
 
 const props = defineProps({
   deviceId: {
@@ -14,16 +16,68 @@ const props = defineProps({
 
 const emit = defineEmits(['device-change'])
 
+// Get unified store for device interaction
+const store = useUnifiedStore()
+
 // Handle device selection changes
 const handleDeviceChange = (newDeviceId: string) => {
   emit('device-change', newDeviceId)
 }
 
+// Device status
+const isConnected = computed(() => {
+  const device = store.getDeviceById(props.deviceId)
+  return device?.isConnected || false
+})
+
+// Get the current device
+const currentDevice = computed(() => {
+  return store.getDeviceById(props.deviceId)
+})
+
+// Get available telescope devices
+const availableDevices = computed(() => {
+  return store.devicesList.filter(d => 
+    (d.type || '').toLowerCase() === 'telescope'
+  )
+})
+
+// Watch for device ID changes to update our state
+watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
+  if (newDeviceId !== oldDeviceId) {
+    console.log(`Device changed from ${oldDeviceId} to ${newDeviceId}`)
+    
+    // If we have a new device, start monitoring it
+    if (isConnected.value) {
+      // Stop existing interval if any
+      if (coordUpdateInterval) {
+        clearInterval(coordUpdateInterval)
+      }
+      
+      // Start a new polling interval
+      coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
+      
+      // Initial update
+      updateCoordinates()
+    }
+  }
+}, { immediate: true })
+
+// Device selector dropdown state
+const showDeviceSelector = ref(false)
+const toggleDeviceSelector = () => {
+  showDeviceSelector.value = !showDeviceSelector.value
+}
+
 // Tracking state
 const tracking = ref(false)
-const toggleTracking = () => {
-  tracking.value = !tracking.value
-  // In actual implementation, would call Alpaca API here
+const toggleTracking = async () => {
+  try {
+    await setAlpacaProperty(props.deviceId, 'tracking', !tracking.value)
+    // Let the update come from polling rather than setting it directly
+  } catch (error) {
+    console.error('Error toggling tracking:', error)
+  }
 }
 
 // Tracking rate options
@@ -35,11 +89,23 @@ const trackingRates = [
 ]
 const selectedTrackingRate = ref(0)
 
-// Coordinates (in actual implementation these would come from device)
-const rightAscension = ref(12.34)
-const declination = ref(45.67)
-const altitude = ref(30.5)
-const azimuth = ref(220.7)
+// Update tracking rate
+const updateTrackingRate = async () => {
+  try {
+    await setAlpacaProperty(props.deviceId, 'trackingRate', selectedTrackingRate.value)
+  } catch (error) {
+    console.error('Error setting tracking rate:', error)
+  }
+}
+
+// Watch for changes in the tracking rate dropdown
+watch(selectedTrackingRate, updateTrackingRate)
+
+// Coordinates (will be updated by polling)
+const rightAscension = ref(0)
+const declination = ref(0)
+const altitude = ref(0)
+const azimuth = ref(0)
 
 // Format right ascension as HH:MM:SS
 const formattedRA = computed(() => {
@@ -64,31 +130,188 @@ const formattedDec = computed(() => {
 // Simple slew to coordinates
 const targetRA = ref(0)
 const targetDec = ref(0)
-const slewToCoordinates = () => {
-  console.log(`Slewing to RA: ${targetRA.value}, Dec: ${targetDec.value}`)
-  // In actual implementation, would call Alpaca API here
+const slewToCoordinates = async () => {
+  try {
+    await callAlpacaMethod(props.deviceId, 'slewToCoordinates', {
+      rightAscension: targetRA.value,
+      declination: targetDec.value
+    })
+  } catch (error) {
+    console.error('Error slewing to coordinates:', error)
+  }
 }
 
 // Direction control buttons for manual slew
-const moveDirection = (direction: string) => {
-  console.log(`Moving telescope: ${direction}`)
-  // In actual implementation, would call Alpaca API here
+const moveDirection = async (direction: string) => {
+  try {
+    if (direction === 'stop') {
+      await callAlpacaMethod(props.deviceId, 'abortSlew')
+      return
+    }
+    
+    let axisParam = null
+    
+    switch (direction) {
+      case 'up': // North
+        axisParam = { axis: 1, rate: 0.5 }
+        break
+      case 'down': // South
+        axisParam = { axis: 1, rate: -0.5 }
+        break
+      case 'left': // West
+        axisParam = { axis: 0, rate: -0.5 }
+        break
+      case 'right': // East
+        axisParam = { axis: 0, rate: 0.5 }
+        break
+    }
+    
+    if (axisParam) {
+      await callAlpacaMethod(props.deviceId, 'moveAxis', axisParam)
+    }
+  } catch (error) {
+    console.error(`Error moving telescope ${direction}:`, error)
+  }
 }
 
 // Advanced functions
-const parkTelescope = () => {
-  console.log('Parking telescope')
-  // In actual implementation, would call Alpaca API here
+const parkTelescope = async () => {
+  try {
+    await callAlpacaMethod(props.deviceId, 'park')
+  } catch (error) {
+    console.error('Error parking telescope:', error)
+  }
 }
 
-const unparkTelescope = () => {
-  console.log('Unparking telescope')
-  // In actual implementation, would call Alpaca API here
+const unparkTelescope = async () => {
+  try {
+    await callAlpacaMethod(props.deviceId, 'unpark')
+  } catch (error) {
+    console.error('Error unparking telescope:', error)
+  }
 }
 
-const findHome = () => {
-  console.log('Finding home position')
-  // In actual implementation, would call Alpaca API here
+const findHome = async () => {
+  try {
+    await callAlpacaMethod(props.deviceId, 'findHome')
+  } catch (error) {
+    console.error('Error finding home position:', error)
+  }
+}
+
+// Poll for coordinates and status updates
+let coordUpdateInterval: number | undefined
+
+const updateCoordinates = async () => {
+  if (!isConnected.value) return
+  
+  try {
+    // Use the optimized batch property access that leverages devicestate if available
+    const properties = await getAlpacaProperties(props.deviceId, [
+      'rightAscension',
+      'declination',
+      'altitude',
+      'azimuth',
+      'tracking',
+      'trackingRate'
+    ])
+    
+    // Update the local state with fetched values
+    if (properties.rightAscension !== null && typeof properties.rightAscension === 'number') {
+      rightAscension.value = properties.rightAscension
+    }
+    
+    if (properties.declination !== null && typeof properties.declination === 'number') {
+      declination.value = properties.declination
+    }
+    
+    if (properties.altitude !== null && typeof properties.altitude === 'number') {
+      altitude.value = properties.altitude
+    }
+    
+    if (properties.azimuth !== null && typeof properties.azimuth === 'number') {
+      azimuth.value = properties.azimuth
+    }
+    
+    if (properties.tracking !== null && typeof properties.tracking === 'boolean') {
+      tracking.value = properties.tracking
+    }
+    
+    if (properties.trackingRate !== null && typeof properties.trackingRate === 'number') {
+      selectedTrackingRate.value = properties.trackingRate
+    }
+  } catch (error) {
+    console.error('Error updating telescope coordinates:', error)
+  }
+}
+
+// Setup polling when mounted
+onMounted(() => {
+  if (isConnected.value) {
+    coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
+    // Initial update
+    updateCoordinates()
+  }
+})
+
+// Watch for changes in connection status
+watch(isConnected, (newValue) => {
+  if (newValue) {
+    // Start polling when connected
+    coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
+    // Initial update
+    updateCoordinates()
+  } else {
+    // Stop polling when disconnected
+    if (coordUpdateInterval) {
+      window.clearInterval(coordUpdateInterval)
+    }
+  }
+})
+
+// Cleanup when unmounted
+onUnmounted(() => {
+  if (coordUpdateInterval) {
+    window.clearInterval(coordUpdateInterval)
+  }
+  
+  // Close device selector if open
+  showDeviceSelector.value = false
+})
+
+// Function to open device discovery panel
+const openDiscovery = () => {
+  // TODO: Implement discovery navigation
+  console.log('Open discovery panel')
+  showDeviceSelector.value = false
+}
+
+// When clicking outside the device selector, close it
+const closeDeviceSelector = (event: MouseEvent) => {
+  if (showDeviceSelector.value && !event.target) {
+    showDeviceSelector.value = false
+  }
+}
+
+// Add document click handler
+onMounted(() => {
+  document.addEventListener('click', closeDeviceSelector)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeDeviceSelector)
+})
+
+// Function to connect to the selected device
+const connectDevice = async () => {
+  if (!props.deviceId) return
+  try {
+    // @ts-expect-error - TypeScript has issues with the store's this context
+    await store.connectDevice(props.deviceId)
+    console.log(`Connected to device ${props.deviceId}`)
+  } catch (error) {
+    console.error(`Error connecting to device ${props.deviceId}:`, error)
+  }
 }
 </script>
 
@@ -97,102 +320,146 @@ const findHome = () => {
     <!-- Header with title and device selector -->
     <div class="panel-header">
       <h2>{{ props.title }}</h2>
-      <select :value="props.deviceId" @change="(e: Event) => handleDeviceChange((e.target as HTMLSelectElement).value)">
-        <option value="telescope1">Telescope 1</option>
-        <option value="telescope2">Telescope 2</option>
-        <option value="demo-telescope">Demo Telescope</option>
-      </select>
+      <div class="device-selector" @click.stop="toggleDeviceSelector">
+        <span class="device-name">{{ currentDevice?.name || 'Select device' }}</span>
+        <span class="device-toggle">▼</span>
+        
+        <div v-if="showDeviceSelector" class="device-dropdown">
+          <div v-if="availableDevices.length > 0" class="device-list">
+            <div
+              v-for="device in availableDevices"
+              :key="device.id"
+              class="device-item"
+              :class="{ 'device-selected': device.id === props.deviceId }"
+              @click.stop="handleDeviceChange(device.id)"
+            >
+              <div class="device-info">
+                <span class="device-item-name">{{ device.name }}</span>
+                <span class="device-item-status" :class="device.isConnected ? 'connected' : 'disconnected'">
+                  {{ device.isConnected ? 'Connected' : 'Disconnected' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="device-empty">
+            <span>No telescope devices found</span>
+          </div>
+          <div class="device-actions">
+            <button class="discover-button" @click.stop="openDiscovery">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="16" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+              </svg>
+              <span>Discover Devices</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
     
     <!-- Main panel content with sections -->
     <div class="panel-content">
-      <!-- Position section -->
-      <div class="panel-section">
-        <h3>Position</h3>
-        <div class="coordinate-display">
-          <div class="coordinate">
-            <span class="label">RA:</span>
-            <span class="value">{{ formattedRA }}</span>
-          </div>
-          <div class="coordinate">
-            <span class="label">Dec:</span>
-            <span class="value">{{ formattedDec }}</span>
-          </div>
-        </div>
-        <div class="coordinate-display">
-          <div class="coordinate">
-            <span class="label">Alt:</span>
-            <span class="value">{{ altitude.toFixed(2) }}°</span>
-          </div>
-          <div class="coordinate">
-            <span class="label">Az:</span>
-            <span class="value">{{ azimuth.toFixed(2) }}°</span>
-          </div>
-        </div>
+      <!-- No device selected message -->
+      <div v-if="!currentDevice" class="connection-notice">
+        <div class="connection-message">No telescope selected</div>
       </div>
       
-      <!-- Movement section -->
-      <div class="panel-section">
-        <h3>Movement</h3>
-        <div class="slew-coordinates">
-          <div class="slew-input">
-            <label>Target RA:</label>
-            <input v-model="targetRA" type="number" min="0" max="24" step="0.01">
+      <!-- Connection status -->
+      <div v-else-if="!isConnected" class="connection-notice">
+        <div class="connection-message">Telescope not connected</div>
+        <button class="connect-button action-button" @click="connectDevice">Connect</button>
+      </div>
+      
+      <template v-else>
+        <!-- Position section -->
+        <div class="panel-section">
+          <h3>Position</h3>
+          <div class="coordinate-display">
+            <div class="coordinate">
+              <span class="label">RA:</span>
+              <span class="value">{{ formattedRA }}</span>
+            </div>
+            <div class="coordinate">
+              <span class="label">Dec:</span>
+              <span class="value">{{ formattedDec }}</span>
+            </div>
           </div>
-          <div class="slew-input">
-            <label>Target Dec:</label>
-            <input v-model="targetDec" type="number" min="-90" max="90" step="0.01">
+          <div class="coordinate-display">
+            <div class="coordinate">
+              <span class="label">Alt:</span>
+              <span class="value">{{ altitude.toFixed(2) }}°</span>
+            </div>
+            <div class="coordinate">
+              <span class="label">Az:</span>
+              <span class="value">{{ azimuth.toFixed(2) }}°</span>
+            </div>
           </div>
-          <button class="action-button" @click="slewToCoordinates">Slew</button>
         </div>
         
-        <!-- Direction control pad -->
-        <div class="direction-control">
-          <div class="direction-row">
-            <button class="direction-button" @click="moveDirection('up')">▲</button>
+        <!-- Movement section -->
+        <div class="panel-section">
+          <h3>Movement</h3>
+          <div class="slew-coordinates">
+            <div class="slew-input">
+              <label>Target RA:</label>
+              <input v-model="targetRA" type="number" min="0" max="24" step="0.01">
+            </div>
+            <div class="slew-input">
+              <label>Target Dec:</label>
+              <input v-model="targetDec" type="number" min="-90" max="90" step="0.01">
+            </div>
+            <button class="action-button" @click="slewToCoordinates">Slew</button>
           </div>
-          <div class="direction-row">
-            <button class="direction-button" @click="moveDirection('left')">◄</button>
-            <button class="direction-button" @click="moveDirection('stop')">■</button>
-            <button class="direction-button" @click="moveDirection('right')">►</button>
-          </div>
-          <div class="direction-row">
-            <button class="direction-button" @click="moveDirection('down')">▼</button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Tracking section -->
-      <div class="panel-section">
-        <h3>Tracking</h3>
-        <div class="tracking-control">
-          <div class="tracking-toggle">
-            <span class="label">Tracking:</span>
-            <label class="toggle">
-              <input v-model="tracking" type="checkbox" @change="toggleTracking">
-              <span class="slider"></span>
-            </label>
-          </div>
-          <div class="tracking-rate">
-            <span class="label">Rate:</span>
-            <select v-model="selectedTrackingRate">
-              <option v-for="rate in trackingRates" :key="rate.value" :value="rate.value">
-                {{ rate.label }}
-              </option>
-            </select>
+          
+          <!-- Direction control pad -->
+          <div class="direction-control">
+            <div class="direction-row">
+              <button class="direction-button" @click="moveDirection('up')">▲</button>
+            </div>
+            <div class="direction-row">
+              <button class="direction-button" @click="moveDirection('left')">◄</button>
+              <button class="direction-button" @click="moveDirection('stop')">■</button>
+              <button class="direction-button" @click="moveDirection('right')">►</button>
+            </div>
+            <div class="direction-row">
+              <button class="direction-button" @click="moveDirection('down')">▼</button>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <!-- Advanced section -->
-      <div class="panel-section">
-        <h3>Advanced</h3>
-        <div class="advanced-buttons">
-          <button class="action-button" @click="parkTelescope">Park</button>
-          <button class="action-button" @click="unparkTelescope">Unpark</button>
-          <button class="action-button" @click="findHome">Find Home</button>
+        
+        <!-- Tracking section -->
+        <div class="panel-section">
+          <h3>Tracking</h3>
+          <div class="tracking-control">
+            <div class="tracking-toggle">
+              <span class="label">Tracking:</span>
+              <label class="toggle">
+                <input v-model="tracking" type="checkbox" @change="toggleTracking">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="tracking-rate">
+              <span class="label">Rate:</span>
+              <select v-model="selectedTrackingRate">
+                <option v-for="rate in trackingRates" :key="rate.value" :value="rate.value">
+                  {{ rate.label }}
+                </option>
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
+        
+        <!-- Advanced section -->
+        <div class="panel-section">
+          <h3>Advanced</h3>
+          <div class="advanced-buttons">
+            <button class="action-button" @click="parkTelescope">Park</button>
+            <button class="action-button" @click="unparkTelescope">Unpark</button>
+            <button class="action-button" @click="findHome">Find Home</button>
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -223,13 +490,118 @@ const findHome = () => {
   font-size: 0.8rem;
 }
 
-.panel-header select {
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
-  color: var(--aw-text-color, #f0f0f0);
+/* Device selector styles */
+.device-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
   border: 1px solid var(--aw-panel-border-color, #444);
   border-radius: 4px;
-  padding: 0;
+  cursor: pointer;
+  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
   margin: 4px 0;
+  min-width: 120px;
+}
+
+.device-name {
+  font-size: 0.8rem;
+  margin-right: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.device-toggle {
+  font-size: 0.6rem;
+  opacity: 0.7;
+}
+
+.device-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 200px;
+  background-color: var(--aw-panel-bg-color, #2a2a2a);
+  border: 1px solid var(--aw-panel-border-color, #444);
+  border-radius: 4px;
+  z-index: 100;
+  margin-top: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.device-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.device-item {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+}
+
+.device-item:hover {
+  background-color: var(--aw-panel-hover-bg-color, #444);
+}
+
+.device-selected {
+  background-color: var(--aw-primary-color-transparent, rgba(0, 119, 204, 0.2));
+}
+
+.device-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.device-item-name {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.device-item-status {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.device-item-status.connected {
+  color: var(--aw-success-color, #66bb6a);
+}
+
+.device-item-status.disconnected {
+  color: var(--aw-error-color, #ef5350);
+}
+
+.device-empty {
+  padding: 12px 8px;
+  text-align: center;
+  color: var(--aw-text-secondary-color, #aaa);
+  font-size: 0.9rem;
+}
+
+.device-actions {
+  padding: 8px;
+  border-top: 1px solid var(--aw-panel-border-color, #444);
+}
+
+.discover-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 0;
+  background-color: var(--aw-primary-color, #0077cc);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.discover-button:hover {
+  background-color: var(--aw-primary-hover-color, #0066b3);
 }
 
 .panel-content {
@@ -427,5 +799,27 @@ input:checked + .slider:before {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.connection-notice {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  border-radius: 6px;
+  margin-bottom: 20px;
+  gap: 12px;
+  padding: 16px;
+}
+
+.connection-message {
+  color: var(--aw-text-secondary-color, #aaa);
+  font-size: 1.1rem;
+}
+
+.connect-button {
+  min-width: 100px;
 }
 </style> 
