@@ -306,7 +306,7 @@ const getDeviceNameById = (id: unknown) => {
 
 /* Panel modes - STANDARD: standard view with all controls */
 .aw-panel--standard .aw-panel__content {
-  padding: var(--aw-spacing-md);
+  padding: var(--aw-spacing-sm);
 }
 
 /* Panel modes - EXPANDED: expanded view with maximum content area */
@@ -316,7 +316,7 @@ const getDeviceNameById = (id: unknown) => {
 }
 
 .aw-panel--expanded .aw-panel__content {
-  padding: var(--aw-spacing-lg);
+  padding: var(--aw-spacing-sm);
 }
 
 /* Panel header common styling */

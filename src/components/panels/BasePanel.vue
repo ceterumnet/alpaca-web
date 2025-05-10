@@ -722,13 +722,13 @@ const ensureClientExists = (deviceId: string) => {
 .panel-feature-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .panel-feature {
   background-color: var(--aw-panels-bg-color, #f9f9f9);
   border-radius: 4px;
-  padding: 12px;
+  padding: 6px;
 }
 
 .error-message {
@@ -806,8 +806,8 @@ const ensureClientExists = (deviceId: string) => {
 }
 
 .panel-diagnostic-section {
-  margin: 12px 0;
-  padding: 8px;
+  margin: 6px 0;
+  padding: 4px;
   border-radius: 4px;
   background-color: var(--aw-panel-bg-color, #fff);
 }

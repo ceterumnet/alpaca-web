@@ -304,7 +304,7 @@ const toggleSection = (section: string) => {
 .aw-panel__content--grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--aw-spacing-lg);
+  gap: 0;
 }
 
 .aw-section__card {
@@ -359,14 +359,14 @@ const toggleSection = (section: string) => {
 .aw-section__features {
   display: flex;
   flex-direction: column;
-  gap: var(--aw-spacing-md);
-  padding: var(--aw-spacing-md);
+  gap: var(--aw-spacing-sm);
+  padding: var(--aw-spacing-sm);
 }
 
 .aw-section__feature {
   background: var(--aw-color-surface);
   border-radius: 6px;
-  padding: var(--aw-spacing-md);
+  padding: 0;
   border: 1px solid var(--aw-color-border);
   transition: background 0.2s;
   color: var(--aw-color-text-primary);

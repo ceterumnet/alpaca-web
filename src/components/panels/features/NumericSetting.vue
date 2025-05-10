@@ -44,13 +44,10 @@ const emit = defineEmits(['change', 'success', 'error'])
 const {
   store,
   deviceId,
-  isConnected,
   isLoading,
   error,
-  safeExecute,
   getDeviceProperty,
   setDeviceProperty,
-  logStoreState
 } = useBaseControl(props.deviceId)
 
 const currentValue = ref<number | null>(null)
@@ -262,39 +259,33 @@ onMounted(() => {
 
 <template>
   <div class="numeric-setting" :class="{ 'is-loading': isLoading, 'has-error': !!error }">
-    <div class="setting-header">
+    <div class="setting-row">
       <label class="setting-label">{{ label }}</label>
-      <div class="current-value">{{ displayValue }}</div>
-    </div>
-
-    <div class="setting-controls">
       <input
-        type="range"
+        type="number"
         :min="min"
         :max="max"
         :step="step"
         :value="editedValue"
         :disabled="isLoading || isSaving"
-        @input="handleSliderChange"
-        @change="handleSave"
+        class="aw-input aw-input--sm numeric-input"
+        @input="handleInputChange"
+        @blur="handleSave"
       />
-
-      <div class="input-group">
-        <input
-          type="number"
-          :min="min"
-          :max="max"
-          :step="step"
-          :value="editedValue"
-          :disabled="isLoading || isSaving"
-          class="numeric-input"
-          @input="handleInputChange"
-          @blur="handleSave"
-        />
-        <span v-if="unit" class="unit-label">{{ unit }}</span>
-      </div>
+      <span v-if="unit" class="unit-label">{{ unit }}</span>
+      <span class="current-value" :title="displayValue">{{ displayValue }}</span>
     </div>
-
+    <input
+      type="range"
+      :min="min"
+      :max="max"
+      :step="step"
+      :value="editedValue"
+      :disabled="isLoading || isSaving"
+      class="aw-slider"
+      @input="handleSliderChange"
+      @change="handleSave"
+    />
     <div v-if="error" class="error-message">{{ error }}</div>
   </div>
 </template>
@@ -303,75 +294,121 @@ onMounted(() => {
 .numeric-setting {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--aw-spacing-sm);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+  background: var(--aw-panel-content-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-md);
+  transition: box-shadow 0.2s;
+}
+.numeric-setting:hover, .numeric-setting:focus-within {
+  box-shadow: 0 0 0 2px var(--aw-color-primary-300);
 }
 
-.setting-header {
+.setting-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: var(--aw-spacing-sm);
+  width: 100%;
+  box-sizing: border-box;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .setting-label {
-  font-size: 0.9em;
-  color: var(--color-text-secondary);
-  font-weight: 500;
+  font-size: 0.8em;
+  color: var(--aw-panel-content-color);
+  font-weight: 600;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.aw-input.numeric-input {
+  width: 56px;
+  min-width: 0;
+  text-align: right;
+  margin-right: var(--aw-spacing-xs);
+}
+
+.unit-label {
+  font-size: 0.92em;
+  color: var(--aw-text-secondary-color);
+  margin-left: 2px;
+  margin-right: 8px;
 }
 
 .current-value {
-  font-size: 0.9em;
-  font-weight: 500;
-  color: var(--color-text);
+  font-size: 0.92em;
+  color: var(--aw-color-primary-500);
+  margin-left: auto;
+  min-width: 60px;
+  max-width: 100px;
+  text-align: right;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.setting-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-input[type='range'] {
+.aw-slider {
   width: 100%;
   appearance: none;
   height: 6px;
   border-radius: 3px;
-  background-color: var(--color-background-mute);
+  background-color: var(--aw-color-neutral-300);
   outline: none;
+  margin-top: 0;
+  margin-bottom: 0;
+  transition: background 0.2s;
 }
-
-input[type='range']::-webkit-slider-thumb {
+.aw-slider:hover, .aw-slider:focus {
+  background-color: var(--aw-color-primary-100);
+}
+.aw-slider::-webkit-slider-thumb {
   appearance: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background-color: var(--color-primary);
+  background-color: var(--aw-color-primary-500);
   cursor: pointer;
+  border: 2px solid var(--aw-panel-border-color);
+  transition: background 0.2s, border 0.2s;
 }
-
-.input-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.aw-slider:focus::-webkit-slider-thumb {
+  background-color: var(--aw-color-primary-700);
+  border-color: var(--aw-color-primary-500);
 }
-
-.numeric-input {
-  width: 70px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background-color: var(--color-background-soft);
-  color: var(--color-text);
-  font-size: 0.9em;
+.aw-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--aw-color-primary-500);
+  cursor: pointer;
+  border: 2px solid var(--aw-panel-border-color);
+  transition: background 0.2s, border 0.2s;
 }
-
-.unit-label {
-  font-size: 0.9em;
-  color: var(--color-text-secondary);
+.aw-slider:focus::-moz-range-thumb {
+  background-color: var(--aw-color-primary-700);
+  border-color: var(--aw-color-primary-500);
+}
+.aw-slider::-ms-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--aw-color-primary-500);
+  cursor: pointer;
+  border: 2px solid var(--aw-panel-border-color);
+  transition: background 0.2s, border 0.2s;
+}
+.aw-slider:focus::-ms-thumb {
+  background-color: var(--aw-color-primary-700);
+  border-color: var(--aw-color-primary-500);
 }
 
 .error-message {
-  color: var(--color-error);
+  color: var(--aw-error-color);
   font-size: 0.85em;
+  margin-top: var(--aw-spacing-xs);
 }
 
 .numeric-setting.is-loading {
@@ -380,6 +417,6 @@ input[type='range']::-webkit-slider-thumb {
 
 .numeric-setting.has-error .setting-label,
 .numeric-setting.has-error .current-value {
-  color: var(--color-error);
+  color: var(--aw-error-color);
 }
 </style>

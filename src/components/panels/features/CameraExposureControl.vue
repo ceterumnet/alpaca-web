@@ -163,7 +163,7 @@ const setupPolling = () => {
   const progressInterval = window.setInterval(async () => {
     try {
       const percent = await unifiedStore.getDeviceProperty(props.deviceId, 'percentcompleted')
-      percentComplete.value = typeof percent === 'number' ? percent : 0
+      percentComplete.value = typeof percent === 'number' ? Math.min(Math.max(percent, 0), 100) : 0
 
       // Check if the exposure is complete
       if (percentComplete.value >= 100) {

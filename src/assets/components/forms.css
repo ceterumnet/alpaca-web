@@ -21,8 +21,8 @@
   display: block;
   width: 100%;
   padding: var(--aw-spacing-sm) var(--aw-spacing-md);
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: 0.8rem;
+  line-height: 1.2;
   color: var(--aw-text-color);
   background-color: var(--aw-input-bg-color);
   background-clip: padding-box;
@@ -63,14 +63,14 @@
 .aw-input--sm,
 .aw-select--sm {
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
-  font-size: 0.875rem;
+  font-size: 0.8rem;
 }
 
 /* Large input */
 .aw-input--lg,
 .aw-select--lg {
   padding: var(--aw-spacing-md) var(--aw-spacing-lg);
-  font-size: 1.125rem;
+  font-size: 1rem;
 }
 
 /* Error state */

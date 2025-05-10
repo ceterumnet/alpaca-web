@@ -34,13 +34,10 @@ const emit = defineEmits(['change', 'success', 'error'])
 const {
   store,
   deviceId,
-  isConnected,
   isLoading,
   error,
-  safeExecute,
   getDeviceProperty,
-  setDeviceProperty,
-  logStoreState
+  setDeviceProperty
 } = useBaseControl(props.deviceId)
 
 const currentValue = ref<string | number | null>(null)
@@ -142,23 +139,18 @@ async function fetchValue() {
       
       // Try to get modes from store
       if (storeDevice.properties && pluralProperty in storeDevice.properties) {
-        modesArray = storeDevice.properties[pluralProperty];
+        modesArray = storeDevice.properties[pluralProperty] as string[] | null;
       } 
       // If not, try to fetch it from the device
       else {
-        try {
-          // Try to get the plural property (e.g., readoutmodes)
-          const modesResult = await store.getDeviceProperty(currentId, pluralProperty);
-          
-          if (modesResult !== null && modesResult !== undefined) {
-            modesArray = Array.isArray(modesResult) 
-                         ? modesResult 
-                         : typeof modesResult === 'string' 
-                         ? modesResult.split(',').map(m => m.trim())
-                         : null;
-          }
-        } catch (modesErr) {
-          // Silently continue - we'll use default options if available
+        // Try to get the plural property (e.g., readoutmodes)
+        const modesResult = await store.getDeviceProperty(currentId, pluralProperty);
+        if (modesResult !== null && modesResult !== undefined) {
+          modesArray = Array.isArray(modesResult) 
+                       ? modesResult as string[]
+                       : typeof modesResult === 'string' 
+                       ? modesResult.split(',').map(m => m.trim())
+                       : null;
         }
       }
       
@@ -204,8 +196,12 @@ async function fetchValue() {
         processReceivedValue(result);
         return;
       }
-    } catch (directError) {
-      throw directError; // Re-throw to be caught by outer try/catch
+    } catch (err) {
+      if (err instanceof Error) {
+        error.value = err.message;
+      } else {
+        error.value = 'Unknown error occurred';
+      }
     }
   } catch (err) {
     if (err instanceof Error) {
@@ -220,7 +216,6 @@ async function fetchValue() {
 function processReceivedValue(result: unknown) {
   // Special handling for index-based values (like readoutmode which references readoutmodes)
   const isNumericValue = typeof result === 'number' || (typeof result === 'string' && !isNaN(Number(result)));
-  const propertyEndsWithMode = props.property.toLowerCase().endsWith('mode');
   const hasPluralProperty = props.property.toLowerCase().endsWith('mode') && 
                             props.options.length > 0;
   
@@ -284,7 +279,6 @@ async function saveValue(newValue: string | number) {
 
   try {
     // Special handling for index-based properties (like readoutmode)
-    const propertyEndsWithMode = props.property.toLowerCase().endsWith('mode');
     const hasPluralProperty = props.property.toLowerCase().endsWith('mode') && 
                              props.options.length > 0;
     
@@ -292,7 +286,7 @@ async function saveValue(newValue: string | number) {
     let valueToSend: string | number = newValue;
     
     // If this is an index-based property, we may need to send the index instead of the value
-    if (propertyEndsWithMode && hasPluralProperty) {
+    if (hasPluralProperty) {
       // Find the option's index in the options array
       const optionIndex = props.options.findIndex(opt => 
         opt.value === newValue || String(opt.value) === String(newValue)
@@ -373,10 +367,9 @@ const setupForceUpdateListener = () => {
 // Watch for device ID changes
 watch(
   () => props.deviceId,
-  (newDeviceId, oldDeviceId) => {
+  (newDeviceId) => {
     // Update our local reference properly using .value since it's a ref
     deviceId.value = newDeviceId;
-    
     if (newDeviceId) {
       // Wait briefly for client initialization and then fetch values
       setTimeout(() => fetchValue(), 50);
@@ -421,13 +414,14 @@ onMounted(() => {
     </div>
 
     <select
-      class="select-control"
+      class="aw-select"
       :disabled="isLoading || isSaving"
       :value="currentValue === null ? '' : String(currentValue)"
       @change="handleChange"
     >
       <!-- Use internal options if available and no parent options provided -->
-      <option v-for="option in internalOptions.length > 0 && props.options.length === 0 ? internalOptions : props.options"
+      <option
+v-for="option in internalOptions.length > 0 && props.options.length === 0 ? internalOptions : props.options"
               :key="String(option.value)" 
               :value="String(option.value)">
         {{ option.label }}
@@ -442,7 +436,15 @@ onMounted(() => {
 .select-setting {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--aw-spacing-sm);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+  background: var(--aw-panel-content-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-md);
+  transition: box-shadow 0.2s;
+}
+.select-setting:hover, .select-setting:focus-within {
+  box-shadow: 0 0 0 2px var(--aw-color-primary-300);
 }
 
 .setting-header {
@@ -452,34 +454,48 @@ onMounted(() => {
 }
 
 .setting-label {
-  font-size: 0.9em;
-  color: var(--color-text-secondary);
-  font-weight: 500;
+  font-size: 0.95em;
+  color: var(--aw-panel-content-color);
+  font-weight: 600;
 }
 
 .current-value {
-  font-size: 0.9em;
-  font-weight: 500;
-  color: var(--color-text);
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--aw-color-primary-500);
 }
 
-.select-control {
-  padding: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background-color: var(--color-background-soft);
-  color: var(--color-text);
+.aw-select {
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  border: 1px solid var(--aw-input-border-color);
+  border-radius: var(--aw-border-radius-sm);
+  background-color: var(--aw-input-bg-color);
+  color: var(--aw-text-color);
   cursor: pointer;
+  font-size: 0.95em;
+  transition: border 0.2s, box-shadow 0.2s;
+  width: 100%;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--aw-spacing-sm) center;
+  background-size: 16px;
+  padding-right: calc(var(--aw-spacing-lg) + var(--aw-spacing-sm));
 }
-
-.select-control:disabled {
+.aw-select:focus {
+  outline: none;
+  border-color: var(--aw-color-primary-500);
+  box-shadow: 0 0 0 3px rgba(var(--aw-color-primary-rgb), 0.25);
+}
+.aw-select:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
 .error-message {
-  color: var(--color-error);
+  color: var(--aw-error-color);
   font-size: 0.85em;
+  margin-top: var(--aw-spacing-xs);
 }
 
 .select-setting.is-loading {
@@ -488,6 +504,6 @@ onMounted(() => {
 
 .select-setting.has-error .setting-label,
 .select-setting.has-error .current-value {
-  color: var(--color-error);
+  color: var(--aw-error-color);
 }
 </style>
