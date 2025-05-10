@@ -12,6 +12,7 @@ import { useLayoutStore } from '@/stores/useLayoutStore'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
 import ResponsiveCameraPanel from '@/components/devices/ResponsiveCameraPanel.vue'
+import SimplifiedCameraPanel from '@/components/devices/SimplifiedCameraPanel.vue'
 import ResponsiveTelescopePanel from '@/components/devices/ResponsiveTelescopePanel.vue'
 import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePanel.vue'
 import ResponsiveFocuserPanel from '@/components/devices/ResponsiveFocuserPanel.vue'
@@ -26,10 +27,16 @@ const route = useRoute()
 // Layout ID to display - default to 'default'
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 
-// Use simplified panel flag - for experiment
+// Use simplified panel flags - for experiment
 const useSimplifiedTelescopePanel = ref(false)
+const useSimplifiedCameraPanel = ref(false)
+
 const toggleTelescopePanelType = () => {
   useSimplifiedTelescopePanel.value = !useSimplifiedTelescopePanel.value
+}
+
+const toggleCameraPanelType = () => {
+  useSimplifiedCameraPanel.value = !useSimplifiedCameraPanel.value
 }
 
 // Create a default layout if none exists
@@ -338,15 +345,24 @@ const changeLayout = (layoutId: string) => {
   <div class="panel-layout-view">
     <div class="panel-layout-controls">
       <button class="toggle-panel-btn" @click="toggleTelescopePanelType">
-        {{ useSimplifiedTelescopePanel ? 'Use Responsive Panel' : 'Use Simplified Panel' }}
+        {{ useSimplifiedTelescopePanel ? 'Use Responsive Telescope Panel' : 'Use Simplified Telescope Panel' }}
+      </button>
+      <button class="toggle-panel-btn" @click="toggleCameraPanelType">
+        {{ useSimplifiedCameraPanel ? 'Use Responsive Camera Panel' : 'Use Simplified Camera Panel' }}
       </button>
     </div>
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
       <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId">
         <!-- Camera Panel Slot -->
         <template #camera="{ position }">
+          <SimplifiedCameraPanel
+            v-if="position && useSimplifiedCameraPanel"
+            :device-id="deviceMap.camera || ''"
+            title="Camera"
+            @device-change="handleDeviceChange('camera', $event)"
+          />
           <ResponsiveCameraPanel
-            v-if="position"
+            v-else-if="position"
             :device-id="deviceMap.camera || ''"
             title="Camera"
             @device-change="handleDeviceChange('camera', $event)"
@@ -443,6 +459,7 @@ const changeLayout = (layoutId: string) => {
 .panel-layout-controls {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   padding: 8px 16px;
   background-color: var(--aw-secondary-bg-color, #1e1e1e);
   border-bottom: 1px solid var(--aw-border-color, #333);
