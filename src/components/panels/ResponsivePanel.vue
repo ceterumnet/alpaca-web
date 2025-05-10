@@ -1,14 +1,21 @@
-// Status: Good - Core Component // This is the responsive panel implementation that: // - Adapts
-panel layout to available space // - Manages feature visibility based on priority // - Handles
-collapsible sections and grouping // - Provides dynamic component resolution // - Implements proper
-event handling /** * Responsive Panel Component * * Provides responsive layout and feature
-management for device panels */
+// Status: Good - Core Component 
+// This is the responsive panel implementation that: 
+// - Adapts panel layout to available space 
+// - Manages feature visibility based on priority 
+// - Handles collapsible sections and grouping 
+// - Provides dynamic component resolution 
+// - Implements proper event handling 
+
+/*
+ * Responsive Panel Component 
+ * Provides responsive layout and feature
+ * management for device panels 
+ */
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, provide } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, provide, reactive } from 'vue'
 import { useResizeObserver } from '@vueuse/core'
 import { PriorityLevel } from '@/types/panels/FeatureTypes'
 import type { PanelFeatureDefinition, VisibilityRule } from '@/types/panels/FeatureTypes'
-import CollapsibleSection from './features/CollapsibleSection.vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 
 const props = defineProps({
@@ -39,40 +46,34 @@ const props = defineProps({
   componentsMap: {
     type: Object as () => Record<string, unknown>,
     default: () => ({})
+  },
+  sectionColSpans: {
+    type: Object as () => Record<string, number>,
+    default: () => ({})
   }
 })
 
 const emit = defineEmits(['featuresChanged'])
 
-// Panel DOM element reference
 const panelRef = ref<HTMLElement | null>(null)
 const contentWidth = ref(0)
 const sizeMode = ref<'compact' | 'standard' | 'expanded'>('standard')
 const featuresBySection = ref<Record<string, PanelFeatureDefinition[]>>({})
 const store = useUnifiedStore()
 
-// Provide components map to child components if needed
 provide('componentsMap', props.componentsMap)
 
-// Computed widths for responsive design
 const compactThreshold = computed(() => props.minContentWidth + 80)
 const expandedThreshold = computed(() => props.maxContentWidth - 120)
 
-// Evaluate visibility rules for a feature
 const evaluateVisibilityRules = (feature: PanelFeatureDefinition): boolean => {
-  // If no visibility rules, feature is always visible
   if (!feature.visibilityRules || feature.visibilityRules.length === 0) {
     return true
   }
-
-  // Get device properties
   const deviceProps = store.getDeviceById(props.deviceId)?.properties || {}
-
-  // Evaluate each rule - all rules must pass for the feature to be visible
   return feature.visibilityRules.every((rule: VisibilityRule) => {
     if (rule.type === 'deviceProperty' && rule.property) {
       const propertyValue = deviceProps[rule.property]
-
       switch (rule.condition) {
         case 'equals':
           return propertyValue === rule.value
@@ -96,45 +97,31 @@ const evaluateVisibilityRules = (feature: PanelFeatureDefinition): boolean => {
           return true
       }
     }
-
-    // For other rule types, default to visible
     return true
   })
 }
 
-// Features to display based on space and visibility rules
 const visibleFeatures = computed(() => {
-  // First filter by priority based on size mode
   let filteredFeatures: PanelFeatureDefinition[] = []
-
-  // In compact mode, only show primary features
   if (sizeMode.value === 'compact') {
     filteredFeatures = props.features.filter(
       (feature) => feature.priority === PriorityLevel.Primary
     )
-  }
-  // In standard mode, show primary and secondary features
-  else if (sizeMode.value === 'standard') {
+  } else if (sizeMode.value === 'standard') {
     filteredFeatures = props.features.filter(
       (feature) =>
         feature.priority === PriorityLevel.Primary || feature.priority === PriorityLevel.Secondary
     )
-  }
-  // In expanded mode, show all features
-  else {
+  } else {
     filteredFeatures = [...props.features]
   }
-
-  // Then apply visibility rules
   return filteredFeatures.filter(evaluateVisibilityRules)
 })
 
-// Group features by section
 watch(
   () => visibleFeatures.value,
   (features) => {
     const grouped: Record<string, PanelFeatureDefinition[]> = {}
-
     features.forEach((feature) => {
       const section = feature.section || 'default'
       if (!grouped[section]) {
@@ -142,19 +129,15 @@ watch(
       }
       grouped[section].push(feature)
     })
-
     featuresBySection.value = grouped
     emit('featuresChanged', features)
   },
   { immediate: true }
 )
 
-// Update size mode based on container width
 const updateSizeMode = () => {
   if (!panelRef.value) return
-
   contentWidth.value = panelRef.value.clientWidth
-
   if (contentWidth.value <= compactThreshold.value) {
     sizeMode.value = 'compact'
   } else if (contentWidth.value >= expandedThreshold.value) {
@@ -164,197 +147,241 @@ const updateSizeMode = () => {
   }
 }
 
-// Use resize observer to track panel size changes
 useResizeObserver(panelRef, () => {
   updateSizeMode()
 })
 
-// Initial setup
 onMounted(() => {
   updateSizeMode()
   window.addEventListener('resize', updateSizeMode)
 })
-
 onUnmounted(() => {
   window.removeEventListener('resize', updateSizeMode)
 })
 
-// Get priority label for sections
 const getSectionPriority = (sectionName: string): 'primary' | 'secondary' | 'tertiary' => {
-  // Find the highest priority feature in this section
   const features = featuresBySection.value[sectionName] || []
-
   if (features.some((f) => f.priority === PriorityLevel.Primary)) {
     return 'primary'
   }
-
   if (features.some((f) => f.priority === PriorityLevel.Secondary)) {
     return 'secondary'
   }
-
   return 'tertiary'
 }
 
-// Get section icon (use first feature with icon)
 const getSectionIcon = (sectionName: string): string => {
   const features = featuresBySection.value[sectionName] || []
   const featureWithIcon = features.find((f) => f.icon)
   return featureWithIcon?.icon || ''
 }
 
-// Format section title
 const formatSectionTitle = (section: string): string => {
   if (section === 'default') return 'General'
-
-  // Convert camelCase to Title Case
   return section.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())
 }
 
-// Helper function to resolve component from string or component reference
 const resolveFeatureComponent = (component: string | object): unknown => {
   if (typeof component === 'string') {
-    // Try to find the component in the provided componentsMap
     return props.componentsMap[component] || component
   }
   return component
 }
+
+// Collapsible section state
+const openSections = reactive<Record<string, boolean>>({})
+watch(
+  () => featuresBySection.value,
+  (sections) => {
+    Object.keys(sections).forEach((section) => {
+      if (!(section in openSections)) openSections[section] = true
+    })
+  },
+  { immediate: true }
+)
+const toggleSection = (section: string) => {
+  openSections[section] = !openSections[section]
+}
 </script>
 
 <template>
-  <div ref="panelRef" class="responsive-panel" :class="`size-${sizeMode}`">
-    <div class="panel-header">
-      <h2 class="panel-title">{{ title }}</h2>
-      <div class="panel-mode-indicator">{{ sizeMode }}</div>
+  <div ref="panelRef" class="aw-panel aw-panel--responsive" :class="`aw-panel--size-${sizeMode}`">
+    <div class="aw-panel__header">
+      <h2 class="aw-panel__title">{{ title }}</h2>
+      <div class="aw-panel__mode-indicator">{{ sizeMode }}</div>
     </div>
-
-    <div class="panel-content">
-      <!-- Render components from slot for registration -->
+    <div class="aw-panel__content aw-panel__content--grid">
       <div style="display: none">
         <slot name="components"></slot>
       </div>
-
-      <!-- Render features grouped by section -->
-      <template v-for="(features, section) in featuresBySection" :key="section">
-        <CollapsibleSection
-          :title="formatSectionTitle(section)"
-          :icon="getSectionIcon(section)"
-          :priority="getSectionPriority(section)"
-          :open="section === 'default' || getSectionPriority(section) === 'primary'"
-          class="feature-section"
+      <div
+        v-for="(features, section) in featuresBySection"
+        :key="section"
+        class="aw-section__card"
+        :class="[`aw-section__card--${getSectionPriority(section)}`]"
+        :style="{
+          gridColumn: props.sectionColSpans[section]
+            ? `span ${props.sectionColSpans[section]}`
+            : undefined
+        }"
+      >
+        <div
+          class="aw-section__header"
+          :class="{ open: openSections[section] }"
+          @click="toggleSection(section)"
         >
-          <div class="features-container">
-            <div
-              v-for="feature in features"
-              :key="feature.id"
-              class="feature-wrapper"
-              :class="`priority-${feature.priority}`"
-            >
-              <!-- Use resolveFeatureComponent to handle string component names -->
-              <component
-                :is="resolveFeatureComponent(feature.component)"
-                v-bind="{ ...feature.props, deviceId, deviceType }"
-              />
-            </div>
+          <span v-if="getSectionIcon(section)" class="aw-section__icon">
+            <i :class="`icon-${getSectionIcon(section)}`"></i>
+          </span>
+          <span class="aw-section__title">{{ formatSectionTitle(section) }}</span>
+          <span class="aw-section__chevron">{{ openSections[section] ? '▼' : '▶' }}</span>
+        </div>
+        <div v-if="openSections[section]" class="aw-section__features">
+          <div
+            v-for="feature in features"
+            :key="feature.id"
+            class="aw-section__feature aw-feature"
+            :class="[`aw-feature--priority-${feature.priority}`]"
+          >
+            <component
+              :is="resolveFeatureComponent(feature.component)"
+              v-bind="{ ...feature.props, deviceId, deviceType }"
+            />
           </div>
-        </CollapsibleSection>
-      </template>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.responsive-panel {
+.aw-panel {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--aw-color-border);
   border-radius: 8px;
   overflow: hidden;
-  background-color: var(--color-background);
+  background-color: var(--aw-panel-background);
   transition: all 0.3s ease;
   width: 100%;
   height: 100%;
-  color: var(--color-text);
+  color: var(--aw-color-text-primary);
 }
 
-.panel-header {
+.aw-panel__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background-color: var(--color-background-soft);
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--aw-spacing-md) var(--aw-spacing-lg);
+  background-color: var(--aw-panel-header-background);
+  border-bottom: 1px solid var(--aw-color-border);
 }
 
-.panel-title {
+.aw-panel__title {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--color-heading);
+  color: var(--aw-panel-header-text);
 }
 
-.panel-mode-indicator {
+.aw-panel__mode-indicator {
   font-size: 0.8rem;
   padding: 2px 8px;
-  background-color: var(--color-background-mute);
+  background-color: var(--aw-color-background);
   border-radius: 12px;
-  color: var(--color-text);
+  color: var(--aw-color-text-secondary);
   text-transform: capitalize;
   font-weight: 500;
 }
 
-.panel-content {
+.aw-panel__content {
   flex: 1;
-  padding: 16px;
+  padding: var(--aw-spacing-lg);
   overflow-y: auto;
+  background-color: var(--aw-panel-background);
+}
+
+.aw-panel__content--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--aw-spacing-lg);
+}
+
+.aw-section__card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  background-color: var(--color-background);
+  background: var(--aw-color-surface);
+  border-radius: 8px;
+  border: 1px solid var(--aw-color-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  transition: box-shadow 0.2s;
 }
 
-.feature-section {
-  width: 100%;
+.aw-section__card--primary {
+  border-color: var(--aw-color-primary-light);
+}
+.aw-section__card--secondary {
+  border-color: var(--aw-color-border);
+}
+.aw-section__card--tertiary {
+  border-color: var(--aw-color-border);
 }
 
-.features-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+.aw-section__header {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-md);
+  font-weight: 600;
+  background: var(--aw-color-background);
+  border-radius: 8px 8px 0 0;
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--aw-color-border);
+  transition: background 0.2s;
+}
+.aw-section__header.open {
+  background: var(--aw-color-surface);
+}
+.aw-section__icon {
+  color: var(--aw-color-text-secondary);
+}
+.aw-section__title {
+  font-size: 1rem;
+  color: var(--aw-color-text-primary);
+}
+.aw-section__chevron {
+  margin-left: auto;
+  font-size: 1.1em;
+  color: var(--aw-color-text-secondary);
 }
 
-/* Size mode specific styles */
-.size-compact .features-container {
-  grid-template-columns: 1fr;
+.aw-section__features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--aw-spacing-md);
+  padding: var(--aw-spacing-md);
 }
 
-.size-standard .features-container {
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+.aw-section__feature {
+  background: var(--aw-color-surface);
+  border-radius: 6px;
+  padding: var(--aw-spacing-md);
+  border: 1px solid var(--aw-color-border);
+  transition: background 0.2s;
+  color: var(--aw-color-text-primary);
+}
+.aw-section__feature:hover {
+  background: var(--aw-color-primary-light);
 }
 
-.size-expanded .features-container {
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+.aw-feature--priority-primary {
+  border-left: 4px solid var(--aw-color-primary);
 }
-
-/* Feature priority styles */
-.feature-wrapper {
-  padding: 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+.aw-feature--priority-secondary {
+  border-left: 4px solid var(--aw-color-success);
 }
-
-.feature-wrapper:hover {
-  background-color: var(--color-background-soft);
-}
-
-.priority-primary {
-  order: 1;
-}
-
-.priority-secondary {
-  order: 2;
-}
-
-.priority-tertiary {
-  order: 3;
+.aw-feature--priority-tertiary {
+  border-left: 4px solid var(--aw-color-border);
 }
 </style>

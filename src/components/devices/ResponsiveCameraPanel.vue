@@ -212,7 +212,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
       label: 'Gain',
       source: FeatureSource.CoreAlpaca,
       interactionType: InteractionType.Setting,
-      priority: PriorityLevel.Secondary,
+      priority: PriorityLevel.Primary,
       component: gainMode === 'Index' ? 'SelectSetting' : 'NumericSetting',
       props:
         gainMode === 'Index'
@@ -241,7 +241,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
       label: 'Offset',
       source: FeatureSource.CoreAlpaca,
       interactionType: InteractionType.Setting,
-      priority: PriorityLevel.Secondary,
+      priority: PriorityLevel.Primary,
       component: offsetMode === 'Index' ? 'SelectSetting' : 'NumericSetting',
       props:
         offsetMode === 'Index'
@@ -309,6 +309,11 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
     }
   ]
 })
+
+// Add sectionColSpans mapping
+const sectionColSpans = {
+  primary: 2
+}
 </script>
 
 <template>
@@ -328,6 +333,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => {
         device-type="camera"
         :features="panelFeatures"
         :components-map="componentMap"
+        :section-col-spans="sectionColSpans"
         class="responsive-camera-panel"
       />
     </template>
