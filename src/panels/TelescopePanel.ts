@@ -10,7 +10,7 @@ import type { PanelDefinition } from '../types/panels/PanelDefinition'
 import { FeatureSource, InteractionType, PriorityLevel } from '../types/panels/FeatureTypes'
 
 const TelescopePanel: PanelDefinition = {
-  id: 'telescope-panel',
+  id: 'telescope',
   deviceType: 'telescope',
   title: 'Telescope',
   description: 'Controls for telescope devices',

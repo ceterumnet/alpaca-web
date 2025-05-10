@@ -82,11 +82,7 @@ const createMultiPathIcon = (paths: string[]) => {
 }
 
 // Device Icons
-export const Telescope = createMultiPathIcon([
-  'M12 3v10M8 13h8',
-  'M17 8a5 5 0 0 0-10 0',
-  'M12 13v8M9 21h6'
-])
+export const Telescope = createMultiPathIcon(['M12 3v10M8 13h8', 'M17 8a5 5 0 0 0-10 0', 'M12 13v8M9 21h6'])
 
 export const Camera = createMultiPathIcon([
   'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z',
@@ -97,10 +93,7 @@ export const Filter = createMultiPathIcon([
   'M4 3h16a1 1 0 0 1 1 1v1.586a1 1 0 0 1-.293.707l-6.415 6.414a1 1 0 0 0-.292.707v6.305a1 1 0 0 1-1.243.97l-2-.5a1 1 0 0 1-.757-.97v-5.805a1 1 0 0 0-.293-.707L3.292 6.293A1 1 0 0 1 3 5.586V4a1 1 0 0 1 1-1z'
 ])
 
-export const Focus = createMultiPathIcon([
-  'M12 8v8M8 12h8',
-  'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z'
-])
+export const Focus = createMultiPathIcon(['M12 8v8M8 12h8', 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z'])
 
 // UI Icons
 export const Search = createIcon('M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z')
@@ -131,25 +124,17 @@ export const Exposure = createMultiPathIcon([
   'M15 17v2h2v-2h2v-2h-2v-2h-2v2h-2v2h2zm5-15H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM5 5h6v2H5V5zm15 15H4L20 4v16z'
 ])
 
-export const Close = createIcon(
-  'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'
-)
+export const Close = createIcon('M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z')
 
 export const Expand = createIcon('M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z')
 
 export const Collapse = createIcon('M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z')
 
-export const Compact = createIcon(
-  'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z'
-)
+export const Compact = createIcon('M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z')
 
-export const Detailed = createIcon(
-  'M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z'
-)
+export const Detailed = createIcon('M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z')
 
-export const Fullscreen = createIcon(
-  'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z'
-)
+export const Fullscreen = createIcon('M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z')
 
 export const Connected = createIcon(
   'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'
@@ -179,9 +164,7 @@ export const TrackingOff = createMultiPathIcon([
 
 export const Home = createIcon('M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z')
 
-export const Files = createIcon(
-  'M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z'
-)
+export const Files = createIcon('M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z')
 
 export const History = createIcon(
   'M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z'
@@ -197,4 +180,21 @@ export const Cloud = createIcon(
 
 export const DeviceUnknown = createIcon(
   'M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V11H13V17ZM13 9H11V7H13V9Z'
+)
+
+export const Bell = createIcon(
+  'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z'
+)
+
+// Add missing icons
+export const Sliders = createIcon(
+  'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z'
+)
+
+export const Park = createMultiPathIcon(['M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z'])
+
+export const Unpark = createMultiPathIcon(['M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z', 'M7 6h10v11l-5-2.18L7 17V6z'])
+
+export const Sync = createIcon(
+  'M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z'
 )

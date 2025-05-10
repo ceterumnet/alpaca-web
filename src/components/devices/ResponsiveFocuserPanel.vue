@@ -44,7 +44,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     props: {
       label: 'Position',
       property: 'Position',
-      formatter: (value: number) => value.toString(),
+      formatter: (value: number | null) => value !== null ? value.toString() : 'Unknown',
       refreshRate: 500
     },
     section: 'position',
@@ -155,7 +155,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     props: {
       label: 'Temperature',
       property: 'Temperature',
-      formatter: (value: number) => `${value.toFixed(1)}°C`,
+      formatter: (value: number | null) => value !== null ? `${value.toFixed(1)}°C` : 'Unknown',
       refreshRate: 5000
     },
     section: 'status'

@@ -98,7 +98,7 @@ function goToPanelLayout() {
 
 <template>
   <div class="layout-builder-view">
-    <div class="layout-builder-header">
+    <!-- <div class="layout-builder-header">
       <h2>{{ mode === 'builder' ? 'Layout Builder' : 'Layout Preview' }}</h2>
       <div class="header-actions">
         <button v-if="mode === 'preview'" class="action-button" @click="returnToBuilder">
@@ -108,7 +108,7 @@ function goToPanelLayout() {
           <span class="icon">🔙</span> Back to Panel Layout
         </button>
       </div>
-    </div>
+    </div> -->
 
     <div v-if="mode === 'builder'" class="builder-mode">
       <CustomLayoutBuilder 

@@ -84,7 +84,7 @@ async function moveNorth() {
   isSlewing.value = true
   try {
     // @ts-expect-error - TypeScript context issues with store method
-    await store.callDeviceMethod(props.deviceId, 'MoveAxis', [{ Axis: 1, Rate: 0.5 }])
+    await store.callDeviceMethod(props.deviceId, 'moveaxis', [{ Axis: 1, Rate: 0.5 }])
   } catch (error) {
     handleError(error, 'move telescope north')
   }
@@ -95,7 +95,7 @@ async function moveSouth() {
   isSlewing.value = true
   try {
     // @ts-expect-error - TypeScript context issues with store method
-    await store.callDeviceMethod(props.deviceId, 'MoveAxis', [{ Axis: 1, Rate: -0.5 }])
+    await store.callDeviceMethod(props.deviceId, 'moveaxis', [{ Axis: 1, Rate: -0.5 }])
   } catch (error) {
     handleError(error, 'move telescope south')
   }
@@ -106,7 +106,7 @@ async function moveEast() {
   isSlewing.value = true
   try {
     // @ts-expect-error - TypeScript context issues with store method
-    await store.callDeviceMethod(props.deviceId, 'MoveAxis', [{ Axis: 0, Rate: 0.5 }])
+    await store.callDeviceMethod(props.deviceId, 'moveaxis', [{ Axis: 0, Rate: 0.5 }])
   } catch (error) {
     handleError(error, 'move telescope east')
   }
@@ -117,7 +117,7 @@ async function moveWest() {
   isSlewing.value = true
   try {
     // @ts-expect-error - TypeScript context issues with store method
-    await store.callDeviceMethod(props.deviceId, 'MoveAxis', [{ Axis: 0, Rate: -0.5 }])
+    await store.callDeviceMethod(props.deviceId, 'moveaxis', [{ Axis: 0, Rate: -0.5 }])
   } catch (error) {
     handleError(error, 'move telescope west')
   }
@@ -127,7 +127,7 @@ async function stopSlew() {
   clearError()
   try {
     // @ts-expect-error - TypeScript context issues with store method
-    await store.callDeviceMethod(props.deviceId, 'AbortSlew', [])
+    await store.callDeviceMethod(props.deviceId, 'abortslew', [])
     isSlewing.value = false
   } catch (error) {
     handleError(error, 'stop telescope slew')
@@ -138,7 +138,7 @@ async function findHome() {
   clearError()
   try {
     // @ts-expect-error - TypeScript context issues with store method
-    await store.callDeviceMethod(props.deviceId, 'FindHome', [])
+    await store.callDeviceMethod(props.deviceId, 'findhome', [])
   } catch (error) {
     handleError(error, 'find home position')
   }

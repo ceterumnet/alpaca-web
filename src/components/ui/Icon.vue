@@ -9,6 +9,7 @@ import * as IconComponents from '@/components/icons'
 export type IconType =
   | 'camera'
   | 'dome'
+  | 'telescope'
   | 'sun'
   | 'moon'
   | 'device-unknown'
@@ -40,6 +41,10 @@ export type IconType =
   | 'history'
   | 'bell'
   | 'reset'
+  | 'sliders'
+  | 'park'
+  | 'unpark'
+  | 'sync'
 
 export default defineComponent({
   name: 'IconComponent',
@@ -52,6 +57,7 @@ export default defineComponent({
         return [
           'camera',
           'dome',
+          'telescope',
           'sun',
           'moon',
           'device-unknown',
@@ -82,7 +88,11 @@ export default defineComponent({
           'files',
           'history',
           'bell',
-          'reset'
+          'reset',
+          'sliders',
+          'park',
+          'unpark',
+          'sync'
         ].includes(value)
       },
       default: 'device-unknown'

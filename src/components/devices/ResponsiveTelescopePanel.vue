@@ -43,8 +43,9 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'DynamicValue',
     props: {
       label: 'RA',
-      property: 'RightAscension',
-      formatter: (value: number) => {
+      property: 'rightascension',
+      formatter: (value: number | null) => {
+        if (value === null) return 'Unknown';
         // Format RA as HH:MM:SS
         const hours = Math.floor(value)
         const minutes = Math.floor((value - hours) * 60)
@@ -65,8 +66,9 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'DynamicValue',
     props: {
       label: 'Dec',
-      property: 'Declination',
-      formatter: (value: number) => {
+      property: 'declination',
+      formatter: (value: number | null) => {
+        if (value === null) return 'Unknown';
         // Format Dec as +/-DD:MM:SS
         const sign = value >= 0 ? '+' : '-'
         const absDec = Math.abs(value)
@@ -88,7 +90,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'ActionButton',
     props: {
       label: 'Slew',
-      method: 'SlewToCoordinates',
+      method: 'slewtocoordinates',
       icon: 'telescope',
       params: { RightAscension: 0, Declination: 0 }
     },
@@ -120,7 +122,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'ToggleSwitch',
     props: {
       label: 'Tracking',
-      property: 'Tracking'
+      property: 'tracking'
     },
     section: 'tracking',
     icon: 'tracking-on'
@@ -134,7 +136,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'SelectSetting',
     props: {
       label: 'Rate',
-      property: 'TrackingRate',
+      property: 'trackingrate',
       options: [
         { value: 0, label: 'Sidereal' },
         { value: 1, label: 'Lunar' },
@@ -155,7 +157,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'NumericSetting',
     props: {
       label: 'Slew Rate',
-      property: 'SlewSettleTime',
+      property: 'slewsettletime',
       min: 0,
       max: 30,
       step: 1,
@@ -173,8 +175,8 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'DynamicValue',
     props: {
       label: 'Altitude',
-      property: 'Altitude',
-      formatter: (value: number) => `${value.toFixed(2)}°`,
+      property: 'altitude',
+      formatter: (value: number | null) => value !== null ? `${value.toFixed(2)}°` : 'Unknown',
       refreshRate: 1000
     },
     section: 'movement'
@@ -188,8 +190,8 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'DynamicValue',
     props: {
       label: 'Azimuth',
-      property: 'Azimuth',
-      formatter: (value: number) => `${value.toFixed(2)}°`,
+      property: 'azimuth',
+      formatter: (value: number | null) => value !== null ? `${value.toFixed(2)}°` : 'Unknown',
       refreshRate: 1000
     },
     section: 'movement'
@@ -205,7 +207,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'ActionButton',
     props: {
       label: 'Park Telescope',
-      method: 'Park',
+      method: 'park',
       icon: 'park'
     },
     section: 'advanced',
@@ -220,7 +222,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'ActionButton',
     props: {
       label: 'Unpark Telescope',
-      method: 'Unpark',
+      method: 'unpark',
       icon: 'unpark'
     },
     section: 'advanced'
@@ -234,7 +236,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'ActionButton',
     props: {
       label: 'Find Home',
-      method: 'FindHome',
+      method: 'findhome',
       icon: 'home'
     },
     section: 'advanced'
@@ -248,7 +250,7 @@ const panelFeatures = computed<PanelFeatureDefinition[]>(() => [
     component: 'ActionButton',
     props: {
       label: 'Sync',
-      method: 'SyncToCoordinates',
+      method: 'synctocoordinates',
       icon: 'sync',
       params: { RightAscension: 0, Declination: 0 }
     },
