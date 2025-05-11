@@ -74,25 +74,6 @@ export interface UnifiedDevice extends BaseDevice {
 export type Device = UnifiedDevice
 
 /**
- * Legacy device interface for backward compatibility
- */
-export interface LegacyDevice {
-  id: string
-  deviceName: string
-  deviceType: string
-  address?: string
-  devicePort?: number
-  isConnected?: boolean
-  status?: string
-  properties?: Record<string, unknown> | null
-  telemetry?: Record<string, unknown>
-  lastSeen?: number | string
-  firmwareVersion?: string
-  _original?: unknown // Reference to original for internal use
-  [key: string]: unknown // Allow for additional properties
-}
-
-/**
  * Telescope-specific device interface
  */
 export interface TelescopeDevice extends UnifiedDevice {
@@ -467,41 +448,20 @@ export type SpecificDevice =
  * Check if a value is a valid device type
  */
 export function isValidDeviceType(type: string): type is SpecificDevice['type'] {
-  return [
-    'telescope',
-    'camera',
-    'focuser',
-    'filterwheel',
-    'weather',
-    'dome',
-    'covercalibrator',
-    'rotator',
-    'safetymonitor',
-    'switch'
-  ].includes(type)
+  return ['telescope', 'camera', 'focuser', 'filterwheel', 'weather', 'dome', 'covercalibrator', 'rotator', 'safetymonitor', 'switch'].includes(type)
 }
 
 /**
  * Check if a value is a valid device
  */
 export function isDevice(value: unknown): value is Device {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'id' in value &&
-    'name' in value &&
-    'type' in value &&
-    'isConnected' in value
-  )
+  return typeof value === 'object' && value !== null && 'id' in value && 'name' in value && 'type' in value && 'isConnected' in value
 }
 
 /**
  * Check if a device has a specific property
  */
-export function hasProperty<T extends Device>(
-  device: T,
-  property: keyof T
-): device is T & { [K in typeof property]: NonNullable<T[K]> } {
+export function hasProperty<T extends Device>(device: T, property: keyof T): device is T & { [K in typeof property]: NonNullable<T[K]> } {
   return property in device && device[property] !== undefined && device[property] !== null
 }
 
@@ -525,10 +485,7 @@ export function hasCapability<T extends Device>(device: T, capability: string): 
 /**
  * Check if a device has all required capabilities
  */
-export function hasRequiredCapabilities<T extends Device>(
-  device: T,
-  capabilities: string[]
-): boolean {
+export function hasRequiredCapabilities<T extends Device>(device: T, capabilities: string[]): boolean {
   return capabilities.every((cap) => hasCapability(device, cap))
 }
 
@@ -582,21 +539,13 @@ export function hasDomeShutterControl(device: DomeDevice): boolean {
  * Check if a device is ready for operation
  */
 export function isDeviceReady<T extends Device>(device: T): boolean {
-  return (
-    device.isConnected &&
-    !device.isConnecting &&
-    !device.isDisconnecting &&
-    device.status !== 'error'
-  )
+  return device.isConnected && !device.isConnecting && !device.isDisconnecting && device.status !== 'error'
 }
 
 /**
  * Check if a device is in a valid state for a specific operation
  */
-export function isDeviceStateValid<T extends Device>(
-  device: T,
-  requiredState: DeviceState
-): boolean {
+export function isDeviceStateValid<T extends Device>(device: T, requiredState: DeviceState): boolean {
   return device.status === requiredState
 }
 
@@ -741,9 +690,7 @@ export function isTelescopeAzimuthInRange(device: TelescopeDevice, azimuth: numb
  * Range guards for Camera
  */
 export function isCameraExposureInRange(device: CameraDevice, exposure: number): boolean {
-  return (
-    exposure >= (device.exposureMin || 0) && exposure <= (device.exposureMax || Number.MAX_VALUE)
-  )
+  return exposure >= (device.exposureMin || 0) && exposure <= (device.exposureMax || Number.MAX_VALUE)
 }
 
 export function isCameraGainInRange(device: CameraDevice, gain: number): boolean {
@@ -786,26 +733,18 @@ export function isDomeAzimuthInRange(device: DomeDevice, azimuth: number): boole
  * Combination guards for Telescope
  */
 export function canTelescopeSlewToCoordinates(device: TelescopeDevice): boolean {
-  return (
-    hasSlewCapabilities(device) && hasTrackingCapabilities(device) && !isTelescopeSlewing(device)
-  )
+  return hasSlewCapabilities(device) && hasTrackingCapabilities(device) && !isTelescopeSlewing(device)
 }
 
 export function canTelescopeSyncToCoordinates(device: TelescopeDevice): boolean {
-  return (
-    hasRequiredCapabilities(device, ['canSync']) &&
-    hasTrackingCapabilities(device) &&
-    !isTelescopeSlewing(device)
-  )
+  return hasRequiredCapabilities(device, ['canSync']) && hasTrackingCapabilities(device) && !isTelescopeSlewing(device)
 }
 
 /**
  * Combination guards for Camera
  */
 export function canCameraStartExposure(device: CameraDevice): boolean {
-  return (
-    hasCameraExposureControl(device) && !isCameraExposing(device) && !isCameraImageReady(device)
-  )
+  return hasCameraExposureControl(device) && !isCameraExposing(device) && !isCameraImageReady(device)
 }
 
 export function canCameraSetTemperature(device: CameraDevice): boolean {
@@ -925,11 +864,7 @@ export function hasSwitchWithRange(device: SwitchDevice, switchName: string): bo
   )
 }
 
-export function isSwitchValueInRange(
-  device: SwitchDevice,
-  switchName: string,
-  value: number
-): boolean {
+export function isSwitchValueInRange(device: SwitchDevice, switchName: string, value: number): boolean {
   const range = device.switchRanges?.[switchName]
   if (!range || !Array.isArray(range) || range.length !== 2) return false
   const [min, max] = range as [number, number]

@@ -1,5 +1,5 @@
 /**
- * Status: Good - Core Component
+ * Status: Review - This was a core component but it is not the approach we are taking now.
  * This is the panel feature type definitions that:
  * - Define core panel feature interfaces
  * - Support feature priority levels
