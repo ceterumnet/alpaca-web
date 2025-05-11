@@ -17,6 +17,8 @@ import type { AlpacaClient } from '@/api/alpaca/base-client'
 import { createAlpacaClient } from '@/api/AlpacaClient'
 import { isValidStateTransition } from '@/types/device.types'
 
+// I do not like this interface, but it is required by the store
+// I would like to refactor this at some point.
 export interface CoreState {
   devices: Map<string, Device>
   devicesArray: Device[]
@@ -36,6 +38,14 @@ export interface CoreState {
   deviceExists?: (device: Device) => boolean
   fetchDeviceState?: (deviceId: string, options?: { cacheTtlMs?: number; forceRefresh?: boolean }) => Promise<Record<string, unknown> | null>
   getDeviceProperty?: (deviceId: string, property: string) => Promise<unknown>
+  _emitEvent: (event: DeviceEvent) => void
+  updateDevice: (deviceId: string, updates: Partial<Device>) => boolean
+  callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+  fetchCameraProperties?: (deviceId: string) => Promise<boolean>
+  fetchTelescopeProperties?: (deviceId: string) => Promise<boolean>
+  updateDeviceCapabilities: (deviceId: string) => boolean
+  createDeviceClient: (device: Device) => AlpacaClient | null
+  addDeviceWithCheck: (device: Device) => boolean
 }
 
 export function createCoreActions() {
@@ -57,7 +67,14 @@ export function createCoreActions() {
       _propertyPollingIntervals: new Map<string, number>(),
       _deviceStateAvailableProps: new Map<string, Set<string>>(),
       _deviceStateUnsupported: new Set<string>(),
-      lastDeviceStateFetch: new Map<string, { timestamp: number; data: Record<string, unknown> }>()
+      lastDeviceStateFetch: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),
+      _emitEvent: () => {},
+      updateDevice: () => false,
+      callDeviceMethod: () => Promise.resolve(null),
+      updateDeviceCapabilities: () => false,
+      createDeviceClient: () => null,
+      addDeviceWithCheck: () => false,
+      deviceExists: () => false
     }),
 
     actions: {
@@ -123,20 +140,7 @@ export function createCoreActions() {
       },
 
       // Method to call to connect a device
-      async connectDevice(
-        this: CoreState & {
-          _emitEvent: (event: DeviceEvent) => void
-          updateDevice: (deviceId: string, updates: Partial<Device>) => boolean
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-          getDeviceClient: (deviceId: string) => AlpacaClient | null
-          fetchCameraProperties?: (deviceId: string) => Promise<boolean>
-          fetchTelescopeProperties?: (deviceId: string) => Promise<boolean>
-          updateDeviceCapabilities: (deviceId: string) => boolean
-          createDeviceClient: (device: Device) => AlpacaClient | null
-          deviceClients: Map<string, AlpacaClient>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async connectDevice(this: CoreState, deviceId: string): Promise<boolean> {
         const device = this.getDeviceById(deviceId)
         if (!device) {
           throw new Error(`Cannot connect: Device not found ${deviceId}`)
