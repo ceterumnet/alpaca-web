@@ -77,10 +77,6 @@ function handleLayoutSave(layoutId: string) {
   goToPanelLayout()
 }
 
-// Return to builder
-function returnToBuilder() {
-  mode.value = 'builder'
-}
 
 // Go back to panel layout view
 function goToPanelLayout() {

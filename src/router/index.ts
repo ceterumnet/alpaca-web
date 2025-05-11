@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DevicesView from '../views/DevicesView.vue'
-import DevicePage from '../views/DevicePage.vue'
 import ImageAnalysis from '../views/ImageAnalysis.vue'
 import SettingsView from '../views/SettingsView.vue'
 import DiscoveryView from '../views/DiscoveryView.vue'
@@ -17,11 +16,6 @@ const router = createRouter({
       path: '/devices',
       name: 'devices',
       redirect: '/'
-    },
-    {
-      path: '/devices/:id',
-      name: 'device-detail',
-      component: DevicePage
     },
     {
       path: '/discovery',

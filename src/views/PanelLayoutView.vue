@@ -13,7 +13,6 @@ import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
 import SimplifiedCameraPanel from '@/components/devices/SimplifiedCameraPanel.vue'
 import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePanel.vue'
-import ResponsiveFocuserPanel from '@/components/devices/ResponsiveFocuserPanel.vue'
 import type { GridLayoutDefinition } from '@/types/layouts/LayoutDefinition'
 import SimplifiedFocuserPanel from '@/components/devices/SimplifiedFocuserPanel.vue'
 

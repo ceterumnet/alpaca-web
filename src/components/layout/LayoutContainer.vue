@@ -6,7 +6,6 @@ layout state // - Maintains layout consistency
 import { computed, onMounted, watch } from 'vue'
 import { useLayoutStore } from '@/stores/useLayoutStore'
 import type { PanelPosition } from '@/types/layouts/LayoutDefinition'
-import BasePanel from '@/components/panels/BasePanel.vue'
 
 const props = defineProps<{
   layoutId: string
