@@ -11,6 +11,10 @@ const props = defineProps({
   title: {
     type: String,
     default: 'Focuser'
+  },
+  useInternalDeviceSelection: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -19,20 +23,34 @@ const emit = defineEmits(['device-change'])
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
+// Local device selection state
+const selectedDeviceId = ref(props.deviceId)
+
 // Handle device selection changes
 const handleDeviceChange = (newDeviceId: string) => {
-  emit('device-change', newDeviceId)
+  selectedDeviceId.value = newDeviceId
+  if (!props.useInternalDeviceSelection) {
+    emit('device-change', newDeviceId)
+  }
 }
+
+// Watch for props change to update local state only when not using internal selection
+// or when component is initially mounted
+watch(() => props.deviceId, (newDeviceId) => {
+  if (!props.useInternalDeviceSelection || !selectedDeviceId.value) {
+    selectedDeviceId.value = newDeviceId
+  }
+}, { immediate: true })
 
 // Device status
 const isConnected = computed(() => {
-  const device = store.getDeviceById(props.deviceId)
+  const device = store.getDeviceById(selectedDeviceId.value)
   return device?.isConnected || false
 })
 
 // Get the current device
 const currentDevice = computed(() => {
-  return store.getDeviceById(props.deviceId)
+  return store.getDeviceById(selectedDeviceId.value)
 })
 
 // Get available focuser devices
@@ -59,10 +77,22 @@ const maxStep = ref(1000)
 const maxIncrement = ref(1000)
 const tempComp = ref(false)
 
+// Reset focuser state when device changes
+const resetFocuserState = () => {
+  position.value = 0
+  isMoving.value = false
+  temperature.value = null
+  stepSize.value = 10
+  maxStep.value = 1000
+  maxIncrement.value = 1000
+  tempComp.value = false
+  targetPosition.value = 0
+}
+
 // Functions for movement
 const moveToPosition = async (targetPosition: number) => {
   try {
-    await callAlpacaMethod(props.deviceId, 'move', {
+    await callAlpacaMethod(selectedDeviceId.value, 'move', {
       position: targetPosition
     })
   } catch (error) {
@@ -72,7 +102,7 @@ const moveToPosition = async (targetPosition: number) => {
 
 const moveIn = async () => {
   try {
-    await callAlpacaMethod(props.deviceId, 'moveIn')
+    await callAlpacaMethod(selectedDeviceId.value, 'moveIn')
   } catch (error) {
     console.error('Error moving in:', error)
   }
@@ -80,7 +110,7 @@ const moveIn = async () => {
 
 const moveOut = async () => {
   try {
-    await callAlpacaMethod(props.deviceId, 'moveOut')
+    await callAlpacaMethod(selectedDeviceId.value, 'moveOut')
   } catch (error) {
     console.error('Error moving out:', error)
   }
@@ -88,7 +118,7 @@ const moveOut = async () => {
 
 const halt = async () => {
   try {
-    await callAlpacaMethod(props.deviceId, 'halt')
+    await callAlpacaMethod(selectedDeviceId.value, 'halt')
   } catch (error) {
     console.error('Error halting movement:', error)
   }
@@ -97,7 +127,7 @@ const halt = async () => {
 // Update settings
 const updateStepSize = async () => {
   try {
-    await setAlpacaProperty(props.deviceId, 'stepSize', stepSize.value)
+    await setAlpacaProperty(selectedDeviceId.value, 'stepSize', stepSize.value)
   } catch (error) {
     console.error('Error setting step size:', error)
   }
@@ -105,7 +135,7 @@ const updateStepSize = async () => {
 
 const updateTempComp = async () => {
   try {
-    await setAlpacaProperty(props.deviceId, 'tempComp', tempComp.value)
+    await setAlpacaProperty(selectedDeviceId.value, 'tempComp', tempComp.value)
   } catch (error) {
     console.error('Error setting temperature compensation:', error)
   }
@@ -124,7 +154,7 @@ const updateFocuserStatus = async () => {
   if (!isConnected.value) return
   
   try {
-    const properties = await getAlpacaProperties(props.deviceId, [
+    const properties = await getAlpacaProperties(selectedDeviceId.value, [
       'position',
       'isMoving',
       'temperature',
@@ -196,10 +226,15 @@ watch(isConnected, (newValue) => {
 })
 
 // Watch for device ID changes
-watch(() => props.deviceId, () => {
-  if (isConnected.value) {
-    // Update status for the new device
-    updateFocuserStatus()
+watch(() => selectedDeviceId.value, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    // Reset settings when device changes
+    resetFocuserState()
+    
+    if (isConnected.value) {
+      // Get updated status
+      updateFocuserStatus()
+    }
   }
 })
 
@@ -212,13 +247,6 @@ onUnmounted(() => {
   // Close device selector if open
   showDeviceSelector.value = false
 })
-
-// Function to open device discovery panel
-const openDiscovery = () => {
-  // TODO: Implement discovery navigation
-  console.log('Open discovery panel')
-  showDeviceSelector.value = false
-}
 
 // When clicking outside the device selector, close it
 const closeDeviceSelector = (event: MouseEvent) => {
@@ -238,14 +266,21 @@ onUnmounted(() => {
 
 // Function to connect to the selected device
 const connectDevice = async () => {
-  if (!props.deviceId) return
+  if (!selectedDeviceId.value) return
   try {
     // @ts-expect-error - TypeScript has issues with the store's this context
-    await store.connectDevice(props.deviceId)
-    console.log(`Connected to device ${props.deviceId}`)
+    await store.connectDevice(selectedDeviceId.value)
+    console.log(`Connected to device ${selectedDeviceId.value}`)
   } catch (error) {
-    console.error(`Error connecting to device ${props.deviceId}:`, error)
+    console.error(`Error connecting to device ${selectedDeviceId.value}:`, error)
   }
+}
+
+// Function to open device discovery panel
+const openDiscovery = () => {
+  // TODO: Implement discovery navigation
+  console.log('Open discovery panel')
+  showDeviceSelector.value = false
 }
 </script>
 
@@ -264,7 +299,7 @@ const connectDevice = async () => {
               v-for="device in availableDevices"
               :key="device.id"
               class="device-item"
-              :class="{ 'device-selected': device.id === props.deviceId }"
+              :class="{ 'device-selected': device.id === selectedDeviceId }"
               @click.stop="handleDeviceChange(device.id)"
             >
               <div class="device-info">

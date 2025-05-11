@@ -12,6 +12,10 @@ const props = defineProps({
   title: {
     type: String,
     default: 'Camera'
+  },
+  useInternalDeviceSelection: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -20,20 +24,34 @@ const emit = defineEmits(['device-change'])
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
+// Local device selection state
+const selectedDeviceId = ref(props.deviceId)
+
 // Handle device selection changes
 const handleDeviceChange = (newDeviceId: string) => {
-  emit('device-change', newDeviceId)
+  selectedDeviceId.value = newDeviceId
+  if (!props.useInternalDeviceSelection) {
+    emit('device-change', newDeviceId)
+  }
 }
+
+// Watch for props change to update local state only when not using internal selection
+// or when component is initially mounted
+watch(() => props.deviceId, (newDeviceId) => {
+  if (!props.useInternalDeviceSelection || !selectedDeviceId.value) {
+    selectedDeviceId.value = newDeviceId
+  }
+}, { immediate: true })
 
 // Device status
 const isConnected = computed(() => {
-  const device = store.getDeviceById(props.deviceId)
+  const device = store.getDeviceById(selectedDeviceId.value)
   return device?.isConnected || false
 })
 
 // Get the current device
 const currentDevice = computed(() => {
-  return store.getDeviceById(props.deviceId)
+  return store.getDeviceById(selectedDeviceId.value)
 })
 
 // Get available camera devices
@@ -71,7 +89,7 @@ const toggleCooler = async () => {
   if (!capabilities.value.canSetCCDTemperature) return
   
   try {
-    await setAlpacaProperty(props.deviceId, 'coolerOn', !coolerOn.value)
+    await setAlpacaProperty(selectedDeviceId.value, 'coolerOn', !coolerOn.value)
     coolerOn.value = !coolerOn.value
   } catch (error) {
     console.error('Error toggling cooler:', error)
@@ -82,7 +100,7 @@ const toggleCooler = async () => {
 const updateGain = async () => {
   
   try {
-    await setAlpacaProperty(props.deviceId, 'gain', gain.value)
+    await setAlpacaProperty(selectedDeviceId.value, 'gain', gain.value)
   } catch (error) {
     console.error('Error setting gain:', error)
   }
@@ -91,7 +109,7 @@ const updateGain = async () => {
 const updateOffset = async () => {
   
   try {
-    await setAlpacaProperty(props.deviceId, 'offset', offset.value)
+    await setAlpacaProperty(selectedDeviceId.value, 'offset', offset.value)
   } catch (error) {
     console.error('Error setting offset:', error)
   }
@@ -100,8 +118,8 @@ const updateOffset = async () => {
 const updateBinning = async () => {
   
   try {
-    await setAlpacaProperty(props.deviceId, 'binX', binning.value)
-    await setAlpacaProperty(props.deviceId, 'binY', binning.value)
+    await setAlpacaProperty(selectedDeviceId.value, 'binX', binning.value)
+    await setAlpacaProperty(selectedDeviceId.value, 'binY', binning.value)
   } catch (error) {
     console.error('Error setting binning:', error)
   }
@@ -111,7 +129,7 @@ const updateTargetTemp = async () => {
   if (!capabilities.value.canSetCCDTemperature) return
   
   try {
-    await setAlpacaProperty(props.deviceId, 'setCCDTemperature', targetTemp.value)
+    await setAlpacaProperty(selectedDeviceId.value, 'setCCDTemperature', targetTemp.value)
   } catch (error) {
     console.error('Error setting target temperature:', error)
   }
@@ -119,10 +137,10 @@ const updateTargetTemp = async () => {
 
 // Check device capabilities
 const updateDeviceCapabilities = async () => {
-  if (!isConnected.value || !props.deviceId) return
+  if (!isConnected.value || !selectedDeviceId.value) return
   
   try {
-    const deviceCaps = await getDeviceCapabilities(props.deviceId, [
+    const deviceCaps = await getDeviceCapabilities(selectedDeviceId.value, [
       'canSetCCDTemperature'
     ])
     
@@ -151,7 +169,7 @@ const updateCameraStatus = async () => {
       propertiesToFetch.push('setCCDTemperature')
     }
     
-    const properties = await getAlpacaProperties(props.deviceId, propertiesToFetch)
+    const properties = await getAlpacaProperties(selectedDeviceId.value, propertiesToFetch)
     
     // Update camera settings with current values
     if (properties.gain !== null && typeof properties.gain === 'number') {
@@ -190,6 +208,21 @@ const updateCameraStatus = async () => {
     }
   } catch (error) {
     console.error('Error updating camera status:', error)
+  }
+}
+
+// Reset all camera settings
+const resetCameraSettings = () => {
+  gain.value = 0
+  offset.value = 0
+  binning.value = 1
+  coolerOn.value = false
+  targetTemp.value = -10
+  CCDTemperature.value = 0
+  exposureMin.value = 0.001
+  exposureMax.value = 3600
+  capabilities.value = {
+    canSetCCDTemperature: false
   }
 }
 
@@ -234,10 +267,17 @@ watch(isConnected, (newValue) => {
 })
 
 // Watch for device ID changes
-watch(() => props.deviceId, () => {
-  if (isConnected.value) {
-    // Update capabilities for the new device
-    updateDeviceCapabilities()
+watch(() => selectedDeviceId.value, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    // Reset settings when device changes
+    resetCameraSettings()
+    
+    if (isConnected.value) {
+      // Update capabilities for the new device
+      updateDeviceCapabilities()
+      // Update status for the new device
+      updateCameraStatus()
+    }
   }
 })
 
@@ -276,13 +316,13 @@ onUnmounted(() => {
 
 // Function to connect to the selected device
 const connectDevice = async () => {
-  if (!props.deviceId) return
+  if (!selectedDeviceId.value) return
   try {
     // @ts-expect-error - TypeScript has issues with the store's this context
-    await store.connectDevice(props.deviceId)
-    console.log(`Connected to device ${props.deviceId}`)
+    await store.connectDevice(selectedDeviceId.value)
+    console.log(`Connected to device ${selectedDeviceId.value}`)
   } catch (error) {
-    console.error(`Error connecting to device ${props.deviceId}:`, error)
+    console.error(`Error connecting to device ${selectedDeviceId.value}:`, error)
   }
 }
 </script>
@@ -302,7 +342,7 @@ const connectDevice = async () => {
               v-for="device in availableDevices"
               :key="device.id"
               class="device-item"
-              :class="{ 'device-selected': device.id === props.deviceId }"
+              :class="{ 'device-selected': device.id === selectedDeviceId }"
               @click.stop="handleDeviceChange(device.id)"
             >
               <div class="device-info">
@@ -349,7 +389,7 @@ const connectDevice = async () => {
           <h3>Camera Controls</h3>
           <div class="camera-controls-wrapper">
             <CameraControls 
-              :device-id="props.deviceId"
+              :device-id="selectedDeviceId"
               :exposure-min="exposureMin"
               :exposure-max="exposureMax"
             />
