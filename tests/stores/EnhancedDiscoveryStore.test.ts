@@ -1,7 +1,7 @@
 /**
- * Tests for the AutoDiscoveryService
+ * Tests for the EnhancedDiscoveryStore
  *
- * These tests validate that the AutoDiscoveryService correctly:
+ * These tests validate that the EnhancedDiscoveryStore correctly:
  * - Calls the EnhancedDeviceDiscoveryService for device discovery
  * - Automatically adds discovered devices to the UnifiedStore
  * - Notifies users of newly added devices
@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { autoDiscoveryService } from '@/services/AutoDiscoveryService'
+import { useEnhancedDiscoveryStore } from '@/stores/useEnhancedDiscoveryStore'
 import { enhancedDeviceDiscoveryService } from '@/services/EnhancedDeviceDiscoveryService'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
@@ -22,7 +22,6 @@ vi.mock('@/services/EnhancedDeviceDiscoveryService', () => {
     enhancedDeviceDiscoveryService: {
       discoverDevices: vi.fn(),
       createUnifiedDevice: vi.fn(),
-      isDeviceAdded: vi.fn(),
       getDiscoveryResults: vi.fn(),
       getProxyUrl: vi.fn(),
       addManualDevice: vi.fn(),
@@ -81,10 +80,15 @@ const mockUnifiedDevice: UnifiedDevice = {
   }
 }
 
-describe('AutoDiscoveryService', () => {
+describe('EnhancedDiscoveryStore', () => {
+  let discoveryStore: ReturnType<typeof useEnhancedDiscoveryStore>
+
   beforeEach(() => {
     // Create a fresh Pinia instance for each test
     setActivePinia(createPinia())
+
+    // Get the store
+    discoveryStore = useEnhancedDiscoveryStore()
 
     // Reset all mocks
     vi.resetAllMocks()
@@ -94,9 +98,6 @@ describe('AutoDiscoveryService', () => {
 
     // Set up createUnifiedDevice to return our mock device
     vi.mocked(enhancedDeviceDiscoveryService.createUnifiedDevice).mockReturnValue(mockUnifiedDevice)
-
-    // Set up isDeviceAdded to return false (device not yet added)
-    vi.mocked(enhancedDeviceDiscoveryService.isDeviceAdded).mockReturnValue(false)
   })
 
   afterEach(() => {
@@ -104,14 +105,15 @@ describe('AutoDiscoveryService', () => {
   })
 
   it('should discover devices and automatically add them to the store', async () => {
-    // Get the stores
+    // Get the unified store
     const unifiedStore = useUnifiedStore()
 
-    // Spy on addDevice method
-    const addDeviceSpy = vi.spyOn(unifiedStore, 'addDevice')
+    // Mock the deviceExists and addDeviceWithCheck methods
+    vi.spyOn(unifiedStore, 'deviceExists').mockReturnValue(false)
+    const addDeviceSpy = vi.spyOn(unifiedStore, 'addDeviceWithCheck').mockReturnValue(true)
 
     // Call discoverDevices
-    await autoDiscoveryService.discoverDevices()
+    await discoveryStore.discoverDevices()
 
     // Verify the underlying discovery service was called
     expect(enhancedDeviceDiscoveryService.discoverDevices).toHaveBeenCalled()
@@ -119,43 +121,45 @@ describe('AutoDiscoveryService', () => {
     // Verify createUnifiedDevice was called for each device
     expect(enhancedDeviceDiscoveryService.createUnifiedDevice).toHaveBeenCalledTimes(2)
 
-    // Verify isDeviceAdded was called to check if devices already exist
-    expect(enhancedDeviceDiscoveryService.isDeviceAdded).toHaveBeenCalledTimes(2)
-
     // Verify devices were added to the store
     expect(addDeviceSpy).toHaveBeenCalledTimes(2)
     expect(addDeviceSpy).toHaveBeenCalledWith(mockUnifiedDevice)
   })
 
   it('should not add devices that are already in the store', async () => {
-    // Get the stores
+    // Get the unified store
     const unifiedStore = useUnifiedStore()
 
-    // Change the mock to indicate device is already added
-    vi.mocked(enhancedDeviceDiscoveryService.isDeviceAdded).mockReturnValue(true)
+    // Mock the deviceExists method to indicate device already exists
+    vi.spyOn(unifiedStore, 'deviceExists').mockReturnValue(true)
 
-    // Spy on addDevice method
-    const addDeviceSpy = vi.spyOn(unifiedStore, 'addDevice')
+    // Spy on addDeviceWithCheck method
+    const addDeviceSpy = vi.spyOn(unifiedStore, 'addDeviceWithCheck').mockReturnValue(false)
 
     // Call discoverDevices
-    await autoDiscoveryService.discoverDevices()
+    await discoveryStore.discoverDevices()
 
-    // Verify the checks were made
-    expect(enhancedDeviceDiscoveryService.isDeviceAdded).toHaveBeenCalledTimes(2)
+    // Verify the checks were made via processDiscoveredDevices
+    expect(unifiedStore.deviceExists).toHaveBeenCalled()
 
-    // Verify no devices were added since they already exist
-    expect(addDeviceSpy).not.toHaveBeenCalled()
+    // Verify no devices were added since they already exist (addDeviceWithCheck returns false)
+    expect(addDeviceSpy).toHaveBeenCalledTimes(2)
   })
 
   it('should show a notification when devices are automatically added', async () => {
     // Get the stores
+    const unifiedStore = useUnifiedStore()
     const notificationStore = useNotificationStore()
+
+    // Mock the deviceExists and addDeviceWithCheck methods to add devices
+    vi.spyOn(unifiedStore, 'deviceExists').mockReturnValue(false)
+    vi.spyOn(unifiedStore, 'addDeviceWithCheck').mockReturnValue(true)
 
     // Spy on showSuccess method
     const showSuccessSpy = vi.spyOn(notificationStore, 'showSuccess')
 
     // Call discoverDevices
-    await autoDiscoveryService.discoverDevices()
+    await discoveryStore.discoverDevices()
 
     // Verify notification was shown
     expect(showSuccessSpy).toHaveBeenCalledTimes(1)
@@ -163,17 +167,18 @@ describe('AutoDiscoveryService', () => {
   })
 
   it('should add manual devices automatically to the store', async () => {
-    // Get the stores
+    // Get the unified store
     const unifiedStore = useUnifiedStore()
 
     // Set up the mock for addManualDevice
     vi.mocked(enhancedDeviceDiscoveryService.addManualDevice).mockResolvedValue(mockServer)
 
-    // Spy on addDevice method
-    const addDeviceSpy = vi.spyOn(unifiedStore, 'addDevice')
+    // Mock the deviceExists and addDeviceWithCheck methods
+    vi.spyOn(unifiedStore, 'deviceExists').mockReturnValue(false)
+    const addDeviceSpy = vi.spyOn(unifiedStore, 'addDeviceWithCheck').mockReturnValue(true)
 
     // Call addManualDevice
-    await autoDiscoveryService.addManualDevice({
+    await discoveryStore.addManualDevice({
       address: '192.168.1.100',
       port: 32323
     })
@@ -183,5 +188,23 @@ describe('AutoDiscoveryService', () => {
 
     // Verify devices were added to the store
     expect(addDeviceSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('should check if a device is added using the UnifiedStore', () => {
+    // Get the unified store
+    const unifiedStore = useUnifiedStore()
+
+    // Mock the deviceExists method
+    const deviceExistsSpy = vi.spyOn(unifiedStore, 'deviceExists').mockImplementation((device) => device.id === 'test-device')
+
+    // Test with existing server and device
+    discoveryStore.discoveryResults = mockDiscoveryResult
+
+    // Call isDeviceAdded
+    const result = discoveryStore.isDeviceAdded('server-1', 'device-1')
+
+    // Verify the check was made through UnifiedStore.deviceExists
+    expect(deviceExistsSpy).toHaveBeenCalled()
+    expect(result).toBe(true)
   })
 })

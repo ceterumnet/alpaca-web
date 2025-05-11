@@ -16,7 +16,7 @@
 
 import { defineStore } from 'pinia'
 import type { Device } from './types/device-store.types'
-import type { AlpacaClient } from '@/api/AlpacaClient'
+import type { UnifiedDevice } from '@/types/device.types'
 
 // Import module creators
 import { createCoreActions } from './modules/coreActions'
@@ -46,8 +46,7 @@ export const useUnifiedStore = defineStore('unifiedStore', {
   getters: {
     devicesList: (state) => state.devicesArray,
     connectedDevices: (state) => state.devicesArray.filter((device) => device.isConnected),
-    selectedDevice: (state) =>
-      state.selectedDeviceId ? state.devices.get(state.selectedDeviceId) || null : null
+    selectedDevice: (state) => (state.selectedDeviceId ? state.devices.get(state.selectedDeviceId) || null : null)
   },
 
   actions: {
@@ -60,19 +59,47 @@ export const useUnifiedStore = defineStore('unifiedStore', {
     ...createTelescopeActions().actions,
 
     /**
+     * Check if a device already exists in the store
+     * @param device The device to check
+     * @returns True if device already exists
+     */
+    deviceExists(device: UnifiedDevice): boolean {
+      return this.devicesArray.some(
+        (existingDevice) =>
+          existingDevice.id === device.id ||
+          (existingDevice.ipAddress === device.ipAddress && existingDevice.port === device.port && existingDevice.type === device.type)
+      )
+    },
+
+    /**
+     * Add a device to the store with duplicate checking
+     * @param device The device to add
+     * @returns True if device was added, false if it already existed
+     */
+    addDeviceWithCheck(device: UnifiedDevice): boolean {
+      // Check if device already exists
+      if (this.deviceExists(device)) {
+        console.log(`Device already exists: ${device.name} (${device.id})`)
+        return false
+      }
+
+      // Make sure device is in a valid state before adding
+      if (!device.status || device.status === 'error') {
+        device.status = 'idle'
+      }
+
+      // Add the device
+      this.addDevice(device)
+      return true
+    },
+
+    /**
      * Get a property value from a device
      * @param deviceId The ID of the device
      * @param property The property name to retrieve
      * @returns The property value
      */
-    async getDeviceProperty(
-      this: {
-        getDeviceById: (id: string) => Device | null
-        getDeviceClient: (id: string) => AlpacaClient | null
-      },
-      deviceId: string,
-      property: string
-    ): Promise<unknown> {
+    async getDeviceProperty(deviceId: string, property: string): Promise<unknown> {
       const device = this.getDeviceById(deviceId)
       if (!device) {
         throw new Error(`Device not found: ${deviceId}`)
@@ -107,19 +134,7 @@ export const useUnifiedStore = defineStore('unifiedStore', {
      * @param property The property name to retrieve
      * @returns The property value
      */
-    async getDevicePropertyOptimized(
-      this: {
-        getDeviceById: (id: string) => Device | null
-        getDeviceClient: (id: string) => AlpacaClient | null
-        fetchDeviceState: (
-          deviceId: string,
-          options?: { forceRefresh?: boolean; cacheTtlMs?: number }
-        ) => Promise<Record<string, unknown> | null>
-        getDeviceProperty: (deviceId: string, property: string) => Promise<unknown>
-      },
-      deviceId: string,
-      property: string
-    ): Promise<unknown> {
+    async getDevicePropertyOptimized(deviceId: string, property: string): Promise<unknown> {
       const device = this.getDeviceById(deviceId)
       if (!device) {
         throw new Error(`Device not found: ${deviceId}`)
@@ -145,10 +160,7 @@ export const useUnifiedStore = defineStore('unifiedStore', {
         return await this.getDeviceProperty(deviceId, property)
       } catch (error) {
         // If devicestate fails for any reason, fall back to individual property
-        console.debug(
-          `Devicestate failed for ${deviceId}, falling back to individual property fetch:`,
-          error
-        )
+        console.debug(`Devicestate failed for ${deviceId}, falling back to individual property fetch:`, error)
         return await this.getDeviceProperty(deviceId, property)
       }
     },
@@ -160,21 +172,7 @@ export const useUnifiedStore = defineStore('unifiedStore', {
      * @param value The value to set
      * @returns The result from the device
      */
-    async setDeviceProperty(
-      this: {
-        getDeviceById: (id: string) => Device | null
-        getDeviceClient: (id: string) => AlpacaClient | null
-        _emitEvent: (event: {
-          type: string
-          deviceId: string
-          property: string
-          value: unknown
-        }) => void
-      },
-      deviceId: string,
-      property: string,
-      value: unknown
-    ): Promise<unknown> {
+    async setDeviceProperty(deviceId: string, property: string, value: unknown): Promise<unknown> {
       const device = this.getDeviceById(deviceId)
       if (!device) {
         throw new Error(`Device not found: ${deviceId}`)
@@ -210,30 +208,10 @@ export const useUnifiedStore = defineStore('unifiedStore', {
     },
 
     // Master method for calling device methods via a client or simulation
-    async callDeviceMethod(
-      this: {
-        getDeviceById: (id: string) => Device | null
-        getDeviceClient: (id: string) => AlpacaClient | null
-        _emitEvent: (event: {
-          type: string
-          deviceId: string
-          method: string
-          args: unknown[]
-          result: unknown
-        }) => void
-        shouldFallbackToSimulation: (deviceId: string, method: string) => boolean
-        simulateDeviceMethod: (deviceId: string, method: string, args: unknown[]) => unknown
-      },
-      deviceId: string,
-      method: string,
-      args: unknown[] = []
-    ): Promise<unknown> {
+    async callDeviceMethod(deviceId: string, method: string, args: unknown[] = []): Promise<unknown> {
       // Debug logging for camera state and imageready method calls
       if (method === 'camerastate' || method === 'imageready') {
-        console.log(
-          `%c📞 Method Call: ${method} for device ${deviceId}`,
-          'color: orange; font-weight: bold'
-        )
+        console.log(`%c📞 Method Call: ${method} for device ${deviceId}`, 'color: orange; font-weight: bold')
         console.log('Call stack:', new Error().stack)
       }
 
@@ -255,12 +233,7 @@ export const useUnifiedStore = defineStore('unifiedStore', {
           // for PUT operations according to ASCOM Alpaca spec
           let result: unknown
 
-          if (
-            args.length === 1 &&
-            typeof args[0] === 'object' &&
-            args[0] !== null &&
-            !Array.isArray(args[0])
-          ) {
+          if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
             // This is a named parameter object
             console.log(`Using named parameters for ${method}:`, args[0])
             // Use the object directly as parameters - this matches the Alpaca client's expected interface
