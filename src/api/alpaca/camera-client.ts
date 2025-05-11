@@ -9,13 +9,14 @@
  * Camera-specific ALPACA client
  */
 
+import type { Device } from '@/stores/types/device-store.types'
 import { AlpacaClient } from './base-client'
 import { AlpacaError, ErrorType } from './errors'
 
 // Camera-specific client with camera-specific methods
 export class CameraClient extends AlpacaClient {
-  constructor(baseUrl: string, deviceNumber: number = 0) {
-    super(baseUrl, 'camera', deviceNumber)
+  constructor(baseUrl: string, deviceNumber: number = 0, device: Device) {
+    super(baseUrl, 'camera', deviceNumber, device)
   }
 
   // Capability checks - these use GET with simple return values
@@ -91,12 +92,7 @@ export class CameraClient extends AlpacaClient {
     })
 
     if (!response.ok) {
-      throw new AlpacaError(
-        `Failed to get image data: ${response.status} ${response.statusText}`,
-        ErrorType.SERVER,
-        url,
-        response.status
-      )
+      throw new AlpacaError(`Failed to get image data: ${response.status} ${response.statusText}`, ErrorType.SERVER, url, response.status)
     }
 
     // Parse the response as ArrayBuffer

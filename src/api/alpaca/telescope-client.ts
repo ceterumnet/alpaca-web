@@ -9,12 +9,13 @@
  * Telescope-specific ALPACA client
  */
 
+import type { Device } from '@/stores/types/device-store.types'
 import { AlpacaClient } from './base-client'
 
 // Telescope-specific client with telescope-specific methods
 export class TelescopeClient extends AlpacaClient {
-  constructor(baseUrl: string, deviceNumber: number = 0) {
-    super(baseUrl, 'telescope', deviceNumber)
+  constructor(baseUrl: string, deviceNumber: number = 0, device: Device) {
+    super(baseUrl, 'telescope', deviceNumber, device)
   }
 
   // Capability checks - these use GET with simple return values

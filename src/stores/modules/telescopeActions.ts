@@ -202,7 +202,7 @@ export function createTelescopeActions() {
         this.stopTelescopePropertyPolling(deviceId)
 
         // Create new interval
-        const intervalId = setInterval(async () => {
+        const intervalId = window.setInterval(async () => {
           try {
             // If device is disconnected, stop polling
             const currentDevice = this.getDeviceById(deviceId)

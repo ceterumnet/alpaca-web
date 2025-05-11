@@ -110,7 +110,7 @@ export function createCoreActions() {
 
                   // Try to create a client with these values
                   try {
-                    const client = createAlpacaClient(apiBaseUrl, type, deviceNum)
+                    const client = createAlpacaClient(apiBaseUrl, type, deviceNum, device)
                     return client
                   } catch (parseError) {
                     console.error(`Failed to create client from parsed device ID:`, parseError)
@@ -131,7 +131,7 @@ export function createCoreActions() {
           const deviceNum = typeof device.deviceNum === 'number' ? device.deviceNum : 0
 
           // Create the client
-          const client = createAlpacaClient(device.apiBaseUrl, device.type, deviceNum)
+          const client = createAlpacaClient(device.apiBaseUrl, device.type, deviceNum, device)
           return client
         } catch (error) {
           console.error(`Failed to create client for device ${device.id}:`, error)

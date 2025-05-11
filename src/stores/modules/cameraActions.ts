@@ -851,7 +851,7 @@ export function createCameraActions() {
         const pollInterval = (properties.propertyPollIntervalMs as number) || 2000 // Default 2 seconds
 
         // Create new interval
-        const intervalId = setInterval(async () => {
+        const intervalId = window.setInterval(async () => {
           try {
             // Get current device before each poll cycle to ensure we have latest state
             const currentDevice = this.getDeviceById(deviceId)
