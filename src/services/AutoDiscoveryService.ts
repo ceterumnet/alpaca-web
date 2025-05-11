@@ -9,7 +9,7 @@
 import { enhancedDeviceDiscoveryService } from './EnhancedDeviceDiscoveryService'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
-import { createStoreAdapter } from '@/stores/StoreAdapter'
+// import { createStoreAdapter } from '@/stores/StoreAdapter'
 import type { DiscoveryResult, DiscoveryOptions, ManualDeviceParams, DeviceServer, DeviceServerDevice } from './interfaces/DeviceDiscoveryInterface'
 import type { UnifiedDevice } from '@/types/device.types'
 import type { DiscoveredDevice } from '@/types/DiscoveredDevice'
@@ -113,20 +113,23 @@ class AutoDiscoveryService {
           device.status = 'idle'
         }
 
+        // New store implementation does not need an adapter
+        store.addDevice(device)
+
         // Create a store adapter to avoid 'this' context issues
-        const storeAdapter = createStoreAdapter(store)
+        // const storeAdapter = createStoreAdapter(store)
 
-        // Convert to legacy device format and add through the adapter
-        const legacyDevice = {
-          id: device.id,
-          deviceName: device.name,
-          deviceType: device.type,
-          address: device.ipAddress,
-          devicePort: device.port,
-          properties: device.properties
-        }
+        // // Convert to legacy device format and add through the adapter
+        // const legacyDevice = {
+        //   id: device.id,
+        //   deviceName: device.name,
+        //   deviceType: device.type,
+        //   address: device.ipAddress,
+        //   devicePort: device.port,
+        //   properties: device.properties
+        // }
 
-        return storeAdapter.addDevice(legacyDevice)
+        // return storeAdapter.addDevice(legacyDevice)
       } catch (error) {
         console.error('Error adding device to store:', error)
         return false
