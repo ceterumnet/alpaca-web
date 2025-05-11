@@ -1,4 +1,4 @@
-// Status: Good - Core Service
+// Status: Not used - Core Service
 // This is the image processing service that:
 // - Handles image data processing and manipulation
 // - Implements FITS file handling
@@ -136,12 +136,7 @@ export class ImageProcessingService {
    * @param midtoneValue Midtone adjustment (0.1-2.0)
    * @returns Stretched image data
    */
-  static stretchImage(
-    imageData: ProcessedImageData,
-    blackPoint: number,
-    whitePoint: number,
-    midtoneValue: number
-  ): ProcessedImageData {
+  static stretchImage(imageData: ProcessedImageData, blackPoint: number, whitePoint: number, midtoneValue: number): ProcessedImageData {
     const stats = this.calculateImageStats(imageData)
     const range = stats.max - stats.min
     const blackValue = stats.min + (range * blackPoint) / 100

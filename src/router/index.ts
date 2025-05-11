@@ -35,11 +35,6 @@ const router = createRouter({
       path: '/panel-layout',
       name: 'panel-layout',
       component: () => import('../views/PanelLayoutView.vue')
-    },
-    {
-      path: '/ui-components',
-      name: 'component-showcase',
-      component: () => import('../views/ComponentShowcase.vue')
     }
   ]
 })
