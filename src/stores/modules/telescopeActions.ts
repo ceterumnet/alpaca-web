@@ -12,7 +12,8 @@
  * Provides functionality for interacting with telescope devices
  */
 
-import type { DeviceEvent, Device } from '../types/deviceTypes'
+import type { Device } from '@/types/device.types'
+import type { DeviceEvent } from '../types/device-store.types'
 import type { AlpacaClient } from '@/api/AlpacaClient'
 
 // Define telescope state interface with property polling intervals
@@ -142,10 +143,7 @@ export function createTelescopeActions() {
           updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
           stopTelescopePropertyPolling: (deviceId: string) => void
           _emitEvent: (event: DeviceEvent) => void
-          fetchDeviceState: (
-            deviceId: string,
-            options?: { forceRefresh?: boolean; cacheTtlMs?: number }
-          ) => Promise<Record<string, unknown> | null>
+          fetchDeviceState: (deviceId: string, options?: { forceRefresh?: boolean; cacheTtlMs?: number }) => Promise<Record<string, unknown> | null>
         },
         deviceId: string
       ): void {
@@ -227,8 +225,7 @@ export function createTelescopeActions() {
 
             // Only try to get properties using devicestate if device is not in the unsupported list
             let deviceState: Record<string, unknown> | null = null
-            const availableProps =
-              this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
+            const availableProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
 
             if (!this._deviceStateUnsupported.has(deviceId)) {
               // We either haven't tried devicestate yet, or we know it's supported
@@ -247,10 +244,7 @@ export function createTelescopeActions() {
                       availableProps.add(prop)
                     }
                   }
-                  console.log(
-                    `Device ${deviceId} has ${availableProps.size} properties available via devicestate:`,
-                    Array.from(availableProps)
-                  )
+                  console.log(`Device ${deviceId} has ${availableProps.size} properties available via devicestate:`, Array.from(availableProps))
 
                   // Update the available properties map
                   this._deviceStateAvailableProps.set(deviceId, availableProps)
@@ -276,13 +270,7 @@ export function createTelescopeActions() {
                     properties[prop] = value
 
                     // Also populate coordinate properties
-                    if (
-                      prop === 'rightascension' ||
-                      prop === 'declination' ||
-                      prop === 'altitude' ||
-                      prop === 'azimuth' ||
-                      prop === 'siderealtime'
-                    ) {
+                    if (prop === 'rightascension' || prop === 'declination' || prop === 'altitude' || prop === 'azimuth' || prop === 'siderealtime') {
                       coordinateProps[prop] = value
 
                       // Also map to camelCase for better UI compatibility
@@ -314,9 +302,7 @@ export function createTelescopeActions() {
                   `Polling ${remainingProps.length} remaining properties individually for device ${deviceId}: ${remainingProps.join(', ')}`
                 )
               } else {
-                console.debug(
-                  `Polling all ${remainingProps.length} properties individually for device ${deviceId} (devicestate not available)`
-                )
+                console.debug(`Polling all ${remainingProps.length} properties individually for device ${deviceId} (devicestate not available)`)
               }
 
               for (const property of remainingProps) {
@@ -347,11 +333,7 @@ export function createTelescopeActions() {
                 } catch (error) {
                   // Silently ignore errors for properties that might not be supported
                   // Only log important properties
-                  if (
-                    property === 'rightascension' ||
-                    property === 'declination' ||
-                    property === 'tracking'
-                  ) {
+                  if (property === 'rightascension' || property === 'declination' || property === 'tracking') {
                     console.debug(`Failed to get important telescope property ${property}:`, error)
                   }
                 }
@@ -386,10 +368,7 @@ export function createTelescopeActions() {
               this.updateDeviceProperties(deviceId, updates)
 
               // Check if tracking state changed
-              if (
-                properties.tracking !== undefined &&
-                device.properties?.tracking !== properties.tracking
-              ) {
+              if (properties.tracking !== undefined && device.properties?.tracking !== properties.tracking) {
                 // Emit tracking changed event
                 this._emitEvent({
                   type: 'telescopeTrackingChanged',
@@ -400,11 +379,7 @@ export function createTelescopeActions() {
               }
 
               // Check if slewing completed
-              if (
-                properties.slewing !== undefined &&
-                device.properties?.slewing === true &&
-                properties.slewing === false
-              ) {
+              if (properties.slewing !== undefined && device.properties?.slewing === true && properties.slewing === false) {
                 // Telescope was slewing and now stopped - emit slew completed event
                 this._emitEvent({
                   type: 'telescopeSlewComplete',
@@ -427,9 +402,7 @@ export function createTelescopeActions() {
         // Note: Window.setInterval returns a number ID
         this._propertyPollingIntervals.set(deviceId, intervalId)
 
-        console.log(
-          `Property polling started for telescope ${deviceId} with interval ${pollInterval}ms`
-        )
+        console.log(`Property polling started for telescope ${deviceId} with interval ${pollInterval}ms`)
       },
 
       /**
@@ -693,12 +666,8 @@ export function createTelescopeActions() {
         try {
           // Update target coordinates first - use proper capitalization for parameters
           // According to ASCOM Alpaca spec, parameter names should be capitalized properly
-          await this.callDeviceMethod(deviceId, 'targetrightascension', [
-            { TargetRightAscension: rightAscension }
-          ])
-          await this.callDeviceMethod(deviceId, 'targetdeclination', [
-            { TargetDeclination: declination }
-          ])
+          await this.callDeviceMethod(deviceId, 'targetrightascension', [{ TargetRightAscension: rightAscension }])
+          await this.callDeviceMethod(deviceId, 'targetdeclination', [{ TargetDeclination: declination }])
 
           // Emit slew started event
           this._emitEvent({
