@@ -45,10 +45,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Device } from '@/stores/types/deviceTypes'
+import type { UnifiedDevice } from '@/types/device.types'
 
 const props = defineProps<{
-  device: Device
+  device: UnifiedDevice
   title?: string
 }>()
 

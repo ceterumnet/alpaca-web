@@ -9,7 +9,7 @@ import type { Device } from '@/stores/UnifiedStore'
  * Device type capabilities by device type
  */
 interface DeviceCapabilities {
-  [key: string]: Record<string, unknown>
+  [key: string]: Record<string, boolean>
 }
 
 /**
@@ -36,7 +36,7 @@ export function createTestDevice(type: string, ipAddress: string, name: string):
       firmwareVersion: '1.0.0',
       lastSeen: new Date().toISOString()
     },
-    capabilities: getCapabilitiesForType(type)
+    capabilities: getCapabilitiesForType(type) as Record<string, boolean>
   }
 }
 

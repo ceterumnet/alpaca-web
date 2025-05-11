@@ -9,7 +9,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import MainPanels from '@/components/layout/MainPanels.vue'
-import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { UnifiedDevice } from '@/types/device.types'
 import { ref, onMounted } from 'vue'
@@ -19,7 +18,6 @@ defineOptions({
 })
 
 // Get stores and router
-const uiStore = useUIPreferencesStore()
 const store = useUnifiedStore()
 const router = useRouter()
 const isLoading = ref(true)
@@ -39,34 +37,6 @@ onMounted(() => {
   }, 500)
 })
 
-// Event handlers
-const handleToggleTheme = () => {
-  uiStore.isDarkMode = !uiStore.isDarkMode
-}
-
-const handleToggleDevice = (device: UnifiedDevice) => {
-  if (device.isConnected) {
-    store.disconnectDevice(device.id)
-  } else {
-    store.connectDevice(device.id)
-  }
-}
-
-const handleDeviceAction = ({ device, action }: { device: UnifiedDevice; action: string }) => {
-  console.log(`Action ${action} on device ${device.name}`)
-
-  if (action === 'toggleFavorite') {
-    store.updateDevice(device.id, {
-      properties: {
-        ...device.properties,
-        isFavorite: !device.properties?.isFavorite
-      }
-    })
-  } else if (action === 'discover') {
-    // Navigate to discovery view
-    router.push('/discovery')
-  }
-}
 
 // Navigate to device detail view
 const navigateToDeviceDetail = (deviceOrId: string | UnifiedDevice) => {

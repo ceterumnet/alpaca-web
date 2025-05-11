@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ImageAnalysis from '@/views/ImageAnalysis.vue'
-import type { UnifiedDevice } from '@/types/DeviceTypes'
+import type { UnifiedDevice } from '@/types/device.types'
 
 // Mock the Icon component
 vi.mock('@/components/Icon.vue', () => ({
@@ -62,6 +62,7 @@ describe('ImageAnalysis', () => {
       isConnected: true,
       isConnecting: false,
       isDisconnecting: false,
+      status: 'connected',
       properties: {}
     },
     'telescope-456': {
@@ -71,6 +72,7 @@ describe('ImageAnalysis', () => {
       isConnected: false,
       isConnecting: false,
       isDisconnecting: false,
+      status: 'idle',
       properties: {}
     }
   }
