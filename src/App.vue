@@ -55,7 +55,7 @@ function runInitialDiscovery() {
       await discoveryStore.discoverDevices({ timeout: 3000 })
       console.log('Initial device discovery completed')
     } catch (error) {
-      console.error('Initial device discovery failed:', error)
+      console.log('Initial device discovery failed:', error)
     }
   }, 2000) // Wait 2 seconds after app load before starting discovery
 }
