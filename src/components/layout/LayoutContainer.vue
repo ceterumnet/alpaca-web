@@ -93,22 +93,6 @@ function getPanelStyle(position: PanelPosition) {
   }
 }
 
-// Get device type from panel ID
-function getPanelDeviceType(panelId: string): string {
-  // Map common panel IDs to their device types
-  const panelTypeMap: Record<string, string> = {
-    camera: 'camera',
-    telescope: 'telescope',
-    focuser: 'focuser',
-    filterwheel: 'filterwheel',
-    dome: 'dome',
-    rotator: 'rotator',
-    weather: 'observingconditions'
-  }
-
-  // Return the device type if it's in our map, otherwise default to the panelId itself
-  return panelTypeMap[panelId] || panelId
-}
 </script>
 
 <template>
@@ -135,7 +119,9 @@ function getPanelDeviceType(panelId: string): string {
 .aw-layout-container {
   width: 100%;
   height: 100%;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .aw-layout-container__grid {
@@ -144,14 +130,33 @@ function getPanelDeviceType(panelId: string): string {
   grid-auto-rows: minmax(100px, auto);
   gap: var(--aw-spacing-sm);
   padding: var(--aw-spacing-sm);
-  min-height: 100%;
+  flex: 1;
+  overflow: hidden;
 }
 
 .aw-layout-container__panel {
   background-color: var(--aw-panel-bg-color);
   border-radius: var(--aw-border-radius-sm);
-  overflow: hidden;
+  overflow-y: auto;
   box-shadow: var(--aw-shadow-sm);
+  
+  /* Firefox scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: var(--aw-scrollbar-thumb, #666) var(--aw-scrollbar-track, #333);
+  
+  /* WebKit scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: var(--aw-scrollbar-track, #333);
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--aw-scrollbar-thumb, #666);
+    border-radius: 4px;
+  }
 }
 
 /* Mobile view */
