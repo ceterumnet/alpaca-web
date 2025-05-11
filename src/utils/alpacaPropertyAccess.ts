@@ -6,6 +6,14 @@
 import { fromAscomValue } from '@/types/value-transforms'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 
+// Define store interface for type safety
+interface UnifiedStoreExtended {
+  getDevicePropertyOptimized: (deviceId: string, property: string) => Promise<unknown>
+  getDeviceProperty: (deviceId: string, property: string) => Promise<unknown>
+  fetchDeviceState: (deviceId: string, options: { cacheTtlMs: number; forceRefresh: boolean }) => Promise<Record<string, unknown> | null>
+  callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+}
+
 /**
  * Converts a camelCase property name to the proper Alpaca case format
  * Example: rightAscension -> RightAscension
@@ -21,13 +29,13 @@ export function toAlpacaCase(property: string): string {
  * Handles case conversion and value transformation
  */
 export async function getAlpacaProperty<T = unknown>(deviceId: string, property: string): Promise<T | null> {
-  const store = useUnifiedStore()
+  const store = useUnifiedStore() as unknown as UnifiedStoreExtended
   try {
     // API method names are lowercase
     const apiMethod = property.toLowerCase()
 
     // Use devicestate optimized property access if available
-    const value = await (store as any).getDevicePropertyOptimized(deviceId, apiMethod)
+    const value = await store.getDevicePropertyOptimized(deviceId, apiMethod)
     return fromAscomValue(value) as T
   } catch (error) {
     console.error(`Error getting property ${property}:`, error)
@@ -40,7 +48,7 @@ export async function getAlpacaProperty<T = unknown>(deviceId: string, property:
  * Handles value transformation
  */
 export async function setAlpacaProperty<T = unknown>(deviceId: string, property: string, value: T): Promise<boolean> {
-  const store = useUnifiedStore()
+  const store = useUnifiedStore() as unknown as UnifiedStoreExtended
   try {
     // API method names are lowercase
     const apiMethod = property.toLowerCase()
@@ -49,7 +57,6 @@ export async function setAlpacaProperty<T = unknown>(deviceId: string, property:
     // Create the parameter object with proper casing
     const param = { [paramName]: value }
 
-    // @ts-expect-error - TypeScript has issues with the store's this context
     await store.callDeviceMethod(deviceId, apiMethod, [param])
     return true
   } catch (error) {
@@ -66,7 +73,7 @@ export async function callAlpacaMethod<T = unknown, P = Record<string, unknown>>
   method: string,
   params: P = {} as P
 ): Promise<T | null> {
-  const store = useUnifiedStore()
+  const store = useUnifiedStore() as unknown as UnifiedStoreExtended
   try {
     // API method names are lowercase
     const apiMethod = method.toLowerCase()
@@ -77,7 +84,6 @@ export async function callAlpacaMethod<T = unknown, P = Record<string, unknown>>
       formattedParams[toAlpacaCase(key)] = value
     }
 
-    // @ts-expect-error - TypeScript has issues with the store's this context
     const result = await store.callDeviceMethod(deviceId, apiMethod, [formattedParams])
     return result as T
   } catch (error) {
@@ -92,12 +98,12 @@ export async function callAlpacaMethod<T = unknown, P = Record<string, unknown>>
  * Returns an object with camelCase property names and transformed values
  */
 export async function getAlpacaProperties<T = Record<string, unknown>>(deviceId: string, properties: string[]): Promise<T> {
-  const store = useUnifiedStore()
+  const store = useUnifiedStore() as unknown as UnifiedStoreExtended
   const result: Record<string, unknown> = {}
 
   try {
     // Try to use devicestate for efficient batch property fetching
-    const deviceState = await (store as any).fetchDeviceState(deviceId, {
+    const deviceState = await store.fetchDeviceState(deviceId, {
       cacheTtlMs: 500, // Use a short TTL to ensure fresh data
       forceRefresh: false // Use cache if available
     })
@@ -110,7 +116,7 @@ export async function getAlpacaProperties<T = Record<string, unknown>>(deviceId:
           result[property] = fromAscomValue(deviceState[normalizedProperty])
         } else {
           // Fall back to individual property fetch
-          const value = await (store as any).getDeviceProperty(deviceId, normalizedProperty)
+          const value = await store.getDeviceProperty(deviceId, normalizedProperty)
           result[property] = fromAscomValue(value)
         }
       }
