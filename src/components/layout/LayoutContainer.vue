@@ -1,6 +1,10 @@
-// Status: Good - Core Component // This is the layout container component that: // - Provides base
-layout structure // - Handles layout organization // - Supports responsive design // - Manages
-layout state // - Maintains layout consistency
+// Status: Good - Core Component 
+// This is the layout container component that: 
+// - Provides base layout structure 
+// - Handles layout organization 
+// - Supports responsive design 
+// - Manages layout state 
+// - Maintains layout consistency
 
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
@@ -117,16 +121,7 @@ function getPanelDeviceType(panelId: string): string {
         :style="getPanelStyle(position)"
       >
         <!-- Use slot if provided, otherwise fall back to BasePanel -->
-        <slot :name="position.panelId" :position="position">
-          <!-- Fallback content when slot not provided -->
-          <BasePanel
-            :panel-id="position.panelId"
-            :device-type="getPanelDeviceType(position.panelId)"
-            :title="
-              getPanelDeviceType(position.panelId).charAt(0).toUpperCase() +
-              getPanelDeviceType(position.panelId).slice(1)
-            "
-          />
+        <slot :name="position.panelId" :position="position">        
         </slot>
       </div>
     </div>

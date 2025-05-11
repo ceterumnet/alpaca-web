@@ -14,7 +14,7 @@ import router from './router'
 
 // Import panel components
 import panelComponents from './components/panels'
-import featureComponents from './components/panels/features'
+// import featureComponents from './components/panels/features'
 
 // Create the app instance
 const app = createApp(App)
@@ -28,7 +28,7 @@ app.use(router)
 
 // Register panel and feature components
 app.use(panelComponents)
-app.use(featureComponents)
+// app.use(featureComponents)
 
 // Mount the app
 app.mount('#app')
