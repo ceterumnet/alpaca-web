@@ -11,12 +11,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/useLayoutStore'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
-import ResponsiveCameraPanel from '@/components/devices/ResponsiveCameraPanel.vue'
 import SimplifiedCameraPanel from '@/components/devices/SimplifiedCameraPanel.vue'
-import ResponsiveTelescopePanel from '@/components/devices/ResponsiveTelescopePanel.vue'
 import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePanel.vue'
 import ResponsiveFocuserPanel from '@/components/devices/ResponsiveFocuserPanel.vue'
 import type { GridLayoutDefinition } from '@/types/layouts/LayoutDefinition'
+import SimplifiedFocuserPanel from '@/components/devices/SimplifiedFocuserPanel.vue'
 
 // Get stores and router
 const layoutStore = useLayoutStore()
@@ -27,17 +26,6 @@ const route = useRoute()
 // Layout ID to display - default to 'default'
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 
-// Use simplified panel flags - for experiment
-const useSimplifiedTelescopePanel = ref(false)
-const useSimplifiedCameraPanel = ref(false)
-
-const toggleTelescopePanelType = () => {
-  useSimplifiedTelescopePanel.value = !useSimplifiedTelescopePanel.value
-}
-
-const toggleCameraPanelType = () => {
-  useSimplifiedCameraPanel.value = !useSimplifiedCameraPanel.value
-}
 
 // Create a default layout if none exists
 onMounted(() => {
@@ -343,26 +331,12 @@ const changeLayout = (layoutId: string) => {
 
 <template>
   <div class="panel-layout-view">
-    <div class="panel-layout-controls">
-      <button class="toggle-panel-btn" @click="toggleTelescopePanelType">
-        {{ useSimplifiedTelescopePanel ? 'Use Responsive Telescope Panel' : 'Use Simplified Telescope Panel' }}
-      </button>
-      <button class="toggle-panel-btn" @click="toggleCameraPanelType">
-        {{ useSimplifiedCameraPanel ? 'Use Responsive Camera Panel' : 'Use Simplified Camera Panel' }}
-      </button>
-    </div>
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
       <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId">
         <!-- Camera Panel Slot -->
         <template #camera="{ position }">
           <SimplifiedCameraPanel
-            v-if="position && useSimplifiedCameraPanel"
-            :device-id="deviceMap.camera || ''"
-            title="Camera"
-            @device-change="handleDeviceChange('camera', $event)"
-          />
-          <ResponsiveCameraPanel
-            v-else-if="position"
+            v-if="position"
             :device-id="deviceMap.camera || ''"
             title="Camera"
             @device-change="handleDeviceChange('camera', $event)"
@@ -372,13 +346,7 @@ const changeLayout = (layoutId: string) => {
         <!-- Telescope Panel Slot -->
         <template #telescope="{ position }">
           <SimplifiedTelescopePanel 
-            v-if="position && useSimplifiedTelescopePanel"
-            :device-id="deviceMap.telescope || ''"
-            title="Telescope"
-            @device-change="handleDeviceChange('telescope', $event)"
-          />
-          <ResponsiveTelescopePanel
-            v-else-if="position"
+            v-if="position"
             :device-id="deviceMap.telescope || ''"
             title="Telescope"
             @device-change="handleDeviceChange('telescope', $event)"
@@ -387,7 +355,7 @@ const changeLayout = (layoutId: string) => {
 
         <!-- Focuser Panel Slot -->
         <template #focuser="{ position }">
-          <ResponsiveFocuserPanel
+          <SimplifiedFocuserPanel
             v-if="position"
             :device-id="deviceMap.focuser || ''"
             title="Focuser"
