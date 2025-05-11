@@ -158,7 +158,6 @@ const startExposure = async () => {
     if (isCameraClient) {
       // Always use callDeviceMethod for startexposure
       console.log('Using callDeviceMethod for startexposure')
-      // @ts-expect-error - Store has TypeScript 'this' context issues that need to be fixed
       await unifiedStore.callDeviceMethod(props.deviceId, props.method, [
         { Duration: exposureDuration.value, Light: isLight.value }
       ])

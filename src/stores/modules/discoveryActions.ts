@@ -12,7 +12,7 @@
  * Provides functionality for discovering and auto-configuring devices
  */
 
-import type { Device, StoreOptions, DeviceEvent } from '../types/deviceTypes'
+import type { StoreOptions, DeviceEvent } from '@/stores/types/device-store.types'
 
 export interface DiscoveryState {
   isDiscovering: boolean
@@ -27,10 +27,7 @@ export function createDiscoveryActions() {
     }),
 
     actions: {
-      startDiscovery(
-        this: DiscoveryState & { _emitEvent: (event: DeviceEvent) => void },
-        options: StoreOptions = {}
-      ): boolean {
+      startDiscovery(this: DiscoveryState & { _emitEvent: (event: DeviceEvent) => void }, options: StoreOptions = {}): boolean {
         if (this.isDiscovering) {
           console.warn('Discovery already in progress')
           return false
@@ -52,76 +49,12 @@ export function createDiscoveryActions() {
         // Try to use the Alpaca discovery protocol
         // For now, we'll simulate finding devices
         // In real implementation, this would use network discovery protocols
-        this.simulateDeviceDiscovery()
+        // this.simulateDeviceDiscovery()
 
         return true
       },
 
-      simulateDeviceDiscovery(
-        this: DiscoveryState & {
-          _emitEvent: (event: DeviceEvent) => void
-          addDevice: (device: Device) => boolean
-          hasDevice: (deviceId: string) => boolean
-        }
-      ): void {
-        // Define some simulated devices
-        const simulatedDevices = [
-          {
-            id: 'camera-sim-1',
-            name: 'Simulated Camera',
-            type: 'camera',
-            apiBaseUrl: 'http://localhost:11111',
-            deviceNum: 0,
-            isConnected: false,
-            isConnecting: false,
-            isDisconnecting: false,
-            properties: {}
-          },
-          {
-            id: 'telescope-sim-1',
-            name: 'Simulated Telescope',
-            type: 'telescope',
-            apiBaseUrl: 'http://localhost:11111',
-            deviceNum: 0,
-            isConnected: false,
-            isConnecting: false,
-            isDisconnecting: false,
-            properties: {}
-          }
-        ]
-
-        // Set a timeout to "discover" each device
-        this.discoveryTimeout = setTimeout(() => {
-          // Add the simulated devices one by one
-          simulatedDevices.forEach((device, index) => {
-            setTimeout(() => {
-              // Check if we already have this device
-              if (!this.hasDevice(device.id)) {
-                // Add the device to the store
-                this.addDevice(device)
-
-                // Emit discovery event
-                this._emitEvent({
-                  type: 'discoveryDeviceFound',
-                  device
-                })
-              }
-
-              // If this is the last device, stop discovery
-              if (index === simulatedDevices.length - 1) {
-                this.isDiscovering = false
-                this.discoveryTimeout = null
-                this._emitEvent({ type: 'discoveryStopped' })
-              }
-            }, index * 1000) // Stagger device discovery
-          })
-        }, 1500)
-      },
-
-      stopDiscovery(
-        this: DiscoveryState & { _emitEvent: (event: DeviceEvent) => void },
-        options: StoreOptions = {}
-      ): boolean {
+      stopDiscovery(this: DiscoveryState & { _emitEvent: (event: DeviceEvent) => void }, options: StoreOptions = {}): boolean {
         if (!this.isDiscovering) {
           console.warn('No discovery in progress')
           return false

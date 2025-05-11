@@ -33,7 +33,8 @@ const mockDevices: Device[] = [
     isConnected: true,
     isConnecting: false,
     isDisconnecting: false,
-    properties: {}
+    properties: {},
+    status: 'connected'
   },
   {
     id: 'device-2',
@@ -42,7 +43,8 @@ const mockDevices: Device[] = [
     isConnected: false,
     isConnecting: false,
     isDisconnecting: false,
-    properties: {}
+    properties: {},
+    status: 'connected'
   }
 ]
 
