@@ -55,11 +55,7 @@ const exposureMax = ref(3600)
 
 // Camera capabilities
 const capabilities = ref({
-  canSetCCDTemperature: false,
-  hasGain: false,
-  hasOffset: false,
-  hasBinning: false,
-  hasCooler: false
+  canSetCCDTemperature: false
 })
 
 // Camera settings
@@ -68,11 +64,11 @@ const offset = ref(0)
 const binning = ref(1)
 const coolerOn = ref(false)
 const targetTemp = ref(-10)
-const currentTemp = ref(0)
+const CCDTemperature = ref(0)
 
 // Toggle cooler
 const toggleCooler = async () => {
-  if (!capabilities.value.hasCooler) return
+  if (!capabilities.value.canSetCCDTemperature) return
   
   try {
     await setAlpacaProperty(props.deviceId, 'coolerOn', !coolerOn.value)
@@ -84,7 +80,6 @@ const toggleCooler = async () => {
 
 // Update camera settings
 const updateGain = async () => {
-  if (!capabilities.value.hasGain) return
   
   try {
     await setAlpacaProperty(props.deviceId, 'gain', gain.value)
@@ -94,7 +89,6 @@ const updateGain = async () => {
 }
 
 const updateOffset = async () => {
-  if (!capabilities.value.hasOffset) return
   
   try {
     await setAlpacaProperty(props.deviceId, 'offset', offset.value)
@@ -104,7 +98,6 @@ const updateOffset = async () => {
 }
 
 const updateBinning = async () => {
-  if (!capabilities.value.hasBinning) return
   
   try {
     await setAlpacaProperty(props.deviceId, 'binX', binning.value)
@@ -130,23 +123,13 @@ const updateDeviceCapabilities = async () => {
   
   try {
     const deviceCaps = await getDeviceCapabilities(props.deviceId, [
-      'canSetCCDTemperature',
-      'canSetGain',
-      'canSetOffset',
-      'canSetBinX',
-      'canSetBinY',
-      'coolerOn'
+      'canSetCCDTemperature'
     ])
     
     capabilities.value = {
-      canSetCCDTemperature: deviceCaps.canSetCCDTemperature || false,
-      hasGain: deviceCaps.canSetGain || false,
-      hasOffset: deviceCaps.canSetOffset || false,
-      hasBinning: deviceCaps.canSetBinX && deviceCaps.canSetBinY || false,
-      hasCooler: 'coolerOn' in deviceCaps || false
+      canSetCCDTemperature: deviceCaps.canSetCCDTemperature || false
     }
     
-    console.log('Camera capabilities:', capabilities.value)
   } catch (error) {
     console.error('Error checking device capabilities:', error)
   }
@@ -159,16 +142,16 @@ const updateCameraStatus = async () => {
   if (!isConnected.value) return
   
   try {
-    const properties = await getAlpacaProperties(props.deviceId, [
-      'gain',
-      'offset',
-      'binX',
-      'coolerOn',
-      'ccdTemperature',
-      'setCCDTemperature',
-      'exposureMin',
-      'exposureMax'
-    ])
+    // Build property list based on device capabilities
+    const propertiesToFetch = ['exposureMin', 'exposureMax', 'gain', 'offset', 'binX', 'binY', 'CCDTemperature'] // Always fetch exposure limits
+    
+    // Add optional properties based on capabilities
+    if (capabilities.value.canSetCCDTemperature) {
+      propertiesToFetch.push('coolerOn')
+      propertiesToFetch.push('setCCDTemperature')
+    }
+    
+    const properties = await getAlpacaProperties(props.deviceId, propertiesToFetch)
     
     // Update camera settings with current values
     if (properties.gain !== null && typeof properties.gain === 'number') {
@@ -186,13 +169,15 @@ const updateCameraStatus = async () => {
     if (properties.coolerOn !== null && typeof properties.coolerOn === 'boolean') {
       coolerOn.value = properties.coolerOn
     }
-    
-    if (properties.ccdTemperature !== null && typeof properties.ccdTemperature === 'number') {
-      currentTemp.value = properties.ccdTemperature
+    if (properties.CCDTemperature !== null && typeof properties.CCDTemperature === 'number') {
+      CCDTemperature.value = properties.CCDTemperature
     }
-    
-    if (properties.setCCDTemperature !== null && typeof properties.setCCDTemperature === 'number') {
-      targetTemp.value = properties.setCCDTemperature
+
+    if (capabilities.value.canSetCCDTemperature) {
+  
+      if (properties.setCCDTemperature !== null && typeof properties.setCCDTemperature === 'number') {
+        targetTemp.value = properties.setCCDTemperature
+      }
     }
 
     // Update exposure limits if available
@@ -227,11 +212,7 @@ watch(isConnected, (newValue) => {
   if (newValue) {
     // Reset capabilities
     capabilities.value = {
-      canSetCCDTemperature: false,
-      hasGain: false,
-      hasOffset: false,
-      hasBinning: false,
-      hasCooler: false
+      canSetCCDTemperature: false
     }
     
     // First check device capabilities
@@ -376,18 +357,18 @@ const connectDevice = async () => {
         </div>
         
         <!-- Camera Settings Section -->
-        <div v-if="capabilities.hasGain || capabilities.hasOffset || capabilities.hasBinning" class="panel-section">
+        <div class="panel-section">
           <h3>Settings</h3>
           <div class="camera-settings">
-            <div v-if="capabilities.hasGain" class="setting-row">
+            <div class="setting-row">
               <label>Gain:</label>
               <input v-model.number="gain" type="number" min="0" max="100" step="1" @change="updateGain">
             </div>
-            <div v-if="capabilities.hasOffset" class="setting-row">
+            <div class="setting-row">
               <label>Offset:</label>
               <input v-model.number="offset" type="number" min="0" max="100" step="1" @change="updateOffset">
             </div>
-            <div v-if="capabilities.hasBinning" class="setting-row">
+            <div class="setting-row">
               <label>Binning:</label>
               <input v-model.number="binning" type="number" min="1" max="4" step="1" @change="updateBinning">
             </div>
@@ -395,14 +376,14 @@ const connectDevice = async () => {
         </div>
         
         <!-- Cooling Section -->
-        <div v-if="capabilities.hasCooler || capabilities.canSetCCDTemperature" class="panel-section">
+        <div class="panel-section">
           <h3>Cooling</h3>
           <div class="cooling-controls">
             <div class="cooling-status">
               <span class="temperature-label">Current:</span>
-              <span class="temperature-value">{{ currentTemp.toFixed(1) }}°C</span>
+              <span class="temperature-value">{{ CCDTemperature.toFixed(1) }}°C</span>
             </div>
-            <div v-if="capabilities.hasCooler" class="cooling-toggle">
+            <div v-if="capabilities.canSetCCDTemperature" class="cooling-toggle">
               <span class="label">Cooler:</span>
               <label class="toggle">
                 <input v-model="coolerOn" type="checkbox" @change="toggleCooler">
