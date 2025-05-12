@@ -21,7 +21,6 @@ const uiStore = useUIPreferencesStore()
 const unifiedStore = useUnifiedStore()
 const layoutStore = useLayoutStore()
 const route = useRoute()
-const router = useRouter()
 
 // Define interface for nav links with proper typing
 interface NavLink {
@@ -67,7 +66,6 @@ const navLinks: NavLink[] = [
 
 // Layout functionality
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
-const availableLayouts = computed(() => layoutStore.layouts)
 
 // Define LayoutCell and LayoutTemplate interfaces
 interface LayoutCell {
@@ -150,201 +148,14 @@ const staticLayouts: LayoutTemplate[] = [
 ]
 
 // Change layout
-const changeLayout = (layoutId: string) => {
-  console.log(`Attempting to change layout to: ${layoutId}`)
-  
-  // Check if the layout exists
-  const layoutExists = layoutStore.layouts.some((layout) => layout.id === layoutId)
-
-  if (layoutExists) {
-    console.log(`Layout ${layoutId} found, setting as current layout`)
-    
-    // Force layout change by clearing and resetting the store
-    layoutStore.setCurrentLayout('')
-    
-    // Wait for the next tick to set the new layout
-    setTimeout(() => {
-      layoutStore.setCurrentLayout(layoutId)
-      currentLayoutId.value = layoutId
-      console.log(`Layout changed to: ${layoutId}`)
-    }, 10)
-  } else {
-    console.warn(`Layout with ID ${layoutId} not found, using default layout`)
-    if (layoutStore.layouts.length > 0) {
-      // Use the first available layout if specified one doesn't exist
-      const firstLayout = layoutStore.layouts[0]
-      console.log(`Falling back to first available layout: ${firstLayout.id}`)
-      layoutStore.setCurrentLayout(firstLayout.id)
-      currentLayoutId.value = firstLayout.id
-    }
-  }
-}
 
 // Function to delete the current layout
-function deleteCurrentLayout() {
-  if (!currentLayoutId.value) return
-  
-  // Confirm deletion
-  if (confirm(`Are you sure you want to delete this layout "${availableLayouts.value.find(l => l.id === currentLayoutId.value)?.name || currentLayoutId.value}"?`)) {
-    // Delete from store
-    layoutStore.deleteLayout(currentLayoutId.value)
-    
-    // Switch to first available layout or create default if none exists
-    if (layoutStore.gridLayouts.length > 0) {
-      currentLayoutId.value = layoutStore.gridLayouts[0].id
-      layoutStore.setCurrentLayout(currentLayoutId.value)
-    } else {
-      // If we have no layouts left, create a new default one
-      createAndAddDefaultLayout()
-      currentLayoutId.value = 'default'
-      layoutStore.setCurrentLayout(currentLayoutId.value) 
-    }
-  }
-}
 
 // Create and add a default layout
-function createAndAddDefaultLayout() {
-  // This matches the logic from the PanelLayoutView
-  const defaultLayoutId = 'default'
-  
-  // Define proper types for priority
-  type Priority = 'primary' | 'secondary' | 'tertiary';
-  
-  // Create a default grid layout
-  const defaultGridLayout = {
-    id: defaultLayoutId,
-    name: 'Default Layout',
-    description: 'Default panel layout with camera, telescope, and other panels',
-    isDefault: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    layouts: {
-      desktop: {
-        rows: [
-          {
-            id: 'row-1-desktop',
-            cells: [
-              {
-                id: 'camera',
-                deviceType: 'camera',
-                name: 'Camera',
-                priority: 'primary' as Priority,
-                width: 66.67
-              },
-              {
-                id: 'telescope',
-                deviceType: 'telescope',
-                name: 'Telescope',
-                priority: 'primary' as Priority,
-                width: 33.33
-              }
-            ],
-            height: 50
-          },
-          {
-            id: 'row-2-desktop',
-            cells: [
-              {
-                id: 'focuser',
-                deviceType: 'focuser',
-                name: 'Focuser',
-                priority: 'secondary' as Priority,
-                width: 33.33
-              },
-              {
-                id: 'filterwheel',
-                deviceType: 'filterwheel',
-                name: 'Filter Wheel',
-                priority: 'secondary' as Priority,
-                width: 33.33
-              },
-              {
-                id: 'weather',
-                deviceType: 'weather',
-                name: 'Weather',
-                priority: 'secondary' as Priority,
-                width: 33.33
-              }
-            ],
-            height: 50
-          }
-        ],
-        panelIds: ['camera', 'telescope', 'focuser', 'filterwheel', 'weather']
-      },
-      tablet: {
-        rows: [
-          {
-            id: 'row-1-tablet',
-            cells: [
-              {
-                id: 'camera',
-                deviceType: 'camera',
-                name: 'Camera',
-                priority: 'primary' as Priority,
-                width: 100
-              }
-            ],
-            height: 50
-          },
-          {
-            id: 'row-2-tablet',
-            cells: [
-              {
-                id: 'telescope',
-                deviceType: 'telescope',
-                name: 'Telescope',
-                priority: 'secondary' as Priority,
-                width: 100
-              }
-            ],
-            height: 50
-          }
-        ],
-        panelIds: ['camera', 'telescope']
-      },
-      mobile: {
-        rows: [
-          {
-            id: 'row-1-mobile',
-            cells: [
-              {
-                id: 'camera',
-                deviceType: 'camera',
-                name: 'Camera',
-                priority: 'primary' as Priority,
-                width: 100
-              }
-            ],
-            height: 100
-          }
-        ],
-        panelIds: ['camera']
-      }
-    }
-  }
-
-  // Add to store
-  layoutStore.addGridLayout(defaultGridLayout)
-}
 
 // Function to set the current layout as default
-function setAsDefaultLayout() {
-  if (!currentLayoutId.value) return
-  
-  // Update all layouts
-  layoutStore.gridLayouts.forEach(layout => {
-    if (layout.id === currentLayoutId.value) {
-      layoutStore.updateGridLayout(layout.id, { isDefault: true })
-    } else if (layout.isDefault) {
-      layoutStore.updateGridLayout(layout.id, { isDefault: false })
-    }
-  })
-}
 
 // Open layout builder
-const openLayoutBuilder = () => {
-  router.push(`/layout-builder?layout=${currentLayoutId.value}`)
-}
 
 // Toggle between dark and light mode
 function toggleDarkMode() {
