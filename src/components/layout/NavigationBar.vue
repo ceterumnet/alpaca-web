@@ -416,11 +416,16 @@ function convertStaticToRows(layout: LayoutTemplate) {
   return rows
 }
 
+// Layout modal control
 const showLayoutModal = ref(false)
+
+// For handling thumbnail labels
+const activeLabelInfo = ref({ text: '', x: 0, y: 0, visible: false })
 
 function openLayoutModal() {
   showLayoutModal.value = true
 }
+
 function closeLayoutModal() {
   showLayoutModal.value = false
 }
@@ -428,6 +433,23 @@ function closeLayoutModal() {
 function handleStaticLayoutClick(layoutId: string) {
   selectStaticLayout(layoutId)
   closeLayoutModal()
+}
+
+function showThumbnailLabel(event: MouseEvent, layout: LayoutTemplate) {
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  
+  // Calculate the position (center bottom of thumbnail)
+  activeLabelInfo.value = {
+    text: layout.name,
+    x: rect.left + rect.width / 2,
+    y: rect.bottom + 5,
+    visible: true
+  }
+}
+
+function hideThumbnailLabel() {
+  activeLabelInfo.value.visible = false
 }
 </script>
 
@@ -454,7 +476,55 @@ function handleStaticLayoutClick(layoutId: string) {
         </RouterLink>
         <!-- Layout Controls (between Home and Settings) -->
         <div class="aw-navigation-bar__layout-controls">
-            <button class="aw-button aw-button--primary" @click="openLayoutModal">Choose Layout</button>
+            
+            <!-- Inline layout thumbnails for larger screens -->
+            <div v-if="!isMobileDevice" class="aw-navigation-bar__inline-thumbnails">
+              <div 
+                v-for="layout in staticLayouts" 
+                :key="layout.id" 
+                class="aw-navigation-bar__thumbnail"
+                :title="layout.name"
+                :data-active="currentLayoutId.includes(layout.id)"
+                @click="handleStaticLayoutClick(layout.id)"
+                @mouseenter="showThumbnailLabel($event, layout)"
+                @mouseleave="hideThumbnailLabel"
+              >
+                <div
+class="aw-navigation-bar__thumbnail-preview" 
+                  :style="{
+                    gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
+                    gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : '1fr 1fr'
+                  }"
+                >
+                  <div
+                    v-for="cell in layout.cells"
+                    :key="cell.id"
+                    class="aw-navigation-bar__thumbnail-cell"
+                    :style="{
+                      gridRow: `${cell.row + 1} / span ${cell.rowSpan || 1}`,
+                      gridColumn: `${cell.col + 1} / span ${cell.colSpan || 1}`
+                    }"
+                  ></div>
+                </div>
+              </div>
+              <div class="aw-navigation-bar__more-indicator" title="More layouts" @click="openLayoutModal">
+                <Icon type="expand" />
+              </div>
+            </div>
+            
+            <!-- Global thumbnail label -->
+            <div 
+              v-if="activeLabelInfo.visible" 
+              class="thumbnail-global-label"
+              :style="{
+                left: `${activeLabelInfo.x}px`,
+                top: `${activeLabelInfo.y}px`
+              }"
+            >
+              {{ activeLabelInfo.text }}
+            </div>
+            
+            <!-- Layout modal for smaller screens or when clicking "More" -->
             <div v-if="showLayoutModal" class="layout-modal-overlay">
               <div class="layout-modal">
                 <button class="layout-modal__close" title="Close" @click="closeLayoutModal">×</button>
@@ -529,16 +599,19 @@ function handleStaticLayoutClick(layoutId: string) {
   align-items: center;
   padding: 0 var(--aw-spacing-md);
   box-shadow: var(--aw-shadow-sm);
-  z-index: 10;
+  z-index: 100;
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
+  position: relative;
 }
 
 .aw-navigation-bar__left {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-md);
+  overflow: visible !important;
+  z-index: auto;
 }
 
 .aw-navigation-bar__right {
@@ -565,6 +638,8 @@ function handleStaticLayoutClick(layoutId: string) {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-sm);
+  overflow: visible !important;
+  z-index: auto;
 }
 
 .aw-navigation-bar__link {
@@ -601,11 +676,12 @@ function handleStaticLayoutClick(layoutId: string) {
 .aw-navigation-bar__layout-controls {
   display: flex;
   align-items: center;
-  gap: var(--aw-spacing-xs);
+  gap: var(--aw-spacing-sm);
   margin-left: var(--aw-spacing-sm);
-  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
-  background-color: var(--aw-panel-hover-bg-color);
   border-radius: var(--aw-border-radius-md);
+  position: relative;
+  height: var(--header-height, 60px);
+  z-index: 101;
 }
 
 .aw-navigation-bar__layout-select {
@@ -689,6 +765,24 @@ function handleStaticLayoutClick(layoutId: string) {
   outline-offset: 2px;
 }
 
+@media (min-width: 1200px) {
+  .aw-navigation-bar__inline-thumbnails {
+    max-width: 400px;
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+  .aw-navigation-bar__inline-thumbnails {
+    max-width: 300px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 991px) {
+  .aw-navigation-bar__inline-thumbnails {
+    max-width: 200px;
+  }
+}
+
 @media (max-width: 768px) {
   .aw-navigation-bar {
     padding: 0 var(--aw-spacing-sm);
@@ -714,12 +808,101 @@ function handleStaticLayoutClick(layoutId: string) {
     max-width: 100px;
     font-size: 12px;
   }
+  
+  .aw-navigation-bar__inline-thumbnails {
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {
   .aw-navigation-bar__layout-controls {
     display: none;
   }
+}
+
+/* Navbar inline thumbnails */
+.aw-navigation-bar__inline-thumbnails {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: visible !important;
+  max-width: 400px;
+  scrollbar-width: thin;
+  margin-left: 4px;
+  padding: 4px;
+  height: 36px;
+  position: relative;
+  z-index: 102;
+}
+
+.aw-navigation-bar__inline-thumbnails::-webkit-scrollbar {
+  height: 4px;
+}
+
+.aw-navigation-bar__inline-thumbnails::-webkit-scrollbar-thumb {
+  background-color: var(--aw-color-primary-500);
+  border-radius: 4px;
+}
+
+.aw-navigation-bar__thumbnail {
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px;
+  background: var(--aw-panel-content-bg-color);
+  transition: border-color 0.2s, transform 0.2s;
+  position: relative;
+  height: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 103;
+}
+
+.aw-navigation-bar__thumbnail:hover {
+  border-color: var(--aw-color-primary-400);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.aw-navigation-bar__thumbnail[data-active="true"] {
+  border-color: var(--aw-color-primary-500);
+  background: var(--aw-color-primary-100);
+}
+
+.aw-navigation-bar__thumbnail-preview {
+  display: grid;
+  gap: 1px;
+  background: var(--aw-panel-bg-color);
+  border-radius: 2px;
+  width: 32px;
+  height: 22px;
+  overflow: hidden;
+}
+
+.aw-navigation-bar__thumbnail-cell {
+  background: var(--aw-color-primary-300);
+  min-width: 0;
+  min-height: 0;
+}
+
+.aw-navigation-bar__more-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--aw-panel-hover-bg-color);
+  cursor: pointer;
+  color: var(--aw-text-color);
+  transition: background-color 0.2s;
+}
+
+.aw-navigation-bar__more-indicator:hover {
+  background-color: var(--aw-color-primary-500);
+  color: white;
 }
 
 .layout-modal-overlay {
@@ -829,5 +1012,25 @@ function handleStaticLayoutClick(layoutId: string) {
 .layout-modal__cell-id {
   color: #aaa;
   font-size: 0.8rem;
+}
+
+.aw-navigation-bar__thumbnail-label {
+  display: none;
+}
+
+/* Add styles for the global thumbnail label */
+.thumbnail-global-label {
+  position: fixed;
+  transform: translateX(-50%);
+  background: var(--aw-color-primary-700);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  z-index: 99999;
+  text-align: center;
 }
 </style>
