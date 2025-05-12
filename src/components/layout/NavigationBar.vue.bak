@@ -1,0 +1,719 @@
+// Status: Updated - Core Navigation Component 
+// This is the main navigation bar that: 
+// - Integrates with new navigation components 
+// - Provides primary navigation 
+// - Shows device status
+// - Handles theme switching 
+// - Supports responsive design
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
+import { useLayoutStore } from '@/stores/useLayoutStore'
+import Icon from '@/components/ui/Icon.vue'
+import type { IconType } from '@/components/ui/Icon.vue'
+import DiscoveryIndicator from '@/components/navigation/DiscoveryIndicator.vue'
+
+// Get stores
+const uiStore = useUIPreferencesStore()
+const layoutStore = useLayoutStore()
+const route = useRoute()
+
+// Define interface for nav links with proper typing
+interface NavLink {
+  name: string
+  path: string
+  icon: IconType
+  description: string
+}
+
+// Navigation links with improved structure
+const navLinks: NavLink[] = [
+  {
+    name: 'Home',
+    path: '/panel-layout',
+    icon: 'files',
+    description: 'Customizable panel layout view'
+  },
+  // {
+  //   name: 'Layout Builder',
+  //   path: '/layout-builder',
+  //   icon: 'expand',
+  //   description: 'Create and edit custom layouts'
+  // },
+  // {
+  //   name: 'Discovery',
+  //   path: '/discovery',
+  //   icon: 'search',
+  //   description: 'Find and connect devices'
+  // },
+  // {
+  //   name: 'UI Components',
+  //   path: '/ui-components',
+  //   icon: 'detailed',
+  //   description: 'UI component showcase'
+  // },
+  {
+    name: 'Settings',
+    path: '/settings',
+    icon: 'gear',
+    description: 'Application settings'
+  }
+]
+
+// Layout functionality
+const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
+
+// Define LayoutCell and LayoutTemplate interfaces
+interface LayoutCell {
+  id: string;
+  row: number;
+  col: number;
+  rowSpan?: number;
+  colSpan?: number;
+  width?: number;
+}
+
+interface LayoutTemplate {
+  id: string;
+  name: string;
+  rows: number;
+  cols: number;
+  cells: LayoutCell[];
+}
+
+// Static layout templates (copied from StaticLayoutChooser)
+const staticLayouts: LayoutTemplate[] = [
+  {
+    id: '2x2',
+    name: '2x2 Grid',
+    rows: 2,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0 },
+      { id: 'cell-2', row: 0, col: 1 },
+      { id: 'cell-3', row: 1, col: 0 },
+      { id: 'cell-4', row: 1, col: 1 },
+    ]
+  },
+  {
+    id: '1x2',
+    name: '1x2 Grid',
+    rows: 1,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0 },
+      { id: 'cell-2', row: 0, col: 1 },
+    ]
+  },
+  {
+    id: '3x2',
+    name: '3x2 Grid',
+    rows: 3,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0 },
+      { id: 'cell-2', row: 0, col: 1 },
+      { id: 'cell-3', row: 1, col: 0 },
+      { id: 'cell-4', row: 1, col: 1 },
+      { id: 'cell-5', row: 2, col: 0 },
+      { id: 'cell-6', row: 2, col: 1 },
+    ]
+  },
+  {
+    id: 'hybrid-50',
+    name: 'Hybrid 50/50',
+    rows: 2,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0, rowSpan: 2, colSpan: 1 },
+      { id: 'cell-2', row: 0, col: 1 },
+      { id: 'cell-3', row: 1, col: 1 },
+    ]
+  },
+  {
+    id: 'hybrid-60',
+    name: 'Hybrid 60/40',
+    rows: 2,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0, rowSpan: 2, colSpan: 1, width: 60 },
+      { id: 'cell-2', row: 0, col: 1, width: 40 },
+      { id: 'cell-3', row: 1, col: 1, width: 40 },
+    ]
+  },
+]
+
+function selectStaticLayout(layoutId: string) {
+  const layout = staticLayouts.find((l) => l.id === layoutId)
+  if (!layout) return
+  
+  // Create a unique ID for the new layout
+  const newLayoutId = `static-${layout.id}-${Date.now()}`
+  
+  // Handle layout creation based on layout type
+  const isHybridLayout = layoutId.startsWith('hybrid-');
+  let gridLayout;
+  
+  if (isHybridLayout) {
+    // Get hybrid layout with positions
+    const hybridLayoutResult = createHybridLayout(layout);
+    gridLayout = {
+      id: newLayoutId,
+      name: layout.name,
+      description: layout.name,
+      layouts: {
+        desktop: {
+          rows: hybridLayoutResult.rows,
+          panelIds: hybridLayoutResult.panelIds
+        },
+        tablet: {
+          rows: hybridLayoutResult.rows,
+          panelIds: hybridLayoutResult.panelIds
+        },
+        mobile: {
+          rows: hybridLayoutResult.rows,
+          panelIds: hybridLayoutResult.panelIds
+        }
+      },
+      isDefault: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+  } else {
+    // Regular grid layout
+    gridLayout = {
+      id: newLayoutId,
+      name: layout.name,
+      description: layout.name,
+      layouts: {
+        desktop: createViewportLayout(layout),
+        tablet: createViewportLayout(layout),
+        mobile: createViewportLayout(layout)
+      },
+      isDefault: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+  }
+  
+  // First add the layout to the store
+  layoutStore.addGridLayout(gridLayout)
+  
+  // Clear the current layout first (to force reactivity)
+  layoutStore.setCurrentLayout('')
+  
+  // Use setTimeout to ensure DOM updates between changes
+  setTimeout(() => {
+    // Then set the new layout as current
+    layoutStore.setCurrentLayout(gridLayout.id)
+    currentLayoutId.value = gridLayout.id
+    
+    // Force a window resize event to ensure layout container updates
+    window.dispatchEvent(new Event('resize'))
+  }, 10)
+}
+
+// Create a viewport layout from a static template
+function createViewportLayout(layout: LayoutTemplate) {
+  // Special handling for hybrid layouts
+  if (layout.id === 'hybrid-50' || layout.id === 'hybrid-60') {
+    return createHybridLayout(layout)
+  }
+  
+  // For regular grid layouts
+  return {
+    rows: convertStaticToRows(layout),
+    panelIds: layout.cells.map(cell => cell.id)
+  }
+}
+
+// Special handler for hybrid layouts
+function createHybridLayout(layout: LayoutTemplate) {
+  console.log('Creating hybrid layout for', layout.id)
+  
+  const spanningCell = layout.cells.find(cell => cell.rowSpan === 2)
+  const topRightCell = layout.cells.find(cell => cell.row === 0 && cell.col === 1)
+  const bottomRightCell = layout.cells.find(cell => cell.row === 1 && cell.col === 1)
+  
+  if (!spanningCell || !topRightCell || !bottomRightCell) {
+    console.error('Invalid hybrid layout structure')
+    return {
+      rows: convertStaticToRows(layout),
+      panelIds: layout.cells.map(cell => cell.id)
+    }
+  }
+  
+  // Create more explicit types for the row structure
+  type LayoutCellWithDevice = {
+    id: string;
+    deviceType: string | null;
+    name: string;
+    width: number;
+    priority: 'primary' | 'secondary' | 'tertiary';
+  }
+  
+  type LayoutRow = {
+    id: string;
+    cells: LayoutCellWithDevice[];
+    height: number;
+  }
+  
+  const leftWidth = layout.id === 'hybrid-60' ? 60 : 50;
+  const rightWidth = layout.id === 'hybrid-60' ? 40 : 50;
+  
+  const rows: LayoutRow[] = [
+    {
+      id: `row-1-${layout.id}`,
+      cells: [
+        {
+          id: spanningCell.id,
+          deviceType: 'camera',
+          name: 'Camera',
+          width: leftWidth,
+          priority: 'primary'
+        },
+        {
+          id: topRightCell.id,
+          deviceType: 'telescope',
+          name: 'Telescope',
+          width: rightWidth,
+          priority: 'primary'
+        }
+      ],
+      height: 50
+    },
+    {
+      id: `row-2-${layout.id}`,
+      cells: [
+        // This cell is rendered but invisible, keeping this for layout structure
+        {
+          id: 'hidden-cell',
+          deviceType: null,
+          name: 'Hidden', 
+          width: leftWidth,
+          priority: 'secondary'
+        },
+        {
+          id: bottomRightCell.id,
+          deviceType: 'focuser',
+          name: 'Focuser',
+          width: rightWidth,
+          priority: 'secondary'
+        }
+      ],
+      height: 50
+    }
+  ]
+  
+  return {
+    rows: rows,
+    panelIds: [spanningCell.id, topRightCell.id, bottomRightCell.id]
+  }
+}
+
+// Convert static layout to row-based format
+function convertStaticToRows(layout: LayoutTemplate) {
+  // Get the max row and col values to determine grid size
+  const maxRow = Math.max(...layout.cells.map(cell => cell.row))
+  
+  // Group cells by row
+  const rowGroups: Record<number, LayoutCell[]> = {}
+  layout.cells.forEach(cell => {
+    if (!rowGroups[cell.row]) {
+      rowGroups[cell.row] = []
+    }
+    rowGroups[cell.row].push(cell)
+  })
+  
+  // Create rows with equal height
+  const rowHeight = 100 / (maxRow + 1)
+  
+  // Cell type conversion to match expected layout format
+  type LayoutCellWithDevice = {
+    id: string;
+    deviceType: string | null;
+    name: string;
+    width: number;
+    priority: 'primary' | 'secondary' | 'tertiary';
+  }
+  
+  type LayoutRow = {
+    id: string;
+    cells: LayoutCellWithDevice[];
+    height: number;
+  }
+  
+  // Create proper rows
+  const rows: LayoutRow[] = []
+  Object.entries(rowGroups).forEach(([rowIdx, cells]) => {
+    const rowCells: LayoutCellWithDevice[] = cells.map(cell => {
+      // Calculate equal width for cells
+      const cellWidth = 100 / cells.length
+      
+      // Convert cell
+      return {
+        id: cell.id,
+        deviceType: null, // We'll assign devices later
+        name: `Cell ${cell.id}`,
+        width: cell.width || cellWidth,
+        priority: 'primary'
+      }
+    })
+    
+    rows.push({
+      id: `row-${parseInt(rowIdx) + 1}-${layout.id}`,
+      cells: rowCells,
+      height: rowHeight
+    })
+  })
+  
+  return rows
+}
+
+// Toggle between dark and light mode
+function toggleDarkMode() {
+  uiStore.isDarkMode = !uiStore.isDarkMode
+  if (uiStore.isDarkMode) {
+    document.documentElement.classList.add('dark-theme')
+  } else {
+    document.documentElement.classList.remove('dark-theme')
+  }
+  localStorage.setItem('dark-theme-preference', uiStore.isDarkMode.toString())
+}
+
+// Responsive breakpoints
+const isSmallScreen = ref(false)
+const isMobileDevice = ref(false)
+
+// Check screen size on mount and when window resizes
+function updateScreenSize() {
+  isSmallScreen.value = window.innerWidth < 768
+  isMobileDevice.value = window.innerWidth < 480
+}
+
+onMounted(() => {
+  updateScreenSize()
+  window.addEventListener('resize', updateScreenSize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateScreenSize)
+})
+
+// Active link computation
+const isActiveLink = (path: string) => {
+  return route.path.startsWith(path)
+}
+
+// Layout modal control
+const showLayoutModal = ref(false)
+
+function openLayoutModal() {
+  showLayoutModal.value = true
+}
+
+function closeLayoutModal() {
+  showLayoutModal.value = false
+}
+
+function handleStaticLayoutClick(layoutId: string) {
+  selectStaticLayout(layoutId)
+  closeLayoutModal()
+}
+</script>
+
+<template>
+  <div class="aw-navbar" data-testid="navbar">
+    <!-- Left navigation section -->
+    <div class="aw-navbar__section aw-navbar__section--left">
+      <div class="aw-navbar__logo">
+        <RouterLink to="/">
+          <img src="/favicon.svg" alt="Alpaca Web Logo" class="aw-navbar__logo-img" />
+        </RouterLink>
+      </div>
+
+      <!-- Navigation links -->
+      <nav class="aw-navbar__nav" data-testid="nav-links">
+        <RouterLink 
+          v-for="link in navLinks" 
+          :key="link.path" 
+          :to="link.path" 
+          class="aw-navbar__link"
+          :class="{ 'aw-navbar__link--active': isActiveLink(link.path) }"
+          :data-testid="`nav-link-${link.name.toLowerCase()}`"
+        >
+          <Icon :type="link.icon" />
+          <span v-if="!isSmallScreen">{{ link.name }}</span>
+        </RouterLink>
+      </nav>
+    </div>
+
+    <!-- Center section -->
+    <div class="aw-navbar__section aw-navbar__section--center">
+      <!-- Layout selection for simple mode -->
+      <div class="aw-navbar__layout-control">
+        <button 
+          class="aw-navbar__layout-button"
+          data-testid="layout-button"
+          @click="openLayoutModal"
+        >
+          <Icon type="expand" />
+          <span>Choose Layout</span>
+        </button>
+        
+        <!-- Layout select modal -->
+        <div v-if="showLayoutModal" class="aw-navbar__layout-modal-overlay" @click.self="closeLayoutModal">
+          <div class="aw-navbar__layout-modal">
+            <div class="aw-navbar__layout-modal-header">
+              <h3>Select a Layout</h3>
+              <button class="aw-navbar__layout-modal-close" @click="closeLayoutModal">×</button>
+            </div>
+            <div class="aw-navbar__layout-modal-grid">
+              <div 
+                v-for="layout in staticLayouts" 
+                :key="layout.id"
+                class="aw-navbar__layout-card"
+                @click="handleStaticLayoutClick(layout.id)"
+              >
+                <div
+class="aw-navbar__layout-preview" 
+                  :style="{
+                    display: 'grid',
+                    gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
+                    gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : 'repeat(2, 1fr)'
+                  }"
+                >
+                  <div
+                    v-for="cell in layout.cells"
+                    :key="cell.id"
+                    class="aw-navbar__layout-cell"
+                    :style="{
+                      gridRow: `${cell.row + 1} / span ${cell.rowSpan || 1}`,
+                      gridColumn: `${cell.col + 1} / span ${cell.colSpan || 1}`
+                    }"
+                  ></div>
+                </div>
+                <div class="aw-navbar__layout-name">{{ layout.name }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right section with actions -->
+    <div class="aw-navbar__section aw-navbar__section--right">
+      <!-- Device connection indicator -->
+      <div class="aw-navbar__device-indicator" data-testid="device-indicator">
+        <DiscoveryIndicator />
+      </div>
+
+      <!-- Dark mode toggle -->
+      <button 
+        class="aw-navbar__theme-toggle" 
+        data-testid="theme-toggle"
+        @click="toggleDarkMode"
+      >
+        <Icon :type="uiStore.isDarkMode ? 'sun' : 'moon'" />
+      </button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.aw-navbar {
+  height: var(--header-height, 60px);
+  background-color: var(--aw-panel-menu-bar-bg-color);
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  color: var(--aw-panel-menu-bar-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--aw-spacing-md);
+  box-shadow: var(--aw-shadow-sm);
+  z-index: 10;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.aw-navbar__section {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-md);
+}
+
+.aw-navbar__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--aw-panel-menu-bar-color);
+}
+
+.aw-navbar__logo-img {
+  width: 40px;
+  height: 40px;
+}
+
+.aw-navbar__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-sm);
+}
+
+.aw-navbar__link {
+  color: var(--aw-panel-menu-bar-color);
+  text-decoration: none;
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+  border-radius: var(--aw-border-radius-md);
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-sm);
+  font-size: var(--aw-font-size-sm, 0.875rem);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.aw-navbar__link:hover {
+  background-color: var(--aw-panel-hover-bg-color);
+  transform: translateY(-1px);
+}
+
+.aw-navbar__link--active {
+  background-color: var(--aw-color-primary-700);
+  color: var(--aw-panel-resize-color);
+  box-shadow: var(--aw-shadow-sm);
+}
+
+.aw-navbar__link-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.9;
+}
+
+/* Layout control styles */
+.aw-navbar__layout-control {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-xs);
+  margin-left: var(--aw-spacing-sm);
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  background-color: var(--aw-panel-hover-bg-color);
+  border-radius: var(--aw-border-radius-md);
+}
+
+.aw-navbar__layout-button {
+  background: none;
+  border: none;
+  color: var(--aw-panel-menu-bar-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--aw-border-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.aw-navbar__layout-button:hover {
+  background-color: var(--aw-panel-content-bg-color);
+}
+
+.aw-navbar__layout-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.aw-navbar__layout-modal {
+  background: var(--aw-panel-bg-color, #222);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  padding: 2rem 2.5rem 2rem 2.5rem;
+  min-width: 350px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.aw-navbar__layout-modal-header {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--aw-color-primary-500, #4a7adc);
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+}
+.aw-navbar__layout-modal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+}
+.aw-navbar__layout-card {
+  background: var(--aw-panel-content-bg-color, #333);
+  border-radius: 8px;
+  padding: 1rem;
+  width: 180px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1.5px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.aw-navbar__layout-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  border-color: var(--aw-color-primary-500, #4a7adc);
+}
+.aw-navbar__layout-name {
+  font-weight: 600;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  color: var(--aw-text-color, #fff);
+}
+.aw-navbar__layout-preview {
+  display: grid;
+  gap: 0;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  margin: 0 auto;
+  width: 120px;
+  aspect-ratio: 3 / 2;
+}
+.aw-navbar__layout-cell {
+  background: var(--aw-panel-content-bg-color, #e9e9e9);
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid #ddd;
+  border-right: none;
+  border-bottom: none;
+  flex-direction: column;
+}
+.aw-navbar__layout-cell:last-child,
+.aw-navbar__layout-cell[style*='grid-column: 2 / span 1'] {
+  border-right: 1px solid #ddd;
+}
+.aw-navbar__layout-cell[style*='grid-row: 2 / span 1'] {
+  border-bottom: 1px solid #ddd;
+}
+</style>

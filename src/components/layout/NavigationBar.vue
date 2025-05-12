@@ -643,7 +643,6 @@ function handleStaticLayoutClick(layoutId: string) {
         </RouterLink>
         <!-- Layout Controls (between Home and Settings) -->
         <div class="aw-navigation-bar__layout-controls">
-          <template v-if="uiStore.layoutSelectionMode === 'simple'">
             <button class="aw-button aw-button--primary" @click="openLayoutModal">Choose Layout</button>
             <div v-if="showLayoutModal" class="layout-modal-overlay">
               <div class="layout-modal">
@@ -677,30 +676,6 @@ function handleStaticLayoutClick(layoutId: string) {
                 </div>
               </div>
             </div>
-          </template>
-          <template v-else>
-            <select
-              v-model="currentLayoutId"
-              class="aw-navigation-bar__layout-select"
-              :title="'Current layout: ' + (availableLayouts.find(l => l.id === currentLayoutId)?.name || 'Default')"
-              @change="changeLayout(currentLayoutId)"
-            >
-              <option v-for="layout in availableLayouts" :key="layout.id" :value="layout.id">
-                {{ layout.name }}{{ layout.isDefault ? ' ★' : '' }}
-              </option>
-            </select>
-            <div class="aw-navigation-bar__layout-actions">
-              <button class="aw-navigation-bar__icon-button" title="Set as default layout" @click="setAsDefaultLayout">
-                <span class="aw-navigation-bar__icon">⭐</span>
-              </button>
-              <button class="aw-navigation-bar__icon-button" title="Edit layouts" @click="openLayoutBuilder">
-                <span class="aw-navigation-bar__icon">✏️</span>
-              </button>
-              <button class="aw-navigation-bar__icon-button" title="Delete this layout" @click="deleteCurrentLayout">
-                <span class="aw-navigation-bar__icon">🗑️</span>
-              </button>
-            </div>
-          </template>
         </div>
       </div>
     </div>

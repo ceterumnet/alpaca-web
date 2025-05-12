@@ -36,9 +36,6 @@ export const useUIPreferencesStore = defineStore('uiPreferences', () => {
   // Dark mode preference (extending existing functionality)
   const isDarkMode = ref(true)
 
-  // Layout selection mode: 'simple' or 'advanced'
-  const layoutSelectionMode = ref<'simple' | 'advanced'>((localStorage.getItem('layout-selection-mode') as 'simple' | 'advanced') || 'advanced')
-
   // Set the global UI mode
   function setGlobalUIMode(mode: UIMode) {
     globalUIMode.value = mode
@@ -130,24 +127,17 @@ export const useUIPreferencesStore = defineStore('uiPreferences', () => {
     // Keep dark mode as is
   }
 
-  function setLayoutSelectionMode(mode: 'simple' | 'advanced') {
-    layoutSelectionMode.value = mode
-    localStorage.setItem('layout-selection-mode', mode)
-  }
-
   return {
     globalUIMode,
     deviceModePreferences,
     isSidebarVisible,
     isDarkMode,
-    layoutSelectionMode,
     setGlobalUIMode,
     setDeviceUIMode,
     getDeviceUIMode,
     toggleSidebar,
     toggleDarkMode,
     initializeDarkMode,
-    resetUIPreferences,
-    setLayoutSelectionMode
+    resetUIPreferences
   }
 })
