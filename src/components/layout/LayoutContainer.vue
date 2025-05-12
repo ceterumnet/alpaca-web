@@ -122,6 +122,7 @@ const currentPositions = computed(() => {
         :style="getPanelStyle(position)"
         :data-panel-id="position.panelId"
         :data-position="`${position.panelId} cell`"
+        :data-device-type="position.deviceType"
       >
         <!-- Use slot if provided, otherwise fall back to BasePanel -->
         <slot :name="position.panelId" :position="position">        

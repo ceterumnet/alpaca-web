@@ -21,6 +21,7 @@ export interface PanelPosition {
   height: number
   minWidth?: number
   minHeight?: number
+  deviceType?: string // Type of device assigned to this panel position
 }
 
 /**

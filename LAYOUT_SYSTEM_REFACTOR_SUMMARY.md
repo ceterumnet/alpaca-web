@@ -64,11 +64,11 @@
 
 - **Layout List Inconsistency**: After selecting a simple layout and switching back to advanced mode, the simple layout appears in the list of layouts in advanced mode.
 - **Panel Content**: Panels currently do not display device content properly.
+  - Need to do a deep analysis on
 - **Layout Rendering Issues**: Several layout rendering problems persist.
   - Notes: I think that we need to look at aw-layout-container_grid and the grid-template-rows css.
-  - **1x2 Layout**: The cells are only rendering to half of the available screen real estate
-  - **2x2 Layout**: 3 cells have annotations, 1 cell is missing annotations
-  - **3x2 Layout**: 3 cells are annotated, but bottom 2 cells are very short
+  - **1x2 Layout**: The cells are only rendering to half of the available screen real estate - I think this is related to the grid-template-rows CSS value
+  - **3x2 Layout**: The bottom 2 cells are very short
 - **Layout Store Issues**: Everytime a layout is selected, it creates an entry in the drop down for the simple layout selection
 
 ## Implemented Fixes

@@ -308,6 +308,16 @@ const handleDeviceChange = (deviceType: string, deviceId: string) => {
       // NOTE: Auto-connect functionality removed due to type compatibility issues
       // This should be handled elsewhere in the UI where the user can explicitly connect
     }
+    
+    // When device is changed, update all panels using this device type
+    if (currentDeviceLayout.value) {
+      currentDeviceLayout.value.positions.forEach(position => {
+        if (position.deviceType === deviceType) {
+          console.log(`Updating all panels with type ${deviceType} to use device ${deviceId}`);
+          // The actual device ID is managed in deviceMap, no need to update position
+        }
+      });
+    }
   }
 }
 
@@ -370,6 +380,15 @@ function handleStaticLayoutSave(layout: LayoutTemplate) {
   // Save the chosen layout as a new grid layout and switch to it
   const layoutId = `static-${layout.id}-${Date.now()}`
   const desktopRows = convertStaticToRows(layout)
+  
+  // Extract device assignments from the cells
+  const deviceAssignments = layout.cells.reduce((acc, cell) => {
+    if (cell.deviceType) {
+      acc[cell.id] = cell.deviceType;
+    }
+    return acc;
+  }, {} as Record<string, string>);
+  
   // For demo, use the same layout for all viewports
   const gridLayout: GridLayoutDefinition = {
     id: layoutId,
@@ -393,6 +412,15 @@ function handleStaticLayoutSave(layout: LayoutTemplate) {
     createdAt: Date.now(),
     updatedAt: Date.now()
   }
+  
+  // Update device map based on cell assignments
+  Object.entries(deviceAssignments).forEach(([cellId, deviceType]) => {
+    if (deviceType in deviceMap.value) {
+      // Store the assigned device type in the cell ID -> device type mapping
+      console.log(`Assigning device type ${deviceType} to cell ${cellId}`);
+    }
+  });
+  
   layoutStore.addGridLayout(gridLayout)
   layoutStore.setCurrentLayout(layoutId)
   currentLayoutId.value = layoutId
@@ -418,6 +446,47 @@ function convertStaticToRows(layout: LayoutTemplate): LayoutRow[] {
   }
   return rows
 }
+
+// Now let's make sure the deviceType is propagated to the panel positions
+// We need to add a function to ensure device types are passed correctly
+const ensureDeviceTypesInPositions = () => {
+  if (!currentDeviceLayout.value) return;
+  
+  // For each panel position, set the deviceType from the corresponding grid cell
+  if (layoutStore.currentGridLayout) {
+    const gridRows = layoutStore.currentGridLayout.layouts[layoutStore.currentViewport].rows;
+    
+    // Extract all cells from all rows
+    const cells = gridRows.flatMap(row => row.cells);
+    
+    // For each position, find the matching cell by ID and copy its deviceType
+    currentDeviceLayout.value.positions.forEach(position => {
+      const matchingCell = cells.find(cell => cell.id === position.panelId);
+      if (matchingCell) {
+        // Copy the deviceType from the cell to the position
+        position.deviceType = matchingCell.deviceType || undefined;
+      }
+    });
+  }
+};
+
+// Watch for layout changes to apply the device type updates
+watch(
+  () => layoutStore.currentLayoutId,
+  () => {
+    // Wait for Vue to update the DOM
+    nextTick(() => {
+      ensureDeviceTypesInPositions();
+    });
+  }
+);
+
+// Also call it on mount to apply to current layout
+onMounted(() => {
+  nextTick(() => {
+    ensureDeviceTypesInPositions();
+  });
+});
 </script>
 
 <template>
@@ -455,28 +524,32 @@ function convertStaticToRows(layout: LayoutTemplate): LayoutRow[] {
           />
         </template>
 
-        <!-- Hybrid Layout Cell Slots -->
-        <template #cell-1="{ position }">
-          <div v-if="position" class="hybrid-panel" :class="'hybrid-cell-1'">
-            <h3>Cell 1</h3>
-            <p>Left Panel ({{ position.width }} columns wide)</p>
-            <p>This panel spans {{ position.height }} rows</p>
-            <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
-          </div>
-        </template>
-
-        <template #cell-2="{ position }">
-          <div v-if="position" class="hybrid-panel" :class="'hybrid-cell-2'">
-            <h3>Cell 2</h3>
-            <p>Top Right Panel ({{ position.width }} columns wide)</p>
-            <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
-          </div>
-        </template>
-
-        <template #cell-3="{ position }">
-          <div v-if="position" class="hybrid-panel" :class="'hybrid-cell-3'">
-            <h3>Cell 3</h3>
-            <p>Bottom Right Panel ({{ position.width }} columns wide)</p>
+        <!-- Dynamic Cell Slots - for grid layouts -->
+        <template v-for="i in 6" :key="`cell-${i}`" #[`cell-${i}`]="{ position }">
+          <!-- If the cell has a deviceType assigned, render the appropriate panel -->
+          <SimplifiedCameraPanel
+            v-if="position && position.deviceType === 'camera'"
+            :device-id="deviceMap.camera || ''"
+            :title="`Camera ${i}`"
+            @device-change="handleDeviceChange('camera', $event)"
+          />
+          <SimplifiedTelescopePanel
+            v-else-if="position && position.deviceType === 'telescope'"
+            :device-id="deviceMap.telescope || ''"
+            :title="`Telescope ${i}`"
+            @device-change="handleDeviceChange('telescope', $event)"
+          />
+          <SimplifiedFocuserPanel
+            v-else-if="position && position.deviceType === 'focuser'"
+            :device-id="deviceMap.focuser || ''"
+            :title="`Focuser ${i}`"
+            @device-change="handleDeviceChange('focuser', $event)"
+          />
+          <!-- Default cell display if no device type -->
+          <div v-else-if="position" class="hybrid-panel" :class="`hybrid-cell-${i}`">
+            <h3>Cell {{i}}</h3>
+            <p>Width: {{ position.width }} columns</p>
+            <p v-if="position.height > 1">Height: {{ position.height }} rows</p>
             <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
           </div>
         </template>

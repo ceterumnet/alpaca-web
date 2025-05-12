@@ -101,6 +101,18 @@ const cellAssignments = ref<Record<string, string>>({}) // cellId -> deviceType
 function selectTemplate(template: LayoutTemplate) {
   selectedTemplate.value = template
   cellAssignments.value = {}
+  
+  // Pre-assign device types based on cell ID if possible
+  template.cells.forEach((cell, index) => {
+    // For demonstration purposes, assign default device types to first 3 cells if available
+    if (index === 0 && deviceTypes.some(d => d.id === 'camera')) {
+      cellAssignments.value[cell.id] = 'camera';
+    } else if (index === 1 && deviceTypes.some(d => d.id === 'telescope')) {
+      cellAssignments.value[cell.id] = 'telescope';
+    } else if (index === 2 && deviceTypes.some(d => d.id === 'focuser')) {
+      cellAssignments.value[cell.id] = 'focuser';
+    }
+  });
 }
 
 function getDeviceName(deviceType: string) {
