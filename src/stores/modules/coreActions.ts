@@ -17,8 +17,10 @@ import type { AlpacaClient } from '@/api/alpaca/base-client'
 import { createAlpacaClient } from '@/api/AlpacaClient'
 import { isValidStateTransition } from '@/types/device.types'
 
+// IMPORTANT:
 // I do not like this interface, but it is required by the store
 // I would like to refactor this at some point.
+// When we run into issues with "this" not being bound correctly, we need to enhance this interface
 export interface CoreState {
   devices: Map<string, Device>
   devicesArray: Device[]
