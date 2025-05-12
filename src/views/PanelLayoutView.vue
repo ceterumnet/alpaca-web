@@ -546,9 +546,6 @@ watch(() => currentLayoutId.value, () => {
 
 <template>
   <div class="panel-layout-view">
-    <div class="panel-layout-controls">
-      <button class="select-layout-btn" @click="showStaticLayoutSelector">Select Layout</button>
-    </div>
 
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
       <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId">

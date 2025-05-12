@@ -147,7 +147,6 @@ const currentPositions = computed(() => {
 .aw-layout-container__grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: 1fr 1fr; /* Force two equal rows for hybrid layouts */
   grid-auto-rows: minmax(100px, auto);
   grid-auto-flow: dense; /* Help the grid fill in any gaps */
   gap: var(--aw-spacing-sm);

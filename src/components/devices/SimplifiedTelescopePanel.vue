@@ -347,47 +347,6 @@ const openDiscovery = () => {
 
 <template>
   <div class="simplified-panel">
-    <!-- Header with title and device selector -->
-    <div class="panel-header">
-      <h2>{{ props.title }}</h2>
-      <div class="device-selector" @click.stop="toggleDeviceSelector">
-        <span class="device-name">{{ currentDevice?.name || 'Select device' }}</span>
-        <span class="device-toggle">▼</span>
-        
-        <div v-if="showDeviceSelector" class="device-dropdown">
-          <div v-if="availableDevices.length > 0" class="device-list">
-            <div
-              v-for="device in availableDevices"
-              :key="device.id"
-              class="device-item"
-              :class="{ 'device-selected': device.id === selectedDeviceId }"
-              @click.stop="handleDeviceChange(device.id)"
-            >
-              <div class="device-info">
-                <span class="device-item-name">{{ device.name }}</span>
-                <span class="device-item-status" :class="device.isConnected ? 'connected' : 'disconnected'">
-                  {{ device.isConnected ? 'Connected' : 'Disconnected' }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="device-empty">
-            <span>No telescope devices found</span>
-          </div>
-          <div class="device-actions">
-            <button class="discover-button" @click.stop="openDiscovery">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="16" />
-                <line x1="8" y1="12" x2="16" y2="12" />
-              </svg>
-              <span>Discover Devices</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
     <!-- Main panel content with sections -->
     <div class="panel-content">
       <!-- No device selected message -->
@@ -635,7 +594,6 @@ const openDiscovery = () => {
 }
 
 .panel-content {
-  padding: 16px;
   overflow-y: auto;
   flex: 1;
 }
