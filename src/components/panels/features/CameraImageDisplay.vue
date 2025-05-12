@@ -393,7 +393,7 @@ onMounted(() => {
 .aw-camera-image-display__container {
   position: relative;
   width: 100%;
-  background-color: var(--aw-color-neutral-900);
+  background-color: var(--aw-color-neutral-100);
   border-radius: var(--aw-border-radius-md);
   overflow: hidden;
   aspect-ratio: auto;
