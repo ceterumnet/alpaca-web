@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { useLayoutStore } from '@/stores/useLayoutStore'
