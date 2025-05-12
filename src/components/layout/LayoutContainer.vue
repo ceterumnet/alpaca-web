@@ -100,6 +100,12 @@ function getPanelStyle(position: PanelPosition) {
   return style
 }
 
+// Back to standard position handling
+const currentPositions = computed(() => {
+  if (!currentDeviceLayout.value) return [];
+  return currentDeviceLayout.value.positions;
+});
+
 </script>
 
 <template>
@@ -110,12 +116,12 @@ function getPanelStyle(position: PanelPosition) {
   >
     <div v-if="currentLayout && currentDeviceLayout" class="aw-layout-container__grid">
       <div
-        v-for="position in currentDeviceLayout.positions"
+        v-for="position in currentPositions"
         :key="position.panelId"
         class="aw-layout-container__panel"
         :style="getPanelStyle(position)"
         :data-panel-id="position.panelId"
-        :data-position="`(${position.x},${position.y}) ${position.width}x${position.height}`"
+        :data-position="`${position.panelId} cell`"
       >
         <!-- Use slot if provided, otherwise fall back to BasePanel -->
         <slot :name="position.panelId" :position="position">        
@@ -140,6 +146,7 @@ function getPanelStyle(position: PanelPosition) {
 .aw-layout-container__grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: 1fr 1fr; /* Force two equal rows for hybrid layouts */
   grid-auto-rows: minmax(100px, auto);
   grid-auto-flow: dense; /* Help the grid fill in any gaps */
   gap: var(--aw-spacing-sm);
@@ -153,6 +160,10 @@ function getPanelStyle(position: PanelPosition) {
   border-radius: var(--aw-border-radius-sm);
   overflow-y: auto;
   box-shadow: var(--aw-shadow-sm);
+  min-height: 0;
+  min-width: 0;
+  /* Show border for debugging */
+  outline: 1px dashed rgba(255, 255, 255, 0.05);
   
   /* Firefox scrollbar styling */
   scrollbar-width: thin;

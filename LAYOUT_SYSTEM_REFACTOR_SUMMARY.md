@@ -62,21 +62,32 @@
 
 ## Known Issues
 
-- **Settings Save Action**: When switching between simple and advanced modes in the Settings panel, there is no save action to confirm changes.
 - **Layout List Inconsistency**: After selecting a simple layout and switching back to advanced mode, the simple layout appears in the list of layouts in advanced mode.
-- **Panel Content**: Panels currently do not display device content properly. This will be addressed after fixing the panel reactivity issue.
+- **Panel Content**: Panels currently do not display device content properly.
+- **Layout Rendering Issues**: Several layout rendering problems persist.
+  - Notes: I think that we need to look at aw-layout-container_grid and the grid-template-rows css.
+  - **1x2 Layout**: The cells are only rendering to half of the available screen real estate
+  - **2x2 Layout**: 3 cells have annotations, 1 cell is missing annotations
+  - **3x2 Layout**: 3 cells are annotated, but bottom 2 cells are very short
+- **Layout Store Issues**: Everytime a layout is selected, it creates an entry in the drop down for the simple layout selection
 
 ## Implemented Fixes
 
-- **Layout Rendering**: Fixed the reactivity issue when switching between layouts in simple mode. Layouts now update immediately without requiring a page refresh.
+- **Layout Reactivity**: Fixed the reactivity issue when switching between layouts in simple mode. Layouts now update immediately without requiring a page refresh.
 - **Layout Container**: Enhanced the LayoutContainer component to better handle layout changes by adding keys for proper re-rendering.
 - **Component Synchronization**: Improved coordination between the NavigationBar, PanelLayoutView, and LayoutContainer components to ensure consistent layout updates.
-- **Hybrid Layouts**: Fixed issues with hybrid layouts (50/50 and 60/40) where cells spanning multiple rows weren't properly rendered. The layout now correctly matches the thumbnails shown in the modal.
+- **Hybrid Layout Improvements**:
+  - Modified convertStaticToRows function to properly handle cells with rowSpan
+  - Enhanced gridToPositionLayout to track occupied positions
+  - Added special handling for bottom-right cell in hybrid layouts
+  - Added explicit styles and debugging information to improve rendering
+  - Despite these improvements, some rendering issues persist (see Known Issues)
 
 ---
 
 ## Next Steps / Future Improvements
 
+- Address current layout rendering issues across all layout types
 - Add thumbnail previews to the advanced dropdown (optional).
 - Allow editing or extending the set of static layouts.
 - Further decouple device type from layout structure for even more flexibility.

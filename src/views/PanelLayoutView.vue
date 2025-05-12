@@ -454,6 +454,32 @@ function convertStaticToRows(layout: LayoutTemplate): LayoutRow[] {
             @device-change="handleDeviceChange('focuser', $event)"
           />
         </template>
+
+        <!-- Hybrid Layout Cell Slots -->
+        <template #cell-1="{ position }">
+          <div v-if="position" class="hybrid-panel" :class="'hybrid-cell-1'">
+            <h3>Cell 1</h3>
+            <p>Left Panel ({{ position.width }} columns wide)</p>
+            <p>This panel spans {{ position.height }} rows</p>
+            <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+          </div>
+        </template>
+
+        <template #cell-2="{ position }">
+          <div v-if="position" class="hybrid-panel" :class="'hybrid-cell-2'">
+            <h3>Cell 2</h3>
+            <p>Top Right Panel ({{ position.width }} columns wide)</p>
+            <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+          </div>
+        </template>
+
+        <template #cell-3="{ position }">
+          <div v-if="position" class="hybrid-panel" :class="'hybrid-cell-3'">
+            <h3>Cell 3</h3>
+            <p>Bottom Right Panel ({{ position.width }} columns wide)</p>
+            <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+          </div>
+        </template>
       </LayoutContainer>
     </div>
 
@@ -537,5 +563,37 @@ function convertStaticToRows(layout: LayoutTemplate): LayoutRow[] {
 
 .toggle-panel-btn:hover {
   background-color: var(--aw-primary-hover-color, #0066b3);
+}
+
+/* Hybrid panel styles */
+.hybrid-panel {
+  padding: 1rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.hybrid-cell-1 {
+  background-color: rgba(66, 135, 245, 0.15);
+  border-left: 4px solid rgb(66, 135, 245);
+}
+
+.hybrid-cell-2 {
+  background-color: rgba(77, 175, 124, 0.15);
+  border-left: 4px solid rgb(77, 175, 124);
+}
+
+.hybrid-cell-3 {
+  background-color: rgba(255, 159, 67, 0.15);
+  border-left: 4px solid rgb(255, 159, 67);
+}
+
+.panel-coordinates {
+  margin-top: auto;
+  font-size: 0.8rem;
+  color: #888;
 }
 </style>

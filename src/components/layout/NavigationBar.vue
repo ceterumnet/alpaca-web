@@ -398,19 +398,50 @@ function selectStaticLayout(layoutId: string) {
   // Create a unique ID for the new layout
   const newLayoutId = `static-${layout.id}-${Date.now()}`
   
-  // Create the grid layout differently based on the layout type
-  const gridLayout = {
-    id: newLayoutId,
-    name: layout.name,
-    description: layout.name,
-    layouts: {
-      desktop: createViewportLayout(layout),
-      tablet: createViewportLayout(layout),
-      mobile: createViewportLayout(layout)
-    },
-    isDefault: false,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
+  // Handle layout creation based on layout type
+  const isHybridLayout = layoutId.startsWith('hybrid-');
+  let gridLayout;
+  
+  if (isHybridLayout) {
+    // Get hybrid layout with positions
+    const hybridLayoutResult = createHybridLayout(layout);
+    gridLayout = {
+      id: newLayoutId,
+      name: layout.name,
+      description: layout.name,
+      layouts: {
+        desktop: {
+          rows: hybridLayoutResult.rows,
+          panelIds: hybridLayoutResult.panelIds
+        },
+        tablet: {
+          rows: hybridLayoutResult.rows,
+          panelIds: hybridLayoutResult.panelIds
+        },
+        mobile: {
+          rows: hybridLayoutResult.rows,
+          panelIds: hybridLayoutResult.panelIds
+        }
+      },
+      isDefault: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+  } else {
+    // Regular grid layout
+    gridLayout = {
+      id: newLayoutId,
+      name: layout.name,
+      description: layout.name,
+      layouts: {
+        desktop: createViewportLayout(layout),
+        tablet: createViewportLayout(layout),
+        mobile: createViewportLayout(layout)
+      },
+      isDefault: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
   }
   
   // First add the layout to the store
@@ -446,9 +477,18 @@ function createViewportLayout(layout: LayoutTemplate) {
 
 // Special handler for hybrid layouts
 function createHybridLayout(layout: LayoutTemplate) {
+  console.log('Creating hybrid layout for', layout.id)
+  console.log('Layout cells:', layout.cells)
+  
   const spanningCell = layout.cells.find(cell => cell.rowSpan === 2)
   const topRightCell = layout.cells.find(cell => cell.row === 0 && cell.col === 1)
   const bottomRightCell = layout.cells.find(cell => cell.row === 1 && cell.col === 1)
+  
+  console.log('Found cells:', {
+    spanningCell,
+    topRightCell,
+    bottomRightCell
+  })
   
   if (!spanningCell || !topRightCell || !bottomRightCell) {
     console.error('Invalid hybrid layout structure')
@@ -462,45 +502,54 @@ function createHybridLayout(layout: LayoutTemplate) {
   const leftWidth = spanningCell.width || 50
   const rightWidth = 100 - leftWidth
   
-  // Create the rows manually for hybrid layouts
+  // For hybrid layouts, the key is to manually position each cell
+  const rows = [
+    // First row: Left spanning cell + top right cell
+    {
+      id: 'row-1',
+      cells: [
+        // Left spanning cell (spans 2 rows)
+        {
+          id: spanningCell.id,
+          deviceType: 'any',
+          name: spanningCell.id,
+          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+          width: leftWidth,
+          rowSpan: 2 // Preserve rowSpan
+        },
+        // Top right cell
+        {
+          id: topRightCell.id,
+          deviceType: 'any',
+          name: topRightCell.id,
+          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+          width: rightWidth
+        }
+      ],
+      height: 50
+    },
+    // Second row: Contains the bottom right cell only
+    {
+      id: 'row-2',
+      cells: [
+        // Bottom right cell - explicitly positioned in second row
+        {
+          id: bottomRightCell.id,
+          deviceType: 'any',
+          name: bottomRightCell.id,
+          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+          width: rightWidth 
+        }
+      ],
+      height: 50
+    }
+  ]
+  
+  console.log('Created hybrid layout rows:', rows)
+  
   return {
-    rows: [
-      {
-        id: 'row-1',
-        cells: [
-          {
-            id: spanningCell.id,
-            deviceType: 'any',
-            name: spanningCell.id,
-            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
-            width: leftWidth,
-            rowSpan: 2 // Preserve rowSpan
-          },
-          {
-            id: topRightCell.id,
-            deviceType: 'any',
-            name: topRightCell.id,
-            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
-            width: rightWidth
-          }
-        ],
-        height: 50
-      },
-      {
-        id: 'row-2',
-        cells: [
-          {
-            id: bottomRightCell.id,
-            deviceType: 'any',
-            name: bottomRightCell.id,
-            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
-            width: rightWidth
-          }
-        ],
-        height: 50
-      }
-    ],
-    panelIds: layout.cells.map(cell => cell.id)
+    rows,
+    panelIds: [spanningCell.id, topRightCell.id, bottomRightCell.id]
   }
 }
 
