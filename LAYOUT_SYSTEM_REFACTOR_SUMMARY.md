@@ -69,4 +69,16 @@
 
 ---
 
+## Files Involved in the Layout System Refactor
+
+- `src/components/layout/StaticLayoutChooser.vue` — Static layout chooser and thumbnail logic
+- `src/components/layout/NavigationBar.vue` — Main navigation bar, layout control logic, modal overlay for simple mode
+- `src/components/ui/SettingsPanel.vue` — Settings panel, toggle for layout selection mode
+- `src/stores/useUIPreferencesStore.ts` — UI preferences store, layout selection mode persistence
+- `src/views/PanelLayoutView.vue` — Main panel layout view, integration with layout system
+- `src/types/layouts/LayoutDefinition.ts` — Core type definitions for layouts, rows, and cells
+- `LAYOUT_SYSTEM_REFACTOR_SUMMARY.md` — This summary and documentation
+
+---
+
 **This summary reflects the current state of the layout system refactor and simplification as of this update.**
