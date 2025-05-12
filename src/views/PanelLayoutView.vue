@@ -15,7 +15,6 @@ import SimplifiedCameraPanel from '@/components/devices/SimplifiedCameraPanel.vu
 import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePanel.vue'
 import type { GridLayoutDefinition, LayoutRow, LayoutCell as StoreLayoutCell } from '@/types/layouts/LayoutDefinition'
 import SimplifiedFocuserPanel from '@/components/devices/SimplifiedFocuserPanel.vue'
-import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
 import StaticLayoutChooser from '@/components/layout/StaticLayoutChooser.vue'
 
 // Get stores and router
@@ -23,7 +22,6 @@ const layoutStore = useLayoutStore()
 const unifiedStore = useUnifiedStore()
 const router = useRouter()
 const route = useRoute()
-const uiStore = useUIPreferencesStore()
 
 // Layout ID to display - default to 'default'
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
@@ -284,7 +282,7 @@ onMounted(() => {
 })
 
 // Handle device changes from child panels
-const handleDeviceChange = (deviceType: string, deviceId: string) => {
+const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: string) => {
   console.log('PanelLayoutView - handleDeviceChange called:', deviceType, deviceId)
 
   // Normalize to lowercase for consistent mapping
@@ -318,8 +316,27 @@ const handleDeviceChange = (deviceType: string, deviceId: string) => {
         }
       });
     }
+    
+    // If cellId was provided, update cell assignment
+    if (cellId) {
+      cellDeviceAssignments.value[cellId] = deviceId;
+    }
   }
 }
+
+// Track cell-to-device assignments
+const cellDeviceAssignments = ref<Record<string, string>>({});
+
+// Handle device selection for a specific cell
+const assignDeviceToCell = (cellId: string, deviceId: string) => {
+  console.log(`Assigning device ${deviceId} to cell ${cellId}`);
+  cellDeviceAssignments.value[cellId] = deviceId;
+};
+
+// Get all available devices (not filtered by type)
+const allAvailableDevices = computed(() => {
+  return unifiedStore.devicesList.filter(d => !!d.type);
+});
 
 // Open layout builder
 const openLayoutBuilder = () => {
@@ -487,70 +504,105 @@ onMounted(() => {
     ensureDeviceTypesInPositions();
   });
 });
+
+// Show the static layout chooser when appropriate
+const showStaticLayoutSelector = () => {
+  showStaticLayoutChooser.value = true;
+}
+
+// Initialize cell device assignments when layout changes
+watch(() => currentLayoutId.value, () => {
+  // Wait for Vue to update the device layout
+  nextTick(() => {
+    // Initialize cell assignments from the layout if available
+    if (currentDeviceLayout.value && currentDeviceLayout.value.positions) {
+      const initialCellAssignments: Record<string, string> = {};
+      
+      // For each position in the layout
+      currentDeviceLayout.value.positions.forEach(position => {
+        if (position.deviceType && position.panelId) {
+          // Find a connected device of this type
+          const matchingDevice = unifiedStore.devicesList.find(
+            d => d.type?.toLowerCase() === position.deviceType?.toLowerCase() && d.isConnected
+          );
+          
+          if (matchingDevice) {
+            // Assign this device to the cell
+            initialCellAssignments[position.panelId] = matchingDevice.id;
+            console.log(`Assigning device ${matchingDevice.id} to cell ${position.panelId} from layout`);
+          }
+        }
+      });
+      
+      // Merge with any existing assignments (new ones take precedence)
+      cellDeviceAssignments.value = {
+        ...cellDeviceAssignments.value,
+        ...initialCellAssignments
+      };
+    }
+  });
+}, { immediate: true });
 </script>
 
 <template>
   <div class="panel-layout-view">
+    <div class="panel-layout-controls">
+      <button class="select-layout-btn" @click="showStaticLayoutSelector">Select Layout</button>
+    </div>
 
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
       <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId">
-        <!-- Camera Panel Slot -->
-        <template #camera="{ position }">
-          <SimplifiedCameraPanel
-            v-if="position"
-            :device-id="deviceMap.camera || ''"
-            title="Camera"
-            @device-change="handleDeviceChange('camera', $event)"
-          />
-        </template>
-
-        <!-- Telescope Panel Slot -->
-        <template #telescope="{ position }">
-          <SimplifiedTelescopePanel 
-            v-if="position"
-            :device-id="deviceMap.telescope || ''"
-            title="Telescope"
-            @device-change="handleDeviceChange('telescope', $event)"
-          />
-        </template>
-
-        <!-- Focuser Panel Slot -->
-        <template #focuser="{ position }">
-          <SimplifiedFocuserPanel
-            v-if="position"
-            :device-id="deviceMap.focuser || ''"
-            title="Focuser"
-            @device-change="handleDeviceChange('focuser', $event)"
-          />
-        </template>
-
-        <!-- Dynamic Cell Slots - for grid layouts -->
+        <!-- Dynamic Cell Slots - Generic device renderer -->
         <template v-for="i in 6" :key="`cell-${i}`" #[`cell-${i}`]="{ position }">
-          <!-- If the cell has a deviceType assigned, render the appropriate panel -->
-          <SimplifiedCameraPanel
-            v-if="position && position.deviceType === 'camera'"
-            :device-id="deviceMap.camera || ''"
-            :title="`Camera ${i}`"
-            @device-change="handleDeviceChange('camera', $event)"
-          />
-          <SimplifiedTelescopePanel
-            v-else-if="position && position.deviceType === 'telescope'"
-            :device-id="deviceMap.telescope || ''"
-            :title="`Telescope ${i}`"
-            @device-change="handleDeviceChange('telescope', $event)"
-          />
-          <SimplifiedFocuserPanel
-            v-else-if="position && position.deviceType === 'focuser'"
-            :device-id="deviceMap.focuser || ''"
-            :title="`Focuser ${i}`"
-            @device-change="handleDeviceChange('focuser', $event)"
-          />
-          <!-- Default cell display if no device type -->
-          <div v-else-if="position" class="hybrid-panel" :class="`hybrid-cell-${i}`">
-            <h3>Cell {{i}}</h3>
-            <p>Width: {{ position.width }} columns</p>
-            <p v-if="position.height > 1">Height: {{ position.height }} rows</p>
-            <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+          <div v-if="position" class="universal-panel-container">
+            <div class="panel-header">
+              <h3>Cell {{position.panelId}}</h3>
+              
+              <!-- Universal device selector dropdown with proper event typing -->
+              <select 
+                :value="cellDeviceAssignments[position.panelId]" 
+                class="device-selector-dropdown"
+                @change="(e) => assignDeviceToCell(position.panelId, (e.target as HTMLSelectElement).value)"
+              >
+                <option value="">Select Device</option>
+                <option v-for="device in allAvailableDevices" :key="device.id" :value="device.id">
+                  {{ device.name }} ({{ device.type }})
+                </option>
+              </select>
+            </div>
+            
+            <div class="panel-content">
+              <!-- If a device is selected for this cell, render the appropriate panel -->
+              <SimplifiedCameraPanel 
+                v-if="cellDeviceAssignments[position.panelId] && 
+                     unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'camera'"
+                :device-id="cellDeviceAssignments[position.panelId]"
+                :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
+                @device-change="(newDeviceId) => handleDeviceChange('camera', newDeviceId, position.panelId)"
+              />
+              
+              <SimplifiedTelescopePanel 
+                v-else-if="cellDeviceAssignments[position.panelId] && 
+                         unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'telescope'"
+                :device-id="cellDeviceAssignments[position.panelId]"
+                :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
+                @device-change="(newDeviceId) => handleDeviceChange('telescope', newDeviceId, position.panelId)"
+              />
+              
+              <SimplifiedFocuserPanel 
+                v-else-if="cellDeviceAssignments[position.panelId] && 
+                         unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'focuser'"
+                :device-id="cellDeviceAssignments[position.panelId]"
+                :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
+                @device-change="(newDeviceId) => handleDeviceChange('focuser', newDeviceId, position.panelId)"
+              />
+              
+              <!-- Empty state when no device selected -->
+              <div v-else class="empty-panel-state">
+                <p>No device selected for this panel</p>
+                <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+              </div>
+            </div>
           </div>
         </template>
       </LayoutContainer>
@@ -559,6 +611,14 @@ onMounted(() => {
     <div v-else class="no-layout">
       <p>No layout configured. Select or create a layout to continue.</p>
       <button class="create-layout-btn" @click="openLayoutBuilder">Create New Layout</button>
+    </div>
+    
+    <!-- Static Layout Chooser Modal -->
+    <div v-if="showStaticLayoutChooser" class="static-layout-modal">
+      <div class="static-layout-modal-content">
+        <button class="close-modal-btn" @click="showStaticLayoutChooser = false">×</button>
+        <StaticLayoutChooser @save="handleStaticLayoutSave" @cancel="showStaticLayoutChooser = false" />
+      </div>
     </div>
   </div>
 </template>
@@ -668,5 +728,114 @@ onMounted(() => {
   margin-top: auto;
   font-size: 0.8rem;
   color: #888;
+}
+
+.universal-panel-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--aw-panel-header-bg-color, #333);
+  padding: 8px;
+  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.device-selector-dropdown {
+  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  color: var(--aw-text-color, #f0f0f0);
+  border: 1px solid var(--aw-panel-border-color, #444);
+  border-radius: 4px;
+  padding: 4px;
+  font-size: 0.8rem;
+  max-width: 180px;
+}
+
+.panel-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.empty-panel-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 1rem;
+  color: var(--aw-text-secondary-color, #aaa);
+  text-align: center;
+}
+
+.panel-coordinates {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.select-layout-btn {
+  background-color: var(--aw-primary-color, #0077cc);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.select-layout-btn:hover {
+  background-color: var(--aw-primary-hover-color, #0066b3);
+}
+
+.static-layout-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.static-layout-modal-content {
+  background-color: var(--aw-panel-bg-color, #2a2a2a);
+  border-radius: 8px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow: auto;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.close-modal-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--aw-text-color, #f0f0f0);
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.close-modal-btn:hover {
+  color: var(--aw-primary-color, #0077cc);
 }
 </style>

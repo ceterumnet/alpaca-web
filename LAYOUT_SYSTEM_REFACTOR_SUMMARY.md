@@ -2,8 +2,8 @@
 
 ## Goals
 
-- Provide a user-friendly way to select from a set of static, pre-defined layouts (“Simple” mode).
-- Retain the existing advanced/custom layout builder (“Advanced” mode).
+- Provide a user-friendly way to select from a set of static, pre-defined layouts ("Simple" mode).
+- Retain the existing advanced/custom layout builder ("Advanced" mode).
 - Allow users to toggle between these modes in the application settings.
 - Ensure the layout selection UI is clean, modern, and integrated into the main navigation bar.
 - Decouple device assignment from the layout selection process (panels handle device selection).
@@ -38,9 +38,17 @@
 ### 4. **PanelLayoutView & Device Assignment**
 
 - No extra layout controls or modals in the main panel view.
-- Device assignment is handled by the panels themselves, not the layout chooser.
+- Device assignment is handled through universal device selectors in each panel.
+- Each cell in the layout can display any type of device panel based on user selection.
 
-### 5. **Type Safety & Linting**
+### 5. **Universal Panel System**
+
+- Added a flexible panel system that dynamically renders the appropriate component based on device type.
+- Each cell now features a device selector dropdown with all available devices.
+- Panels automatically adapt to show the correct device interface based on the selected device.
+- Device selections are persisted when switching between layouts.
+
+### 6. **Type Safety & Linting**
 
 - All new code is type-safe and linter-clean.
 - Interfaces for layouts and cells are used throughout.
@@ -57,25 +65,33 @@
   - Click a layout to apply it instantly.
 - **Advanced Mode**:
   - Use the dropdown and actions in the Nav bar to manage custom layouts.
+- **Device Selection**:
+  - Each panel has its own device selector dropdown.
+  - Select any device from the dropdown to display its control interface.
+  - Device types are automatically detected and the appropriate panel component is rendered.
 
 ---
 
 ## Known Issues
 
 - **Layout List Inconsistency**: After selecting a simple layout and switching back to advanced mode, the simple layout appears in the list of layouts in advanced mode.
-- **Panel Content**: Panels currently do not display device content properly.
-  - Need to do a deep analysis on
 - **Layout Rendering Issues**: Several layout rendering problems persist.
-  - Notes: I think that we need to look at aw-layout-container_grid and the grid-template-rows css.
-  - **1x2 Layout**: The cells are only rendering to half of the available screen real estate - I think this is related to the grid-template-rows CSS value
+  - Notes: We need to look at aw-layout-container_grid and the grid-template-rows css.
+  - **1x2 Layout**: The cells are only rendering to half of the available screen real estate - likely related to the grid-template-rows CSS value
   - **3x2 Layout**: The bottom 2 cells are very short
-- **Layout Store Issues**: Everytime a layout is selected, it creates an entry in the drop down for the simple layout selection
+- **Layout Store Issues**: Every time a layout is selected, it creates an entry in the drop down for the simple layout selection
 
 ## Implemented Fixes
 
 - **Layout Reactivity**: Fixed the reactivity issue when switching between layouts in simple mode. Layouts now update immediately without requiring a page refresh.
 - **Layout Container**: Enhanced the LayoutContainer component to better handle layout changes by adding keys for proper re-rendering.
 - **Component Synchronization**: Improved coordination between the NavigationBar, PanelLayoutView, and LayoutContainer components to ensure consistent layout updates.
+- **Panel Content Display**: Implemented a universal device selection system that allows any cell to display any type of device panel:
+  - Added device type propagation from cells to panel positions
+  - Created cell-to-device assignments to track which devices are shown in which cells
+  - Implemented automatic device initialization based on layout device types
+  - Added dynamic panel rendering based on device type
+  - Improved empty state handling for unassigned cells
 - **Hybrid Layout Improvements**:
   - Modified convertStaticToRows function to properly handle cells with rowSpan
   - Enhanced gridToPositionLayout to track occupied positions
@@ -92,6 +108,8 @@
 - Allow editing or extending the set of static layouts.
 - Further decouple device type from layout structure for even more flexibility.
 - Add keyboard navigation or accessibility improvements to the modal.
+- Implement device state persistence between sessions.
+- Add support for more device types and custom panels.
 
 ---
 
@@ -99,9 +117,10 @@
 
 - `src/components/layout/StaticLayoutChooser.vue` — Static layout chooser and thumbnail logic
 - `src/components/layout/NavigationBar.vue` — Main navigation bar, layout control logic, modal overlay for simple mode
+- `src/components/layout/LayoutContainer.vue` — Layout grid container with panel positioning
 - `src/components/ui/SettingsPanel.vue` — Settings panel, toggle for layout selection mode
 - `src/stores/useUIPreferencesStore.ts` — UI preferences store, layout selection mode persistence
-- `src/views/PanelLayoutView.vue` — Main panel layout view, integration with layout system
+- `src/views/PanelLayoutView.vue` — Main panel layout view, integration with layout system, universal panel system
 - `src/types/layouts/LayoutDefinition.ts` — Core type definitions for layouts, rows, and cells
 - `LAYOUT_SYSTEM_REFACTOR_SUMMARY.md` — This summary and documentation
 
