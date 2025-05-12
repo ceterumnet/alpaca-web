@@ -18,7 +18,6 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['device-change'])
 
 // Get unified store for device interaction
 const store = useUnifiedStore()
@@ -26,13 +25,6 @@ const store = useUnifiedStore()
 // Local device selection state
 const selectedDeviceId = ref(props.deviceId)
 
-// Handle device selection changes
-const handleDeviceChange = (newDeviceId: string) => {
-  selectedDeviceId.value = newDeviceId
-  if (!props.useInternalDeviceSelection) {
-    emit('device-change', newDeviceId)
-  }
-}
 
 // Watch for props change to update local state only when not using internal selection
 // or when component is initially mounted
@@ -51,13 +43,6 @@ const isConnected = computed(() => {
 // Get the current device
 const currentDevice = computed(() => {
   return store.getDeviceById(selectedDeviceId.value)
-})
-
-// Get available telescope devices
-const availableDevices = computed(() => {
-  return store.devicesList.filter(d => 
-    (d.type || '').toLowerCase() === 'telescope'
-  )
 })
 
 // Watch for device ID changes to update our state
@@ -84,12 +69,6 @@ watch(() => selectedDeviceId.value, (newDeviceId, oldDeviceId) => {
     }
   }
 })
-
-// Device selector dropdown state
-const showDeviceSelector = ref(false)
-const toggleDeviceSelector = () => {
-  showDeviceSelector.value = !showDeviceSelector.value
-}
 
 // Tracking state
 const tracking = ref(false)
@@ -303,16 +282,8 @@ watch(isConnected, (newValue) => {
   }
 })
 
-// When clicking outside the device selector, close it
-const closeDeviceSelector = (event: MouseEvent) => {
-  if (showDeviceSelector.value && !event.target) {
-    showDeviceSelector.value = false
-  }
-}
-
 // Add document click handler
 onMounted(() => {
-  document.addEventListener('click', closeDeviceSelector)
 })
 
 // Cleanup when unmounted
@@ -320,8 +291,6 @@ onUnmounted(() => {
   if (coordUpdateInterval) {
     window.clearInterval(coordUpdateInterval)
   }
-  
-  document.removeEventListener('click', closeDeviceSelector)
 })
 
 // Function to connect to the selected device
@@ -337,12 +306,6 @@ const connectDevice = async () => {
   }
 }
 
-// Function to open device discovery panel
-const openDiscovery = () => {
-  // TODO: Implement discovery navigation
-  console.log('Open discovery panel')
-  showDeviceSelector.value = false
-}
 </script>
 
 <template>

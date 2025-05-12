@@ -19,21 +19,12 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['device-change'])
-
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
 // Local device selection state
 const selectedDeviceId = ref(props.deviceId)
 
-// Handle device selection changes
-const handleDeviceChange = (newDeviceId: string) => {
-  selectedDeviceId.value = newDeviceId
-  if (!props.useInternalDeviceSelection) {
-    emit('device-change', newDeviceId)
-  }
-}
 
 // Watch for props change to update local state only when not using internal selection
 // or when component is initially mounted
@@ -53,19 +44,6 @@ const isConnected = computed(() => {
 const currentDevice = computed(() => {
   return store.getDeviceById(selectedDeviceId.value)
 })
-
-// Get available camera devices
-const availableDevices = computed(() => {
-  return store.devicesList.filter(d => 
-    (d.type || '').toLowerCase() === 'camera'
-  )
-})
-
-// Device selector dropdown state
-const showDeviceSelector = ref(false)
-const toggleDeviceSelector = () => {
-  showDeviceSelector.value = !showDeviceSelector.value
-}
 
 // Get exposure range for the camera
 const exposureMin = ref(0.001)
@@ -286,32 +264,14 @@ onUnmounted(() => {
   if (statusTimer) {
     window.clearInterval(statusTimer)
   }
-  
-  // Close device selector if open
-  showDeviceSelector.value = false
 })
 
-// Function to open device discovery panel
-const openDiscovery = () => {
-  // TODO: Implement discovery navigation
-  console.log('Open discovery panel')
-  showDeviceSelector.value = false
-}
-
-// When clicking outside the device selector, close it
-const closeDeviceSelector = (event: MouseEvent) => {
-  if (showDeviceSelector.value && !event.target) {
-    showDeviceSelector.value = false
-  }
-}
 
 // Add document click handler
 onMounted(() => {
-  document.addEventListener('click', closeDeviceSelector)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', closeDeviceSelector)
 })
 
 // Function to connect to the selected device

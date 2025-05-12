@@ -505,10 +505,6 @@ onMounted(() => {
   });
 });
 
-// Show the static layout chooser when appropriate
-const showStaticLayoutSelector = () => {
-  showStaticLayoutChooser.value = true;
-}
 
 // Initialize cell device assignments when layout changes
 watch(() => currentLayoutId.value, () => {
