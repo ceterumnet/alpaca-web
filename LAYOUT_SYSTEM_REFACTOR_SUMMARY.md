@@ -60,6 +60,21 @@
 
 ---
 
+## Known Issues
+
+- **Settings Save Action**: When switching between simple and advanced modes in the Settings panel, there is no save action to confirm changes.
+- **Layout List Inconsistency**: After selecting a simple layout and switching back to advanced mode, the simple layout appears in the list of layouts in advanced mode.
+- **Panel Content**: Panels currently do not display device content properly. This will be addressed after fixing the panel reactivity issue.
+
+## Implemented Fixes
+
+- **Layout Rendering**: Fixed the reactivity issue when switching between layouts in simple mode. Layouts now update immediately without requiring a page refresh.
+- **Layout Container**: Enhanced the LayoutContainer component to better handle layout changes by adding keys for proper re-rendering.
+- **Component Synchronization**: Improved coordination between the NavigationBar, PanelLayoutView, and LayoutContainer components to ensure consistent layout updates.
+- **Hybrid Layouts**: Fixed issues with hybrid layouts (50/50 and 60/40) where cells spanning multiple rows weren't properly rendered. The layout now correctly matches the thumbnails shown in the modal.
+
+---
+
 ## Next Steps / Future Improvements
 
 - Add thumbnail previews to the advanced dropdown (optional).

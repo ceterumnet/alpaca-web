@@ -394,51 +394,165 @@ const isActiveLink = (path: string) => {
 function selectStaticLayout(layoutId: string) {
   const layout = staticLayouts.find((l) => l.id === layoutId)
   if (!layout) return
-  // Convert to grid layout and set as current
-  const desktopRows = convertStaticToRows(layout)
+  
+  // Create a unique ID for the new layout
+  const newLayoutId = `static-${layout.id}-${Date.now()}`
+  
+  // Create the grid layout differently based on the layout type
   const gridLayout = {
-    id: `static-${layout.id}-${Date.now()}`,
+    id: newLayoutId,
     name: layout.name,
     description: layout.name,
     layouts: {
-      desktop: {
-        rows: desktopRows,
-        panelIds: layout.cells.map((cell) => cell.id)
-      },
-      tablet: {
-        rows: desktopRows,
-        panelIds: layout.cells.map((cell) => cell.id)
-      },
-      mobile: {
-        rows: desktopRows,
-        panelIds: layout.cells.map((cell) => cell.id)
-      }
+      desktop: createViewportLayout(layout),
+      tablet: createViewportLayout(layout),
+      mobile: createViewportLayout(layout)
     },
     isDefault: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
   }
+  
+  // First add the layout to the store
   layoutStore.addGridLayout(gridLayout)
-  layoutStore.setCurrentLayout(gridLayout.id)
-  currentLayoutId.value = gridLayout.id
+  
+  // Clear the current layout first (to force reactivity)
+  layoutStore.setCurrentLayout('')
+  
+  // Use setTimeout to ensure DOM updates between changes
+  setTimeout(() => {
+    // Then set the new layout as current
+    layoutStore.setCurrentLayout(gridLayout.id)
+    currentLayoutId.value = gridLayout.id
+    
+    // Force a window resize event to ensure layout container updates
+    window.dispatchEvent(new Event('resize'))
+  }, 10)
+}
+
+// Create a viewport layout from a static template
+function createViewportLayout(layout: LayoutTemplate) {
+  // Special handling for hybrid layouts
+  if (layout.id === 'hybrid-50' || layout.id === 'hybrid-60') {
+    return createHybridLayout(layout)
+  }
+  
+  // For regular grid layouts
+  return {
+    rows: convertStaticToRows(layout),
+    panelIds: layout.cells.map(cell => cell.id)
+  }
+}
+
+// Special handler for hybrid layouts
+function createHybridLayout(layout: LayoutTemplate) {
+  const spanningCell = layout.cells.find(cell => cell.rowSpan === 2)
+  const topRightCell = layout.cells.find(cell => cell.row === 0 && cell.col === 1)
+  const bottomRightCell = layout.cells.find(cell => cell.row === 1 && cell.col === 1)
+  
+  if (!spanningCell || !topRightCell || !bottomRightCell) {
+    console.error('Invalid hybrid layout structure')
+    return {
+      rows: convertStaticToRows(layout),
+      panelIds: layout.cells.map(cell => cell.id)
+    }
+  }
+  
+  // Get the correct width values
+  const leftWidth = spanningCell.width || 50
+  const rightWidth = 100 - leftWidth
+  
+  // Create the rows manually for hybrid layouts
+  return {
+    rows: [
+      {
+        id: 'row-1',
+        cells: [
+          {
+            id: spanningCell.id,
+            deviceType: 'any',
+            name: spanningCell.id,
+            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+            width: leftWidth,
+            rowSpan: 2 // Preserve rowSpan
+          },
+          {
+            id: topRightCell.id,
+            deviceType: 'any',
+            name: topRightCell.id,
+            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+            width: rightWidth
+          }
+        ],
+        height: 50
+      },
+      {
+        id: 'row-2',
+        cells: [
+          {
+            id: bottomRightCell.id,
+            deviceType: 'any',
+            name: bottomRightCell.id,
+            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+            width: rightWidth
+          }
+        ],
+        height: 50
+      }
+    ],
+    panelIds: layout.cells.map(cell => cell.id)
+  }
 }
 
 function convertStaticToRows(layout: LayoutTemplate) {
   const rows = []
+  
+  // Use a special approach to handle cells with rowSpan
+  const spanningCells = layout.cells.filter(cell => cell.rowSpan && cell.rowSpan > 1)
+  const normalCells = layout.cells.filter(cell => !cell.rowSpan || cell.rowSpan === 1)
+  
+  // Handle rows
   for (let r = 0; r < layout.rows; r++) {
-    const rowCells = layout.cells.filter((cell) => cell.row === r)
+    // Find normal cells for this row
+    const rowCells = normalCells.filter(cell => cell.row === r)
+    
+    // Find spanning cells that start at this row
+    const spanningCellsForRow = spanningCells.filter(cell => cell.row === r)
+    
+    // Calculate total width of spanning cells in this row
+    const spanningCellsWidth = spanningCellsForRow.reduce((total, cell) => total + (cell.width || 50), 0)
+    
+    // Calculate remaining width for normal cells
+    const remainingWidth = 100 - spanningCellsWidth
+    const normalCellsCount = rowCells.length
+    
+    // Create row
     rows.push({
       id: `row-${r + 1}`,
-      cells: rowCells.map((cell) => ({
-        id: cell.id,
-        deviceType: 'any',
-        name: cell.id,
-        priority: 'primary',
-        width: cell.width || (100 / rowCells.length)
-      })),
+      cells: [
+        // Add spanning cells first
+        ...spanningCellsForRow.map(cell => ({
+          id: cell.id,
+          deviceType: 'any',
+          name: cell.id,
+          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+          width: cell.width || 50, // Use cell's width or default to 50%
+          rowSpan: cell.rowSpan // Preserve rowSpan
+        })),
+        
+        // Add normal cells
+        ...rowCells.map(cell => ({
+          id: cell.id,
+          deviceType: 'any',
+          name: cell.id,
+          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+          width: cell.width || (normalCellsCount ? remainingWidth / normalCellsCount : 100)
+        }))
+      ],
       height: 100 / layout.rows
     })
   }
+  
   return rows
 }
 

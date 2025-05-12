@@ -6,7 +6,7 @@
 // - Proper responsive behavior
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/useLayoutStore'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
@@ -29,6 +29,22 @@ const uiStore = useUIPreferencesStore()
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 
 const showStaticLayoutChooser = ref(false)
+
+// Watch for changes in the current layout in the store
+watch(
+  () => layoutStore.currentLayoutId,
+  (newLayoutId) => {
+    if (newLayoutId && newLayoutId !== currentLayoutId.value) {
+      console.log('PanelLayoutView - layoutStore.currentLayoutId changed to:', newLayoutId)
+      currentLayoutId.value = newLayoutId
+      
+      // Force component re-render
+      nextTick(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+    }
+  }
+)
 
 // Create a default layout if none exists
 onMounted(() => {

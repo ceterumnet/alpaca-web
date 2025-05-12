@@ -8,7 +8,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { LayoutDefinition, GridLayoutDefinition, Viewport, DeviceLayout, PanelPosition } from '@/types/layouts/LayoutDefinition'
+import type { LayoutDefinition, GridLayoutDefinition, Viewport, DeviceLayout, PanelPosition, LayoutCell } from '@/types/layouts/LayoutDefinition'
 
 export const LAYOUT_STORAGE_KEY = 'alpaca-web-layout'
 export const LAYOUTS_STORAGE_KEY = 'alpaca-web-layouts'
@@ -94,32 +94,60 @@ export const useLayoutStore = defineStore('layout', () => {
       const viewport = viewportType as Viewport
       const positions: PanelPosition[] = []
 
-      // Convert grid-based row/cell layout to position-based layout
+      // First, create a map of occupied positions to avoid overlap for spanning cells
+      const occupiedPositions = new Map<string, boolean>()
+
+      // Go through rows and process normal cells first
       let yPos = 0
-      gridLayoutObj.rows.forEach((row) => {
+      for (let rowIndex = 0; rowIndex < gridLayoutObj.rows.length; rowIndex++) {
+        const row = gridLayoutObj.rows[rowIndex]
         let xPos = 0
-        row.cells.forEach((cell) => {
-          // Calculate width based on 12-column grid
+
+        // Process cells in this row
+        for (const cell of row.cells) {
+          // Skip cells that have already been processed
+          const posKey = `${xPos},${yPos}`
+          if (occupiedPositions.has(posKey)) continue
+
+          // Check if this cell spans multiple rows
+          interface CellWithSpan extends LayoutCell {
+            rowSpan?: number
+          }
+          const cellWithSpan = cell as CellWithSpan
+          const rowSpan = cellWithSpan.rowSpan || 1
+
+          // Calculate the cell width in grid units (out of 12)
           const cellWidth = Math.round((cell.width / 100) * 12)
 
-          // Use device type as panel ID for main device types
+          // Determine the panel ID
           const deviceType = cell.deviceType || 'any'
           const panelId = ['camera', 'telescope', 'focuser', 'filterwheel', 'dome', 'rotator', 'weather'].includes(deviceType)
             ? deviceType // Use device type as panel ID for known types
             : cell.id // Use cell ID for custom panels
 
+          // Add the position
           positions.push({
             panelId,
             x: xPos,
             y: yPos,
             width: cellWidth,
-            height: 1 // Default height of 1 row
+            height: rowSpan
           })
 
+          // Mark all positions that this cell occupies as used
+          for (let r = 0; r < rowSpan; r++) {
+            for (let c = 0; c < cellWidth; c++) {
+              occupiedPositions.set(`${xPos + c},${yPos + r}`, true)
+            }
+          }
+
+          // Move x position forward
           xPos += cellWidth
-        })
+        }
+
+        // Move to next row
         yPos += 1
-      })
+      }
 
       deviceLayouts.push({
         deviceType: viewport,

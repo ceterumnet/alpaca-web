@@ -85,24 +85,37 @@ function getPanelStyle(position: PanelPosition) {
     }
   }
 
-  return {
+  // Use row/column span to properly position cells
+  console.log(`Panel ${position.panelId}: Position (${position.x}, ${position.y}), Size ${position.width}x${position.height}`)
+  
+  const style = {
     gridColumnStart: position.x + 1,
     gridColumnEnd: position.x + position.width + 1,
     gridRowStart: position.y + 1,
-    gridRowEnd: position.y + position.height + 1
+    gridRowEnd: position.y + position.height + 1 // The correct position takes into account the height
   }
+  
+  console.log(`Panel ${position.panelId}: Grid position - Column ${style.gridColumnStart}/${style.gridColumnEnd}, Row ${style.gridRowStart}/${style.gridRowEnd}`)
+  
+  return style
 }
 
 </script>
 
 <template>
-  <div :key="props.layoutId" class="aw-layout-container" :class="{ 'aw-layout-container--mobile': isMobileView }">
+  <div 
+    :key="`layout-container-${props.layoutId}-${layoutStore.currentLayoutId}`" 
+    class="aw-layout-container" 
+    :class="{ 'aw-layout-container--mobile': isMobileView }"
+  >
     <div v-if="currentLayout && currentDeviceLayout" class="aw-layout-container__grid">
       <div
         v-for="position in currentDeviceLayout.positions"
         :key="position.panelId"
         class="aw-layout-container__panel"
         :style="getPanelStyle(position)"
+        :data-panel-id="position.panelId"
+        :data-position="`(${position.x},${position.y}) ${position.width}x${position.height}`"
       >
         <!-- Use slot if provided, otherwise fall back to BasePanel -->
         <slot :name="position.panelId" :position="position">        
@@ -128,6 +141,7 @@ function getPanelStyle(position: PanelPosition) {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: minmax(100px, auto);
+  grid-auto-flow: dense; /* Help the grid fill in any gaps */
   gap: var(--aw-spacing-sm);
   padding: var(--aw-spacing-sm);
   flex: 1;
