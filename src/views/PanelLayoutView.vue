@@ -13,18 +13,22 @@ import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
 import SimplifiedCameraPanel from '@/components/devices/SimplifiedCameraPanel.vue'
 import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePanel.vue'
-import type { GridLayoutDefinition } from '@/types/layouts/LayoutDefinition'
+import type { GridLayoutDefinition, LayoutRow, LayoutCell as StoreLayoutCell } from '@/types/layouts/LayoutDefinition'
 import SimplifiedFocuserPanel from '@/components/devices/SimplifiedFocuserPanel.vue'
+import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
+import StaticLayoutChooser from '@/components/layout/StaticLayoutChooser.vue'
 
 // Get stores and router
 const layoutStore = useLayoutStore()
 const unifiedStore = useUnifiedStore()
 const router = useRouter()
 const route = useRoute()
+const uiStore = useUIPreferencesStore()
 
 // Layout ID to display - default to 'default'
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 
+const showStaticLayoutChooser = ref(false)
 
 // Create a default layout if none exists
 onMounted(() => {
@@ -326,10 +330,83 @@ const changeLayout = (layoutId: string) => {
     }
   }
 }
+
+interface LayoutCell {
+  id: string;
+  row: number;
+  col: number;
+  rowSpan?: number;
+  colSpan?: number;
+  width?: number;
+  deviceType?: string;
+  name?: string;
+}
+
+interface LayoutTemplate {
+  id: string;
+  name: string;
+  rows: number;
+  cols: number;
+  cells: LayoutCell[];
+}
+
+function handleStaticLayoutSave(layout: LayoutTemplate) {
+  // Save the chosen layout as a new grid layout and switch to it
+  const layoutId = `static-${layout.id}-${Date.now()}`
+  const desktopRows = convertStaticToRows(layout)
+  // For demo, use the same layout for all viewports
+  const gridLayout: GridLayoutDefinition = {
+    id: layoutId,
+    name: layout.name,
+    description: layout.name,
+    layouts: {
+      desktop: {
+        rows: desktopRows,
+        panelIds: layout.cells.map(cell => cell.id)
+      },
+      tablet: {
+        rows: desktopRows,
+        panelIds: layout.cells.map(cell => cell.id)
+      },
+      mobile: {
+        rows: desktopRows,
+        panelIds: layout.cells.map(cell => cell.id)
+      }
+    },
+    isDefault: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  }
+  layoutStore.addGridLayout(gridLayout)
+  layoutStore.setCurrentLayout(layoutId)
+  currentLayoutId.value = layoutId
+  showStaticLayoutChooser.value = false
+}
+
+function convertStaticToRows(layout: LayoutTemplate): LayoutRow[] {
+  // Group cells by row
+  const rows: LayoutRow[] = []
+  for (let r = 0; r < layout.rows; r++) {
+    const rowCells: StoreLayoutCell[] = layout.cells.filter((cell: LayoutCell) => cell.row === r).map((cell: LayoutCell) => ({
+      id: cell.id,
+      deviceType: cell.deviceType || 'any',
+      name: cell.name || cell.id,
+      priority: 'primary',
+      width: cell.width || (100 / layout.cells.filter(c => c.row === r).length)
+    }))
+    rows.push({
+      id: `row-${r + 1}`,
+      cells: rowCells,
+      height: 100 / layout.rows
+    })
+  }
+  return rows
+}
 </script>
 
 <template>
   <div class="panel-layout-view">
+
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
       <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId">
         <!-- Camera Panel Slot -->

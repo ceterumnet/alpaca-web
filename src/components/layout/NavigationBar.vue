@@ -69,6 +69,86 @@ const navLinks: NavLink[] = [
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 const availableLayouts = computed(() => layoutStore.layouts)
 
+// Define LayoutCell and LayoutTemplate interfaces
+interface LayoutCell {
+  id: string;
+  row: number;
+  col: number;
+  rowSpan?: number;
+  colSpan?: number;
+  width?: number;
+}
+
+interface LayoutTemplate {
+  id: string;
+  name: string;
+  rows: number;
+  cols: number;
+  cells: LayoutCell[];
+}
+
+// Static layout templates (copied from StaticLayoutChooser)
+const staticLayouts: LayoutTemplate[] = [
+  {
+    id: '2x2',
+    name: '2x2 Grid',
+    rows: 2,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0 },
+      { id: 'cell-2', row: 0, col: 1 },
+      { id: 'cell-3', row: 1, col: 0 },
+      { id: 'cell-4', row: 1, col: 1 },
+    ]
+  },
+  {
+    id: '1x2',
+    name: '1x2 Grid',
+    rows: 1,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0 },
+      { id: 'cell-2', row: 0, col: 1 },
+    ]
+  },
+  {
+    id: '3x2',
+    name: '3x2 Grid',
+    rows: 3,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0 },
+      { id: 'cell-2', row: 0, col: 1 },
+      { id: 'cell-3', row: 1, col: 0 },
+      { id: 'cell-4', row: 1, col: 1 },
+      { id: 'cell-5', row: 2, col: 0 },
+      { id: 'cell-6', row: 2, col: 1 },
+    ]
+  },
+  {
+    id: 'hybrid-50',
+    name: 'Hybrid 50/50',
+    rows: 2,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0, rowSpan: 2, colSpan: 1 },
+      { id: 'cell-2', row: 0, col: 1 },
+      { id: 'cell-3', row: 1, col: 1 },
+    ]
+  },
+  {
+    id: 'hybrid-60',
+    name: 'Hybrid 60/40',
+    rows: 2,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0, rowSpan: 2, colSpan: 1, width: 60 },
+      { id: 'cell-2', row: 0, col: 1, width: 40 },
+      { id: 'cell-3', row: 1, col: 1, width: 40 },
+    ]
+  },
+]
+
 // Change layout
 const changeLayout = (layoutId: string) => {
   console.log(`Attempting to change layout to: ${layoutId}`)
@@ -310,6 +390,71 @@ const totalDeviceCount = computed(() => {
 const isActiveLink = (path: string) => {
   return route.path.startsWith(path)
 }
+
+function selectStaticLayout(layoutId: string) {
+  const layout = staticLayouts.find((l) => l.id === layoutId)
+  if (!layout) return
+  // Convert to grid layout and set as current
+  const desktopRows = convertStaticToRows(layout)
+  const gridLayout = {
+    id: `static-${layout.id}-${Date.now()}`,
+    name: layout.name,
+    description: layout.name,
+    layouts: {
+      desktop: {
+        rows: desktopRows,
+        panelIds: layout.cells.map((cell) => cell.id)
+      },
+      tablet: {
+        rows: desktopRows,
+        panelIds: layout.cells.map((cell) => cell.id)
+      },
+      mobile: {
+        rows: desktopRows,
+        panelIds: layout.cells.map((cell) => cell.id)
+      }
+    },
+    isDefault: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  }
+  layoutStore.addGridLayout(gridLayout)
+  layoutStore.setCurrentLayout(gridLayout.id)
+  currentLayoutId.value = gridLayout.id
+}
+
+function convertStaticToRows(layout: LayoutTemplate) {
+  const rows = []
+  for (let r = 0; r < layout.rows; r++) {
+    const rowCells = layout.cells.filter((cell) => cell.row === r)
+    rows.push({
+      id: `row-${r + 1}`,
+      cells: rowCells.map((cell) => ({
+        id: cell.id,
+        deviceType: 'any',
+        name: cell.id,
+        priority: 'primary',
+        width: cell.width || (100 / rowCells.length)
+      })),
+      height: 100 / layout.rows
+    })
+  }
+  return rows
+}
+
+const showLayoutModal = ref(false)
+
+function openLayoutModal() {
+  showLayoutModal.value = true
+}
+function closeLayoutModal() {
+  showLayoutModal.value = false
+}
+
+function handleStaticLayoutClick(layoutId: string) {
+  selectStaticLayout(layoutId)
+  closeLayoutModal()
+}
 </script>
 
 <template>
@@ -333,31 +478,66 @@ const isActiveLink = (path: string) => {
           <Icon :type="link.icon" class="aw-navigation-bar__link-icon" />
           <span v-if="!isMobileDevice" class="aw-navigation-bar__link-text">{{ link.name }}</span>
         </RouterLink>
-        
         <!-- Layout Controls (between Home and Settings) -->
         <div class="aw-navigation-bar__layout-controls">
-          <select
-            v-model="currentLayoutId"
-            class="aw-navigation-bar__layout-select"
-            :title="'Current layout: ' + (availableLayouts.find(l => l.id === currentLayoutId)?.name || 'Default')"
-            @change="changeLayout(currentLayoutId)"
-          >
-            <option v-for="layout in availableLayouts" :key="layout.id" :value="layout.id">
-              {{ layout.name }}{{ layout.isDefault ? ' ★' : '' }}
-            </option>
-          </select>
-          
-          <div class="aw-navigation-bar__layout-actions">
-            <button class="aw-navigation-bar__icon-button" title="Set as default layout" @click="setAsDefaultLayout">
-              <span class="aw-navigation-bar__icon">⭐</span>
-            </button>
-            <button class="aw-navigation-bar__icon-button" title="Edit layouts" @click="openLayoutBuilder">
-              <span class="aw-navigation-bar__icon">✏️</span>
-            </button>
-            <button class="aw-navigation-bar__icon-button" title="Delete this layout" @click="deleteCurrentLayout">
-              <span class="aw-navigation-bar__icon">🗑️</span>
-            </button>
-          </div>
+          <template v-if="uiStore.layoutSelectionMode === 'simple'">
+            <button class="aw-button aw-button--primary" @click="openLayoutModal">Choose Layout</button>
+            <div v-if="showLayoutModal" class="layout-modal-overlay">
+              <div class="layout-modal">
+                <button class="layout-modal__close" title="Close" @click="closeLayoutModal">×</button>
+                <h2 class="layout-modal__title">Choose a Layout</h2>
+                <div class="layout-modal__grid">
+                  <div v-for="layout in staticLayouts" :key="layout.id" class="layout-modal__card" @click="handleStaticLayoutClick(layout.id)">
+                    <div class="layout-modal__card-title">{{ layout.name }}</div>
+                    <div
+                      class="layout-modal__preview"
+                      :style="{
+                        gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
+                        gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : '1fr 1fr',
+                        width: '120px',
+                        aspectRatio: '3 / 2'
+                      }"
+                    >
+                      <div
+                        v-for="cell in layout.cells"
+                        :key="cell.id"
+                        class="layout-modal__cell-preview"
+                        :style="{
+                          gridRow: `${cell.row + 1} / span ${cell.rowSpan || 1}`,
+                          gridColumn: `${cell.col + 1} / span ${cell.colSpan || 1}`
+                        }"
+                      >
+                        <span class="layout-modal__cell-id">{{ cell.id }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <select
+              v-model="currentLayoutId"
+              class="aw-navigation-bar__layout-select"
+              :title="'Current layout: ' + (availableLayouts.find(l => l.id === currentLayoutId)?.name || 'Default')"
+              @change="changeLayout(currentLayoutId)"
+            >
+              <option v-for="layout in availableLayouts" :key="layout.id" :value="layout.id">
+                {{ layout.name }}{{ layout.isDefault ? ' ★' : '' }}
+              </option>
+            </select>
+            <div class="aw-navigation-bar__layout-actions">
+              <button class="aw-navigation-bar__icon-button" title="Set as default layout" @click="setAsDefaultLayout">
+                <span class="aw-navigation-bar__icon">⭐</span>
+              </button>
+              <button class="aw-navigation-bar__icon-button" title="Edit layouts" @click="openLayoutBuilder">
+                <span class="aw-navigation-bar__icon">✏️</span>
+              </button>
+              <button class="aw-navigation-bar__icon-button" title="Delete this layout" @click="deleteCurrentLayout">
+                <span class="aw-navigation-bar__icon">🗑️</span>
+              </button>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -591,5 +771,114 @@ const isActiveLink = (path: string) => {
   .aw-navigation-bar__layout-controls {
     display: none;
   }
+}
+
+.layout-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.layout-modal {
+  background: var(--aw-panel-bg-color, #222);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  padding: 2rem 2.5rem 2rem 2.5rem;
+  min-width: 350px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.layout-modal__close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: var(--aw-text-color, #fff);
+  cursor: pointer;
+  z-index: 1;
+}
+.layout-modal__title {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--aw-color-primary-500, #4a7adc);
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+}
+.layout-modal__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+}
+.layout-modal__card {
+  background: var(--aw-panel-content-bg-color, #333);
+  border-radius: 8px;
+  padding: 1rem;
+  width: 180px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1.5px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.layout-modal__card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  border-color: var(--aw-color-primary-500, #4a7adc);
+}
+.layout-modal__card-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--aw-text-color, #fff);
+}
+.layout-modal__preview {
+  display: grid;
+  gap: 0;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  margin: 0 auto;
+  width: 120px;
+  aspect-ratio: 3 / 2;
+}
+.layout-modal__cell-preview {
+  background: var(--aw-panel-content-bg-color, #e9e9e9);
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid #ddd;
+  border-right: none;
+  border-bottom: none;
+  flex-direction: column;
+}
+.layout-modal__cell-preview:last-child,
+.layout-modal__cell-preview[style*='grid-column: 2 / span 1'] {
+  border-right: 1px solid #ddd;
+}
+.layout-modal__cell-preview[style*='grid-row: 2 / span 1'] {
+  border-bottom: 1px solid #ddd;
+}
+.layout-modal__cell-id {
+  color: #aaa;
+  font-size: 0.8rem;
 }
 </style>

@@ -36,6 +36,9 @@ export const useUIPreferencesStore = defineStore('uiPreferences', () => {
   // Dark mode preference (extending existing functionality)
   const isDarkMode = ref(true)
 
+  // Layout selection mode: 'simple' or 'advanced'
+  const layoutSelectionMode = ref<'simple' | 'advanced'>((localStorage.getItem('layout-selection-mode') as 'simple' | 'advanced') || 'advanced')
+
   // Set the global UI mode
   function setGlobalUIMode(mode: UIMode) {
     globalUIMode.value = mode
@@ -44,9 +47,7 @@ export const useUIPreferencesStore = defineStore('uiPreferences', () => {
   // Set a device-specific UI mode preference
   function setDeviceUIMode(deviceType: string, deviceId: string | number, mode: UIMode) {
     // Remove any existing preference for this device
-    const index = deviceModePreferences.value.findIndex(
-      (pref) => pref.deviceType === deviceType && pref.deviceId === deviceId
-    )
+    const index = deviceModePreferences.value.findIndex((pref) => pref.deviceType === deviceType && pref.deviceId === deviceId)
 
     if (index >= 0) {
       deviceModePreferences.value[index].preferredMode = mode
@@ -62,9 +63,7 @@ export const useUIPreferencesStore = defineStore('uiPreferences', () => {
 
   // Get the effective UI mode for a device (device-specific if set, otherwise global)
   function getDeviceUIMode(deviceType: string, deviceId: string | number): UIMode {
-    const devicePref = deviceModePreferences.value.find(
-      (pref) => pref.deviceType === deviceType && pref.deviceId === deviceId
-    )
+    const devicePref = deviceModePreferences.value.find((pref) => pref.deviceType === deviceType && pref.deviceId === deviceId)
 
     return devicePref?.preferredMode || globalUIMode.value
   }
@@ -120,10 +119,7 @@ export const useUIPreferencesStore = defineStore('uiPreferences', () => {
     }
 
     // Check if class was applied correctly
-    console.log(
-      'Has dark-theme class after init:',
-      document.documentElement.classList.contains('dark-theme')
-    )
+    console.log('Has dark-theme class after init:', document.documentElement.classList.contains('dark-theme'))
   }
 
   // Reset all UI preferences to defaults
@@ -134,17 +130,24 @@ export const useUIPreferencesStore = defineStore('uiPreferences', () => {
     // Keep dark mode as is
   }
 
+  function setLayoutSelectionMode(mode: 'simple' | 'advanced') {
+    layoutSelectionMode.value = mode
+    localStorage.setItem('layout-selection-mode', mode)
+  }
+
   return {
     globalUIMode,
     deviceModePreferences,
     isSidebarVisible,
     isDarkMode,
+    layoutSelectionMode,
     setGlobalUIMode,
     setDeviceUIMode,
     getDeviceUIMode,
     toggleSidebar,
     toggleDarkMode,
     initializeDarkMode,
-    resetUIPreferences
+    resetUIPreferences,
+    setLayoutSelectionMode
   }
 })

@@ -330,8 +330,21 @@ function resetLayoutStorage() {
           <h3 class="aw-settings__section-title">Panel Layout Configuration</h3>
 
           <div class="aw-settings__group">
+            <div class="aw-settings__row">
+              <label>Layout Selection Mode</label>
+              <div>
+                <label style="margin-right: 1rem;">
+                  <input type="radio" name="layout-mode" value="simple" :checked="uiStore.layoutSelectionMode === 'simple'" @change="uiStore.setLayoutSelectionMode('simple')">
+                  Simple
+                </label>
+                <label>
+                  <input type="radio" name="layout-mode" value="advanced" :checked="uiStore.layoutSelectionMode === 'advanced'" @change="uiStore.setLayoutSelectionMode('advanced')">
+                  Advanced
+                </label>
+              </div>
+            </div>
             <p class="aw-settings__description">
-              Configure default sizes and layout behavior for device panels.
+              Choose between a simple static layout selector or the advanced custom layout builder.
             </p>
 
             <div class="aw-form-group">

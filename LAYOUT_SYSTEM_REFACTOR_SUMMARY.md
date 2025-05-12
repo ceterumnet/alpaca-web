@@ -1,0 +1,72 @@
+# Layout System Refactor & Simplification – Summary
+
+## Goals
+
+- Provide a user-friendly way to select from a set of static, pre-defined layouts (“Simple” mode).
+- Retain the existing advanced/custom layout builder (“Advanced” mode).
+- Allow users to toggle between these modes in the application settings.
+- Ensure the layout selection UI is clean, modern, and integrated into the main navigation bar.
+- Decouple device assignment from the layout selection process (panels handle device selection).
+
+---
+
+## Key Changes
+
+### 1. **Static Layout Chooser**
+
+- Created a set of static layout templates (2x2, 1x2, 3x2, hybrid 50/50, hybrid 60/40).
+- Each layout is defined as a grid (rows, columns, cell structure).
+- Device assignment is not part of the layout selection; panels handle device selection.
+
+### 2. **Settings Toggle**
+
+- Added a toggle in the Settings panel (under the "Layout" tab) to switch between:
+  - **Simple**: Choose from static layouts.
+  - **Advanced**: Use the custom layout builder.
+- The toggle is persisted in the UI preferences store and localStorage.
+
+### 3. **Navigation Bar Integration**
+
+- The layout control in the navigation bar now adapts based on the selected mode:
+  - **Simple Mode**:
+    - Shows a "Choose Layout" button.
+    - Clicking the button opens a centered modal overlay with all static layout thumbnails.
+    - Clicking a thumbnail immediately applies the layout and closes the modal.
+  - **Advanced Mode**:
+    - Shows the existing dropdown for custom layouts, with actions for editing, deleting, and setting default layouts.
+
+### 4. **PanelLayoutView & Device Assignment**
+
+- No extra layout controls or modals in the main panel view.
+- Device assignment is handled by the panels themselves, not the layout chooser.
+
+### 5. **Type Safety & Linting**
+
+- All new code is type-safe and linter-clean.
+- Interfaces for layouts and cells are used throughout.
+
+---
+
+## User Experience
+
+- **Switching Modes**:  
+  Users can toggle between Simple and Advanced layout selection in Settings.
+- **Simple Mode**:
+  - Click "Choose Layout" in the Nav bar.
+  - See a modal with layout thumbnails.
+  - Click a layout to apply it instantly.
+- **Advanced Mode**:
+  - Use the dropdown and actions in the Nav bar to manage custom layouts.
+
+---
+
+## Next Steps / Future Improvements
+
+- Add thumbnail previews to the advanced dropdown (optional).
+- Allow editing or extending the set of static layouts.
+- Further decouple device type from layout structure for even more flexibility.
+- Add keyboard navigation or accessibility improvements to the modal.
+
+---
+
+**This summary reflects the current state of the layout system refactor and simplification as of this update.**
