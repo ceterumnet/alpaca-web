@@ -40,6 +40,11 @@ const toggleMaximizePanel = (panelId: string) => {
     // Otherwise, maximize this panel
     maximizedPanelId.value = panelId
   }
+  
+  // Force a layout recalculation after toggling
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
 }
 
 // Watch for changes in the current layout in the store
@@ -558,57 +563,24 @@ watch(() => currentLayoutId.value, () => {
   <div class="panel-layout-view">
 
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
-      <!-- Add overlay for maximized panel -->
-      <div v-if="maximizedPanelId" class="maximized-panel-overlay">
-        <div class="maximized-panel-container">
-          <div class="panel-header">
-            <h3>{{maximizedPanelId}}</h3>
-            <div class="header-controls">
-              <button class="minimize-panel-btn" @click="toggleMaximizePanel(maximizedPanelId)">
-                <span class="minimize-icon">□</span>
-              </button>
-            </div>
-          </div>
-          <div class="panel-content">
-            <!-- Camera panel -->
-            <SimplifiedCameraPanel 
-              v-if="cellDeviceAssignments[maximizedPanelId] && 
-                   unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.type?.toLowerCase() === 'camera'"
-              :device-id="cellDeviceAssignments[maximizedPanelId]"
-              :title="unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.name"
-              @device-change="(newDeviceId) => handleDeviceChange('camera', newDeviceId, maximizedPanelId)"
-            />
-            
-            <!-- Telescope panel -->
-            <SimplifiedTelescopePanel 
-              v-else-if="cellDeviceAssignments[maximizedPanelId] && 
-                       unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.type?.toLowerCase() === 'telescope'"
-              :device-id="cellDeviceAssignments[maximizedPanelId]"
-              :title="unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.name"
-              @device-change="(newDeviceId) => handleDeviceChange('telescope', newDeviceId, maximizedPanelId)"
-            />
-            
-            <!-- Focuser panel -->
-            <SimplifiedFocuserPanel 
-              v-else-if="cellDeviceAssignments[maximizedPanelId] && 
-                       unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.type?.toLowerCase() === 'focuser'"
-              :device-id="cellDeviceAssignments[maximizedPanelId]"
-              :title="unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.name"
-              @device-change="(newDeviceId) => handleDeviceChange('focuser', newDeviceId, maximizedPanelId)"
-            />
-            
-            <!-- Empty state -->
-            <div v-else class="empty-panel-state">
-              <p>No device selected for this panel</p>
-            </div>
+      <!-- Maximized panel overlay container -->
+      <div v-show="maximizedPanelId !== null" class="maximized-panel-overlay">
+        <div class="panel-header maximized-header">
+          <h3>{{ maximizedPanelId }}</h3>
+          <div class="header-controls">
+            <button class="minimize-panel-btn" @click="toggleMaximizePanel(maximizedPanelId as string)">
+              <span class="minimize-icon">□</span>
+            </button>
           </div>
         </div>
+        <!-- Container for the teleported content -->
+        <div id="maximized-panel-container" class="maximized-panel-content"></div>
       </div>
 
-      <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId" :class="{ 'hidden': maximizedPanelId !== null }">
+      <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId" :class="{ 'layout-behind-maximized': maximizedPanelId !== null }">
         <!-- Dynamic Cell Slots - Generic device renderer -->
         <template v-for="i in 6" :key="`cell-${i}`" #[`cell-${i}`]="{ position }">
-          <div v-if="position" class="universal-panel-container">
+          <div v-if="position" :id="`panel-${position.panelId}`" class="universal-panel-container">
             <div class="panel-header">
               <h3>Cell {{position.panelId}}</h3>
               
@@ -632,37 +604,42 @@ watch(() => currentLayoutId.value, () => {
               </div>
             </div>
             
-            <div class="panel-content">
-              <!-- If a device is selected for this cell, render the appropriate panel -->
-              <SimplifiedCameraPanel 
-                v-if="cellDeviceAssignments[position.panelId] && 
-                     unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'camera'"
-                :device-id="cellDeviceAssignments[position.panelId]"
-                :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
-                @device-change="(newDeviceId) => handleDeviceChange('camera', newDeviceId, position.panelId)"
-              />
-              
-              <SimplifiedTelescopePanel 
-                v-else-if="cellDeviceAssignments[position.panelId] && 
-                         unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'telescope'"
-                :device-id="cellDeviceAssignments[position.panelId]"
-                :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
-                @device-change="(newDeviceId) => handleDeviceChange('telescope', newDeviceId, position.panelId)"
-              />
-              
-              <SimplifiedFocuserPanel 
-                v-else-if="cellDeviceAssignments[position.panelId] && 
-                         unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'focuser'"
-                :device-id="cellDeviceAssignments[position.panelId]"
-                :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
-                @device-change="(newDeviceId) => handleDeviceChange('focuser', newDeviceId, position.panelId)"
-              />
-              
-              <!-- Empty state when no device selected -->
-              <div v-else class="empty-panel-state">
-                <p>No device selected for this panel</p>
-                <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
-              </div>
+            <div class="panel-content" :class="{ 'maximized': position.panelId === maximizedPanelId }">
+              <!-- Use teleport when maximized to move the content instead of duplicating it -->
+              <teleport
+:to="position.panelId === maximizedPanelId ? '#maximized-panel-container' : `#panel-${position.panelId} .panel-content`" 
+                       :disabled="position.panelId !== maximizedPanelId">
+                <!-- If a device is selected for this cell, render the appropriate panel -->
+                <SimplifiedCameraPanel 
+                  v-if="cellDeviceAssignments[position.panelId] && 
+                       unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'camera'"
+                  :device-id="cellDeviceAssignments[position.panelId]"
+                  :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
+                  @device-change="(newDeviceId) => handleDeviceChange('camera', newDeviceId, position.panelId)"
+                />
+                
+                <SimplifiedTelescopePanel 
+                  v-else-if="cellDeviceAssignments[position.panelId] && 
+                           unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'telescope'"
+                  :device-id="cellDeviceAssignments[position.panelId]"
+                  :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
+                  @device-change="(newDeviceId) => handleDeviceChange('telescope', newDeviceId, position.panelId)"
+                />
+                
+                <SimplifiedFocuserPanel 
+                  v-else-if="cellDeviceAssignments[position.panelId] && 
+                           unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'focuser'"
+                  :device-id="cellDeviceAssignments[position.panelId]"
+                  :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
+                  @device-change="(newDeviceId) => handleDeviceChange('focuser', newDeviceId, position.panelId)"
+                />
+                
+                <!-- Empty state when no device selected -->
+                <div v-else class="empty-panel-state">
+                  <p>No device selected for this panel</p>
+                  <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+                </div>
+              </teleport>
             </div>
           </div>
         </template>
@@ -698,7 +675,13 @@ watch(() => currentLayoutId.value, () => {
   position: relative;
 }
 
-/* Add maximized panel styles */
+/* Updated maximized panel styles */
+.layout-behind-maximized {
+  visibility: visible;
+  opacity: 0.01; /* Nearly invisible but keeps component state */
+  pointer-events: none;
+}
+
 .maximized-panel-overlay {
   position: absolute;
   top: 0;
@@ -711,11 +694,18 @@ watch(() => currentLayoutId.value, () => {
   flex-direction: column;
 }
 
-.maximized-panel-container {
-  flex: 1;
+.maximized-header {
+  background-color: var(--aw-panel-header-bg-color, #333);
+  padding: 8px;
+  border-bottom: 1px solid var(--aw-panel-border-color, #444);
   display: flex;
-  flex-direction: column;
-  height: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.maximized-panel-content {
+  flex: 1;
+  overflow: auto;
 }
 
 .hidden {
