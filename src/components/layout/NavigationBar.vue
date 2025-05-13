@@ -15,7 +15,7 @@ import { useLayoutStore } from '@/stores/useLayoutStore'
 import Icon from '@/components/ui/Icon.vue'
 import type { IconType } from '@/components/ui/Icon.vue'
 import DiscoveryIndicator from '@/components/navigation/DiscoveryIndicator.vue'
-import type { GridLayoutDefinition } from '@/types/layouts/LayoutDefinition'
+import { staticLayouts } from '@/types/layouts/StaticLayoutTemplates'
 
 // Get stores
 const uiStore = useUIPreferencesStore()
@@ -50,6 +50,17 @@ const navLinks: NavLink[] = [
 // Layout functionality
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 
+// Toggle between dark and light mode
+function toggleDarkMode() {
+  uiStore.isDarkMode = !uiStore.isDarkMode
+  if (uiStore.isDarkMode) {
+    document.documentElement.classList.add('dark-theme')
+  } else {
+    document.documentElement.classList.remove('dark-theme')
+  }
+  localStorage.setItem('dark-theme-preference', uiStore.isDarkMode.toString())
+}
+
 // Define LayoutCell and LayoutTemplate interfaces
 interface LayoutCell {
   id: string;
@@ -66,360 +77,6 @@ interface LayoutTemplate {
   rows: number;
   cols: number;
   cells: LayoutCell[];
-}
-
-// Static layout templates (copied from StaticLayoutChooser)
-const staticLayouts: LayoutTemplate[] = [
-  {
-    id: '2x2',
-    name: '2x2 Grid',
-    rows: 2,
-    cols: 2,
-    cells: [
-      { id: 'cell-1', row: 0, col: 0 },
-      { id: 'cell-2', row: 0, col: 1 },
-      { id: 'cell-3', row: 1, col: 0 },
-      { id: 'cell-4', row: 1, col: 1 },
-    ]
-  },
-  {
-    id: '1x2',
-    name: '1x2 Grid',
-    rows: 1,
-    cols: 2,
-    cells: [
-      { id: 'cell-1', row: 0, col: 0 },
-      { id: 'cell-2', row: 0, col: 1 },
-    ]
-  },
-  {
-    id: '3x2',
-    name: '3x2 Grid',
-    rows: 3,
-    cols: 2,
-    cells: [
-      { id: 'cell-1', row: 0, col: 0 },
-      { id: 'cell-2', row: 0, col: 1 },
-      { id: 'cell-3', row: 1, col: 0 },
-      { id: 'cell-4', row: 1, col: 1 },
-      { id: 'cell-5', row: 2, col: 0 },
-      { id: 'cell-6', row: 2, col: 1 },
-    ]
-  },
-  {
-    id: 'hybrid-50',
-    name: 'Hybrid 50/50',
-    rows: 2,
-    cols: 2,
-    cells: [
-      { id: 'cell-1', row: 0, col: 0, rowSpan: 2, colSpan: 1 },
-      { id: 'cell-2', row: 0, col: 1 },
-      { id: 'cell-3', row: 1, col: 1 },
-    ]
-  },
-  {
-    id: 'hybrid-60',
-    name: 'Hybrid 60/40',
-    rows: 2,
-    cols: 2,
-    cells: [
-      { id: 'cell-1', row: 0, col: 0, rowSpan: 2, colSpan: 1, width: 60 },
-      { id: 'cell-2', row: 0, col: 1, width: 40 },
-      { id: 'cell-3', row: 1, col: 1, width: 40 },
-    ]
-  },
-]
-
-// Change layout
-
-// Function to delete the current layout
-
-// Create and add a default layout
-
-// Function to set the current layout as default
-
-// Open layout builder
-
-// Toggle between dark and light mode
-function toggleDarkMode() {
-  uiStore.isDarkMode = !uiStore.isDarkMode
-  if (uiStore.isDarkMode) {
-    document.documentElement.classList.add('dark-theme')
-  } else {
-    document.documentElement.classList.remove('dark-theme')
-  }
-  localStorage.setItem('dark-theme-preference', uiStore.isDarkMode.toString())
-}
-
-// Responsive breakpoints
-const isSmallScreen = ref(false)
-const isMobileDevice = ref(false)
-
-// Check screen size on mount and when window resizes
-function updateScreenSize() {
-  isSmallScreen.value = window.innerWidth < 768
-  isMobileDevice.value = window.innerWidth < 480
-}
-
-onMounted(() => {
-  updateScreenSize()
-  window.addEventListener('resize', updateScreenSize)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateScreenSize)
-})
-
-// Get connected device count
-const connectedDeviceCount = computed(() => {
-  return unifiedStore.connectedDevices.length
-})
-
-// Total device count
-const totalDeviceCount = computed(() => {
-  return unifiedStore.devicesList.length
-})
-
-// Active link computation
-const isActiveLink = (path: string) => {
-  return route.path.startsWith(path)
-}
-
-function selectStaticLayout(layoutId: string) {
-  const layout = staticLayouts.find((l) => l.id === layoutId)
-  if (!layout) return
-  
-  // Check if we already have a layout with this template
-  const existingLayout = layoutStore.gridLayouts.find((gl: GridLayoutDefinition) => gl.id.startsWith(`static-${layout.id}-`))
-  
-  if (existingLayout) {
-    // Use the existing layout rather than creating a new one
-    console.log(`Using existing layout for template: ${layout.id}, ID: ${existingLayout.id}`)
-    
-    // Clear the current layout first (to force reactivity)
-    layoutStore.setCurrentLayout('')
-    
-    // Use setTimeout to ensure DOM updates between changes
-    setTimeout(() => {
-      // Then set the existing layout as current
-      layoutStore.setCurrentLayout(existingLayout.id)
-      currentLayoutId.value = existingLayout.id
-      
-      // Force a window resize event to ensure layout container updates
-      window.dispatchEvent(new Event('resize'))
-    }, 10)
-    return
-  }
-  
-  // No existing layout found, create a new one
-  // Create a unique ID for the new layout
-  const newLayoutId = `static-${layout.id}-${Date.now()}`
-  
-  // Handle layout creation based on layout type
-  const isHybridLayout = layoutId.startsWith('hybrid-');
-  let gridLayout;
-  
-  if (isHybridLayout) {
-    // Get hybrid layout with positions
-    const hybridLayoutResult = createHybridLayout(layout);
-    gridLayout = {
-      id: newLayoutId,
-      name: layout.name,
-      description: layout.name,
-      layouts: {
-        desktop: {
-          rows: hybridLayoutResult.rows,
-          panelIds: hybridLayoutResult.panelIds
-        },
-        tablet: {
-          rows: hybridLayoutResult.rows,
-          panelIds: hybridLayoutResult.panelIds
-        },
-        mobile: {
-          rows: hybridLayoutResult.rows,
-          panelIds: hybridLayoutResult.panelIds
-        }
-      },
-      isDefault: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-  } else {
-    // Regular grid layout
-    gridLayout = {
-      id: newLayoutId,
-      name: layout.name,
-      description: layout.name,
-      layouts: {
-        desktop: createViewportLayout(layout),
-        tablet: createViewportLayout(layout),
-        mobile: createViewportLayout(layout)
-      },
-      isDefault: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-  }
-  
-  // First add the layout to the store
-  layoutStore.addGridLayout(gridLayout)
-  
-  // Clear the current layout first (to force reactivity)
-  layoutStore.setCurrentLayout('')
-  
-  // Use setTimeout to ensure DOM updates between changes
-  setTimeout(() => {
-    // Then set the new layout as current
-    layoutStore.setCurrentLayout(gridLayout.id)
-    currentLayoutId.value = gridLayout.id
-    
-    // Force a window resize event to ensure layout container updates
-    window.dispatchEvent(new Event('resize'))
-  }, 10)
-}
-
-// Create a viewport layout from a static template
-function createViewportLayout(layout: LayoutTemplate) {
-  // Special handling for hybrid layouts
-  if (layout.id === 'hybrid-50' || layout.id === 'hybrid-60') {
-    return createHybridLayout(layout)
-  }
-  
-  // For regular grid layouts
-  return {
-    rows: convertStaticToRows(layout),
-    panelIds: layout.cells.map(cell => cell.id)
-  }
-}
-
-// Special handler for hybrid layouts
-function createHybridLayout(layout: LayoutTemplate) {
-  console.log('Creating hybrid layout for', layout.id)
-  console.log('Layout cells:', layout.cells)
-  
-  const spanningCell = layout.cells.find(cell => cell.rowSpan === 2)
-  const topRightCell = layout.cells.find(cell => cell.row === 0 && cell.col === 1)
-  const bottomRightCell = layout.cells.find(cell => cell.row === 1 && cell.col === 1)
-  
-  console.log('Found cells:', {
-    spanningCell,
-    topRightCell,
-    bottomRightCell
-  })
-  
-  if (!spanningCell || !topRightCell || !bottomRightCell) {
-    console.error('Invalid hybrid layout structure')
-    return {
-      rows: convertStaticToRows(layout),
-      panelIds: layout.cells.map(cell => cell.id)
-    }
-  }
-  
-  // Get the correct width values
-  const leftWidth = spanningCell.width || 50
-  const rightWidth = 100 - leftWidth
-  
-  // For hybrid layouts, the key is to manually position each cell
-  const rows = [
-    // First row: Left spanning cell + top right cell
-    {
-      id: 'row-1',
-      cells: [
-        // Left spanning cell (spans 2 rows)
-        {
-          id: spanningCell.id,
-          deviceType: 'any',
-          name: spanningCell.id,
-          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
-          width: leftWidth,
-          rowSpan: 2 // Preserve rowSpan
-        },
-        // Top right cell
-        {
-          id: topRightCell.id,
-          deviceType: 'any',
-          name: topRightCell.id,
-          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
-          width: rightWidth
-        }
-      ],
-      height: 50
-    },
-    // Second row: Contains the bottom right cell only
-    {
-      id: 'row-2',
-      cells: [
-        // Bottom right cell - explicitly positioned in second row
-        {
-          id: bottomRightCell.id,
-          deviceType: 'any',
-          name: bottomRightCell.id,
-          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
-          width: rightWidth 
-        }
-      ],
-      height: 50
-    }
-  ]
-  
-  console.log('Created hybrid layout rows:', rows)
-  
-  return {
-    rows,
-    panelIds: [spanningCell.id, topRightCell.id, bottomRightCell.id]
-  }
-}
-
-function convertStaticToRows(layout: LayoutTemplate) {
-  const rows = []
-  
-  // Use a special approach to handle cells with rowSpan
-  const spanningCells = layout.cells.filter(cell => cell.rowSpan && cell.rowSpan > 1)
-  const normalCells = layout.cells.filter(cell => !cell.rowSpan || cell.rowSpan === 1)
-  
-  // Handle rows
-  for (let r = 0; r < layout.rows; r++) {
-    // Find normal cells for this row
-    const rowCells = normalCells.filter(cell => cell.row === r)
-    
-    // Find spanning cells that start at this row
-    const spanningCellsForRow = spanningCells.filter(cell => cell.row === r)
-    
-    // Calculate total width of spanning cells in this row
-    const spanningCellsWidth = spanningCellsForRow.reduce((total, cell) => total + (cell.width || 50), 0)
-    
-    // Calculate remaining width for normal cells
-    const remainingWidth = 100 - spanningCellsWidth
-    const normalCellsCount = rowCells.length
-    
-    // Create row
-    rows.push({
-      id: `row-${r + 1}`,
-      cells: [
-        // Add spanning cells first
-        ...spanningCellsForRow.map(cell => ({
-          id: cell.id,
-          deviceType: 'any',
-          name: cell.id,
-          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
-          width: cell.width || 50, // Use cell's width or default to 50%
-          rowSpan: cell.rowSpan // Preserve rowSpan
-        })),
-        
-        // Add normal cells
-        ...rowCells.map(cell => ({
-          id: cell.id,
-          deviceType: 'any',
-          name: cell.id,
-          priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
-          width: cell.width || (normalCellsCount ? remainingWidth / normalCellsCount : 100)
-        }))
-      ],
-      height: 100 / layout.rows
-    })
-  }
-  
-  return rows
 }
 
 // Layout modal control
@@ -456,6 +113,62 @@ function showThumbnailLabel(event: MouseEvent, layout: LayoutTemplate) {
 
 function hideThumbnailLabel() {
   activeLabelInfo.value.visible = false
+}
+
+// Function to select a static layout
+function selectStaticLayout(layoutId: string) {
+  const template = staticLayouts.find((l) => l.id === layoutId)
+  if (!template) return
+  
+  // Get or create a layout based on this template using the store utility
+  const gridLayout = layoutStore.getOrCreateTemplateLayout(layoutId)
+  
+  // Clear the current layout first (to force reactivity)
+  layoutStore.setCurrentLayout('')
+  
+  // Use setTimeout to ensure DOM updates between changes
+  setTimeout(() => {
+    // Then set the layout as current
+    layoutStore.setCurrentLayout(gridLayout.id)
+    currentLayoutId.value = gridLayout.id
+    
+    // Force a window resize event to ensure layout container updates
+    window.dispatchEvent(new Event('resize'))
+  }, 10)
+}
+
+// Responsive breakpoints
+const isSmallScreen = ref(false)
+const isMobileDevice = ref(false)
+
+// Check screen size on mount and when window resizes
+function updateScreenSize() {
+  isSmallScreen.value = window.innerWidth < 768
+  isMobileDevice.value = window.innerWidth < 480
+}
+
+onMounted(() => {
+  updateScreenSize()
+  window.addEventListener('resize', updateScreenSize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateScreenSize)
+})
+
+// Get connected device count
+const connectedDeviceCount = computed(() => {
+  return unifiedStore.connectedDevices.length
+})
+
+// Total device count
+const totalDeviceCount = computed(() => {
+  return unifiedStore.devicesList.length
+})
+
+// Active link computation
+const isActiveLink = (path: string) => {
+  return route.path.startsWith(path)
 }
 </script>
 

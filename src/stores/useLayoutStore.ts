@@ -8,7 +8,16 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { LayoutDefinition, GridLayoutDefinition, Viewport, DeviceLayout, PanelPosition, LayoutCell } from '@/types/layouts/LayoutDefinition'
+import type {
+  LayoutDefinition,
+  GridLayoutDefinition,
+  Viewport,
+  DeviceLayout,
+  PanelPosition,
+  LayoutCell,
+  LayoutRow
+} from '@/types/layouts/LayoutDefinition'
+import { staticLayouts, type LayoutTemplate } from '@/types/layouts/StaticLayoutTemplates'
 
 export const LAYOUT_STORAGE_KEY = 'alpaca-web-layout'
 export const LAYOUTS_STORAGE_KEY = 'alpaca-web-layouts'
@@ -273,24 +282,20 @@ export const useLayoutStore = defineStore('layout', () => {
       }
     }
 
-    // If no grid layouts but we have legacy layouts, convert them
+    // If no grid layouts, create a default one from the first static template
     if (gridLayouts.value.length === 0) {
-      const savedLayouts = localStorage.getItem(LAYOUTS_STORAGE_KEY)
-      if (savedLayouts) {
-        try {
-          // const parsedLayouts: LayoutDefinition[] = JSON.parse(savedLayouts)
-          console.log('No grid layouts found, but found legacy layouts. Converting...')
-          // TODO: Add logic to convert position layouts to grid layouts if needed
-          // This would require a reverse conversion function
-        } catch (e) {
-          console.error('Failed to parse saved layouts:', e)
-        }
-      }
+      console.log('No layouts found, creating default layout from static template')
+      // Use the 2x2 grid as the default layout
+      const defaultTemplate = staticLayouts.find((l) => l.id === '2x2') || staticLayouts[0]
+      const defaultLayout = createLayoutFromTemplate('default', defaultTemplate, true)
+
+      // Set as current layout
+      currentLayoutId.value = defaultLayout.id
     }
 
-    // Load current layout ID
+    // Load current layout ID if not already set
     const savedCurrentLayoutId = localStorage.getItem(CURRENT_LAYOUT_ID_STORAGE_KEY)
-    if (savedCurrentLayoutId) {
+    if (savedCurrentLayoutId && !currentLayoutId.value) {
       currentLayoutId.value = savedCurrentLayoutId
     }
   }
@@ -412,6 +417,221 @@ export const useLayoutStore = defineStore('layout', () => {
     initLayouts()
   }
 
+  // Utility function to create a grid layout from a static template
+  function createLayoutFromTemplate(layoutId: string, template: LayoutTemplate, isDefault: boolean = false): GridLayoutDefinition {
+    // Create a unique ID for the new layout if not provided
+    const newLayoutId = layoutId || `static-${template.id}-${Date.now()}`
+
+    // Handle layout creation based on layout type
+    const isHybridLayout = template.id.startsWith('hybrid-')
+
+    // Create the appropriate layout structure
+    let gridLayout: GridLayoutDefinition
+
+    if (isHybridLayout) {
+      // Create hybrid layout
+      const hybridLayoutResult = createHybridLayout(template)
+      gridLayout = {
+        id: newLayoutId,
+        name: template.name,
+        description: template.name,
+        layouts: {
+          desktop: {
+            rows: hybridLayoutResult.rows,
+            panelIds: hybridLayoutResult.panelIds
+          },
+          tablet: {
+            rows: hybridLayoutResult.rows,
+            panelIds: hybridLayoutResult.panelIds
+          },
+          mobile: {
+            rows: hybridLayoutResult.rows,
+            panelIds: hybridLayoutResult.panelIds
+          }
+        },
+        isDefault: isDefault,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }
+    } else {
+      // Regular grid layout
+      const viewportLayout = createViewportLayout(template)
+      gridLayout = {
+        id: newLayoutId,
+        name: template.name,
+        description: template.name,
+        layouts: {
+          desktop: viewportLayout,
+          tablet: viewportLayout,
+          mobile: viewportLayout
+        },
+        isDefault: isDefault,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }
+    }
+
+    // Add the layout to the store
+    addGridLayout(gridLayout)
+    return gridLayout
+  }
+
+  // Create a viewport layout from a static template
+  function createViewportLayout(template: LayoutTemplate) {
+    // Special handling for hybrid layouts
+    if (template.id === 'hybrid-50' || template.id === 'hybrid-60') {
+      return createHybridLayout(template)
+    }
+
+    // For regular grid layouts
+    return {
+      rows: convertStaticToRows(template),
+      panelIds: template.cells.map((cell) => cell.id)
+    }
+  }
+
+  // Special handler for hybrid layouts
+  function createHybridLayout(template: LayoutTemplate) {
+    const spanningCell = template.cells.find((cell) => cell.rowSpan === 2)
+    const topRightCell = template.cells.find((cell) => cell.row === 0 && cell.col === 1)
+    const bottomRightCell = template.cells.find((cell) => cell.row === 1 && cell.col === 1)
+
+    if (!spanningCell || !topRightCell || !bottomRightCell) {
+      console.error('Invalid hybrid layout structure')
+      return {
+        rows: convertStaticToRows(template),
+        panelIds: template.cells.map((cell) => cell.id)
+      }
+    }
+
+    // Get the correct width values
+    const leftWidth = spanningCell.width || 50
+    const rightWidth = 100 - leftWidth
+
+    // For hybrid layouts, manually position each cell
+    const rows = [
+      // First row: Left spanning cell + top right cell
+      {
+        id: 'row-1',
+        cells: [
+          // Left spanning cell (spans 2 rows)
+          {
+            id: spanningCell.id,
+            deviceType: spanningCell.deviceType || 'any',
+            name: spanningCell.name || spanningCell.id,
+            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+            width: leftWidth,
+            rowSpan: 2 // Preserve rowSpan
+          },
+          // Top right cell
+          {
+            id: topRightCell.id,
+            deviceType: topRightCell.deviceType || 'any',
+            name: topRightCell.name || topRightCell.id,
+            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+            width: rightWidth
+          }
+        ],
+        height: 50
+      },
+      // Second row: Contains the bottom right cell only
+      {
+        id: 'row-2',
+        cells: [
+          // Bottom right cell - explicitly positioned in second row
+          {
+            id: bottomRightCell.id,
+            deviceType: bottomRightCell.deviceType || 'any',
+            name: bottomRightCell.name || bottomRightCell.id,
+            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+            width: rightWidth
+          }
+        ],
+        height: 50
+      }
+    ]
+
+    return {
+      rows,
+      panelIds: [spanningCell.id, topRightCell.id, bottomRightCell.id]
+    }
+  }
+
+  function convertStaticToRows(template: LayoutTemplate) {
+    const rows: LayoutRow[] = []
+
+    // Use a special approach to handle cells with rowSpan
+    const spanningCells = template.cells.filter((cell) => cell.rowSpan && cell.rowSpan > 1)
+    const normalCells = template.cells.filter((cell) => !cell.rowSpan || cell.rowSpan === 1)
+
+    // Handle rows
+    for (let r = 0; r < template.rows; r++) {
+      // Find normal cells for this row
+      const rowCells = normalCells.filter((cell) => cell.row === r)
+
+      // Find spanning cells that start at this row
+      const spanningCellsForRow = spanningCells.filter((cell) => cell.row === r)
+
+      // Calculate total width of spanning cells in this row
+      const spanningCellsWidth = spanningCellsForRow.reduce((total, cell) => total + (cell.width || 50), 0)
+
+      // Calculate remaining width for normal cells
+      const remainingWidth = 100 - spanningCellsWidth
+      const normalCellsCount = rowCells.length
+
+      // Create row
+      rows.push({
+        id: `row-${r + 1}`,
+        cells: [
+          // Add spanning cells first
+          ...spanningCellsForRow.map((cell) => ({
+            id: cell.id,
+            deviceType: cell.deviceType || 'any',
+            name: cell.name || cell.id,
+            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+            width: cell.width || 50, // Use cell's width or default to 50%
+            rowSpan: cell.rowSpan // Preserve rowSpan
+          })),
+
+          // Add normal cells
+          ...rowCells.map((cell) => ({
+            id: cell.id,
+            deviceType: cell.deviceType || 'any',
+            name: cell.name || cell.id,
+            priority: 'primary' as 'primary' | 'secondary' | 'tertiary',
+            width: cell.width || (normalCellsCount ? remainingWidth / normalCellsCount : 100)
+          }))
+        ],
+        height: 100 / template.rows
+      })
+    }
+
+    return rows
+  }
+
+  // Find an existing layout that matches a template
+  function findLayoutByTemplate(templateId: string): GridLayoutDefinition | undefined {
+    return gridLayouts.value.find((gl) => gl.id.startsWith(`static-${templateId}-`))
+  }
+
+  // Get or create a layout from a template
+  function getOrCreateTemplateLayout(templateId: string): GridLayoutDefinition {
+    // Find the template
+    const template = staticLayouts.find((l) => l.id === templateId)
+    if (!template) {
+      throw new Error(`Template with ID ${templateId} not found`)
+    }
+
+    // Check if we already have a layout with this template
+    const existingLayout = findLayoutByTemplate(templateId)
+    if (existingLayout) {
+      return existingLayout
+    }
+
+    // Create a new layout from the template
+    return createLayoutFromTemplate(`static-${templateId}-${Date.now()}`, template)
+  }
+
   return {
     // Legacy state for backward compatibility
     layout,
@@ -448,6 +668,16 @@ export const useLayoutStore = defineStore('layout', () => {
     setCurrentLayout,
     setViewport,
     updateViewport,
-    initLayouts
+    initLayouts,
+
+    // Template utility methods
+    createLayoutFromTemplate,
+    findLayoutByTemplate,
+    getOrCreateTemplateLayout,
+
+    // Internal utility methods (exposed to support components if needed)
+    createViewportLayout,
+    createHybridLayout,
+    convertStaticToRows
   }
 })
