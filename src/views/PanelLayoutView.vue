@@ -372,15 +372,10 @@ const changeLayout = (layoutId: string) => {
   if (layoutExists) {
     console.log(`Layout ${layoutId} found, setting as current layout`)
     
-    // Force layout change by clearing and resetting the store
-    layoutStore.setCurrentLayout('')
-    
-    // Wait for the next tick to set the new layout
-    setTimeout(() => {
-      layoutStore.setCurrentLayout(layoutId)
-      currentLayoutId.value = layoutId
-      console.log(`Layout changed to: ${layoutId}`)
-    }, 10)
+    // Directly set the current layout without resetting first
+    layoutStore.setCurrentLayout(layoutId)
+    currentLayoutId.value = layoutId
+    console.log(`Layout changed to: ${layoutId}`)
   } else {
     console.warn(`Layout with ID ${layoutId} not found, using default layout`)
     if (layoutStore.layouts.length > 0) {
