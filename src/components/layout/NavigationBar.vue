@@ -172,10 +172,6 @@ const isActiveLink = (path: string) => {
 <template>
   <nav class="aw-navigation-bar">
     <div class="aw-navigation-bar__left">
-      <div class="aw-navigation-bar__app-logo">
-        <Icon type="home" />
-      </div>
-      <h1 v-if="!isSmallScreen" class="aw-navigation-bar__app-title">Alpaca Web</h1>
 
       <!-- Navigation links -->
       <div class="aw-navigation-bar__links">
