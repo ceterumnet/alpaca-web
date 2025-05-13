@@ -86,7 +86,7 @@ function getPanelStyle(position: PanelPosition) {
   }
 
   // Use row/column span to properly position cells
-  console.log(`Panel ${position.panelId}: Position (${position.x}, ${position.y}), Size ${position.width}x${position.height}`)
+  // console.log(`Panel ${position.panelId}: Position (${position.x}, ${position.y}), Size ${position.width}x${position.height}`)
   
   const style = {
     gridColumnStart: position.x + 1,
@@ -95,7 +95,7 @@ function getPanelStyle(position: PanelPosition) {
     gridRowEnd: position.y + position.height + 1 // The correct position takes into account the height
   }
   
-  console.log(`Panel ${position.panelId}: Grid position - Column ${style.gridColumnStart}/${style.gridColumnEnd}, Row ${style.gridRowStart}/${style.gridRowEnd}`)
+  // console.log(`Panel ${position.panelId}: Grid position - Column ${style.gridColumnStart}/${style.gridColumnEnd}, Row ${style.gridRowStart}/${style.gridRowEnd}`)
   
   return style
 }

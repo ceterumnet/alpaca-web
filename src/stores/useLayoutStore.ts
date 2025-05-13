@@ -88,21 +88,21 @@ export const useLayoutStore = defineStore('layout', () => {
 
   // Function to convert a grid layout to position-based layout
   function gridToPositionLayout(gridLayout: GridLayoutDefinition): LayoutDefinition {
-    console.log('Converting grid layout to position layout:', gridLayout.id, gridLayout.name)
+    // console.log('Converting grid layout to position layout:', gridLayout.id, gridLayout.name)
 
     const deviceLayouts: DeviceLayout[] = []
 
     for (const [viewportType, gridLayoutObj] of Object.entries(gridLayout.layouts)) {
       const viewport = viewportType as Viewport
-      console.log(`Processing viewport: ${viewport} with ${gridLayoutObj.rows.length} rows`)
+      // console.log(`Processing viewport: ${viewport} with ${gridLayoutObj.rows.length} rows`)
 
       // Debugging: Log the structure of each row and cell
-      gridLayoutObj.rows.forEach((row, rowIndex) => {
-        console.log(`Row ${rowIndex + 1}: ${row.cells.length} cells`)
-        row.cells.forEach((cell, cellIndex) => {
-          console.log(`  Cell ${cellIndex + 1}: id=${cell.id}, width=${cell.width}%, rowSpan=${(cell as any).rowSpan || 1}`)
-        })
-      })
+      // gridLayoutObj.rows.forEach((row, rowIndex) => {
+      //   console.log(`Row ${rowIndex + 1}: ${row.cells.length} cells`)
+      //   row.cells.forEach((cell, cellIndex) => {
+      //     console.log(`  Cell ${cellIndex + 1}: id=${cell.id}, width=${cell.width}%, rowSpan=${(cell as any).rowSpan || 1}`)
+      //   })
+      // })
 
       const positions: PanelPosition[] = []
 
@@ -120,12 +120,12 @@ export const useLayoutStore = defineStore('layout', () => {
           // Special case for the second row in a hybrid layout
           if (rowIndex === 1 && row.cells.length === 1) {
             // This might be the special case for hybrid layout bottom row
-            console.log(`  Found potential bottom row cell: ${cell.id}`)
+            // console.log(`  Found potential bottom row cell: ${cell.id}`)
 
             // Check if the cell id is cell-3 (typical for hybrid layouts)
             if (cell.id === 'cell-3') {
               // This is the bottom right cell in a hybrid layout
-              console.log(`  Detected bottom right cell in hybrid layout: ${cell.id}`)
+              // console.log(`  Detected bottom right cell in hybrid layout: ${cell.id}`)
 
               // Force it to position correctly in the grid
               const cellWidth = Math.round((cell.width / 100) * 12)
@@ -138,7 +138,7 @@ export const useLayoutStore = defineStore('layout', () => {
                 height: 1
               })
 
-              console.log(`  Added special position for bottom right cell: x=${12 - cellWidth}, y=1, width=${cellWidth}, height=1`)
+              // console.log(`  Added special position for bottom right cell: x=${12 - cellWidth}, y=1, width=${cellWidth}, height=1`)
               continue
             }
           }
@@ -167,7 +167,7 @@ export const useLayoutStore = defineStore('layout', () => {
             ? deviceType // Use device type as panel ID for known types
             : cell.id // Use cell ID for custom panels
 
-          console.log(`  Adding position for cell ${cell.id}: x=${xPos}, y=${yPos}, width=${cellWidth}, height=${rowSpan}`)
+          // console.log(`  Adding position for cell ${cell.id}: x=${xPos}, y=${yPos}, width=${cellWidth}, height=${rowSpan}`)
 
           // Add the position
           positions.push({
@@ -183,7 +183,7 @@ export const useLayoutStore = defineStore('layout', () => {
             for (let c = 0; c < cellWidth; c++) {
               const posToMark = `${xPos + c},${yPos + r}`
               occupiedPositions.set(posToMark, true)
-              console.log(`    Marking position ${posToMark} as occupied`)
+              // console.log(`    Marking position ${posToMark} as occupied`)
             }
           }
 
@@ -195,10 +195,10 @@ export const useLayoutStore = defineStore('layout', () => {
         yPos += 1
       }
 
-      console.log(`Created ${positions.length} positions for viewport ${viewport}`)
-      positions.forEach((pos, index) => {
-        console.log(`  Position ${index + 1}: panelId=${pos.panelId}, x=${pos.x}, y=${pos.y}, width=${pos.width}, height=${pos.height}`)
-      })
+      // console.log(`Created ${positions.length} positions for viewport ${viewport}`)
+      // positions.forEach((pos, index) => {
+      //   console.log(`  Position ${index + 1}: panelId=${pos.panelId}, x=${pos.x}, y=${pos.y}, width=${pos.width}, height=${pos.height}`)
+      // })
 
       deviceLayouts.push({
         deviceType: viewport,
