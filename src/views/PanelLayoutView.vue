@@ -11,11 +11,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/useLayoutStore'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
-import SimplifiedCameraPanel from '@/components/devices/SimplifiedCameraPanel.vue'
-import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePanel.vue'
 import type { GridLayoutDefinition, LayoutRow, LayoutCell as StoreLayoutCell } from '@/types/layouts/LayoutDefinition'
-import SimplifiedFocuserPanel from '@/components/devices/SimplifiedFocuserPanel.vue'
 import StaticLayoutChooser from '@/components/layout/StaticLayoutChooser.vue'
+
+// Import the device component registry
+import deviceComponentRegistry from '@/services/DeviceComponentRegistry'
 
 // Get stores and router
 const layoutStore = useLayoutStore()
@@ -77,6 +77,38 @@ onMounted(() => {
   }
 })
 
+// Updated with component registry integration
+onMounted(() => {
+  console.log('PanelLayoutView - onMounted - Current layouts in store:', layoutStore.layouts.map(l => l.id))
+  console.log('PanelLayoutView - onMounted - Current grid layouts:', layoutStore.gridLayouts.map(l => l.id))
+  console.log('PanelLayoutView - onMounted - Current layout ID:', layoutStore.currentLayoutId)
+  
+  // Register all available devices with the component registry
+  unifiedStore.devicesList.forEach(device => {
+    if (device.id && device.type) {
+      deviceComponentRegistry.registerDevice(device.id, device.type);
+      console.log(`Registered device with registry: ${device.type} ${device.id}`);
+    }
+  });
+  
+  // Set up watcher for device list changes
+  watch(() => unifiedStore.devicesList, (newDevices) => {
+    // Register any new devices with the registry
+    newDevices.forEach(device => {
+      if (device.id && device.type) {
+        deviceComponentRegistry.registerDevice(device.id, device.type);
+      }
+    });
+  }, { deep: true });
+  
+  // Check if there's a layout parameter in the URL
+  if (route.query.layout) {
+    const layoutId = route.query.layout as string
+    console.log('PanelLayoutView - onMounted - Layout ID from URL:', layoutId)
+    changeLayout(layoutId)
+  }
+})
+
 // Watch for route changes to update layout
 watch(
   () => route.query.layout,
@@ -120,9 +152,19 @@ const assignDeviceToCell = (cellId: string, deviceId: string) => {
     const device = unifiedStore.getDeviceById(deviceId);
     if (device && device.type) {
       const deviceType = device.type.toLowerCase();
+      
       // Update deviceMap to maintain device selection by type
       console.log(`Updating deviceMap: ${deviceType} -> ${deviceId}`);
       deviceMap.value[deviceType] = deviceId;
+      
+      // Register with component registry to ensure state preservation
+      deviceComponentRegistry.assignToCell(deviceId, deviceType, cellId);
+    }
+  } else {
+    // If removing a device, clear the component registry assignment
+    const currentDevice = deviceComponentRegistry.getDeviceForCell(cellId);
+    if (currentDevice) {
+      deviceComponentRegistry.assignToCell(currentDevice.id, currentDevice.type, '');
     }
   }
 };
@@ -405,12 +447,24 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
       // This should be handled elsewhere in the UI where the user can explicitly connect
     }
     
+    // Register device with the component registry if needed
+    deviceComponentRegistry.registerDevice(deviceId, deviceType);
+    
     // When device is changed, update all panels using this device type
     if (currentDeviceLayout.value) {
       currentDeviceLayout.value.positions.forEach(position => {
         if (position.deviceType === deviceType) {
           console.log(`Updating all panels with type ${deviceType} to use device ${deviceId}`);
-          // The actual device ID is managed in deviceMap, no need to update position
+          
+          // If this position has a cell assignment, update it in the registry
+          const assignedCell = position.panelId;
+          if (cellDeviceAssignments.value[assignedCell] && 
+              unifiedStore.getDeviceById(cellDeviceAssignments.value[assignedCell])?.type?.toLowerCase() === deviceType) {
+            // Update cell assignment to the new device of the same type
+            cellDeviceAssignments.value[assignedCell] = deviceId;
+            deviceComponentRegistry.assignToCell(deviceId, deviceType, assignedCell);
+            console.log(`Updated cell assignment for ${assignedCell} to ${deviceType} ${deviceId}`);
+          }
         }
       });
     }
@@ -418,6 +472,8 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
     // If cellId was provided, update cell assignment
     if (cellId) {
       cellDeviceAssignments.value[cellId] = deviceId;
+      deviceComponentRegistry.assignToCell(deviceId, deviceType, cellId);
+      console.log(`Directly updated cell assignment for ${cellId} to ${deviceType} ${deviceId}`);
     }
   }
 }
@@ -483,6 +539,16 @@ watch(() => currentLayoutId.value, () => {
         cellDeviceAssignments.value[cellId] = deviceId;
       });
       
+      // ADDED: Update device registry with assignments
+      // Register all cell assignments with the component registry
+      Object.entries(cellDeviceAssignments.value).forEach(([cellId, deviceId]) => {
+        const device = unifiedStore.getDeviceById(deviceId);
+        if (device?.type) {
+          deviceComponentRegistry.assignToCell(deviceId, device.type, cellId);
+          console.log(`Registered cell assignment with registry: ${cellId} -> ${device.type} ${deviceId}`);
+        }
+      });
+      
       // Log final state AFTER layout change
       console.log('LAYOUT CHANGE - deviceMap AFTER:', { ...deviceMap.value });
       console.log('LAYOUT CHANGE - cellDeviceAssignments:', { ...cellDeviceAssignments.value });
@@ -498,6 +564,39 @@ watch(() => currentLayoutId.value, () => {
     }
   });
 }, { immediate: true });
+
+// Get device type for event handling
+const getDeviceType = (cellId: string): string => {
+  const deviceId = cellDeviceAssignments.value[cellId];
+  if (!deviceId) return '';
+  
+  const device = unifiedStore.getDeviceById(deviceId);
+  return device?.type?.toLowerCase() || '';
+};
+
+// NEW: Helper functions for getting components from the registry
+// Get the component for a given cell
+const getComponentForCell = (cellId: string) => {
+  // First check if there's a device assigned to this cell
+  const deviceId = cellDeviceAssignments.value[cellId];
+  if (!deviceId) return null;
+  
+  // Get the device to determine its type
+  const device = unifiedStore.getDeviceById(deviceId);
+  if (!device || !device.type) return null;
+  
+  // Get the component from the registry
+  return deviceComponentRegistry.getComponent(deviceId, device.type);
+};
+
+// Get device title/name for a cell
+const getDeviceTitle = (cellId: string): string => {
+  const deviceId = cellDeviceAssignments.value[cellId];
+  if (!deviceId) return '';
+  
+  const device = unifiedStore.getDeviceById(deviceId);
+  return device?.name || '';
+};
 </script>
 
 <template>
@@ -546,46 +645,41 @@ watch(() => currentLayoutId.value, () => {
             </div>
             
             <div class="panel-content" :class="{ 'maximized': position.panelId === maximizedPanelId }">
-              <!-- Use teleport when maximized to move the content instead of duplicating it -->
-              <teleport
-:to="position.panelId === maximizedPanelId ? '#maximized-panel-container' : `#panel-${position.panelId} .panel-content`" 
-                       :disabled="position.panelId !== maximizedPanelId">
-                <!-- We'll use component :is and keep-alive to preserve components -->
+              <!-- Main content (when not maximized) -->
+              <div v-if="position.panelId !== maximizedPanelId">
                 <keep-alive>
-                  <template v-if="cellDeviceAssignments[position.panelId]">
-                    <SimplifiedCameraPanel 
-                      v-if="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'camera'"
-                      :key="`global-camera-${cellDeviceAssignments[position.panelId]}`"
+                  <template v-if="cellDeviceAssignments[position.panelId] && getComponentForCell(position.panelId)">
+                    <component 
+                      :is="getComponentForCell(position.panelId)"
+                      :key="cellDeviceAssignments[position.panelId]"
                       :device-id="cellDeviceAssignments[position.panelId]"
-                      :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
-                      @device-change="(newDeviceId) => handleDeviceChange('camera', newDeviceId, position.panelId)"
+                      :title="getDeviceTitle(position.panelId)"
+                      @device-change="(newDeviceId: string) => handleDeviceChange(getDeviceType(position.panelId), newDeviceId, position.panelId)"
                     />
-                    
-                    <SimplifiedTelescopePanel 
-                      v-else-if="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'telescope'"
-                      :key="`global-telescope-${cellDeviceAssignments[position.panelId]}`"
-                      :device-id="cellDeviceAssignments[position.panelId]"
-                      :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
-                      @device-change="(newDeviceId) => handleDeviceChange('telescope', newDeviceId, position.panelId)"
-                    />
-                    
-                    <SimplifiedFocuserPanel 
-                      v-else-if="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.type?.toLowerCase() === 'focuser'"
-                      :key="`global-focuser-${cellDeviceAssignments[position.panelId]}`"
-                      :device-id="cellDeviceAssignments[position.panelId]"
-                      :title="unifiedStore.getDeviceById(cellDeviceAssignments[position.panelId])?.name"
-                      @device-change="(newDeviceId) => handleDeviceChange('focuser', newDeviceId, position.panelId)"
-                    />
-                    
-                    <div v-else class="empty-panel-state">
-                      <p>No compatible device found</p>
-                      <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
-                    </div>
                   </template>
-                  
-                  <!-- Empty state when no device selected -->
                   <div v-else class="empty-panel-state">
-                    <p>No device selected for this panel</p>
+                    <p>{{ cellDeviceAssignments[position.panelId] ? 'No compatible device component' : 'No device selected' }}</p>
+                    <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+                  </div>
+                </keep-alive>
+              </div>
+              
+              <!-- Teleport for maximized view -->
+              <teleport
+                v-if="position.panelId === maximizedPanelId"
+                to="#maximized-panel-container">
+                <keep-alive>
+                  <template v-if="cellDeviceAssignments[position.panelId] && getComponentForCell(position.panelId)">
+                    <component 
+                      :is="getComponentForCell(position.panelId)"
+                      :key="cellDeviceAssignments[position.panelId]"
+                      :device-id="cellDeviceAssignments[position.panelId]"
+                      :title="getDeviceTitle(position.panelId)"
+                      @device-change="(newDeviceId: string) => handleDeviceChange(getDeviceType(position.panelId), newDeviceId, position.panelId)"
+                    />
+                  </template>
+                  <div v-else class="empty-panel-state">
+                    <p>{{ cellDeviceAssignments[position.panelId] ? 'No compatible device component' : 'No device selected' }}</p>
                     <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
                   </div>
                 </keep-alive>

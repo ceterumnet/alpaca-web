@@ -110,7 +110,6 @@ const currentPositions = computed(() => {
 
 <template>
   <div 
-    :key="`layout-container-${props.layoutId}-${layoutStore.currentLayoutId}`" 
     class="aw-layout-container" 
     :class="{ 'aw-layout-container--mobile': isMobileView }"
   >
