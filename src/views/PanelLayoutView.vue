@@ -28,18 +28,26 @@ const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 
 const showStaticLayoutChooser = ref(false)
 
-// Track the maximized panel
-const maximizedPanelId = ref<string | null>(null)
+// Computed prop to check if any panel is maximized
+const hasMaximizedPanel = computed(() => {
+  return deviceComponentRegistry.hasMaximizedPanel()
+})
 
-// Function to toggle panel maximization
+// Function to toggle panel maximization using the registry
 const toggleMaximizePanel = (panelId: string) => {
-  if (maximizedPanelId.value === panelId) {
-    // If clicking the same panel, minimize it
-    maximizedPanelId.value = null
-  } else {
-    // Otherwise, maximize this panel
-    maximizedPanelId.value = panelId
+  // Find the device assigned to this cell
+  const deviceRef = deviceComponentRegistry.getDeviceForCell(panelId)
+  
+  if (!deviceRef) {
+    console.log(`No device found for panel ${panelId}, cannot maximize`)
+    return
   }
+  
+  // Check if this panel is already maximized
+  const isCurrentlyMaximized = deviceRef.isMaximized
+  
+  // Toggle maximized state using the registry
+  deviceComponentRegistry.setMaximized(deviceRef.id, deviceRef.type, !isCurrentlyMaximized)
   
   // Force a layout recalculation after toggling
   nextTick(() => {
@@ -472,37 +480,41 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
     }
   }
 };
+
+// Helper function to check if a panel is maximized
+const isPanelMaximized = (panelId: string): boolean => {
+  const deviceRef = deviceComponentRegistry.getDeviceForCell(panelId)
+  return deviceRef ? deviceRef.isMaximized : false
+}
 </script>
 
 <template>
   <div class="panel-layout-view">
 
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
-      <!-- Maximized panel overlay container -->
-      <div v-show="maximizedPanelId !== null" class="maximized-panel-overlay">
-        <div class="panel-header maximized-header">
-          <h3>{{ maximizedPanelId }}</h3>
-          <div class="header-controls">
-            <button class="minimize-panel-btn" @click="toggleMaximizePanel(maximizedPanelId as string)">
-              <span class="minimize-icon">□</span>
-            </button>
-          </div>
-        </div>
-        <!-- Container for the teleported content -->
-        <div id="maximized-panel-container" class="maximized-panel-content"></div>
-      </div>
-
-      <LayoutContainer :layout-id="currentLayoutId" :class="{ 'layout-behind-maximized': maximizedPanelId !== null }">
+      <LayoutContainer :layout-id="currentLayoutId" :class="{ 'has-maximized-panel': hasMaximizedPanel }">
         <!-- Dynamic Cell Slots - Generic device renderer -->
         <template v-for="i in 6" :key="`cell-${i}`" #[`cell-${i}`]="{ position }">
-          <div v-if="position" :id="`panel-${position.panelId}`" class="universal-panel-container">
+          <div 
+            v-if="position" 
+            :id="`panel-${position.panelId}`" 
+            class="universal-panel-container"
+            :class="{
+              'maximized': isPanelMaximized(position.panelId),
+              'hidden-panel': hasMaximizedPanel && !isPanelMaximized(position.panelId)
+            }"
+          >
             <div class="panel-header">
               <h3>Cell {{position.panelId}}</h3>
               
               <div class="header-controls">
-                <!-- Add maximize button -->
-                <button class="maximize-panel-btn" @click="toggleMaximizePanel(position.panelId)">
-                  <span class="maximize-icon">⬚</span>
+                <!-- Toggle maximize button with different icon based on state -->
+                <button 
+                  class="maximize-panel-btn" 
+                  :title="isPanelMaximized(position.panelId) ? 'Restore panel' : 'Maximize panel'"
+                  @click="toggleMaximizePanel(position.panelId)"
+                >
+                  <span class="maximize-icon">{{ isPanelMaximized(position.panelId) ? '□' : '⬚' }}</span>
                 </button>
                 
                 <!-- Universal device selector dropdown with proper event typing -->
@@ -519,46 +531,22 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
               </div>
             </div>
             
-            <div class="panel-content" :class="{ 'maximized': position.panelId === maximizedPanelId }">
-              <!-- Main content (when not maximized) -->
-              <div v-if="position.panelId !== maximizedPanelId">
-                <keep-alive>
-                  <template v-if="cellDeviceAssignments[position.panelId] && getComponentForCell(position.panelId)">
-                    <component 
-                      :is="getComponentForCell(position.panelId)"
-                      :key="cellDeviceAssignments[position.panelId]"
-                      :device-id="cellDeviceAssignments[position.panelId]"
-                      :title="getDeviceTitle(position.panelId)"
-                      @device-change="(newDeviceId: string) => handleDeviceChange(getDeviceType(position.panelId), newDeviceId, position.panelId)"
-                    />
-                  </template>
-                  <div v-else class="empty-panel-state">
-                    <p>{{ cellDeviceAssignments[position.panelId] ? 'No compatible device component' : 'No device selected' }}</p>
-                    <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
-                  </div>
-                </keep-alive>
-              </div>
-              
-              <!-- Teleport for maximized view -->
-              <teleport
-                v-if="position.panelId === maximizedPanelId"
-                to="#maximized-panel-container">
-                <keep-alive>
-                  <template v-if="cellDeviceAssignments[position.panelId] && getComponentForCell(position.panelId)">
-                    <component 
-                      :is="getComponentForCell(position.panelId)"
-                      :key="cellDeviceAssignments[position.panelId]"
-                      :device-id="cellDeviceAssignments[position.panelId]"
-                      :title="getDeviceTitle(position.panelId)"
-                      @device-change="(newDeviceId: string) => handleDeviceChange(getDeviceType(position.panelId), newDeviceId, position.panelId)"
-                    />
-                  </template>
-                  <div v-else class="empty-panel-state">
-                    <p>{{ cellDeviceAssignments[position.panelId] ? 'No compatible device component' : 'No device selected' }}</p>
-                    <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
-                  </div>
-                </keep-alive>
-              </teleport>
+            <div class="panel-content">
+              <keep-alive>
+                <template v-if="cellDeviceAssignments[position.panelId] && getComponentForCell(position.panelId)">
+                  <component 
+                    :is="getComponentForCell(position.panelId)"
+                    :key="cellDeviceAssignments[position.panelId]"
+                    :device-id="cellDeviceAssignments[position.panelId]"
+                    :title="getDeviceTitle(position.panelId)"
+                    @device-change="(newDeviceId: string) => handleDeviceChange(getDeviceType(position.panelId), newDeviceId, position.panelId)"
+                  />
+                </template>
+                <div v-else class="empty-panel-state">
+                  <p>{{ cellDeviceAssignments[position.panelId] ? 'No compatible device component' : 'No device selected' }}</p>
+                  <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+                </div>
+              </keep-alive>
             </div>
           </div>
         </template>
@@ -594,41 +582,48 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
   position: relative;
 }
 
-/* Updated maximized panel styles */
-.layout-behind-maximized {
-  visibility: visible;
-  opacity: 0.01; /* Nearly invisible but keeps component state */
+/* Panel maximization styles */
+.has-maximized-panel {
+  position: relative;
+}
+
+.universal-panel-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.universal-panel-container.maximized {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 1000 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background-color: var(--aw-panel-bg-color, #2a2a2a);
+}
+
+.hidden-panel {
+  opacity: 0.1;
   pointer-events: none;
 }
 
-.maximized-panel-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-}
-
-.maximized-header {
-  background-color: var(--aw-panel-header-bg-color, #333);
-  padding: 8px;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+.panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background-color: var(--aw-panel-header-bg-color, #333);
+  padding: 8px;
+  border-bottom: 1px solid var(--aw-panel-border-color, #444);
 }
 
-.maximized-panel-content {
-  flex: 1;
-  overflow: auto;
-}
-
-.hidden {
-  visibility: hidden;
+.panel-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .header-controls {
@@ -661,6 +656,21 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
 .maximize-icon,
 .minimize-icon {
   line-height: 1;
+}
+
+.device-selector-dropdown {
+  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  color: var(--aw-text-color, #f0f0f0);
+  border: 1px solid var(--aw-panel-border-color, #444);
+  border-radius: 4px;
+  padding: 4px;
+  font-size: 0.8rem;
+  max-width: 180px;
+}
+
+.panel-content {
+  flex: 1;
+  overflow: auto;
 }
 
 .no-layout {
@@ -757,42 +767,6 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
   color: #888;
 }
 
-.universal-panel-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: var(--aw-panel-header-bg-color, #333);
-  padding: 8px;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
-}
-
-.panel-header h3 {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.device-selector-dropdown {
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
-  padding: 4px;
-  font-size: 0.8rem;
-  max-width: 180px;
-}
-
-.panel-content {
-  flex: 1;
-  overflow: auto;
-}
-
 .empty-panel-state {
   display: flex;
   flex-direction: column;
@@ -802,12 +776,6 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
   padding: 1rem;
   color: var(--aw-text-secondary-color, #aaa);
   text-align: center;
-}
-
-.panel-coordinates {
-  margin-top: 1rem;
-  font-size: 0.8rem;
-  color: #888;
 }
 
 .select-layout-btn {

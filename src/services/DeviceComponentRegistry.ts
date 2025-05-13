@@ -12,11 +12,12 @@ import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePa
 import SimplifiedFocuserPanel from '@/components/devices/SimplifiedFocuserPanel.vue'
 
 // Types
-interface DeviceComponentRef {
+export interface DeviceComponentRef {
   id: string
   type: string
   component: Component
   isVisible: boolean
+  isMaximized: boolean
   currentCell: string | null
   createdAt: number
   lastActive: number
@@ -43,7 +44,7 @@ interface PerformanceMetrics {
  */
 class DeviceComponentRegistry {
   // Registry of device components
-  private registry = ref<Record<string, DeviceComponentRef>>({})
+  registry = ref<Record<string, DeviceComponentRef>>({})
 
   // Registered component types
   private componentMap: Record<string, Component> = {
@@ -95,6 +96,7 @@ class DeviceComponentRegistry {
       type: normalizedType,
       component: markRaw(component),
       isVisible: false,
+      isMaximized: false,
       currentCell: null,
       createdAt: Date.now(),
       lastActive: Date.now(),
@@ -291,6 +293,48 @@ class DeviceComponentRegistry {
     })
 
     console.log('=================================================')
+  }
+
+  /**
+   * Set maximized state for a device component
+   *
+   * @param deviceId - The unique device ID
+   * @param deviceType - The type of device (camera, telescope, etc.)
+   * @param isMaximized - Whether the component should be maximized
+   */
+  setMaximized(deviceId: string, deviceType: string, isMaximized: boolean): void {
+    const normalizedType = deviceType.toLowerCase()
+    const key = `${normalizedType}-${deviceId}`
+
+    // Clear other maximized panels if setting to true
+    if (isMaximized) {
+      Object.values(this.registry.value).forEach((ref) => {
+        ref.isMaximized = false
+      })
+    }
+
+    if (this.registry.value[key]) {
+      this.registry.value[key].isMaximized = isMaximized
+      console.log(`[DeviceComponentRegistry] Set maximized state for ${normalizedType}-${deviceId}: ${isMaximized}`)
+    }
+  }
+
+  /**
+   * Check if any panel is currently maximized
+   *
+   * @returns Boolean indicating if any panel is maximized
+   */
+  hasMaximizedPanel(): boolean {
+    return Object.values(this.registry.value).some((ref) => ref.isMaximized)
+  }
+
+  /**
+   * Get the current maximized panel if any
+   *
+   * @returns The maximized device component reference or null if none
+   */
+  getMaximizedPanel(): DeviceComponentRef | null {
+    return Object.values(this.registry.value).find((ref) => ref.isMaximized) || null
   }
 }
 
