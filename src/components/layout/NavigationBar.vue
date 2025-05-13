@@ -38,24 +38,6 @@ const navLinks: NavLink[] = [
     icon: 'files',
     description: 'Customizable panel layout view'
   },
-  // {
-  //   name: 'Layout Builder',
-  //   path: '/layout-builder',
-  //   icon: 'expand',
-  //   description: 'Create and edit custom layouts'
-  // },
-  // {
-  //   name: 'Discovery',
-  //   path: '/discovery',
-  //   icon: 'search',
-  //   description: 'Find and connect devices'
-  // },
-  // {
-  //   name: 'UI Components',
-  //   path: '/ui-components',
-  //   icon: 'detailed',
-  //   description: 'UI component showcase'
-  // },
   {
     name: 'Settings',
     path: '/settings',

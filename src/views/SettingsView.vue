@@ -13,22 +13,6 @@ import SettingsPanel from '@/components/ui/SettingsPanel.vue'
 <template>
   <div class="aw-settings-view">
     <SettingsPanel />
-
-    <!-- Prototype Link Section -->
-    <div class="aw-prototype-section">
-      <h2 class="aw-prototype-section__title">Prototypes & Experiments</h2>
-      <p class="aw-prototype-section__description">View experimental features and prototypes (for development only)</p>
-
-      <div class="aw-prototype-links">
-        <router-link to="/panel-system-prototype" class="aw-prototype-link">
-          <div class="aw-prototype-link__icon">🧪</div>
-          <div class="aw-prototype-link__info">
-            <h3 class="aw-prototype-link__title">New Panel System</h3>
-            <p class="aw-prototype-link__description">Try out the new drag & drop device panel system</p>
-          </div>
-        </router-link>
-      </div>
-    </div>
   </div>
 </template>
 
