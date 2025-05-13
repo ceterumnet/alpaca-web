@@ -449,6 +449,35 @@ const getDeviceTitle = (cellId: string): string => {
   return device?.name || '';
 };
 
+// Get device connection info for a cell to display in header
+const getDeviceConnectionInfo = (cellId: string): string => {
+  const deviceId = cellDeviceAssignments.value[cellId];
+  if (!deviceId) return '';
+  
+  const device = unifiedStore.getDeviceById(deviceId);
+  if (!device) return '';
+  
+  // Get connection details from device properties
+  const ipAddress = device.ipAddress || device.address || '';
+  const port = device.properties?.alpacaPort || device.port || '';
+  const serverName = device.properties?.serverName || '';
+  
+  let connectionInfo = '';
+  
+  // Include server name if available
+  if (serverName) {
+    connectionInfo += `${serverName}`;
+  }
+  
+  // Add IP:port if available
+  if (ipAddress && port) {
+    if (connectionInfo) connectionInfo += ' - ';
+    connectionInfo += `${ipAddress}:${port}`;
+  }
+  
+  return connectionInfo;
+};
+
 // Handle device changes from child panels - simplified version using component registry
 const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: string) => {
   console.log('PanelLayoutView - handleDeviceChange called:', deviceType, deviceId);
@@ -505,7 +534,16 @@ const isPanelMaximized = (panelId: string): boolean => {
             }"
           >
             <div class="panel-header">
-              <h3>Cell {{position.panelId}}</h3>
+              <!-- Show device name or "Cell X" if no device selected -->
+              <div class="panel-title">
+                <h3 v-if="!cellDeviceAssignments[position.panelId]">Cell {{position.panelId}}</h3>
+                <template v-else>
+                  <h3>{{ getDeviceTitle(position.panelId) }}</h3>
+                  <div v-if="getDeviceConnectionInfo(position.panelId)" class="connection-info">
+                    {{ getDeviceConnectionInfo(position.panelId) }}
+                  </div>
+                </template>
+              </div>
               
               <div class="header-controls">
                 <!-- Toggle maximize button with different icon based on state -->
@@ -621,15 +659,33 @@ const isPanelMaximized = (panelId: string): boolean => {
   border-bottom: 1px solid var(--aw-panel-border-color, #444);
 }
 
+.panel-title {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .panel-header h3 {
   margin: 0;
   font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connection-info {
+  font-size: 0.7rem;
+  color: var(--aw-text-secondary-color, #aaa);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-controls {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .maximize-panel-btn,
