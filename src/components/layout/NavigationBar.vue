@@ -123,9 +123,6 @@ function selectStaticLayout(layoutId: string) {
   // Get or create a layout based on this template using the store utility
   const gridLayout = layoutStore.getOrCreateTemplateLayout(layoutId)
   
-  // Clear the current layout first (to force reactivity)
-  layoutStore.setCurrentLayout('')
-  
   // Use setTimeout to ensure DOM updates between changes
   setTimeout(() => {
     // Then set the layout as current
