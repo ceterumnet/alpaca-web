@@ -15,6 +15,7 @@ import { useLayoutStore } from '@/stores/useLayoutStore'
 import Icon from '@/components/ui/Icon.vue'
 import type { IconType } from '@/components/ui/Icon.vue'
 import DiscoveryIndicator from '@/components/navigation/DiscoveryIndicator.vue'
+import type { GridLayoutDefinition } from '@/types/layouts/LayoutDefinition'
 
 // Get stores
 const uiStore = useUIPreferencesStore()
@@ -188,6 +189,29 @@ function selectStaticLayout(layoutId: string) {
   const layout = staticLayouts.find((l) => l.id === layoutId)
   if (!layout) return
   
+  // Check if we already have a layout with this template
+  const existingLayout = layoutStore.gridLayouts.find((gl: GridLayoutDefinition) => gl.id.startsWith(`static-${layout.id}-`))
+  
+  if (existingLayout) {
+    // Use the existing layout rather than creating a new one
+    console.log(`Using existing layout for template: ${layout.id}, ID: ${existingLayout.id}`)
+    
+    // Clear the current layout first (to force reactivity)
+    layoutStore.setCurrentLayout('')
+    
+    // Use setTimeout to ensure DOM updates between changes
+    setTimeout(() => {
+      // Then set the existing layout as current
+      layoutStore.setCurrentLayout(existingLayout.id)
+      currentLayoutId.value = existingLayout.id
+      
+      // Force a window resize event to ensure layout container updates
+      window.dispatchEvent(new Event('resize'))
+    }, 10)
+    return
+  }
+  
+  // No existing layout found, create a new one
   // Create a unique ID for the new layout
   const newLayoutId = `static-${layout.id}-${Date.now()}`
   
