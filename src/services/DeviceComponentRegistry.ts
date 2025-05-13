@@ -18,6 +18,20 @@ interface DeviceComponentRef {
   component: Component
   isVisible: boolean
   currentCell: string | null
+  createdAt: number
+  lastActive: number
+  assignmentCount: number
+}
+
+// Performance metrics
+interface PerformanceMetrics {
+  componentCreations: number
+  assignmentChanges: number
+  assignmentsPerDevice: Record<string, number>
+  unregisteredComponents: number
+  averageAssignmentTime: number
+  totalAssignmentTime: number
+  assignmentCount: number
 }
 
 /**
@@ -38,6 +52,17 @@ class DeviceComponentRegistry {
     focuser: markRaw(SimplifiedFocuserPanel)
   }
 
+  // Performance metrics
+  private metrics: PerformanceMetrics = {
+    componentCreations: 0,
+    assignmentChanges: 0,
+    assignmentsPerDevice: {},
+    unregisteredComponents: 0,
+    averageAssignmentTime: 0,
+    totalAssignmentTime: 0,
+    assignmentCount: 0
+  }
+
   /**
    * Register a device component
    *
@@ -46,11 +71,14 @@ class DeviceComponentRegistry {
    * @returns The component reference
    */
   registerDevice(deviceId: string, deviceType: string): DeviceComponentRef {
+    const startTime = performance.now()
     const normalizedType = deviceType.toLowerCase()
     const key = `${normalizedType}-${deviceId}`
 
     // Return existing component if it exists
     if (this.registry.value[key]) {
+      // Update last active time
+      this.registry.value[key].lastActive = Date.now()
       return this.registry.value[key]
     }
 
@@ -67,12 +95,23 @@ class DeviceComponentRegistry {
       type: normalizedType,
       component: markRaw(component),
       isVisible: false,
-      currentCell: null
+      currentCell: null,
+      createdAt: Date.now(),
+      lastActive: Date.now(),
+      assignmentCount: 0
     }
 
     // Add to registry
     this.registry.value[key] = componentRef
     console.log(`[DeviceComponentRegistry] Registered device component: ${normalizedType}-${deviceId}`)
+
+    // Update metrics
+    this.metrics.componentCreations++
+    this.metrics.assignmentsPerDevice[key] = 0
+
+    // Log performance
+    const elapsedTime = performance.now() - startTime
+    console.log(`[DeviceComponentRegistry] Component registration took ${elapsedTime.toFixed(2)}ms`)
 
     return componentRef
   }
@@ -90,6 +129,8 @@ class DeviceComponentRegistry {
 
     // Return component if it exists
     if (this.registry.value[key]) {
+      // Update last active time
+      this.registry.value[key].lastActive = Date.now()
       return this.registry.value[key].component
     }
 
@@ -111,6 +152,7 @@ class DeviceComponentRegistry {
    * @param cellId - The cell ID to assign this device to
    */
   assignToCell(deviceId: string, deviceType: string, cellId: string): void {
+    const startTime = performance.now()
     const normalizedType = deviceType.toLowerCase()
     const key = `${normalizedType}-${deviceId}`
 
@@ -134,8 +176,20 @@ class DeviceComponentRegistry {
     // Update assignment
     componentRef.currentCell = cellId
     componentRef.isVisible = true
+    componentRef.lastActive = Date.now()
+    componentRef.assignmentCount++
 
-    console.log(`[DeviceComponentRegistry] Assigned ${normalizedType}-${deviceId} to cell ${cellId}`)
+    // Update metrics
+    this.metrics.assignmentChanges++
+    this.metrics.assignmentsPerDevice[key] = (this.metrics.assignmentsPerDevice[key] || 0) + 1
+
+    // Track assignment time for performance metrics
+    const elapsedTime = performance.now() - startTime
+    this.metrics.totalAssignmentTime += elapsedTime
+    this.metrics.assignmentCount++
+    this.metrics.averageAssignmentTime = this.metrics.totalAssignmentTime / this.metrics.assignmentCount
+
+    console.log(`[DeviceComponentRegistry] Assigned ${normalizedType}-${deviceId} to cell ${cellId} (took ${elapsedTime.toFixed(2)}ms)`)
   }
 
   /**
@@ -179,6 +233,7 @@ class DeviceComponentRegistry {
 
     if (this.registry.value[key]) {
       delete this.registry.value[key]
+      this.metrics.unregisteredComponents++
       console.log(`[DeviceComponentRegistry] Unregistered device component: ${normalizedType}-${deviceId}`)
     }
   }
@@ -193,6 +248,49 @@ class DeviceComponentRegistry {
     })
 
     console.log('[DeviceComponentRegistry] Cleared all device assignments')
+  }
+
+  /**
+   * Get performance metrics for the registry
+   *
+   * @returns The current performance metrics
+   */
+  getPerformanceMetrics(): PerformanceMetrics {
+    return { ...this.metrics }
+  }
+
+  /**
+   * Log performance metrics to console
+   */
+  logPerformanceMetrics(): void {
+    console.log('=== DeviceComponentRegistry Performance Metrics ===')
+    console.log(`Total components created: ${this.metrics.componentCreations}`)
+    console.log(`Total assignment changes: ${this.metrics.assignmentChanges}`)
+    console.log(`Components unregistered: ${this.metrics.unregisteredComponents}`)
+    console.log(`Average assignment time: ${this.metrics.averageAssignmentTime.toFixed(2)}ms`)
+
+    // Log devices with most assignments
+    const sortedDevices = Object.entries(this.metrics.assignmentsPerDevice)
+      .sort(([, aCount], [, bCount]) => bCount - aCount)
+      .slice(0, 5)
+
+    console.log('Top devices by assignment count:')
+    sortedDevices.forEach(([device, count]) => {
+      console.log(`  ${device}: ${count} assignments`)
+    })
+
+    // Log components by age
+    const componentsByAge = Object.values(this.registry.value)
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .slice(0, 5)
+
+    console.log('Oldest components:')
+    componentsByAge.forEach((component) => {
+      const ageInMinutes = (Date.now() - component.createdAt) / (1000 * 60)
+      console.log(`  ${component.type}-${component.id}: ${ageInMinutes.toFixed(1)} minutes old, assigned ${component.assignmentCount} times`)
+    })
+
+    console.log('=================================================')
   }
 }
 

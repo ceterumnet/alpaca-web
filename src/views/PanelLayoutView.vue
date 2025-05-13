@@ -144,6 +144,9 @@ const cellDeviceAssignments = ref<Record<string, string>>({});
 const assignDeviceToCell = (cellId: string, deviceId: string) => {
   console.log(`Assigning device ${deviceId} to cell ${cellId}`);
   
+  // Performance measurement
+  const startTime = performance.now();
+  
   // Update cell assignment
   cellDeviceAssignments.value[cellId] = deviceId;
   
@@ -167,6 +170,10 @@ const assignDeviceToCell = (cellId: string, deviceId: string) => {
       deviceComponentRegistry.assignToCell(currentDevice.id, currentDevice.type, '');
     }
   }
+  
+  // Log performance of the operation
+  const assignmentTime = performance.now() - startTime;
+  console.log(`Device assignment to cell ${cellId} took ${assignmentTime.toFixed(2)}ms`);
 };
 
 // Get all available devices (not filtered by type)
@@ -336,231 +343,67 @@ onMounted(() => {
   });
 });
 
-interface DeviceComponentRef {
-  type: string;
-  deviceId: string;
-  showing: boolean;
-  currentCell: string | null;
-}
-
-// Global registry to hold all device instances - they never get recreated
-const globalDeviceComponents = ref<Record<string, DeviceComponentRef>>({});
-
-// Create global device components once and never recreate them
-const initGlobalDeviceComponents = () => {
-  console.log('Initializing global device components');
-  
-  // Iterate through all devices and create component instances
-  unifiedStore.devicesList.forEach(device => {
-    if (!device.id || !device.type) return;
-    
-    // Get device type
-    const deviceType = device.type.toLowerCase();
-    const deviceId = device.id;
-    
-    // Check if we already have this device
-    const key = `${deviceType}-${deviceId}`;
-    if (!globalDeviceComponents.value[key]) {
-      console.log(`Creating persistent global component for ${deviceType} ${deviceId}`);
-      
-      // Create a persistent ref for this device
-      globalDeviceComponents.value[key] = {
-        type: deviceType,
-        deviceId,
-        showing: false,
-        currentCell: null
-      };
-    }
-  });
-};
-
-// Initialize global registry once
-onMounted(() => {
-  initGlobalDeviceComponents();
-  
-  // Refresh when devices change - using Vue's internal watch system
-  watch(() => unifiedStore.devicesList, () => {
-    initGlobalDeviceComponents();
-  }, { deep: true });
-});
-
-// Track which components should be shown in which cells
-const visibleComponentMap = ref<Record<string, { type: string, deviceId: string }>>({});
-
-// Update visibleComponentMap when cell assignments change
-watch(cellDeviceAssignments, (newAssignments) => {
-  // Reset all to not showing
-  Object.values(globalDeviceComponents.value).forEach(comp => {
-    comp.showing = false;
-    comp.currentCell = null;
-  });
-  
-  // Set up mappings based on current assignments
-  Object.entries(newAssignments).forEach(([cellId, deviceId]) => {
-    if (!deviceId) return;
-    
-    const device = unifiedStore.getDeviceById(deviceId);
-    if (!device || !device.type) return;
-    
-    const deviceType = device.type.toLowerCase();
-    const key = `${deviceType}-${deviceId}`;
-    
-    if (globalDeviceComponents.value[key]) {
-      // Update showing state
-      globalDeviceComponents.value[key].showing = true;
-      globalDeviceComponents.value[key].currentCell = cellId;
-      
-      // Update visible component map
-      visibleComponentMap.value[cellId] = {
-        type: deviceType,
-        deviceId: deviceId
-      };
-    }
-  });
-  
-  console.log('Updated visibleComponentMap:', visibleComponentMap.value);
-}, { deep: true });
-
-// Handle device changes from child panels
-const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: string) => {
-  console.log('PanelLayoutView - handleDeviceChange called:', deviceType, deviceId)
-
-  // Normalize to lowercase for consistent mapping
-  deviceType = deviceType.toLowerCase()
-
-  if (deviceType in deviceMap.value) {
-    console.log(
-      'PanelLayoutView - Updating deviceMap for type:',
-      deviceType,
-      'from',
-      deviceMap.value[deviceType],
-      'to',
-      deviceId
-    )
-    deviceMap.value[deviceType] = deviceId
-
-    // Auto-connect to device if not yet connected
-    const device = unifiedStore.getDeviceById(deviceId)
-    if (device && !device.isConnected) {
-      console.log('PanelLayoutView - Auto-connecting to device:', deviceId)
-      // NOTE: Auto-connect functionality removed due to type compatibility issues
-      // This should be handled elsewhere in the UI where the user can explicitly connect
-    }
-    
-    // Register device with the component registry if needed
-    deviceComponentRegistry.registerDevice(deviceId, deviceType);
-    
-    // When device is changed, update all panels using this device type
-    if (currentDeviceLayout.value) {
-      currentDeviceLayout.value.positions.forEach(position => {
-        if (position.deviceType === deviceType) {
-          console.log(`Updating all panels with type ${deviceType} to use device ${deviceId}`);
-          
-          // If this position has a cell assignment, update it in the registry
-          const assignedCell = position.panelId;
-          if (cellDeviceAssignments.value[assignedCell] && 
-              unifiedStore.getDeviceById(cellDeviceAssignments.value[assignedCell])?.type?.toLowerCase() === deviceType) {
-            // Update cell assignment to the new device of the same type
-            cellDeviceAssignments.value[assignedCell] = deviceId;
-            deviceComponentRegistry.assignToCell(deviceId, deviceType, assignedCell);
-            console.log(`Updated cell assignment for ${assignedCell} to ${deviceType} ${deviceId}`);
-          }
-        }
-      });
-    }
-    
-    // If cellId was provided, update cell assignment
-    if (cellId) {
-      cellDeviceAssignments.value[cellId] = deviceId;
-      deviceComponentRegistry.assignToCell(deviceId, deviceType, cellId);
-      console.log(`Directly updated cell assignment for ${cellId} to ${deviceType} ${deviceId}`);
-    }
-  }
-}
-
-// Initialize cell device assignments when layout changes
+// Initialize cell device assignments when layout changes - optimized version
 watch(() => currentLayoutId.value, () => {
-  // Log deviceMap BEFORE layout change
-  console.log('LAYOUT CHANGE - deviceMap BEFORE:', { ...deviceMap.value });
   console.log('LAYOUT CHANGE - Current Layout ID:', currentLayoutId.value);
+  
+  // Performance measurement
+  const startTime = performance.now();
   
   // Wait for Vue to update the device layout
   nextTick(() => {
     // Initialize cell assignments from the layout if available
     if (currentDeviceLayout.value && currentDeviceLayout.value.positions) {
-      const initialCellAssignments: Record<string, string> = {};
+      const initialAssignments: Record<string, string> = {};
       
-      // Preserve existing device assignments - store current assignments
-      const existingAssignments = {...cellDeviceAssignments.value};
-      
-      // For each position in the layout
+      // Process layout positions and determine assignments
       currentDeviceLayout.value.positions.forEach(position => {
         if (position.deviceType && position.panelId) {
-          const panelId = position.panelId;
+          const cellId = position.panelId;
+          const deviceType = position.deviceType.toLowerCase();
           
-          // First try to reuse existing assignment if it exists and is valid
-          if (existingAssignments[panelId] && 
-              unifiedStore.getDeviceById(existingAssignments[panelId])) {
-            // Keep existing assignment
-            initialCellAssignments[panelId] = existingAssignments[panelId];
-            console.log(`Preserving existing assignment for ${panelId}: ${existingAssignments[panelId]}`);
-          } else {
-            // Otherwise find a device to assign
-            const deviceType = position.deviceType.toLowerCase();
+          // Try existing assignment first
+          const existingDeviceId = cellDeviceAssignments.value[cellId];
+          const existingDevice = existingDeviceId ? unifiedStore.getDeviceById(existingDeviceId) : null;
           
-            // FIRST: Check if we already have a device of this type selected in deviceMap
-            if (deviceType in deviceMap.value && deviceMap.value[deviceType]) {
-              // Use the existing device selection instead of finding a random one
-              initialCellAssignments[position.panelId] = deviceMap.value[deviceType]!;
-              console.log(`Using existing device ${deviceMap.value[deviceType]} for ${deviceType} in cell ${position.panelId}`);
-            } 
-            // FALLBACK: If no device was previously selected for this type, find a device
-            else {
-              // Find a connected device of this type
-              const matchingDevice = unifiedStore.devicesList.find(
-                d => d.type?.toLowerCase() === deviceType && d.isConnected
-              );
-              
-              if (matchingDevice) {
-                // Assign this device to the cell
-                initialCellAssignments[position.panelId] = matchingDevice.id;
-                // Also update the deviceMap so future layout changes will use this device
-                deviceMap.value[deviceType] = matchingDevice.id;
-                console.log(`Assigning new device ${matchingDevice.id} to ${deviceType} in cell ${position.panelId}`);
-              }
+          if (existingDeviceId && existingDevice) {
+            // Keep existing assignment if device still exists
+            initialAssignments[cellId] = existingDeviceId;
+          } 
+          // Otherwise use deviceMap for consistent device selection by type
+          else if (deviceType in deviceMap.value && deviceMap.value[deviceType]) {
+            initialAssignments[cellId] = deviceMap.value[deviceType]!;
+          }
+          // If no device of this type is selected, find a suitable one
+          else {
+            const matchingDevice = unifiedStore.devicesList.find(
+              d => d.type?.toLowerCase() === deviceType && d.isConnected
+            );
+            
+            if (matchingDevice) {
+              initialAssignments[cellId] = matchingDevice.id;
+              deviceMap.value[deviceType] = matchingDevice.id;
             }
           }
         }
       });
       
-      // Instead of replacing all assignments, update only the new positions
-      // This preserves existing assignments for positions that exist in both layouts
-      Object.entries(initialCellAssignments).forEach(([cellId, deviceId]) => {
+      // Update cell assignments and register with component registry
+      Object.entries(initialAssignments).forEach(([cellId, deviceId]) => {
         cellDeviceAssignments.value[cellId] = deviceId;
-      });
-      
-      // ADDED: Update device registry with assignments
-      // Register all cell assignments with the component registry
-      Object.entries(cellDeviceAssignments.value).forEach(([cellId, deviceId]) => {
+        
         const device = unifiedStore.getDeviceById(deviceId);
         if (device?.type) {
           deviceComponentRegistry.assignToCell(deviceId, device.type, cellId);
-          console.log(`Registered cell assignment with registry: ${cellId} -> ${device.type} ${deviceId}`);
         }
       });
+
+      // Log performance metrics after layout change is complete
+      const layoutChangeTime = performance.now() - startTime;
+      console.log(`Layout change to ${currentLayoutId.value} took ${layoutChangeTime.toFixed(2)}ms`);
       
-      // Log final state AFTER layout change
-      console.log('LAYOUT CHANGE - deviceMap AFTER:', { ...deviceMap.value });
-      console.log('LAYOUT CHANGE - cellDeviceAssignments:', { ...cellDeviceAssignments.value });
-      
-      // Log the cell and device type mapping for clarity
-      const cellToDeviceTypeMap: Record<string, string> = {};
-      currentDeviceLayout.value.positions.forEach(position => {
-        if (position.deviceType && position.panelId) {
-          cellToDeviceTypeMap[position.panelId] = position.deviceType;
-        }
-      });
-      console.log('LAYOUT CHANGE - cell to deviceType mapping:', cellToDeviceTypeMap);
+      // Log component registry metrics to monitor performance
+      deviceComponentRegistry.logPerformanceMetrics();
     }
   });
 }, { immediate: true });
@@ -574,7 +417,7 @@ const getDeviceType = (cellId: string): string => {
   return device?.type?.toLowerCase() || '';
 };
 
-// NEW: Helper functions for getting components from the registry
+// Helper functions for getting components from the registry
 // Get the component for a given cell
 const getComponentForCell = (cellId: string) => {
   // First check if there's a device assigned to this cell
@@ -596,6 +439,38 @@ const getDeviceTitle = (cellId: string): string => {
   
   const device = unifiedStore.getDeviceById(deviceId);
   return device?.name || '';
+};
+
+// Handle device changes from child panels - simplified version using component registry
+const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: string) => {
+  console.log('PanelLayoutView - handleDeviceChange called:', deviceType, deviceId);
+
+  // Normalize to lowercase for consistent mapping
+  const normalizedType = deviceType.toLowerCase();
+
+  if (normalizedType in deviceMap.value) {
+    console.log(
+      'PanelLayoutView - Updating deviceMap for type:',
+      normalizedType,
+      'from',
+      deviceMap.value[normalizedType],
+      'to',
+      deviceId
+    );
+    
+    // Update the deviceMap for this type
+    deviceMap.value[normalizedType] = deviceId;
+    
+    // Register device with the component registry if needed
+    deviceComponentRegistry.registerDevice(deviceId, normalizedType);
+    
+    // If cellId was provided, update cell assignment
+    if (cellId) {
+      cellDeviceAssignments.value[cellId] = deviceId;
+      deviceComponentRegistry.assignToCell(deviceId, normalizedType, cellId);
+      console.log(`Updated cell assignment for ${cellId} to ${normalizedType} ${deviceId}`);
+    }
+  }
 };
 </script>
 
