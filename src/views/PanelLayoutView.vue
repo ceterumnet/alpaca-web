@@ -28,6 +28,20 @@ const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 
 const showStaticLayoutChooser = ref(false)
 
+// Track the maximized panel
+const maximizedPanelId = ref<string | null>(null)
+
+// Function to toggle panel maximization
+const toggleMaximizePanel = (panelId: string) => {
+  if (maximizedPanelId.value === panelId) {
+    // If clicking the same panel, minimize it
+    maximizedPanelId.value = null
+  } else {
+    // Otherwise, maximize this panel
+    maximizedPanelId.value = panelId
+  }
+}
+
 // Watch for changes in the current layout in the store
 watch(
   () => layoutStore.currentLayoutId,
@@ -544,24 +558,78 @@ watch(() => currentLayoutId.value, () => {
   <div class="panel-layout-view">
 
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
-      <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId">
+      <!-- Add overlay for maximized panel -->
+      <div v-if="maximizedPanelId" class="maximized-panel-overlay">
+        <div class="maximized-panel-container">
+          <div class="panel-header">
+            <h3>{{maximizedPanelId}}</h3>
+            <div class="header-controls">
+              <button class="minimize-panel-btn" @click="toggleMaximizePanel(maximizedPanelId)">
+                <span class="minimize-icon">□</span>
+              </button>
+            </div>
+          </div>
+          <div class="panel-content">
+            <!-- Camera panel -->
+            <SimplifiedCameraPanel 
+              v-if="cellDeviceAssignments[maximizedPanelId] && 
+                   unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.type?.toLowerCase() === 'camera'"
+              :device-id="cellDeviceAssignments[maximizedPanelId]"
+              :title="unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.name"
+              @device-change="(newDeviceId) => handleDeviceChange('camera', newDeviceId, maximizedPanelId)"
+            />
+            
+            <!-- Telescope panel -->
+            <SimplifiedTelescopePanel 
+              v-else-if="cellDeviceAssignments[maximizedPanelId] && 
+                       unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.type?.toLowerCase() === 'telescope'"
+              :device-id="cellDeviceAssignments[maximizedPanelId]"
+              :title="unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.name"
+              @device-change="(newDeviceId) => handleDeviceChange('telescope', newDeviceId, maximizedPanelId)"
+            />
+            
+            <!-- Focuser panel -->
+            <SimplifiedFocuserPanel 
+              v-else-if="cellDeviceAssignments[maximizedPanelId] && 
+                       unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.type?.toLowerCase() === 'focuser'"
+              :device-id="cellDeviceAssignments[maximizedPanelId]"
+              :title="unifiedStore.getDeviceById(cellDeviceAssignments[maximizedPanelId])?.name"
+              @device-change="(newDeviceId) => handleDeviceChange('focuser', newDeviceId, maximizedPanelId)"
+            />
+            
+            <!-- Empty state -->
+            <div v-else class="empty-panel-state">
+              <p>No device selected for this panel</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <LayoutContainer :key="currentLayoutId" :layout-id="currentLayoutId" :class="{ 'hidden': maximizedPanelId !== null }">
         <!-- Dynamic Cell Slots - Generic device renderer -->
         <template v-for="i in 6" :key="`cell-${i}`" #[`cell-${i}`]="{ position }">
           <div v-if="position" class="universal-panel-container">
             <div class="panel-header">
               <h3>Cell {{position.panelId}}</h3>
               
-              <!-- Universal device selector dropdown with proper event typing -->
-              <select 
-                :value="cellDeviceAssignments[position.panelId]" 
-                class="device-selector-dropdown"
-                @change="(e) => assignDeviceToCell(position.panelId, (e.target as HTMLSelectElement).value)"
-              >
-                <option value="">Select Device</option>
-                <option v-for="device in allAvailableDevices" :key="device.id" :value="device.id">
-                  {{ device.name }} ({{ device.type }})
-                </option>
-              </select>
+              <div class="header-controls">
+                <!-- Add maximize button -->
+                <button class="maximize-panel-btn" @click="toggleMaximizePanel(position.panelId)">
+                  <span class="maximize-icon">⬚</span>
+                </button>
+                
+                <!-- Universal device selector dropdown with proper event typing -->
+                <select 
+                  :value="cellDeviceAssignments[position.panelId]" 
+                  class="device-selector-dropdown"
+                  @change="(e) => assignDeviceToCell(position.panelId, (e.target as HTMLSelectElement).value)"
+                >
+                  <option value="">Select Device</option>
+                  <option v-for="device in allAvailableDevices" :key="device.id" :value="device.id">
+                    {{ device.name }} ({{ device.type }})
+                  </option>
+                </select>
+              </div>
             </div>
             
             <div class="panel-content">
@@ -627,6 +695,63 @@ watch(() => currentLayoutId.value, () => {
 .layout-wrapper {
   flex: 1;
   overflow: auto;
+  position: relative;
+}
+
+/* Add maximized panel styles */
+.maximized-panel-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--aw-panel-bg-color, #2a2a2a);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.maximized-panel-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.maximize-panel-btn,
+.minimize-panel-btn {
+  background: none;
+  border: none;
+  color: var(--aw-text-color, #f0f0f0);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.maximize-panel-btn:hover,
+.minimize-panel-btn:hover {
+  background-color: var(--aw-panel-hover-bg-color, #444);
+}
+
+.maximize-icon,
+.minimize-icon {
+  line-height: 1;
 }
 
 .no-layout {
