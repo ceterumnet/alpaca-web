@@ -515,6 +515,34 @@ const isPanelMaximized = (panelId: string): boolean => {
   const deviceRef = deviceComponentRegistry.getDeviceForCell(panelId)
   return deviceRef ? deviceRef.isMaximized : false
 }
+
+// Get a friendly name for a panel when no device is selected
+const getPanelTypeName = (panelId: string): string => {
+  // If there's a current device layout, try to get the device type from the position
+  if (currentDeviceLayout.value) {
+    const position = currentDeviceLayout.value.positions.find(pos => pos.panelId === panelId);
+    if (position && position.deviceType) {
+      // Convert deviceType to a more user-friendly name
+      const deviceType = position.deviceType.toLowerCase();
+      switch (deviceType) {
+        case 'camera': return 'Camera Panel';
+        case 'telescope': return 'Telescope Panel';
+        case 'focuser': return 'Focuser Panel';
+        case 'filterwheel': return 'Filter Wheel Panel';
+        case 'dome': return 'Dome Panel';
+        case 'rotator': return 'Rotator Panel';
+        case 'weather': return 'Weather Panel';
+        case 'safetymonitor': return 'Safety Monitor Panel';
+        case 'switch': return 'Switch Panel';
+        case 'covercalibrator': return 'Cover/Calibrator Panel';
+        default: return `${deviceType.charAt(0).toUpperCase() + deviceType.slice(1)} Panel`;
+      }
+    }
+  }
+  
+  // Fallback to a generic name if no device type is found
+  return `Device Panel ${panelId}`;
+};
 </script>
 
 <template>
@@ -536,7 +564,7 @@ const isPanelMaximized = (panelId: string): boolean => {
             <div class="panel-header">
               <!-- Show device name or "Cell X" if no device selected -->
               <div class="panel-title">
-                <h3 v-if="!cellDeviceAssignments[position.panelId]">Cell {{position.panelId}}</h3>
+                <h3 v-if="!cellDeviceAssignments[position.panelId]">{{ getPanelTypeName(position.panelId) }}</h3>
                 <template v-else>
                   <h3>{{ getDeviceTitle(position.panelId) }}</h3>
                   <div v-if="getDeviceConnectionInfo(position.panelId)" class="connection-info">
@@ -582,7 +610,10 @@ const isPanelMaximized = (panelId: string): boolean => {
                 </template>
                 <div v-else class="empty-panel-state">
                   <p>{{ cellDeviceAssignments[position.panelId] ? 'No compatible device component' : 'No device selected' }}</p>
-                  <p class="panel-coordinates">Position: ({{ position.x }}, {{ position.y }})</p>
+                  <p v-if="getDeviceType(position.panelId)" class="panel-device-type">
+                    Type: {{ getDeviceType(position.panelId) }}
+                  </p>
+                  <p class="panel-tip">Select a device using the dropdown above</p>
                 </div>
               </keep-alive>
             </div>
@@ -896,5 +927,18 @@ const isPanelMaximized = (panelId: string): boolean => {
   justify-content: center;
   align-items: center;
   color: var(--aw-text-secondary-color, #aaa);
+}
+
+.panel-device-type {
+  font-size: 0.9rem;
+  margin: 8px 0;
+  color: var(--aw-text-color, #f0f0f0);
+}
+
+.panel-tip {
+  font-size: 0.8rem;
+  margin-top: 12px;
+  color: var(--aw-text-secondary-color, #aaa);
+  font-style: italic;
 }
 </style>
