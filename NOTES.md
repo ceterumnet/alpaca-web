@@ -8,9 +8,9 @@ TODO:
 
 - [ ] Revise device management system to:
   - [x] Automatically add all of the devices discovered to the device store
-  - [ ] Have better names for the devices, for example Camera 0 is ambiguous
+  - [x] Have better names for the devices, for example Camera 0 is ambiguous
     - [ ] Probably a good idea to have customizable names
-    - [ ] Need to figure out canonical name scheme so that even between sessions we can keep the same settings / data associated with said device
+    - [x] Need to figure out canonical name scheme so that even between sessions we can keep the same settings / data associated with said device
   - [x] Disable autoconnect when adding a device from discovery
 - [ ] Figure out logging system
 - [ ] Wire settings up
