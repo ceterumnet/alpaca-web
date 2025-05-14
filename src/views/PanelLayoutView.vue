@@ -148,6 +148,12 @@ const deviceMap = ref<DeviceTypeMap>({
 // Track cell-to-device assignments
 const cellDeviceAssignments = ref<Record<string, string>>({});
 
+// Track connection status for each cell
+const cellConnectionStatus = ref<Record<string, boolean>>({});
+
+// Track if a connection attempt is in progress for a cell
+const cellConnectionAttemptStatus = ref<Record<string, boolean>>({});
+
 // Handle device selection for a specific cell
 const assignDeviceToCell = (cellId: string, deviceId: string) => {
   console.log(`Assigning device ${deviceId} to cell ${cellId}`);
@@ -157,6 +163,16 @@ const assignDeviceToCell = (cellId: string, deviceId: string) => {
   
   // Update cell assignment
   cellDeviceAssignments.value[cellId] = deviceId;
+  
+  // Initialize connection status for the cell
+  if (deviceId) {
+    const device = unifiedStore.getDeviceById(deviceId);
+    cellConnectionStatus.value[cellId] = device?.isConnected || false;
+    cellConnectionAttemptStatus.value[cellId] = false; // Reset attempt status
+  } else {
+    delete cellConnectionStatus.value[cellId];
+    delete cellConnectionAttemptStatus.value[cellId];
+  }
   
   // Get device type to update the deviceMap
   if (deviceId) {
@@ -183,6 +199,60 @@ const assignDeviceToCell = (cellId: string, deviceId: string) => {
   const assignmentTime = performance.now() - startTime;
   console.log(`Device assignment to cell ${cellId} took ${assignmentTime.toFixed(2)}ms`);
 };
+
+// Toggle connection for a device in a cell
+const toggleCellConnection = async (cellId: string) => {
+  const deviceId = cellDeviceAssignments.value[cellId];
+  if (!deviceId || cellConnectionAttemptStatus.value[cellId]) return;
+
+  const device = unifiedStore.getDeviceById(deviceId);
+  if (!device) {
+    console.error(`Device ${deviceId} not found for cell ${cellId}`);
+    return;
+  }
+
+  cellConnectionAttemptStatus.value[cellId] = true;
+  try {
+    if (device.isConnected) {
+      console.log(`Disconnecting device ${deviceId} in cell ${cellId}`);
+      // @ts-expect-error - store typing
+      await unifiedStore.disconnectDevice(deviceId);
+      cellConnectionStatus.value[cellId] = false;
+      console.log(`Device ${deviceId} disconnected successfully in cell ${cellId}`);
+    } else {
+      console.log(`Connecting device ${deviceId} in cell ${cellId}`);
+      // @ts-expect-error - store typing
+      await unifiedStore.connectDevice(deviceId);
+      cellConnectionStatus.value[cellId] = true;
+      console.log(`Device ${deviceId} connected successfully in cell ${cellId}`);
+    }
+  } catch (error) {
+    console.error(`Error toggling connection for device ${deviceId} in cell ${cellId}:`, error);
+    // Revert status on error if needed, or rely on watcher
+    const updatedDevice = unifiedStore.getDeviceById(deviceId);
+    cellConnectionStatus.value[cellId] = updatedDevice?.isConnected || false;
+  } finally {
+    cellConnectionAttemptStatus.value[cellId] = false;
+  }
+};
+
+// Watch for external changes to device connection statuses
+watch(() => unifiedStore.devicesList, (newDevices) => {
+  console.log('PanelLayoutView - unifiedStore.devicesList changed, updating cell connection statuses.');
+  newDevices.forEach(device => {
+    if (device.id && device.id in cellDeviceAssignments.value) {
+      // Find all cells assigned to this device
+      Object.entries(cellDeviceAssignments.value).forEach(([cellId, assignedDeviceId]) => {
+        if (assignedDeviceId === device.id) {
+          if (cellConnectionStatus.value[cellId] !== device.isConnected) {
+            console.log(`Updating connection status for cell ${cellId} (device ${device.id}) to ${device.isConnected}`);
+            cellConnectionStatus.value[cellId] = device.isConnected;
+          }
+        }
+      });
+    }
+  });
+}, { deep: true, immediate: true });
 
 // Get all available devices (not filtered by type)
 const allAvailableDevices = computed(() => {
@@ -364,6 +434,10 @@ watch(() => currentLayoutId.value, () => {
     if (currentDeviceLayout.value && currentDeviceLayout.value.positions) {
       const initialAssignments: Record<string, string> = {};
       
+      // Initialize connection status for pre-assigned devices
+      const initialConnectionStatus: Record<string, boolean> = {};
+      const initialAttemptStatus: Record<string, boolean> = {};
+
       // Process layout positions and determine assignments
       currentDeviceLayout.value.positions.forEach(position => {
         if (position.deviceType && position.panelId) {
@@ -377,10 +451,15 @@ watch(() => currentLayoutId.value, () => {
           if (existingDeviceId && existingDevice) {
             // Keep existing assignment if device still exists
             initialAssignments[cellId] = existingDeviceId;
+            initialConnectionStatus[cellId] = existingDevice.isConnected;
+            initialAttemptStatus[cellId] = false;
           } 
           // Otherwise use deviceMap for consistent device selection by type
           else if (deviceType in deviceMap.value && deviceMap.value[deviceType]) {
             initialAssignments[cellId] = deviceMap.value[deviceType]!;
+            const mappedDevice = unifiedStore.getDeviceById(deviceMap.value[deviceType]!);
+            initialConnectionStatus[cellId] = mappedDevice?.isConnected || false;
+            initialAttemptStatus[cellId] = false;
           }
           // If no device of this type is selected, find a suitable one
           else {
@@ -391,6 +470,8 @@ watch(() => currentLayoutId.value, () => {
             if (matchingDevice) {
               initialAssignments[cellId] = matchingDevice.id;
               deviceMap.value[deviceType] = matchingDevice.id;
+              initialConnectionStatus[cellId] = matchingDevice.isConnected;
+              initialAttemptStatus[cellId] = false;
             }
           }
         }
@@ -405,6 +486,10 @@ watch(() => currentLayoutId.value, () => {
           deviceComponentRegistry.assignToCell(deviceId, device.type, cellId);
         }
       });
+
+      // Batch update connection statuses
+      Object.assign(cellConnectionStatus.value, initialConnectionStatus);
+      Object.assign(cellConnectionAttemptStatus.value, initialAttemptStatus);
 
       // Log performance metrics after layout change is complete
       const layoutChangeTime = performance.now() - startTime;
@@ -583,6 +668,21 @@ const getPanelTypeName = (panelId: string): string => {
                   <span class="maximize-icon">{{ isPanelMaximized(position.panelId) ? '□' : '⬚' }}</span>
                 </button>
                 
+                <!-- Connect/Disconnect Button -->
+                <button
+                  v-if="cellDeviceAssignments[position.panelId]"
+                  class="connect-disconnect-btn"
+                  :class="{ 
+                    'connected': cellConnectionStatus[position.panelId], 
+                    'disconnected': !cellConnectionStatus[position.panelId],
+                    'connecting': cellConnectionAttemptStatus[position.panelId]
+                  }"
+                  :disabled="cellConnectionAttemptStatus[position.panelId]"
+                  @click="toggleCellConnection(position.panelId)"
+                >
+                  {{ cellConnectionAttemptStatus[position.panelId] ? '...' : (cellConnectionStatus[position.panelId] ? 'Disconnect' : 'Connect') }}
+                </button>
+
                 <!-- Universal device selector dropdown with proper event typing -->
                 <select 
                   :value="cellDeviceAssignments[position.panelId]" 
@@ -602,18 +702,22 @@ const getPanelTypeName = (panelId: string): string => {
                 <template v-if="cellDeviceAssignments[position.panelId] && getComponentForCell(position.panelId)">
                   <component 
                     :is="getComponentForCell(position.panelId)"
-                    :key="cellDeviceAssignments[position.panelId]"
+                    :key="`${cellDeviceAssignments[position.panelId]}-${cellConnectionStatus[position.panelId]}`"
                     :device-id="cellDeviceAssignments[position.panelId]"
                     :title="getDeviceTitle(position.panelId)"
+                    :is-connected="cellConnectionStatus[position.panelId] || false"
                     @device-change="(newDeviceId: string) => handleDeviceChange(getDeviceType(position.panelId), newDeviceId, position.panelId)"
                   />
                 </template>
                 <div v-else class="empty-panel-state">
                   <p>{{ cellDeviceAssignments[position.panelId] ? 'No compatible device component' : 'No device selected' }}</p>
-                  <p v-if="getDeviceType(position.panelId)" class="panel-device-type">
-                    Type: {{ getDeviceType(position.panelId) }}
+                  <p v-if="!cellDeviceAssignments[position.panelId] && getDeviceType(position.panelId)" class="panel-device-type">
+                    Type restriction: {{ getDeviceType(position.panelId) }}
                   </p>
-                  <p class="panel-tip">Select a device using the dropdown above</p>
+                  <p v-if="cellDeviceAssignments[position.panelId] && !cellConnectionStatus[position.panelId]" class="panel-tip">
+                    Device is not connected. Use the "Connect" button in the header.
+                  </p>
+                  <p v-else class="panel-tip">Select a device using the dropdown above.</p>
                 </div>
               </keep-alive>
             </div>
@@ -940,5 +1044,31 @@ const getPanelTypeName = (panelId: string): string => {
   margin-top: 12px;
   color: var(--aw-text-secondary-color, #aaa);
   font-style: italic;
+}
+
+.connect-disconnect-btn {
+  padding: 4px 8px;
+  border: 1px solid var(--aw-panel-border-color, #444);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  min-width: 80px; /* Ensure consistent width */
+  text-align: center;
+}
+
+.connect-disconnect-btn.connected {
+  background-color: var(--aw-error-color, #ef5350); /* Red for disconnect */
+  color: white;
+}
+
+.connect-disconnect-btn.disconnected {
+  background-color: var(--aw-success-color, #66bb6a); /* Green for connect */
+  color: white;
+}
+
+.connect-disconnect-btn.connecting {
+  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  color: var(--aw-text-secondary-color, #aaa);
+  cursor: wait;
 }
 </style>

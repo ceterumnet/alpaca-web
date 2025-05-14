@@ -13,36 +13,18 @@ const props = defineProps({
     type: String,
     default: 'Camera'
   },
-  useInternalDeviceSelection: {
+  isConnected: {
     type: Boolean,
-    default: true
+    required: true
   }
 })
 
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
-// Local device selection state
-const selectedDeviceId = ref(props.deviceId)
-
-
-// Watch for props change to update local state only when not using internal selection
-// or when component is initially mounted
-watch(() => props.deviceId, (newDeviceId) => {
-  if (!props.useInternalDeviceSelection || !selectedDeviceId.value) {
-    selectedDeviceId.value = newDeviceId
-  }
-}, { immediate: true })
-
-// Device status
-const isConnected = computed(() => {
-  const device = store.getDeviceById(selectedDeviceId.value)
-  return device?.isConnected || false
-})
-
 // Get the current device
 const currentDevice = computed(() => {
-  return store.getDeviceById(selectedDeviceId.value)
+  return store.getDeviceById(props.deviceId)
 })
 
 // Get exposure range for the camera
@@ -67,7 +49,7 @@ const toggleCooler = async () => {
   if (!capabilities.value.canSetCCDTemperature) return
   
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'coolerOn', !coolerOn.value)
+    await setAlpacaProperty(props.deviceId, 'coolerOn', !coolerOn.value)
     coolerOn.value = !coolerOn.value
   } catch (error) {
     console.error('Error toggling cooler:', error)
@@ -78,7 +60,7 @@ const toggleCooler = async () => {
 const updateGain = async () => {
   
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'gain', gain.value)
+    await setAlpacaProperty(props.deviceId, 'gain', gain.value)
   } catch (error) {
     console.error('Error setting gain:', error)
   }
@@ -87,7 +69,7 @@ const updateGain = async () => {
 const updateOffset = async () => {
   
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'offset', offset.value)
+    await setAlpacaProperty(props.deviceId, 'offset', offset.value)
   } catch (error) {
     console.error('Error setting offset:', error)
   }
@@ -96,8 +78,8 @@ const updateOffset = async () => {
 const updateBinning = async () => {
   
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'binX', binning.value)
-    await setAlpacaProperty(selectedDeviceId.value, 'binY', binning.value)
+    await setAlpacaProperty(props.deviceId, 'binX', binning.value)
+    await setAlpacaProperty(props.deviceId, 'binY', binning.value)
   } catch (error) {
     console.error('Error setting binning:', error)
   }
@@ -107,7 +89,7 @@ const updateTargetTemp = async () => {
   if (!capabilities.value.canSetCCDTemperature) return
   
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'setCCDTemperature', targetTemp.value)
+    await setAlpacaProperty(props.deviceId, 'setCCDTemperature', targetTemp.value)
   } catch (error) {
     console.error('Error setting target temperature:', error)
   }
@@ -115,10 +97,10 @@ const updateTargetTemp = async () => {
 
 // Check device capabilities
 const updateDeviceCapabilities = async () => {
-  if (!isConnected.value || !selectedDeviceId.value) return
+  if (!props.isConnected || !props.deviceId) return
   
   try {
-    const deviceCaps = await getDeviceCapabilities(selectedDeviceId.value, [
+    const deviceCaps = await getDeviceCapabilities(props.deviceId, [
       'canSetCCDTemperature'
     ])
     
@@ -135,7 +117,7 @@ const updateDeviceCapabilities = async () => {
 let statusTimer: number | undefined
 
 const updateCameraStatus = async () => {
-  if (!isConnected.value) return
+  if (!props.isConnected || !props.deviceId) return
   
   try {
     // Build property list based on device capabilities
@@ -147,7 +129,7 @@ const updateCameraStatus = async () => {
       propertiesToFetch.push('setCCDTemperature')
     }
     
-    const properties = await getAlpacaProperties(selectedDeviceId.value, propertiesToFetch)
+    const properties = await getAlpacaProperties(props.deviceId, propertiesToFetch)
     
     // Update camera settings with current values
     if (properties.gain !== null && typeof properties.gain === 'number') {
@@ -206,22 +188,31 @@ const resetCameraSettings = () => {
 
 // Setup polling when mounted
 onMounted(() => {
-  if (isConnected.value) {
+  if (props.isConnected && props.deviceId) {
     // First check device capabilities
     updateDeviceCapabilities()
     // Then get current status
     updateCameraStatus()
     // Start regular status polling
-    statusTimer = window.setInterval(() => {
-      updateCameraStatus()
-    }, 5000)
+    if (!statusTimer) {
+      statusTimer = window.setInterval(() => {
+        updateCameraStatus()
+      }, 5000)
+    }
+  } else {
+    if (statusTimer) {
+      window.clearInterval(statusTimer);
+      statusTimer = undefined;
+    }
   }
 })
 
-// Watch for changes in connection status
-watch(isConnected, (newValue) => {
-  if (newValue) {
+// Watch for changes in connection status (from parent)
+watch(() => props.isConnected, (newIsConnected) => {
+  console.log(`SimplifiedCameraPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
+  if (newIsConnected) {
     // Reset capabilities
+    resetCameraSettings() // Reset settings on new connection to ensure fresh state
     capabilities.value = {
       canSetCCDTemperature: false
     }
@@ -233,31 +224,48 @@ watch(isConnected, (newValue) => {
     updateCameraStatus()
     
     // Start regular status polling
-    statusTimer = window.setInterval(() => {
-      updateCameraStatus()
-    }, 5000)
+    if (!statusTimer) { // Avoid multiple intervals
+      statusTimer = window.setInterval(() => {
+        updateCameraStatus()
+      }, 5000)
+    }
   } else {
     // Stop polling when disconnected
     if (statusTimer) {
       window.clearInterval(statusTimer)
+      statusTimer = undefined;
     }
+    resetCameraSettings() // Clear data when disconnected
   }
 })
 
 // Watch for device ID changes
-watch(() => selectedDeviceId.value, (newValue, oldValue) => {
-  if (newValue !== oldValue) {
+watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
+  if (newDeviceId !== oldDeviceId) {
+    console.log(`SimplifiedCameraPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
     // Reset settings when device changes
     resetCameraSettings()
     
-    if (isConnected.value) {
+    if (props.isConnected) {
       // Update capabilities for the new device
       updateDeviceCapabilities()
       // Update status for the new device
       updateCameraStatus()
+      // Ensure polling is active if it wasn't
+      if (!statusTimer) {
+        statusTimer = window.setInterval(() => {
+          updateCameraStatus()
+        }, 5000)
+      }
+    } else {
+      // If not connected, ensure polling is stopped
+      if (statusTimer) {
+        clearInterval(statusTimer);
+        statusTimer = undefined;
+      }
     }
   }
-})
+}, { immediate: true })
 
 // Cleanup when unmounted
 onUnmounted(() => {
@@ -266,25 +274,6 @@ onUnmounted(() => {
   }
 })
 
-
-// Add document click handler
-onMounted(() => {
-})
-
-onUnmounted(() => {
-})
-
-// Function to connect to the selected device
-const connectDevice = async () => {
-  if (!selectedDeviceId.value) return
-  try {
-    // @ts-expect-error - TypeScript has issues with the store's this context
-    await store.connectDevice(selectedDeviceId.value)
-    console.log(`Connected to device ${selectedDeviceId.value}`)
-  } catch (error) {
-    console.error(`Error connecting to device ${selectedDeviceId.value}:`, error)
-  }
-}
 </script>
 
 <template>
@@ -293,13 +282,13 @@ const connectDevice = async () => {
     <div class="panel-content">
       <!-- No device selected message -->
       <div v-if="!currentDevice" class="connection-notice">
-        <div class="connection-message">No camera selected</div>
+        <div class="connection-message">No camera selected or available</div>
       </div>
       
       <!-- Connection status -->
       <div v-else-if="!isConnected" class="connection-notice">
-        <div class="connection-message">Camera not connected</div>
-        <button class="connect-button action-button" @click="connectDevice">Connect</button>
+        <div class="connection-message">Camera ({{ currentDevice.name }}) not connected.</div>
+        <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
       
       <template v-else>
@@ -308,7 +297,7 @@ const connectDevice = async () => {
           <h3>Camera Controls</h3>
           <div class="camera-controls-wrapper">
             <CameraControls 
-              :device-id="selectedDeviceId"
+              :device-id="deviceId"
               :exposure-min="exposureMin"
               :exposure-max="exposureMax"
             />

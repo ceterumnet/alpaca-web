@@ -12,9 +12,9 @@ const props = defineProps({
     type: String,
     default: 'Focuser'
   },
-  useInternalDeviceSelection: {
+  isConnected: {
     type: Boolean,
-    default: true
+    required: true
   }
 })
 
@@ -72,7 +72,7 @@ const resetFocuserState = () => {
 // Functions for movement
 const moveToPosition = async (targetPosition: number) => {
   try {
-    await callAlpacaMethod(selectedDeviceId.value, 'move', {
+    await callAlpacaMethod(props.deviceId, 'move', {
       position: targetPosition
     })
   } catch (error) {
@@ -82,7 +82,7 @@ const moveToPosition = async (targetPosition: number) => {
 
 const moveIn = async () => {
   try {
-    await callAlpacaMethod(selectedDeviceId.value, 'moveIn')
+    await callAlpacaMethod(props.deviceId, 'moveIn')
   } catch (error) {
     console.error('Error moving in:', error)
   }
@@ -90,7 +90,7 @@ const moveIn = async () => {
 
 const moveOut = async () => {
   try {
-    await callAlpacaMethod(selectedDeviceId.value, 'moveOut')
+    await callAlpacaMethod(props.deviceId, 'moveOut')
   } catch (error) {
     console.error('Error moving out:', error)
   }
@@ -98,7 +98,7 @@ const moveOut = async () => {
 
 const halt = async () => {
   try {
-    await callAlpacaMethod(selectedDeviceId.value, 'halt')
+    await callAlpacaMethod(props.deviceId, 'halt')
   } catch (error) {
     console.error('Error halting movement:', error)
   }
@@ -107,7 +107,7 @@ const halt = async () => {
 // Update settings
 const updateStepSize = async () => {
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'stepSize', stepSize.value)
+    await setAlpacaProperty(props.deviceId, 'stepSize', stepSize.value)
   } catch (error) {
     console.error('Error setting step size:', error)
   }
@@ -115,7 +115,7 @@ const updateStepSize = async () => {
 
 const updateTempComp = async () => {
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'tempComp', tempComp.value)
+    await setAlpacaProperty(props.deviceId, 'tempComp', tempComp.value)
   } catch (error) {
     console.error('Error setting temperature compensation:', error)
   }
@@ -131,10 +131,10 @@ const moveToTarget = async () => {
 let statusTimer: number | undefined
 
 const updateFocuserStatus = async () => {
-  if (!isConnected.value) return
+  if (!props.isConnected || !props.deviceId) return
   
   try {
-    const properties = await getAlpacaProperties(selectedDeviceId.value, [
+    const properties = await getAlpacaProperties(props.deviceId, [
       'position',
       'isMoving',
       'temperature',
@@ -185,38 +185,60 @@ const updateFocuserStatus = async () => {
 
 // Setup polling when mounted
 onMounted(() => {
-  if (isConnected.value) {
+  if (props.isConnected && props.deviceId) {
     updateFocuserStatus()
-    statusTimer = window.setInterval(updateFocuserStatus, 1000)
+    if(!statusTimer) {
+        statusTimer = window.setInterval(updateFocuserStatus, 1000)
+    }
+  } else {
+    if (statusTimer) {
+        window.clearInterval(statusTimer);
+        statusTimer = undefined;
+    }
   }
 })
 
-// Watch for changes in connection status
-watch(isConnected, (newValue) => {
-  if (newValue) {
+// Watch for changes in connection status (from parent)
+watch(() => props.isConnected, (newIsConnected) => {
+  console.log(`SimplifiedFocuserPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
+  if (newIsConnected) {
     // Start polling when connected
+    resetFocuserState() // Reset state on new connection
     updateFocuserStatus()
-    statusTimer = window.setInterval(updateFocuserStatus, 1000)
+    if (!statusTimer) { // Avoid multiple intervals
+      statusTimer = window.setInterval(updateFocuserStatus, 1000)
+    }
   } else {
     // Stop polling when disconnected
     if (statusTimer) {
       window.clearInterval(statusTimer)
+      statusTimer = undefined;
     }
+    resetFocuserState() // Clear data when disconnected
   }
 })
 
 // Watch for device ID changes
-watch(() => selectedDeviceId.value, (newValue, oldValue) => {
-  if (newValue !== oldValue) {
+watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
+  if (newDeviceId !== oldDeviceId) {
+    console.log(`SimplifiedFocuserPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
     // Reset settings when device changes
     resetFocuserState()
     
-    if (isConnected.value) {
+    if (props.isConnected) {
       // Get updated status
       updateFocuserStatus()
+      if (!statusTimer) {
+        statusTimer = window.setInterval(updateFocuserStatus, 1000);
+      }
+    } else {
+        if (statusTimer) {
+            clearInterval(statusTimer);
+            statusTimer = undefined;
+        }
     }
   }
-})
+}, { immediate: true })
 
 // Cleanup when unmounted
 onUnmounted(() => {
@@ -224,19 +246,6 @@ onUnmounted(() => {
     window.clearInterval(statusTimer)
   }
 })
-
-
-// Function to connect to the selected device
-const connectDevice = async () => {
-  if (!selectedDeviceId.value) return
-  try {
-    // @ts-expect-error - TypeScript has issues with the store's this context
-    await store.connectDevice(selectedDeviceId.value)
-    console.log(`Connected to device ${selectedDeviceId.value}`)
-  } catch (error) {
-    console.error(`Error connecting to device ${selectedDeviceId.value}:`, error)
-  }
-}
 
 </script>
 
@@ -246,13 +255,13 @@ const connectDevice = async () => {
     <div class="panel-content">
       <!-- No device selected message -->
       <div v-if="!currentDevice" class="connection-notice">
-        <div class="connection-message">No focuser selected</div>
+        <div class="connection-message">No focuser selected or available</div>
       </div>
       
       <!-- Connection status -->
       <div v-else-if="!isConnected" class="connection-notice">
-        <div class="connection-message">Focuser not connected</div>
-        <button class="connect-button action-button" @click="connectDevice">Connect</button>
+        <div class="connection-message">Focuser ({{ currentDevice.name }}) not connected.</div>
+        <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
       
       <template v-else>

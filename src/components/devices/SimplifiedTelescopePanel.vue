@@ -12,9 +12,9 @@ const props = defineProps({
     type: String,
     default: 'Telescope'
   },
-  useInternalDeviceSelection: {
+  isConnected: {
     type: Boolean,
-    default: true
+    required: true
   }
 })
 
@@ -22,59 +22,47 @@ const props = defineProps({
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
-// Local device selection state
-const selectedDeviceId = ref(props.deviceId)
-
-
-// Watch for props change to update local state only when not using internal selection
-// or when component is initially mounted
-watch(() => props.deviceId, (newDeviceId) => {
-  if (!props.useInternalDeviceSelection || !selectedDeviceId.value) {
-    selectedDeviceId.value = newDeviceId
-  }
-}, { immediate: true })
-
-// Device status
-const isConnected = computed(() => {
-  const device = store.getDeviceById(selectedDeviceId.value)
-  return device?.isConnected || false
-})
-
 // Get the current device
 const currentDevice = computed(() => {
-  return store.getDeviceById(selectedDeviceId.value)
+  return store.getDeviceById(props.deviceId)
 })
 
 // Watch for device ID changes to update our state
 let coordUpdateInterval: number | undefined
-watch(() => selectedDeviceId.value, (newDeviceId, oldDeviceId) => {
+watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   if (newDeviceId !== oldDeviceId) {
-    console.log(`Device changed from ${oldDeviceId} to ${newDeviceId}`)
+    console.log(`SimplifiedTelescopePanel: Device changed from ${oldDeviceId} to ${newDeviceId}`)
     
     // Reset coordinate values
     resetTelescopeState()
     
-    // If we have a new device, start monitoring it
-    if (isConnected.value) {
+    // If we have a new device and it's connected, start monitoring it
+    if (props.isConnected) {
       // Stop existing interval if any
       if (coordUpdateInterval) {
         clearInterval(coordUpdateInterval)
+        coordUpdateInterval = undefined;
       }
-      
-      // Start a new polling interval
-      coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
       
       // Initial update
       updateCoordinates()
+      // Start a new polling interval
+      coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
+    } else {
+      // If not connected, ensure polling is stopped
+      if (coordUpdateInterval) {
+        clearInterval(coordUpdateInterval)
+        coordUpdateInterval = undefined;
+      }
     }
   }
-})
+}, { immediate: true })
 
 // Tracking state
 const tracking = ref(false)
 const toggleTracking = async () => {
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'tracking', !tracking.value)
+    await setAlpacaProperty(props.deviceId, 'tracking', !tracking.value)
     // Let the update come from polling rather than setting it directly
   } catch (error) {
     console.error('Error toggling tracking:', error)
@@ -93,7 +81,7 @@ const selectedTrackingRate = ref(0)
 // Update tracking rate
 const updateTrackingRate = async () => {
   try {
-    await setAlpacaProperty(selectedDeviceId.value, 'trackingRate', selectedTrackingRate.value)
+    await setAlpacaProperty(props.deviceId, 'trackingRate', selectedTrackingRate.value)
   } catch (error) {
     console.error('Error setting tracking rate:', error)
   }
@@ -145,7 +133,7 @@ const targetRA = ref(0)
 const targetDec = ref(0)
 const slewToCoordinates = async () => {
   try {
-    await callAlpacaMethod(selectedDeviceId.value, 'slewToCoordinates', {
+    await callAlpacaMethod(props.deviceId, 'slewToCoordinates', {
       rightAscension: targetRA.value,
       declination: targetDec.value
     })
@@ -158,7 +146,7 @@ const slewToCoordinates = async () => {
 const moveDirection = async (direction: string) => {
   try {
     if (direction === 'stop') {
-      await callAlpacaMethod(selectedDeviceId.value, 'abortSlew')
+      await callAlpacaMethod(props.deviceId, 'abortSlew')
       return
     }
     
@@ -180,7 +168,7 @@ const moveDirection = async (direction: string) => {
     }
     
     if (axisParam) {
-      await callAlpacaMethod(selectedDeviceId.value, 'moveAxis', axisParam)
+      await callAlpacaMethod(props.deviceId, 'moveAxis', axisParam)
     }
   } catch (error) {
     console.error(`Error moving telescope ${direction}:`, error)
@@ -190,7 +178,7 @@ const moveDirection = async (direction: string) => {
 // Advanced functions
 const parkTelescope = async () => {
   try {
-    await callAlpacaMethod(selectedDeviceId.value, 'park')
+    await callAlpacaMethod(props.deviceId, 'park')
   } catch (error) {
     console.error('Error parking telescope:', error)
   }
@@ -198,7 +186,7 @@ const parkTelescope = async () => {
 
 const unparkTelescope = async () => {
   try {
-    await callAlpacaMethod(selectedDeviceId.value, 'unpark')
+    await callAlpacaMethod(props.deviceId, 'unpark')
   } catch (error) {
     console.error('Error unparking telescope:', error)
   }
@@ -206,7 +194,7 @@ const unparkTelescope = async () => {
 
 const findHome = async () => {
   try {
-    await callAlpacaMethod(selectedDeviceId.value, 'findHome')
+    await callAlpacaMethod(props.deviceId, 'findHome')
   } catch (error) {
     console.error('Error finding home position:', error)
   }
@@ -214,10 +202,10 @@ const findHome = async () => {
 
 // Poll for coordinates
 const updateCoordinates = async () => {
-  if (!isConnected.value) return
+  if (!props.isConnected || !props.deviceId) return
   
   try {
-    const properties = await getAlpacaProperties(selectedDeviceId.value, [
+    const properties = await getAlpacaProperties(props.deviceId, [
       'rightAscension',
       'declination',
       'altitude',
@@ -259,32 +247,43 @@ const updateCoordinates = async () => {
 
 // Setup polling when mounted
 onMounted(() => {
-  if (isConnected.value) {
+  // Initial setup if already connected when mounted
+  if (props.isConnected && props.deviceId) {
     // Initial update
     updateCoordinates()
     
     // Start regular polling
-    coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
-  }
-})
-
-// Watch for changes in connection status
-watch(isConnected, (newValue) => {
-  if (newValue) {
-    // Start polling when connected
-    updateCoordinates()
-    coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
+    if (!coordUpdateInterval) {
+        coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
+    }
   } else {
-    // Stop polling when disconnected
+     // Ensure polling is stopped if not connected
     if (coordUpdateInterval) {
       window.clearInterval(coordUpdateInterval)
+      coordUpdateInterval = undefined;
     }
   }
 })
 
-// Add document click handler
-onMounted(() => {
-})
+// Watch for changes in connection status (from parent)
+watch(() => props.isConnected, (newIsConnected) => {
+  console.log(`SimplifiedTelescopePanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
+  if (newIsConnected) {
+    // Start polling when connected
+    resetTelescopeState() // Reset state on new connection to fetch fresh data
+    updateCoordinates() // Initial fetch
+    if (!coordUpdateInterval) { // Avoid multiple intervals
+      coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
+    }
+  } else {
+    // Stop polling when disconnected
+    if (coordUpdateInterval) {
+      window.clearInterval(coordUpdateInterval)
+      coordUpdateInterval = undefined;
+    }
+    resetTelescopeState() // Clear data when disconnected
+  }
+}, { immediate: false }) // immediate: true handled by deviceId watcher and onMounted
 
 // Cleanup when unmounted
 onUnmounted(() => {
@@ -292,19 +291,6 @@ onUnmounted(() => {
     window.clearInterval(coordUpdateInterval)
   }
 })
-
-// Function to connect to the selected device
-const connectDevice = async () => {
-  if (!selectedDeviceId.value) return
-  
-  try {
-    // @ts-expect-error - TypeScript has issues with the store's this context
-    await store.connectDevice(selectedDeviceId.value)
-    console.log(`Connected to device ${selectedDeviceId.value}`)
-  } catch (error) {
-    console.error(`Error connecting to device ${selectedDeviceId.value}:`, error)
-  }
-}
 
 </script>
 
@@ -314,13 +300,13 @@ const connectDevice = async () => {
     <div class="panel-content">
       <!-- No device selected message -->
       <div v-if="!currentDevice" class="connection-notice">
-        <div class="connection-message">No telescope selected</div>
+        <div class="connection-message">No telescope selected or available</div>
       </div>
       
-      <!-- Connection status -->
+      <!-- Connection status (now handled by parent, show message if not connected) -->
       <div v-else-if="!isConnected" class="connection-notice">
-        <div class="connection-message">Telescope not connected</div>
-        <button class="connect-button action-button" @click="connectDevice">Connect</button>
+        <div class="connection-message">Telescope ({{ currentDevice.name }}) not connected.</div>
+        <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
       
       <template v-else>
@@ -772,5 +758,10 @@ input:checked + .slider:before {
 
 .connect-button {
   min-width: 100px;
+}
+
+.panel-tip {
+  font-size: 0.8rem;
+  color: var(--aw-text-secondary-color, #aaa);
 }
 </style> 
