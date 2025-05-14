@@ -22,41 +22,67 @@ const props = defineProps({
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
+// Reset telescope state when device changes or on disconnect
+const resetTelescopeState = () => {
+  rightAscension.value = 0
+  declination.value = 0
+  altitude.value = 0
+  azimuth.value = 0
+  tracking.value = false
+  selectedTrackingRate.value = 0
+  targetRA.value = 0
+  targetDec.value = 0
+}
+
+// Poll for coordinates
+const updateCoordinates = async () => {
+  if (!props.isConnected || !props.deviceId) return
+  
+  try {
+    const properties = await getAlpacaProperties(props.deviceId, [
+      'rightAscension',
+      'declination',
+      'altitude',
+      'azimuth',
+      'tracking',
+      'trackingRate'
+    ])
+    
+    // Update coordinates
+    if (properties.rightAscension !== null && typeof properties.rightAscension === 'number') {
+      rightAscension.value = properties.rightAscension
+    }
+    
+    if (properties.declination !== null && typeof properties.declination === 'number') {
+      declination.value = properties.declination
+    }
+    
+    if (properties.altitude !== null && typeof properties.altitude === 'number') {
+      altitude.value = properties.altitude
+    }
+    
+    if (properties.azimuth !== null && typeof properties.azimuth === 'number') {
+      azimuth.value = properties.azimuth
+    }
+    
+    // Update tracking state
+    if (properties.tracking !== null && typeof properties.tracking === 'boolean') {
+      tracking.value = properties.tracking
+    }
+    
+    // Update tracking rate
+    if (properties.trackingRate !== null && typeof properties.trackingRate === 'number') {
+      selectedTrackingRate.value = properties.trackingRate
+    }
+  } catch (error) {
+    console.error('Error updating coordinates:', error)
+  }
+}
+
 // Get the current device
 const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
-
-// Watch for device ID changes to update our state
-let coordUpdateInterval: number | undefined
-watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
-  if (newDeviceId !== oldDeviceId) {
-    console.log(`SimplifiedTelescopePanel: Device changed from ${oldDeviceId} to ${newDeviceId}`)
-    
-    // Reset coordinate values
-    resetTelescopeState()
-    
-    // If we have a new device and it's connected, start monitoring it
-    if (props.isConnected) {
-      // Stop existing interval if any
-      if (coordUpdateInterval) {
-        clearInterval(coordUpdateInterval)
-        coordUpdateInterval = undefined;
-      }
-      
-      // Initial update
-      updateCoordinates()
-      // Start a new polling interval
-      coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
-    } else {
-      // If not connected, ensure polling is stopped
-      if (coordUpdateInterval) {
-        clearInterval(coordUpdateInterval)
-        coordUpdateInterval = undefined;
-      }
-    }
-  }
-}, { immediate: true })
 
 // Tracking state
 const tracking = ref(false)
@@ -96,17 +122,40 @@ const declination = ref(0)
 const altitude = ref(0)
 const azimuth = ref(0)
 
-// Reset telescope state when device changes
-const resetTelescopeState = () => {
-  rightAscension.value = 0
-  declination.value = 0
-  altitude.value = 0
-  azimuth.value = 0
-  tracking.value = false
-  selectedTrackingRate.value = 0
-  targetRA.value = 0
-  targetDec.value = 0
-}
+// Target RA/DEC for slewing (initialized by resetTelescopeState or first poll)
+const targetRA = ref(0)
+const targetDec = ref(0)
+
+// Watch for device ID changes to update our state
+let coordUpdateInterval: number | undefined
+watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
+  if (newDeviceId !== oldDeviceId) {
+    console.log(`SimplifiedTelescopePanel: Device changed from ${oldDeviceId} to ${newDeviceId}`)
+    
+    // Reset coordinate values
+    resetTelescopeState()
+    
+    // If we have a new device and it's connected, start monitoring it
+    if (props.isConnected) {
+      // Stop existing interval if any
+      if (coordUpdateInterval) {
+        clearInterval(coordUpdateInterval)
+        coordUpdateInterval = undefined;
+      }
+      
+      // Initial update
+      updateCoordinates()
+      // Start a new polling interval
+      coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
+    } else {
+      // If not connected, ensure polling is stopped
+      if (coordUpdateInterval) {
+        clearInterval(coordUpdateInterval)
+        coordUpdateInterval = undefined;
+      }
+    }
+  }
+}, { immediate: true })
 
 // Format right ascension as HH:MM:SS
 const formattedRA = computed(() => {
@@ -129,8 +178,6 @@ const formattedDec = computed(() => {
 })
 
 // Simple slew to coordinates
-const targetRA = ref(0)
-const targetDec = ref(0)
 const slewToCoordinates = async () => {
   try {
     await callAlpacaMethod(props.deviceId, 'slewToCoordinates', {
@@ -197,51 +244,6 @@ const findHome = async () => {
     await callAlpacaMethod(props.deviceId, 'findHome')
   } catch (error) {
     console.error('Error finding home position:', error)
-  }
-}
-
-// Poll for coordinates
-const updateCoordinates = async () => {
-  if (!props.isConnected || !props.deviceId) return
-  
-  try {
-    const properties = await getAlpacaProperties(props.deviceId, [
-      'rightAscension',
-      'declination',
-      'altitude',
-      'azimuth',
-      'tracking',
-      'trackingRate'
-    ])
-    
-    // Update coordinates
-    if (properties.rightAscension !== null && typeof properties.rightAscension === 'number') {
-      rightAscension.value = properties.rightAscension
-    }
-    
-    if (properties.declination !== null && typeof properties.declination === 'number') {
-      declination.value = properties.declination
-    }
-    
-    if (properties.altitude !== null && typeof properties.altitude === 'number') {
-      altitude.value = properties.altitude
-    }
-    
-    if (properties.azimuth !== null && typeof properties.azimuth === 'number') {
-      azimuth.value = properties.azimuth
-    }
-    
-    // Update tracking state
-    if (properties.tracking !== null && typeof properties.tracking === 'boolean') {
-      tracking.value = properties.tracking
-    }
-    
-    // Update tracking rate
-    if (properties.trackingRate !== null && typeof properties.trackingRate === 'number') {
-      selectedTrackingRate.value = properties.trackingRate
-    }
-  } catch (error) {
-    console.error('Error updating coordinates:', error)
   }
 }
 

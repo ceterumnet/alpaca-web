@@ -507,7 +507,18 @@ const getDeviceType = (cellId: string): string => {
   if (!deviceId) return '';
   
   const device = unifiedStore.getDeviceById(deviceId);
-  return device?.type?.toLowerCase() || '';
+  if (!device) {
+    // console.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getDeviceType.`);
+    return ''; // Device not found in store
+  }
+  
+  // Ensure device.type is a valid, non-empty string
+  if (!device.type || typeof device.type !== 'string' || device.type.trim() === '') {
+    // console.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`);
+    return ''; 
+  }
+  
+  return device.type.toLowerCase();
 };
 
 // Helper functions for getting components from the registry
@@ -519,10 +530,23 @@ const getComponentForCell = (cellId: string) => {
   
   // Get the device to determine its type
   const device = unifiedStore.getDeviceById(deviceId);
-  if (!device || !device.type) return null;
+  if (!device) {
+    // console.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getComponentForCell.`);
+    return null; // Device not found in store
+  }
+  
+  // Ensure device.type is a valid, non-empty string
+  if (!device.type || typeof device.type !== 'string' || device.type.trim() === '') {
+    // console.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`);
+    return null; 
+  }
   
   // Get the component from the registry
-  return deviceComponentRegistry.getComponent(deviceId, device.type);
+  const component = deviceComponentRegistry.getComponent(deviceId, device.type);
+  // if (!component) {
+  //   console.warn(`PanelLayoutView: No component registered for type '${device.type}' (device ${deviceId}, cell ${cellId}).`);
+  // }
+  return component; // This might still be null if type not in registry
 };
 
 // Get device title/name for a cell

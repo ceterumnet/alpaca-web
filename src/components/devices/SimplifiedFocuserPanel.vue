@@ -21,30 +21,10 @@ const props = defineProps({
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
-// Local device selection state
-const selectedDeviceId = ref(props.deviceId)
-
-// Handle device selection changes
-
-// Watch for props change to update local state only when not using internal selection
-// or when component is initially mounted
-watch(() => props.deviceId, (newDeviceId) => {
-  if (!props.useInternalDeviceSelection || !selectedDeviceId.value) {
-    selectedDeviceId.value = newDeviceId
-  }
-}, { immediate: true })
-
-// Device status
-const isConnected = computed(() => {
-  const device = store.getDeviceById(selectedDeviceId.value)
-  return device?.isConnected || false
-})
-
 // Get the current device
 const currentDevice = computed(() => {
-  return store.getDeviceById(selectedDeviceId.value)
+  return store.getDeviceById(props.deviceId)
 })
-
 
 // Focuser position
 const position = ref(0)
@@ -259,7 +239,7 @@ onUnmounted(() => {
       </div>
       
       <!-- Connection status -->
-      <div v-else-if="!isConnected" class="connection-notice">
+      <div v-else-if="!props.isConnected" class="connection-notice">
         <div class="connection-message">Focuser ({{ currentDevice.name }}) not connected.</div>
         <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
