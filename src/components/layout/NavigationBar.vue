@@ -35,8 +35,8 @@ interface NavLink {
 const navLinks: NavLink[] = [
   {
     name: 'Home',
-    path: '/panel-layout',
-    icon: 'files',
+    path: '/',
+    icon: 'home',
     description: 'Customizable panel layout view'
   },
   {
@@ -220,7 +220,7 @@ class="aw-navigation-bar__thumbnail-preview"
                 </div>
               </div>
               <div class="aw-navigation-bar__more-indicator" title="More layouts" @click="openLayoutModal">
-                <Icon type="expand" />
+                <Icon type="layout-grid" />
               </div>
             </div>
             

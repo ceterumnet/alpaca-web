@@ -17,12 +17,12 @@ const router = createRouter({
     },
     {
       path: '/',
-      redirect: '/panel-layout'
+      name: 'home',
+      component: () => import('../views/PanelLayoutView.vue')
     },
     {
       path: '/panel-layout',
-      name: 'panel-layout',
-      component: () => import('../views/PanelLayoutView.vue')
+      redirect: '/'
     }
   ]
 })

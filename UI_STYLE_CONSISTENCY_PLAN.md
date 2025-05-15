@@ -101,6 +101,7 @@
    - ✅ SimplifiedTelescopePanel.vue
    - ✅ SimplifiedCameraPanel.vue
    - ✅ GridLayoutDemo.vue
+   - ✅ **Phase 5: Navigation and Routing Cleanup** (Home link, router paths, removal of /panel-layout direct use)
 
 2. For each component:
 
