@@ -387,6 +387,20 @@ onUnmounted(() => {
 
           <!-- Right Column: Settings, Cooling & Exposure -->
           <div class="settings-cooling-column">
+            <!-- Exposure Control Section -->
+            <div class="panel-section exposure-controls-section">
+              <h3>Exposure</h3>
+              <CameraExposureControl
+                :device-id="deviceId"
+                :exposure-min="exposureMin"
+                :exposure-max="exposureMax"
+                @exposure-started="handleExposureStarted"
+                @exposure-complete="handleExposureComplete"
+                @image-downloaded="handleImageDownloaded"
+                @error="handleExposureError"
+              />
+            </div>
+
             <!-- Camera Settings Section -->
             <div class="panel-section">
               <h3>Settings</h3>
@@ -441,20 +455,6 @@ onUnmounted(() => {
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <!-- Exposure Control Section -->
-            <div class="panel-section exposure-controls-section">
-              <h3>Exposure</h3>
-              <CameraExposureControl
-                :device-id="deviceId"
-                :exposure-min="exposureMin"
-                :exposure-max="exposureMax"
-                @exposure-started="handleExposureStarted"
-                @exposure-complete="handleExposureComplete"
-                @image-downloaded="handleImageDownloaded"
-                @error="handleExposureError"
-              />
             </div>
           </div>
         </div>

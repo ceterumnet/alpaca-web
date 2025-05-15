@@ -4,7 +4,7 @@ with advanced features: // - ASCOM Alpaca image format support // - Image stretc
 Real-time image updates
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import {
   processImageBytes,
   createStretchLUT,
@@ -12,6 +12,7 @@ import {
   calculateHistogram as calculateLibHistogram
 } from '@/lib/ASCOMImageBytes'
 import type { ProcessedImageData } from '@/lib/ASCOMImageBytes'
+import Icon from '@/components/ui/Icon.vue' // Import the Icon component
 
 const props = defineProps({
   imageData: {
@@ -42,11 +43,15 @@ const autoStretch = ref(true)
 const useRobustStretch = ref(true)
 const robustPercentile = ref(98) // Exclude top 2% of pixels as outliers
 
+// Full-screen state
+const isFullScreen = ref(false)
+const fullScreenImageSrc = ref('')
+
 // Store processed image data
 const processedImage = ref<ProcessedImageData | null>(null)
 
 // Draw the image on canvas
-const drawImage = () => {
+const drawImage = async () => {
   if (!canvasRef.value || props.imageData.byteLength === 0) {
     return
   }
@@ -112,6 +117,14 @@ const drawImage = () => {
 
   // Put the image data to canvas
   ctx.putImageData(imgData, 0, 0)
+
+  // If full screen is active, update its source too
+  if (isFullScreen.value) {
+    await nextTick() // Ensure canvas has rendered
+    if (canvasRef.value) {
+      fullScreenImageSrc.value = canvasRef.value.toDataURL('image/png')
+    }
+  }
 }
 
 // Calculate robust percentiles for stretch
@@ -254,7 +267,20 @@ const drawHistogram = (histData: number[]) => {
 // Apply stretch settings and redraw
 const applyStretch = () => {
   calculateHistogram()
-  drawImage()
+  drawImage() // drawImage will now also update fullScreenImageSrc if active
+}
+
+// Toggle full-screen mode
+const toggleFullScreen = async () => {
+  isFullScreen.value = !isFullScreen.value
+  if (isFullScreen.value) {
+    await nextTick() // Ensure canvas is available and drawn
+    if (canvasRef.value) {
+      fullScreenImageSrc.value = canvasRef.value.toDataURL('image/png')
+    }
+  } else {
+    fullScreenImageSrc.value = '' // Clear src when closing
+  }
 }
 
 // Reset processed image when props change
@@ -280,7 +306,7 @@ watch(
     robustPercentile.value
   ],
   () => {
-    applyStretch()
+    applyStretch() // This will call drawImage, which updates fullScreenImageSrc if needed
   }
 )
 
@@ -297,6 +323,9 @@ onMounted(() => {
   <div class="aw-camera-image-display">
     <div ref="imageContainerRef" class="image-container">
       <canvas ref="canvasRef" class="image-canvas"></canvas>
+      <button v-if="props.imageData.byteLength > 0" class="fullscreen-button" title="View Full Screen" @click="toggleFullScreen">
+        <Icon type="search" size="18" /> <!-- Using search icon & reduced size -->
+      </button>
     </div>
     <div v-if="props.imageData.byteLength > 0" class="controls">
       <div class="control-group">
@@ -332,6 +361,14 @@ onMounted(() => {
     <div v-if="props.imageData.byteLength === 0" class="no-image-message">
       No image data to display.
     </div>
+
+    <!-- Full Screen Modal -->
+    <div v-if="isFullScreen" class="fullscreen-modal" @click.self="toggleFullScreen">
+      <img :src="fullScreenImageSrc" alt="Full screen image" class="fullscreen-modal-image" />
+      <button class="close-fullscreen-button" @click="toggleFullScreen">
+        <Icon type="close" /> <!-- Assuming 'close' is available -->
+      </button>
+    </div>
   </div>
 </template>
 
@@ -347,6 +384,7 @@ onMounted(() => {
   /* Ensure it doesn't grow indefinitely */
   max-width: 100%;
   overflow: hidden; /* Contain child elements */
+  position: relative; /* For positioning the fullscreen button and modal */
 }
 
 .image-container {
@@ -361,6 +399,7 @@ onMounted(() => {
   background-color: var(--aw-color-neutral-100, #f0f0f0); /* Background for the image area */
   border-radius: var(--aw-border-radius-sm);
   overflow: hidden; /* Important if canvas tries to overflow */
+  position: relative; /* For positioning the fullscreen button */
 }
 
 .image-canvas {
@@ -429,5 +468,75 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.fullscreen-button {
+  position: absolute;
+  top: var(--aw-spacing-xs);
+  right: var(--aw-spacing-xs);
+  background-color: rgba(0, 0, 0, 0.4);
+  color: white;
+  border: none;
+  border-radius: var(--aw-border-radius-sm);
+  /* padding: var(--aw-spacing-xs) var(--aw-spacing-sm); */ /* Adjusted padding for icon-only */
+  padding: var(--aw-spacing-xs);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center the icon */
+  /* gap: var(--aw-spacing-xs); */ /* No gap needed for single icon */
+  z-index: 10;
+  width: calc(18px + 2 * var(--aw-spacing-xs)); /* Adjust width to content */
+  height: calc(18px + 2 * var(--aw-spacing-xs)); /* Adjust height to content */
+  line-height: 1;
+}
+
+.fullscreen-button:hover {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* .fullscreen-button .icon { */ /* Size is now passed as a prop to Icon component */
+  /* font-size: 1rem; */ /* Adjust as needed */
+/* } */
+
+/* Full Screen Modal Styles */
+.fullscreen-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top of everything */
+  padding: var(--aw-spacing-lg); /* Add some padding around the image */
+  box-sizing: border-box;
+}
+
+.fullscreen-modal-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* Preserve aspect ratio */
+  border-radius: var(--aw-border-radius-md); /* Optional: rounded corners for the image */
+  box-shadow: 0 0 30px rgba(0,0,0,0.5); /* Optional: some shadow */
+}
+
+.close-fullscreen-button {
+  position: absolute;
+  top: var(--aw-spacing-md);
+  right: var(--aw-spacing-md);
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.8rem; /* Make close icon larger */
+  cursor: pointer;
+  padding: var(--aw-spacing-sm);
+  line-height: 1;
+}
+
+.close-fullscreen-button:hover {
+  color: var(--aw-color-neutral-300, #ccc);
 }
 </style>
