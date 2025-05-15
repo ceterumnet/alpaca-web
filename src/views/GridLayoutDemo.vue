@@ -96,16 +96,16 @@ function startChoosing() {
 }
 
 .aw-button--primary {
-  background-color: var(--aw-color-primary-500, #4a7adc);
-  color: white;
+  background-color: var(--aw-color-primary-500);
+  color: var(--aw-button-primary-text);
 }
 
 .grid-layout-demo__selected {
   margin-top: 2rem;
   text-align: left;
-  background: #f6f6f6;
-  border-radius: 8px;
-  padding: 1rem;
+  background: var(--aw-color-neutral-100);
+  border-radius: var(--aw-border-radius);
+  padding: var(--aw-spacing-md);
   font-size: 0.95rem;
 }
 </style> 

@@ -316,8 +316,8 @@ onUnmounted(() => {
 .simplified-panel {
   background-color: var(--aw-panel-bg-color);
   color: var(--aw-text-color);
-  border-radius: var(--aw-border-radius, 8px);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  border-radius: var(--aw-border-radius);
+  border: 1px solid var(--aw-panel-border-color);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -329,7 +329,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 0 var(--aw-spacing-sm);
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+  border-bottom: 1px solid var(--aw-panel-border-color);
   background-color: var(--aw-panel-header-bg-color);
 }
 
@@ -344,17 +344,17 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: calc(var(--aw-spacing-xs) / 2) var(--aw-spacing-sm);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   background-color: var(--aw-panel-content-bg-color);
-  margin: 4px 0;
+  margin: var(--aw-spacing-xs) 0;
   min-width: 120px;
 }
 
 .device-name {
   font-size: 0.8rem;
-  margin-right: 8px;
+  margin-right: var(--aw-spacing-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -372,11 +372,11 @@ onUnmounted(() => {
   left: 0;
   width: 200px;
   background-color: var(--aw-panel-bg-color);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
   z-index: 100;
-  margin-top: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin-top: var(--aw-spacing-xs);
+  box-shadow: var(--aw-shadow-md);
 }
 
 .device-list {
@@ -385,9 +385,9 @@ onUnmounted(() => {
 }
 
 .device-item {
-  padding: 8px;
+  padding: var(--aw-spacing-sm);
   cursor: pointer;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+  border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
 .device-item:hover {
@@ -404,8 +404,8 @@ onUnmounted(() => {
 }
 
 .device-item-name {
-  font-weight: 500;
-  margin-bottom: 2px;
+  font-weight: var(--aw-font-weight-medium);
+  margin-bottom: calc(var(--aw-spacing-xs) / 2);
 }
 
 .device-item-status {
@@ -429,21 +429,21 @@ onUnmounted(() => {
 }
 
 .device-actions {
-  padding: 8px;
-  border-top: 1px solid var(--aw-panel-border-color, #444);
+  padding: var(--aw-spacing-sm);
+  border-top: 1px solid var(--aw-panel-border-color);
 }
 
 .discover-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: calc(var(--aw-spacing-xs) * 1.5);
   width: 100%;
-  padding: 6px 0;
-  background-color: var(--aw-primary-color, #0077cc);
+  padding: calc(var(--aw-spacing-xs) * 1.5) 0;
+  background-color: var(--aw-primary-color);
   color: var(--aw-button-primary-text);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   font-size: 0.8rem;
 }
@@ -458,28 +458,28 @@ onUnmounted(() => {
 }
 
 .panel-section {
-  margin-bottom: 20px;
+  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
   background-color: var(--aw-panel-content-bg-color);
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: calc(var(--aw-spacing-xs) * 1.5);
+  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .panel-section h3 {
   margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 1rem;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
-  padding-bottom: 6px;
+  margin-bottom: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  font-size: var(--aw-font-size-base);
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
 .action-button {
-  background-color: var(--aw-primary-color, #0077cc);
+  background-color: var(--aw-primary-color);
   color: var(--aw-button-primary-text);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
-  font-weight: 500;
+  font-weight: var(--aw-font-weight-medium);
 }
 
 .action-button:hover {
@@ -487,13 +487,13 @@ onUnmounted(() => {
 }
 
 .stop-button {
-  background-color: var(--aw-error-color, #ef5350);
+  background-color: var(--aw-error-color);
   color: var(--aw-button-danger-text);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
-  font-weight: 500;
+  font-weight: var(--aw-font-weight-medium);
 }
 
 .stop-button:hover {
@@ -513,10 +513,10 @@ onUnmounted(() => {
   align-items: center;
   height: 100px;
   background-color: var(--aw-panel-content-bg-color);
-  border-radius: 6px;
-  margin-bottom: 20px;
-  gap: 12px;
-  padding: 16px;
+  border-radius: calc(var(--aw-spacing-xs) * 1.5);
+  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  padding: var(--aw-spacing-md);
 }
 
 .connection-message {
@@ -532,7 +532,7 @@ onUnmounted(() => {
 .position-display {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .position-value {
@@ -547,7 +547,7 @@ onUnmounted(() => {
 
 .value {
   font-size: 1.1rem;
-  font-weight: 500;
+  font-weight: var(--aw-font-weight-medium);
 }
 
 .status-indicator {
@@ -563,15 +563,15 @@ onUnmounted(() => {
 .position-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--aw-spacing-sm);
+  margin-top: var(--aw-spacing-sm);
 }
 
 .position-input {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--aw-spacing-sm);
 }
 
 .position-input label {
@@ -580,18 +580,18 @@ onUnmounted(() => {
 
 .position-input input {
   flex: 1;
-  padding: 6px;
+  padding: calc(var(--aw-spacing-xs) * 1.5);
   background-color: var(--aw-panel-bg-color);
   color: var(--aw-text-color);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
 }
 
 /* Movement controls styles */
 .movement-controls {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .step-size-control {
@@ -601,47 +601,47 @@ onUnmounted(() => {
 }
 
 .step-size-control label {
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
 }
 
 .step-size-control input {
   width: 100px;
-  padding: 6px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
+  padding: calc(var(--aw-spacing-xs) * 1.5);
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
 }
 
 .movement-buttons {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--aw-spacing-sm);
 }
 
 .direction-button {
   flex: 1;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
   padding: var(--aw-spacing-sm) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
-  font-weight: 500;
+  font-weight: var(--aw-font-weight-medium);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .direction-button:hover {
-  background-color: var(--aw-panel-hover-bg-color, #444);
+  background-color: var(--aw-panel-hover-bg-color);
 }
 
 /* Status display styles */
 .status-display {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .temperature-info {
@@ -657,7 +657,7 @@ onUnmounted(() => {
 }
 
 .label {
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
 }
 
 .toggle {
@@ -680,10 +680,10 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  background-color: var(--aw-panel-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
   transition: .4s;
-  border-radius: 24px;
+  border-radius: var(--aw-spacing-lg);
 }
 
 .slider:before {
@@ -693,17 +693,17 @@ onUnmounted(() => {
   width: 16px;
   left: 3px;
   bottom: 3px;
-  background-color: var(--aw-text-secondary-color, #aaa);
+  background-color: var(--aw-text-secondary-color);
   transition: .4s;
   border-radius: 50%;
 }
 
 input:checked + .slider {
-  background-color: var(--aw-primary-color, #0077cc);
+  background-color: var(--aw-primary-color);
 }
 
 input:checked + .slider:before {
-  transform: translateX(20px);
+  transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
   background-color: var(--aw-button-primary-text);
 }
 </style> 

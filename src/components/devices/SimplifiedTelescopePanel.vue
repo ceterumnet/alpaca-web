@@ -370,16 +370,16 @@ const trackingRates = [
   align-items: center;
   padding: calc(var(--aw-spacing-xs) / 2) var(--aw-spacing-sm);
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   background-color: var(--aw-panel-content-bg-color);
-  margin: 4px 0;
+  margin: var(--aw-spacing-xs) 0;
   min-width: 120px;
 }
 
 .device-name {
   font-size: 0.8rem;
-  margin-right: 8px;
+  margin-right: var(--aw-spacing-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -398,10 +398,10 @@ const trackingRates = [
   width: 200px;
   background-color: var(--aw-panel-bg-color);
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   z-index: 100;
-  margin-top: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin-top: var(--aw-spacing-xs);
+  box-shadow: var(--aw-shadow-md);
 }
 
 .device-list {
@@ -410,7 +410,7 @@ const trackingRates = [
 }
 
 .device-item {
-  padding: 8px;
+  padding: var(--aw-spacing-sm);
   cursor: pointer;
   border-bottom: 1px solid var(--aw-panel-border-color);
 }
@@ -429,8 +429,8 @@ const trackingRates = [
 }
 
 .device-item-name {
-  font-weight: 500;
-  margin-bottom: 2px;
+  font-weight: var(--aw-font-weight-medium);
+  margin-bottom: calc(var(--aw-spacing-xs) / 2);
 }
 
 .device-item-status {
@@ -454,7 +454,7 @@ const trackingRates = [
 }
 
 .device-actions {
-  padding: 8px;
+  padding: var(--aw-spacing-sm);
   border-top: 1px solid var(--aw-panel-border-color);
 }
 
@@ -462,13 +462,13 @@ const trackingRates = [
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: calc(var(--aw-spacing-xs) * 1.5);
   width: 100%;
-  padding: 6px 0;
+  padding: calc(var(--aw-spacing-xs) * 1.5) 0;
   background-color: var(--aw-primary-color);
   color: var(--aw-button-primary-text);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   font-size: 0.8rem;
 }
@@ -483,24 +483,24 @@ const trackingRates = [
 }
 
 .panel-section {
-  margin-bottom: 20px;
+  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
   background-color: var(--aw-panel-content-bg-color);
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: calc(var(--aw-spacing-xs) * 1.5);
+  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .panel-section h3 {
   margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 1rem;
+  margin-bottom: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  font-size: var(--aw-font-size-base);
   border-bottom: 1px solid var(--aw-panel-border-color);
-  padding-bottom: 6px;
+  padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
 .coordinate-display {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: var(--aw-spacing-sm);
 }
 
 .coordinate {
@@ -512,19 +512,19 @@ const trackingRates = [
 .label {
   color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
-  margin-bottom: 2px;
+  margin-bottom: calc(var(--aw-spacing-xs) / 2);
 }
 
 .value {
   font-size: 1.1rem;
-  font-weight: 500;
+  font-weight: var(--aw-font-weight-medium);
 }
 
 .slew-coordinates {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--aw-spacing-sm);
+  margin-bottom: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .slew-input {
@@ -534,7 +534,7 @@ const trackingRates = [
 
 .slew-input label {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: var(--aw-spacing-xs);
   color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
 }
@@ -544,7 +544,7 @@ const trackingRates = [
   background-color: var(--aw-panel-bg-color);
   color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
 }
 
@@ -552,10 +552,10 @@ const trackingRates = [
   background-color: var(--aw-primary-color);
   color: var(--aw-button-primary-text);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
-  font-weight: 500;
+  font-weight: var(--aw-font-weight-medium);
 }
 
 .action-button:hover {
@@ -563,7 +563,7 @@ const trackingRates = [
 }
 
 .direction-control {
-  margin-top: 12px;
+  margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -572,8 +572,8 @@ const trackingRates = [
 .direction-row {
   display: flex;
   justify-content: center;
-  gap: 4px;
-  margin: 2px 0;
+  gap: var(--aw-spacing-xs);
+  margin: calc(var(--aw-spacing-xs) / 2) 0;
 }
 
 .direction-button {
@@ -582,7 +582,7 @@ const trackingRates = [
   background-color: var(--aw-panel-bg-color);
   color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -596,7 +596,7 @@ const trackingRates = [
 .tracking-control {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .tracking-toggle {
@@ -628,7 +628,7 @@ const trackingRates = [
   background-color: var(--aw-panel-bg-color);
   border: 1px solid var(--aw-panel-border-color);
   transition: .4s;
-  border-radius: 24px;
+  border-radius: var(--aw-spacing-lg);
 }
 
 .slider:before {
@@ -648,7 +648,7 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-  transform: translateX(20px);
+  transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
   background-color: var(--aw-button-primary-text);
 }
 
@@ -662,14 +662,14 @@ input:checked + .slider:before {
   background-color: var(--aw-panel-bg-color);
   color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
   width: 120px;
 }
 
 .advanced-buttons {
   display: flex;
-  gap: 8px;
+  gap: var(--aw-spacing-sm);
   flex-wrap: wrap;
 }
 
@@ -680,10 +680,10 @@ input:checked + .slider:before {
   align-items: center;
   height: 100px;
   background-color: var(--aw-panel-content-bg-color);
-  border-radius: 6px;
-  margin-bottom: 20px;
-  gap: 12px;
-  padding: 16px;
+  border-radius: calc(var(--aw-spacing-xs) * 1.5);
+  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  padding: var(--aw-spacing-md);
 }
 
 .connection-message {

@@ -351,10 +351,10 @@ onUnmounted(() => {
 
 <style scoped>
 .simplified-panel {
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border-radius: var(--aw-border-radius, 8px);
-  /* border: 1px solid var(--aw-panel-border-color, #444); */
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  border-radius: var(--aw-border-radius);
+  border: 1px solid var(--aw-panel-border-color);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -365,9 +365,9 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0px 8px;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
-  background-color: var(--aw-panel-header-bg-color, #333);
+  padding: 0 var(--aw-spacing-sm);
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  background-color: var(--aw-panel-header-bg-color);
 }
 
 .panel-header h2 {
@@ -380,18 +380,18 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 2px 8px;
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
+  padding: calc(var(--aw-spacing-xs) / 2) var(--aw-spacing-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
-  margin: 4px 0;
+  background-color: var(--aw-panel-content-bg-color);
+  margin: var(--aw-spacing-xs) 0;
   min-width: 120px;
 }
 
 .device-name {
   font-size: 0.8rem;
-  margin-right: 8px;
+  margin-right: var(--aw-spacing-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -408,12 +408,12 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   width: 200px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
+  background-color: var(--aw-panel-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
   z-index: 100;
-  margin-top: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin-top: var(--aw-spacing-xs);
+  box-shadow: var(--aw-shadow-md);
 }
 
 .device-list {
@@ -422,17 +422,17 @@ onUnmounted(() => {
 }
 
 .device-item {
-  padding: 8px;
+  padding: var(--aw-spacing-sm);
   cursor: pointer;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+  border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
 .device-item:hover {
-  background-color: var(--aw-panel-hover-bg-color, #444);
+  background-color: var(--aw-panel-hover-bg-color);
 }
 
 .device-selected {
-  background-color: var(--aw-primary-color-transparent, rgba(0, 119, 204, 0.2));
+  background-color: var(--aw-primary-color-transparent);
 }
 
 .device-info {
@@ -441,8 +441,8 @@ onUnmounted(() => {
 }
 
 .device-item-name {
-  font-weight: 500;
-  margin-bottom: 2px;
+  font-weight: var(--aw-font-weight-medium);
+  margin-bottom: calc(var(--aw-spacing-xs) / 2);
 }
 
 .device-item-status {
@@ -451,42 +451,42 @@ onUnmounted(() => {
 }
 
 .device-item-status.connected {
-  color: var(--aw-success-color, #66bb6a);
+  color: var(--aw-success-color);
 }
 
 .device-item-status.disconnected {
-  color: var(--aw-error-color, #ef5350);
+  color: var(--aw-error-color);
 }
 
 .device-empty {
-  padding: 12px 8px;
+  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)) var(--aw-spacing-sm);
   text-align: center;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
 }
 
 .device-actions {
-  padding: 8px;
-  border-top: 1px solid var(--aw-panel-border-color, #444);
+  padding: var(--aw-spacing-sm);
+  border-top: 1px solid var(--aw-panel-border-color);
 }
 
 .discover-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: calc(var(--aw-spacing-xs) * 1.5);
   width: 100%;
-  padding: 6px 0;
-  background-color: var(--aw-primary-color, #0077cc);
-  color: white;
+  padding: calc(var(--aw-spacing-xs) * 1.5) 0;
+  background-color: var(--aw-primary-color);
+  color: var(--aw-button-primary-text);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   font-size: 0.8rem;
 }
 
 .discover-button:hover {
-  background-color: var(--aw-primary-hover-color, #0066b3);
+  background-color: var(--aw-primary-hover-color);
 }
 
 .panel-content {
@@ -495,93 +495,60 @@ onUnmounted(() => {
 }
 
 .panel-section {
-  margin-bottom: 20px;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
-  border-radius: 6px;
-  padding: 12px;
+  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  background-color: var(--aw-panel-content-bg-color);
+  border-radius: calc(var(--aw-spacing-xs) * 1.5);
+  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .panel-section h3 {
   margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 1rem;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
-  padding-bottom: 6px;
+  margin-bottom: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  font-size: var(--aw-font-size-base);
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
-.action-button {
-  background-color: var(--aw-primary-color, #0077cc);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-weight: 500;
+.camera-controls-section {
+  padding: 0;
 }
 
-.action-button:hover {
-  background-color: var(--aw-primary-hover-color, #0066b3);
-}
-
-.connection-notice {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100px;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
-  border-radius: 6px;
-  margin-bottom: 20px;
-  gap: 12px;
-  padding: 16px;
-}
-
-.connection-message {
-  color: var(--aw-text-secondary-color, #aaa);
-  font-size: 1.1rem;
-}
-
-.connect-button {
-  min-width: 100px;
-}
-
-/* Camera controls wrapper */
 .camera-controls-wrapper {
-  width: 100%;
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: calc(var(--aw-spacing-xs) * 1.5);
+  overflow: hidden;
+  margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
-/* Camera settings styles */
 .camera-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .setting-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
 }
 
 .setting-row label {
-  flex: 1;
-  color: var(--aw-text-secondary-color, #aaa);
+  margin-bottom: var(--aw-spacing-xs);
+  color: var(--aw-text-secondary-color);
+  font-size: 0.9rem;
 }
 
 .setting-row input {
-  flex: 2;
-  padding: 6px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
+  padding: calc(var(--aw-spacing-xs) * 1.5);
+  background-color: var(--aw-input-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
 }
 
-/* Cooling control styles */
 .cooling-controls {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .cooling-status {
@@ -591,58 +558,43 @@ onUnmounted(() => {
 }
 
 .temperature-label {
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
 }
 
 .temperature-value {
-  font-weight: 500;
+  font-weight: var(--aw-font-weight-medium);
 }
 
 .cooling-toggle {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.temperature-target {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-}
-
-.temperature-target label {
-  flex: 1;
-  color: var(--aw-text-secondary-color, #aaa);
-}
-
-.temperature-target input {
-  flex: 1;
-  padding: 6px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  border-radius: 4px;
-}
-
-.label {
-  color: var(--aw-text-secondary-color, #aaa);
 }
 
 .toggle {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .slider {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 20px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  border-radius: 20px;
-  border: 1px solid var(--aw-panel-border-color, #444);
-  transition: all 0.3s;
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--aw-input-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
+  transition: .4s;
+  border-radius: var(--aw-spacing-lg);
 }
 
 .slider:before {
@@ -650,19 +602,61 @@ onUnmounted(() => {
   content: "";
   height: 16px;
   width: 16px;
-  left: 2px;
-  bottom: 1px;
-  background-color: var(--aw-text-secondary-color, #aaa);
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--aw-text-secondary-color);
+  transition: .4s;
   border-radius: 50%;
-  transition: all 0.3s;
 }
 
 input:checked + .slider {
-  background-color: var(--aw-primary-color, #0077cc);
+  background-color: var(--aw-primary-color);
 }
 
 input:checked + .slider:before {
-  transform: translateX(20px);
-  background-color: white;
+  transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
+  background-color: var(--aw-button-primary-text);
+}
+
+.temperature-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.temperature-target label {
+  color: var(--aw-text-secondary-color);
+}
+
+.temperature-target input {
+  width: 80px;
+  padding: calc(var(--aw-spacing-xs) * 1.5);
+  background-color: var(--aw-input-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
+}
+
+.connection-notice {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  background-color: var(--aw-panel-content-bg-color);
+  border-radius: calc(var(--aw-spacing-xs) * 1.5);
+  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  padding: var(--aw-spacing-md);
+}
+
+.connection-message {
+  color: var(--aw-text-secondary-color);
+  font-size: 1.1rem;
+}
+
+.panel-tip {
+  font-size: 0.8rem;
+  color: var(--aw-text-secondary-color);
 }
 </style> 

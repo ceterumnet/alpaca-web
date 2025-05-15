@@ -98,11 +98,9 @@
    - ✅ DeviceDetailView.vue
    - ✅ DevicePalette.vue
    - ✅ SimplifiedFocuserPanel.vue
-   - ✅ PanelLayoutView.vue
-   - ✅ StaticLayoutChooser.vue
-   - ◻️ SimplifiedTelescopePanel.vue (Audit: Hardcoded color names, spacing)
-   - ◻️ SimplifiedCameraPanel.vue (Audit: Hardcoded color names, spacing)
-   - ◻️ GridLayoutDemo.vue (Audit: Hardcoded color names)
+   - ✅ SimplifiedTelescopePanel.vue
+   - ✅ SimplifiedCameraPanel.vue
+   - ✅ GridLayoutDemo.vue
 
 2. For each component:
 
