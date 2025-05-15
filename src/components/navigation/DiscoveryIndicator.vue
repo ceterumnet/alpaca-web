@@ -97,10 +97,10 @@ function setupPeriodicDiscovery() {
     clearInterval(discoveryInterval.value)
   }
   
-  // Run discovery immediately on mount
-  triggerDiscovery()
+  // Do NOT run discovery immediately on mount here, App.vue handles initial discovery
+  // triggerDiscovery() // OLD: Removed immediate trigger
   
-  // Set up interval (every minute)
+  // Set up interval (every minute) - this will start the first periodic check after 60s
   discoveryInterval.value = window.setInterval(() => {
     triggerDiscovery()
   }, 60000) // 60 seconds
@@ -108,9 +108,10 @@ function setupPeriodicDiscovery() {
 
 // Lifecycle hooks
 onMounted(() => {
-  setupPeriodicDiscovery()
+  setupPeriodicDiscovery() // This will now only set up the interval
   
-  // Track initial device count
+  // Track initial device count - this might be 0 if App.vue's discovery hasn't run yet
+  // This is fine, as the indicator will update reactively when discoveryStore changes.
   previousDeviceCount.value = discoveryStore.availableDevices.length
 })
 

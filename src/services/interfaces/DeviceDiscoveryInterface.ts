@@ -62,6 +62,17 @@ export interface DiscoveryOptions {
 }
 
 /**
+ * Represents a device configured on an Alpaca server, typically obtained from the
+ * /management/v1/configureddevices endpoint.
+ */
+export interface ConfiguredAlpacaDevice {
+  DeviceType: string
+  DeviceNumber: number
+  UniqueID?: string
+  DeviceName?: string // Standard Alpaca field name is DeviceName
+}
+
+/**
  * Manual device addition parameters
  */
 export interface ManualDeviceParams {

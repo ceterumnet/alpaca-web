@@ -370,56 +370,34 @@ export function createCoreActions() {
         device: Partial<Device>,
         options: StoreOptions = {}
       ): boolean {
-        const defaultDevice: Device = {
-          id: device.id || '',
-          name: device.name || '',
-          type: device.type || '',
-          isConnected: false,
-          isConnecting: false,
-          isDisconnecting: false,
-          properties: device.properties || { isSimulation: true },
-          status: 'idle',
-          displayName: device.displayName,
-          discoveredAt: device.discoveredAt,
-          lastConnected: device.lastConnected,
-          deviceType: device.deviceType,
-          ipAddress: device.ipAddress,
-          address: device.address,
-          port: device.port,
-          devicePort: device.devicePort,
-          telemetry: device.telemetry,
-          lastSeen: device.lastSeen,
-          firmwareVersion: device.firmwareVersion,
-          apiBaseUrl: device.apiBaseUrl,
-          deviceNum: device.deviceNum,
-          idx: device.idx,
-          capabilities: device.capabilities,
-          deviceAttributes: device.deviceAttributes,
-          stateHistory: device.stateHistory
+        console.log('[UnifiedStore/coreActions] addDevice called for device:', JSON.parse(JSON.stringify(device)))
+        if (!device.id || !device.type) {
+          console.error('Device ID and Type are required to add a device')
+          return false
         }
+        // Normalize device before adding
+        const normalizedDevice = this._normalizeDevice(device as Device) // Cast as Device after ensuring id/type
+        console.log('[UnifiedStore/coreActions] Normalized device:', JSON.parse(JSON.stringify(normalizedDevice)))
 
-        if (!device || !device.id) return false
-
-        // Ensure device has required fields
-        const normalizedDevice = this._normalizeDevice(defaultDevice)
-
-        // Add to both Map and Array
         this.devices.set(normalizedDevice.id, normalizedDevice)
-        this.devicesArray.push(normalizedDevice)
+        // Ensure devicesArray is kept in sync
+        // A common pattern is to rebuild it or push+sort, for simplicity let's rebuild from the map values
+        this.devicesArray = Array.from(this.devices.values())
+        console.log('[UnifiedStore/coreActions] devicesArray updated in addDevice. New length:', this.devicesArray.length)
 
-        // Create and store client if device has apiBaseUrl
-        if (normalizedDevice.apiBaseUrl && typeof normalizedDevice.apiBaseUrl === 'string') {
+        // Create an API client if applicable
+        if (normalizedDevice.apiBaseUrl) {
           const client = this.createDeviceClient(normalizedDevice)
           if (client) {
             this.deviceClients.set(normalizedDevice.id, client)
+            console.log('[UnifiedStore/coreActions] API client created for device:', normalizedDevice.id)
           }
         }
 
-        // Emit event if not silent
         if (!options.silent) {
           this._emitEvent({ type: 'deviceAdded', device: normalizedDevice })
         }
-
+        console.log('[UnifiedStore/coreActions] Device added successfully to map and array:', normalizedDevice.id)
         return true
       },
 
@@ -1145,20 +1123,16 @@ export function createCoreActions() {
         },
         device: Device
       ): boolean {
-        // Check if device already exists
+        console.log('[UnifiedStore/coreActions] addDeviceWithCheck called for device:', JSON.parse(JSON.stringify(device)))
         if (this.deviceExists(device)) {
-          console.log(`Device already exists: ${device.name} (${device.id})`)
+          console.log('[UnifiedStore/coreActions] Device already exists:', device.id)
           return false
         }
-
-        // Make sure device is in a valid state before adding
-        if (!device.status || device.status === 'error') {
-          device.status = 'idle'
-        }
-
-        // Add the device
-        this.addDevice(device)
-        return true
+        console.log('[UnifiedStore/coreActions] Device does not exist, attempting to add:', device.id)
+        const added = this.addDevice(device, { silent: true }) // Assuming silent: true is desired here
+        console.log('[UnifiedStore/coreActions] Result of this.addDevice:', added, 'for device:', device.id)
+        console.log('[UnifiedStore/coreActions] State of devicesArray after add attempt:', JSON.parse(JSON.stringify(this.devicesArray)))
+        return added
       },
 
       /**
@@ -1167,11 +1141,10 @@ export function createCoreActions() {
        * @returns True if device already exists
        */
       deviceExists(this: CoreState, device: Device): boolean {
-        return this.devicesArray.some(
-          (existingDevice) =>
-            existingDevice.id === device.id ||
-            (existingDevice.ipAddress === device.ipAddress && existingDevice.port === device.port && existingDevice.type === device.type)
-        )
+        console.log('[UnifiedStore/coreActions] deviceExists called for device ID:', device.id)
+        const exists = this.devices.has(device.id)
+        console.log('[UnifiedStore/coreActions] Device exists in map?', exists)
+        return exists
       },
 
       /**

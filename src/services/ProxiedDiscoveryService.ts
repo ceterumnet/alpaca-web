@@ -1,5 +1,5 @@
 /**
- * EnhancedDeviceDiscoveryService.ts
+ * ProxiedDiscoveryService.ts
  *
  * This service handles device discovery operations and provides a clean interface for
  * UI components to consume. It implements the IDeviceDiscoveryService interface.
@@ -16,22 +16,16 @@ import {
   type DeviceServer,
   type DeviceServerDevice,
   type DiscoveryOptions,
-  type ManualDeviceParams
+  type ManualDeviceParams,
+  type ConfiguredAlpacaDevice
 } from './interfaces/DeviceDiscoveryInterface'
-
-interface ConfiguredDevice {
-  DeviceType: string
-  DeviceNumber: number
-  UniqueID?: string
-  Name?: string
-}
 
 /**
  * Enhanced Device Discovery Service
  * Implements the IDeviceDiscoveryService interface to provide a clean API
  * for UI components to interact with the discovery system.
  */
-export class EnhancedDeviceDiscoveryService implements IDeviceDiscoveryService {
+export class ProxiedDiscoveryService implements IDeviceDiscoveryService {
   private _status: DiscoveryStatus = 'idle'
   private _lastDiscoveryTime: Date | null = null
   private _lastError: string | null = null
@@ -82,9 +76,7 @@ export class EnhancedDeviceDiscoveryService implements IDeviceDiscoveryService {
       this._lastDiscoveryTime = new Date()
 
       // Convert to the new format
-      const servers: DeviceServer[] = await Promise.all(
-        discoveredDevices.map(async (device) => this.processDiscoveredDevice(device))
-      )
+      const servers: DeviceServer[] = await Promise.all(discoveredDevices.map(async (device) => this.processDiscoveredDevice(device)))
 
       // Update results
       this._discoveryResults = {
@@ -93,6 +85,8 @@ export class EnhancedDeviceDiscoveryService implements IDeviceDiscoveryService {
         lastDiscoveryTime: this._lastDiscoveryTime,
         error: null
       }
+
+      console.log('[ProxiedDiscoveryService] Final discovery results before returning:', JSON.parse(JSON.stringify(this._discoveryResults)))
 
       this._setStatus('success')
       return this._discoveryResults
@@ -148,9 +142,7 @@ export class EnhancedDeviceDiscoveryService implements IDeviceDiscoveryService {
       server.devices = await this.fetchServerDevices(server)
 
       // Add to our list of servers
-      const existingIndex = this._discoveryResults.servers.findIndex(
-        (s) => s.address === server.address && s.port === server.port
-      )
+      const existingIndex = this._discoveryResults.servers.findIndex((s) => s.address === server.address && s.port === server.port)
 
       if (existingIndex >= 0) {
         this._discoveryResults.servers[existingIndex] = server
@@ -227,8 +219,7 @@ export class EnhancedDeviceDiscoveryService implements IDeviceDiscoveryService {
 
       // If URLs don't match, check more detailed criteria
       const deviceTypeMatch = existingDevice.type === device.type
-      const deviceNumMatch =
-        existingDevice.properties?.deviceNumber === device.properties?.deviceNumber
+      const deviceNumMatch = existingDevice.properties?.deviceNumber === device.properties?.deviceNumber
       const serverAddressMatch = existingDevice.ipAddress === device.ipAddress
       const serverPortMatch = existingDevice.port === device.port
 
@@ -253,108 +244,70 @@ export class EnhancedDeviceDiscoveryService implements IDeviceDiscoveryService {
    */
   convertLegacyDevice(device: DiscoveredDevice): DeviceServer {
     return {
-      id: `server-${device.address}-${device.port}`,
+      id: `${device.address}:${device.port}`,
       address: device.address,
       port: device.port,
       serverName: device.ServerName || 'Unknown Server',
-      manufacturer: device.Manufacturer,
+      manufacturer: device.Manufacturer || 'Unknown Manufacturer',
       version: device.ManufacturerVersion,
-      location: device.Location,
+      location: device.Location || 'Unknown Location',
       lastDiscovered: new Date(device.discoveryTime),
       isManual: device.isManualEntry || false,
-      devices: []
+      devices: [] // Devices will be fetched separately
     }
   }
 
   /**
-   * Process a discovered device and fetch its configured devices
+   * Process a discovered device to the new format
    * @param device Discovered device
-   * @returns Device server with its devices
+   * @returns Device server
    */
   private async processDiscoveredDevice(device: DiscoveredDevice): Promise<DeviceServer> {
-    const server = this.convertLegacyDevice(device)
-
-    try {
-      // Fetch server description
-      const proxyUrl = this.getProxyUrl(server)
-      try {
-        const descResponse = await axios.get(`${proxyUrl}/management/v1/description`)
-        const descValue = descResponse.data.Value
-        server.serverName = descValue.ServerName
-        server.manufacturer = descValue.Manufacturer
-        server.version = descValue.ManufacturerVersion
-        server.location = descValue.Location
-      } catch (descError) {
-        console.error(
-          `Error fetching description from ${server.address}:${server.port}:`,
-          descError
-        )
-      }
-
-      // Fetch configured devices
-      server.devices = await this.fetchServerDevices(server)
-
-      return server
-    } catch (error) {
-      console.error(`Error processing device ${device.address}:${device.port}:`, error)
-      return server
-    }
+    const server: DeviceServer = this.convertLegacyDevice(device)
+    server.devices = await this.fetchServerDevices(server)
+    console.log(`[ProxiedDiscoveryService] Devices processed for server ${server.id}:`, JSON.parse(JSON.stringify(server.devices)))
+    return server
   }
 
   /**
-   * Fetch configured devices from a server
+   * Fetch all Alpaca devices for a given server
    * @param server Device server
-   * @returns Array of devices on this server
+   * @returns List of Alpaca devices on the server
    */
   private async fetchServerDevices(server: DeviceServer): Promise<DeviceServerDevice[]> {
     const proxyUrl = this.getProxyUrl(server)
-
+    console.log(
+      `[ProxiedDiscoveryService] Attempting to fetch configured devices for server: ${server.id} via ${proxyUrl}/management/v1/configureddevices`
+    )
     try {
-      const response = await axios.get(`${proxyUrl}/management/v1/configureddevices`)
-      const configuredDevices = response.data.Value as ConfiguredDevice[]
-
-      // Process each configured device
-      return configuredDevices
-        .map((configDevice) => {
-          const deviceType = configDevice.DeviceType.toLowerCase()
-          const deviceNumber = configDevice.DeviceNumber
-
-          // Only process supported device types
-          if (deviceType !== 'telescope' && deviceType !== 'camera') {
-            return null
-          }
-
-          // Create unique device ID
-          const deviceId = `${server.address}:${server.port}:${deviceType}:${deviceNumber}`
-
-          // Create device object
-          const device: DeviceServerDevice = {
-            id: deviceId,
-            name: configDevice.Name || `${configDevice.DeviceType} ${deviceNumber}`,
-            type: deviceType,
-            deviceNumber: deviceNumber,
-            uniqueId: configDevice.UniqueID,
-            isAdded: false // Will be updated by UI when checking
-          }
-
-          return device
-        })
-        .filter((device): device is DeviceServerDevice => device !== null)
+      const response = await axios.get<{ Value: ConfiguredAlpacaDevice[] }>(`${proxyUrl}/management/v1/configureddevices`)
+      console.log(`[ProxiedDiscoveryService] Raw configured devices response for ${server.id}:`, response.data)
+      return (
+        response.data.Value?.map((dev: ConfiguredAlpacaDevice) => ({
+          id: `${server.id}-${dev.DeviceType}-${dev.DeviceNumber}`,
+          name: dev.DeviceName || `${dev.DeviceType} ${dev.DeviceNumber}`,
+          type: dev.DeviceType,
+          deviceNumber: dev.DeviceNumber,
+          uniqueId: dev.UniqueID,
+          isAdded: false
+        })) || []
+      )
     } catch (error) {
-      console.error('Error fetching configured devices:', error)
-      return []
+      console.warn(`Failed to fetch configured devices for ${server.serverName} (${server.address}:${server.port}):`, error)
+      return [] // Return empty array if fetching fails
     }
   }
 
   /**
-   * Update the service status
+   * Set the discovery status and notify listeners
    * @param status New status
    */
   private _setStatus(status: DiscoveryStatus): void {
     this._status = status
-    this._discoveryResults.status = status
+    // TODO: Emit an event or use a reactive system if UI needs to react to status changes directly
+    // For now, status is primarily for internal logic and polled by getDiscoveryResults
   }
 }
 
 // Export singleton instance
-export const enhancedDeviceDiscoveryService = new EnhancedDeviceDiscoveryService()
+export const proxiedDeviceDiscoveryService = new ProxiedDiscoveryService()

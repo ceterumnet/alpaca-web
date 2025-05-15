@@ -10,6 +10,13 @@ import type { Component } from 'vue'
 import SimplifiedCameraPanel from '@/components/devices/SimplifiedCameraPanel.vue'
 import SimplifiedTelescopePanel from '@/components/devices/SimplifiedTelescopePanel.vue'
 import SimplifiedFocuserPanel from '@/components/devices/SimplifiedFocuserPanel.vue'
+import SimplifiedFilterWheelPanel from '@/components/devices/SimplifiedFilterWheelPanel.vue'
+import SimplifiedCoverCalibratorPanel from '@/components/devices/SimplifiedCoverCalibratorPanel.vue'
+import SimplifiedDomePanel from '@/components/devices/SimplifiedDomePanel.vue'
+import SimplifiedObservingConditionsPanel from '@/components/devices/SimplifiedObservingConditionsPanel.vue'
+import SimplifiedRotatorPanel from '@/components/devices/SimplifiedRotatorPanel.vue'
+import SimplifiedSafetyMonitorPanel from '@/components/devices/SimplifiedSafetyMonitorPanel.vue'
+import SimplifiedSwitchPanel from '@/components/devices/SimplifiedSwitchPanel.vue'
 
 // Types
 export interface DeviceComponentRef {
@@ -50,7 +57,14 @@ class DeviceComponentRegistry {
   private componentMap: Record<string, Component> = {
     camera: markRaw(SimplifiedCameraPanel),
     telescope: markRaw(SimplifiedTelescopePanel),
-    focuser: markRaw(SimplifiedFocuserPanel)
+    focuser: markRaw(SimplifiedFocuserPanel),
+    filterwheel: markRaw(SimplifiedFilterWheelPanel),
+    covercalibrator: markRaw(SimplifiedCoverCalibratorPanel),
+    dome: markRaw(SimplifiedDomePanel),
+    observingconditions: markRaw(SimplifiedObservingConditionsPanel),
+    rotator: markRaw(SimplifiedRotatorPanel),
+    safetymonitor: markRaw(SimplifiedSafetyMonitorPanel),
+    switch: markRaw(SimplifiedSwitchPanel)
   }
 
   // Performance metrics

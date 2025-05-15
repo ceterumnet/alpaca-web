@@ -42,14 +42,22 @@ export class AlpacaClient {
   protected getDeviceUrl(method: string): string {
     // Use property mapping to ensure consistent URL formatting
     const lowercaseMethod = toUrlFormat(method)
+    const lowercaseDeviceType = this.deviceType.toLowerCase()
 
-    // Check if baseUrl already contains the api/v1/deviceType/deviceNumber pattern
-    if (this.baseUrl.includes(`/api/v1/${this.deviceType}/${this.deviceNumber}`)) {
-      // The base URL already includes the device path, just append the method
-      return `${this.baseUrl}/${lowercaseMethod}`
+    // This is the target Alpaca path, always lowercase
+    const alpacaPath = `/api/v1/${lowercaseDeviceType}/${this.deviceNumber}/${lowercaseMethod}`
+
+    // Check if the baseUrl appears to already contain an /api/v1/... structure (case-insensitive search)
+    const apiV1Index = this.baseUrl.toLowerCase().indexOf('/api/v1/')
+
+    if (apiV1Index !== -1) {
+      // If baseUrl contains '/api/v1/', assume the part before it is the true base.
+      // Take the substring of the original baseUrl to preserve its casing for the host/proxy part.
+      const trueBase = this.baseUrl.substring(0, apiV1Index)
+      return `${trueBase}${alpacaPath}`
     } else {
-      // Normal case - construct the full URL
-      return `${this.baseUrl}/api/v1/${this.deviceType}/${this.deviceNumber}/${lowercaseMethod}`
+      // baseUrl does not contain '/api/v1/', so append the full Alpaca path.
+      return `${this.baseUrl}${alpacaPath}`
     }
   }
 
