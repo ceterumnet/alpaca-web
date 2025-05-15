@@ -6,9 +6,10 @@
 
 TODO:
 
+- [ ] Ensure all docs are up to date, deleted, or created
 - [ ] Add all alpaca device types
 - [ ] Need to cleanup the notification system...it's annoying and doesn't adhere to dark v light mode
-- [ ] Test standalone operation without a node server running
+- [x] Test standalone operation without a node server running
 - [ ] Revise device management system to:
   - [x] Automatically add all of the devices discovered to the device store
   - [x] Have better names for the devices, for example Camera 0 is ambiguous
