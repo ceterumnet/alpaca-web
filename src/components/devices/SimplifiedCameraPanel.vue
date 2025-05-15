@@ -328,17 +328,6 @@ onUnmounted(() => {
       </div>
       
       <template v-else>
-        <!-- Camera Controls section - uses existing component to maintain proper image flow -->
-        <div class="panel-section camera-controls-section">
-          <div class="camera-controls-wrapper">
-            <CameraControls 
-              :device-id="deviceId"
-              :exposure-min="exposureMin"
-              :exposure-max="exposureMax"
-            />
-          </div>
-        </div>
-        
         <!-- Settings Error Display -->
         <div v-if="settingsError" class="panel-section panel-error-display">
           <div class="error-message-content">
@@ -350,57 +339,75 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <!-- Camera Settings Section -->
-        <div class="panel-section">
-          <h3>Settings</h3>
-          <div class="camera-settings">
-            <div class="setting-row">
-              <label for="gain-input">Gain:</label>
-              <div class="input-with-spinner">
-                <input id="gain-input" v-model.number="gain" type="number" min="0" max="100" step="1" :disabled="isLoadingGain" @change="updateGain">
-                <Icon v-if="isLoadingGain" type="refresh" class="spinner-icon" animation="spin" />
-              </div>
-            </div>
-            <div class="setting-row">
-              <label for="offset-input">Offset:</label>
-              <div class="input-with-spinner">
-                <input id="offset-input" v-model.number="offset" type="number" min="0" max="100" step="1" :disabled="isLoadingOffset" @change="updateOffset">
-                <Icon v-if="isLoadingOffset" type="refresh" class="spinner-icon" animation="spin" />
-              </div>
-            </div>
-            <div class="setting-row">
-              <label for="binning-input">Binning:</label>
-              <div class="input-with-spinner">
-                <input id="binning-input" v-model.number="binning" type="number" min="1" max="4" step="1" :disabled="isLoadingBinning" @change="updateBinning">
-                <Icon v-if="isLoadingBinning" type="refresh" class="spinner-icon" animation="spin" />
+        <div class="main-layout-grid">
+          <!-- Left Column: Camera Controls -->
+          <div class="camera-controls-column">
+            <div class="panel-section camera-controls-section">
+              <div class="camera-controls-wrapper">
+                <CameraControls 
+                  :device-id="deviceId"
+                  :exposure-min="exposureMin"
+                  :exposure-max="exposureMax"
+                />
               </div>
             </div>
           </div>
-        </div>
-        
-        <!-- Cooling Section -->
-        <div class="panel-section">
-          <h3>Cooling</h3>
-          <div class="cooling-controls">
-            <div class="cooling-status">
-              <span class="temperature-label">Current:</span>
-              <span class="temperature-value">{{ CCDTemperature.toFixed(1) }}°C</span>
-            </div>
-            <div v-if="capabilities.canSetCCDTemperature" class="cooling-toggle setting-row">
-              <span class="label">Cooler:</span>
-              <div class="input-with-spinner">
-                <label class="toggle">
-                  <input v-model="coolerOn" type="checkbox" :disabled="isTogglingCooler" @change="toggleCooler">
-                  <span class="slider"></span>
-                </label>
-                <Icon v-if="isTogglingCooler" type="refresh" class="spinner-icon" animation="spin" />
+
+          <!-- Right Column: Settings & Cooling -->
+          <div class="settings-cooling-column">
+            <!-- Camera Settings Section -->
+            <div class="panel-section">
+              <h3>Settings</h3>
+              <div class="camera-settings">
+                <div class="setting-row">
+                  <label for="gain-input">Gain:</label>
+                  <div class="input-with-spinner">
+                    <input id="gain-input" v-model.number="gain" type="number" min="0" max="100" step="1" :disabled="isLoadingGain" @change="updateGain">
+                    <Icon v-if="isLoadingGain" type="refresh" class="spinner-icon" animation="spin" />
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <label for="offset-input">Offset:</label>
+                  <div class="input-with-spinner">
+                    <input id="offset-input" v-model.number="offset" type="number" min="0" max="100" step="1" :disabled="isLoadingOffset" @change="updateOffset">
+                    <Icon v-if="isLoadingOffset" type="refresh" class="spinner-icon" animation="spin" />
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <label for="binning-input">Binning:</label>
+                  <div class="input-with-spinner">
+                    <input id="binning-input" v-model.number="binning" type="number" min="1" max="4" step="1" :disabled="isLoadingBinning" @change="updateBinning">
+                    <Icon v-if="isLoadingBinning" type="refresh" class="spinner-icon" animation="spin" />
+                  </div>
+                </div>
               </div>
             </div>
-            <div v-if="capabilities.canSetCCDTemperature" class="temperature-target setting-row">
-              <label for="target-temp-input">Target Temp (°C):</label>
-              <div class="input-with-spinner">
-                <input id="target-temp-input" v-model.number="targetTemp" type="number" min="-50" max="50" step="1" :disabled="isLoadingTargetTemp" @change="updateTargetTemp">
-                <Icon v-if="isLoadingTargetTemp" type="refresh" class="spinner-icon" animation="spin" />
+            
+            <!-- Cooling Section -->
+            <div class="panel-section">
+              <h3>Cooling</h3>
+              <div class="cooling-controls">
+                <div class="cooling-status setting-row">
+                  <span class="temperature-label">Current Temp:</span>
+                  <span class="temperature-value">{{ CCDTemperature.toFixed(1) }}°C</span>
+                </div>
+                <div v-if="capabilities.canSetCCDTemperature" class="cooling-toggle setting-row">
+                  <label for="cooler-toggle-checkbox">Cooler:</label>
+                  <div class="input-with-spinner">
+                    <label class="toggle">
+                      <input id="cooler-toggle-checkbox" v-model="coolerOn" type="checkbox" :disabled="isTogglingCooler" @change="toggleCooler">
+                      <span class="slider"></span>
+                    </label>
+                    <Icon v-if="isTogglingCooler" type="refresh" class="spinner-icon" animation="spin" />
+                  </div>
+                </div>
+                <div v-if="capabilities.canSetCCDTemperature" class="temperature-target setting-row">
+                  <label for="target-temp-input">Target Temp (°C):</label>
+                  <div class="input-with-spinner">
+                    <input id="target-temp-input" v-model.number="targetTemp" type="number" min="-50" max="50" step="1" :disabled="isLoadingTargetTemp" @change="updateTargetTemp">
+                    <Icon v-if="isLoadingTargetTemp" type="refresh" class="spinner-icon" animation="spin" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -420,6 +427,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  container-type: inline-size; /* Define this as a query container */
+  container-name: simplified-camera-panel; /* Optional: name the container */
 }
 
 .panel-header {
@@ -555,13 +564,35 @@ onUnmounted(() => {
 .panel-content {
   overflow-y: auto;
   flex: 1;
+  padding: var(--aw-spacing-md); /* Add some padding to the main content area */
+}
+
+.main-layout-grid {
+  display: flex;
+  flex-direction: row;
+  gap: var(--aw-spacing-md);
+  width: 100%;
+}
+
+.camera-controls-column {
+  flex: 1 1 60%; /* Allow camera controls to take more space initially */
+  min-width: 300px; /* Minimum width for camera controls */
+}
+
+.settings-cooling-column {
+  flex: 1 1 40%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--aw-spacing-md);
+  min-width: 250px; /* Minimum width for settings */
 }
 
 .panel-section {
-  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */ /* Adjusted by flex gap */
   background-color: var(--aw-panel-content-bg-color);
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  border: 1px solid var(--aw-panel-border-color); /* Add border to sections */
 }
 
 .panel-section h3 {
@@ -572,69 +603,98 @@ onUnmounted(() => {
   padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
-/* .camera-controls-wrapper {
-  border: 1px solid var(--aw-panel-border-color);
+.camera-controls-wrapper {
+  /* border: 1px solid var(--aw-panel-border-color); */ /* Removed as panel-section has border */
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   overflow: hidden;
-  margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-} */
+  /* margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)); */ /* No longer needed */
+}
 
 .camera-settings {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  grid-template-columns: auto 1fr; /* Parent grid for label/input columns */
+  column-gap: var(--aw-spacing-sm); /* Gap between label and input columns */
+  row-gap: var(--aw-spacing-sm);    /* Gap between each setting row */
+  /* align-items: center; */ /* Let .setting-row handle its internal vertical alignment */
 }
 
 .setting-row {
-  display: flex;
-  flex-direction: column;
+  grid-column: 1 / -1; /* Span all columns of the parent grid */
+  display: grid; 
+  grid-template-columns: subgrid; /* Inherit column tracks from parent */
+  align-items: center; /* Vertically align label and input-container within the row */
+  /* gap: var(--aw-spacing-sm); */ /* Gap is now handled by parent grid + subgrid inheritance */
 }
 
 .setting-row label {
-  margin-bottom: var(--aw-spacing-xs);
   color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
+  white-space: nowrap; /* Prevent label text from wrapping */
+  flex-shrink: 0; /* Prevent label from shrinking */
 }
 
-.setting-row input {
-  padding: var(--aw-spacing-sm);
+.setting-row .input-with-spinner {
+  flex-grow: 1; /* Allow input to take available space */
+  display: flex;
+  align-items: center;
+}
+
+.setting-row input,
+.setting-row .toggle {
+  /* padding: var(--aw-spacing-sm); */ /* Padding is on input-with-spinner or input directly */
   background-color: var(--aw-input-bg-color);
   color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
+  flex-grow: 1;
+}
+.setting-row input {
+   padding: var(--aw-spacing-xs); /* More compact input padding */
 }
 
+
 .cooling-controls {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  display: grid; /* Changed from flex to grid */
+  grid-template-columns: auto 1fr; /* Parent grid for label/input columns */
+  column-gap: var(--aw-spacing-sm); /* Gap between label and input columns */
+  row-gap: var(--aw-spacing-sm);    /* Gap between each setting row */
+  /* align-items: center; */ /* Let .setting-row handle its internal vertical alignment */
 }
 
 .cooling-status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  /* display: flex; */ /* Already a setting-row */
+  /* justify-content: space-between; */ /* From setting-row */
+  /* align-items: center; */ /* From setting-row */
 }
 
 .temperature-label {
   color: var(--aw-text-secondary-color);
+  flex-shrink: 0;
 }
 
 .temperature-value {
   font-weight: var(--aw-font-weight-medium);
+  text-align: right;
+  flex-grow: 1;
 }
 
 .cooling-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  /* display: flex; */ /* Already a setting-row */
+  /* align-items: center; */ /* From setting-row */
+  /* justify-content: space-between; */ /* From setting-row */
 }
+
+.cooling-toggle label[for="cooler-toggle-checkbox"] { /* More specific selector for the label */
+   margin-bottom: 0; /* Override if any default margin exists */
+}
+
 
 .toggle {
   position: relative;
   display: inline-block;
   width: 44px;
   height: 24px;
+  flex-shrink: 0; /* Prevent toggle from shrinking */
 }
 
 .toggle input {
@@ -678,22 +738,24 @@ input:checked + .slider:before {
 }
 
 .temperature-target {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  /* display: flex; */ /* Already a setting-row */
+  /* align-items: center; */ /* From setting-row */
+  /* justify-content: space-between; */ /* From setting-row */
 }
 
 .temperature-target label {
   color: var(--aw-text-secondary-color);
+  margin-bottom: 0; /* Override */
 }
 
-.temperature-target input {
-  width: 80px;
-  padding: var(--aw-spacing-sm);
-  background-color: var(--aw-input-bg-color);
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
+.temperature-target .input-with-spinner input { /* Target input within this specific structure */
+  width: 60px; /* More compact target temp input */
+  padding: var(--aw-spacing-xs);
+  /* background-color: var(--aw-input-bg-color); */ /* Already set */
+  /* color: var(--aw-text-color); */ /* Already set */
+  /* border: 1px solid var(--aw-panel-border-color); */ /* Already set */
+  /* border-radius: var(--aw-border-radius-sm); */ /* Already set */
+  flex-grow: 0; /* Don't let it grow too much */
 }
 
 .connection-notice {
@@ -703,9 +765,11 @@ input:checked + .slider:before {
   align-items: center;
   background-color: var(--aw-panel-content-bg-color);
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
-  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */ /* Handled by parent padding/gap */
   gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   padding: var(--aw-spacing-md);
+  border: 1px solid var(--aw-panel-border-color); /* Add border */
+  margin-bottom: var(--aw-spacing-md); /* Space before the main layout */
 }
 
 .connection-message {
@@ -722,11 +786,13 @@ input:checked + .slider:before {
   background-color: var(--aw-color-error-muted, #f8d7da);
   color: var(--aw-color-error-700, #842029);
   padding: var(--aw-spacing-sm);
-  margin-bottom: var(--aw-spacing-md);
+  /* margin-bottom: var(--aw-spacing-md); */ /* Handled by parent padding/gap */
   border-radius: var(--aw-border-radius-sm);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border: 1px solid var(--aw-color-error-border, #f5c6cb); /* Add specific error border */
+  margin-bottom: var(--aw-spacing-md); /* Space before the main layout */
 }
 
 .error-message-content {
@@ -755,29 +821,47 @@ input:checked + .slider:before {
   position: relative;
   display: flex;
   align-items: center;
+  /* gap: var(--aw-spacing-xs); */ /* Add gap between input and spinner if desired */
 }
 
-.input-with-spinner input {
-  flex-grow: 1;
-}
+/* .input-with-spinner input { */ /* General input styling moved to .setting-row input */
+  /* flex-grow: 1; */
+/* } */
 
 .spinner-icon {
   margin-left: var(--aw-spacing-sm);
   color: var(--aw-text-secondary-color);
+  flex-shrink: 0; /* Prevent spinner from being squeezed */
 }
 
 /* Ensure toggle switch is vertically aligned with spinner */
 .cooling-toggle .input-with-spinner {
-  display: flex;
-  align-items: center;
+  /* display: flex; */ /* Already set */
+  /* align-items: center; */ /* Already set */
+  justify-content: flex-end; /* Align toggle to the right within its container */
 }
 
-.cooling-toggle .toggle {
-  margin-right: auto; /* Pushes spinner to the right if needed or centers */
-}
+/* .cooling-toggle .toggle { */
+  /* margin-right: auto; */ /* Pushes spinner to the right if needed or centers */
+/* } */
 
 /* Adjustments for setting rows if they contain input-with-spinner */
 .setting-row .input-with-spinner + .spinner-icon {
   /* If spinner is outside input-with-spinner, style it here */
+  /* This case should not happen with current structure */
+}
+
+/* Responsive adjustments */
+/* @media (max-width: 768px) { */ /* Old media query */
+@container simplified-camera-panel (max-width: 768px) { /* New container query */
+  .main-layout-grid {
+    flex-direction: column;
+  }
+  .camera-controls-column,
+  .settings-cooling-column {
+    flex-basis: auto; /* Reset flex-basis for column layout */
+    width: 100%;
+    min-width: unset; /* Remove min-width for stacked layout */
+  }
 }
 </style> 

@@ -392,13 +392,36 @@ onMounted(() => {
     clearInterval(updateInterval)
   })
 })
+
+// Method to clear the error message
+const clearError = () => {
+  error.value = ''
+}
+
+// Method to validate and clamp exposure duration
+const validateExposureDuration = () => {
+  if (exposureDuration.value < props.exposureMin) {
+    exposureDuration.value = props.exposureMin
+  }
+  if (exposureDuration.value > props.exposureMax) {
+    exposureDuration.value = props.exposureMax
+  }
+}
 </script>
 
 <template>
-  <div class="aw-camera-exposure-control">
-    <div class="aw-camera-exposure-control__settings">
-      <div class="aw-form-group">
-        <label for="exposure-duration" class="aw-form-label">Duration (s):</label>
+  <div class="aw-exposure-control" :class="{ 'is-connected': isConnected, 'exposure-active': exposureInProgress }">
+    <div v-if="error" class="error-message">
+      <Icon type="alert-triangle" class="error-icon" />
+      <span>{{ error }}</span>
+      <button class="dismiss-error-button" @click="clearError">
+        <Icon type="close" />
+      </button>
+    </div>
+
+    <div class="exposure-inputs">
+      <div class="input-group duration-input-group">
+        <label for="exposure-duration">Duration (s):</label>
         <input
           id="exposure-duration"
           v-model.number="exposureDuration"
@@ -406,223 +429,258 @@ onMounted(() => {
           :min="exposureMin"
           :max="exposureMax"
           step="0.1"
-          class="aw-input"
-          :disabled="exposureInProgress"
+          :disabled="exposureInProgress || !isConnected"
+          @change="validateExposureDuration"
         />
       </div>
 
-      <div class="aw-form-group">
-        <label for="exposure-type" class="aw-form-label">Type:</label>
-        <select 
-          id="exposure-type" 
-          v-model="isLight" 
-          class="aw-select"
-          :disabled="exposureInProgress"
-        >
-          <option :value="true">Light</option>
-          <option :value="false">Dark</option>
-        </select>
-      </div>
-    </div>
-    
-    <div class="aw-camera-exposure-control__status-row">
-      <div class="aw-camera-exposure-control__action">
-        <button
-          class="aw-button"
-          :class="{
-            'aw-button--primary': !exposureInProgress,
-            'aw-button--danger': exposureInProgress
-          }"
-          :disabled="!isConnected"
-          @click="startExposure"
-        >
-          <span class="button-icon">
-            <Icon v-if="exposureInProgress" type="player-stop" aria-label="Stop Exposure" />
-            <Icon v-else type="camera" aria-label="Start Exposure" />
-          </span>
-          {{ buttonText }}
-        </button>
-      </div>
-      
-    </div>
-
-    <div v-if="exposureInProgress || percentComplete > 0" class="aw-camera-exposure-control__progress">
-      <div class="aw-progress-label">Exposure Progress:</div>
-      <div class="aw-camera-exposure-control__progress-container">
-        <div class="aw-camera-exposure-control__progress-bar">
-          <div 
-            class="aw-camera-exposure-control__progress-fill" 
-            :class="{'complete': percentComplete >= 100}"
-            :style="{ width: `${percentComplete}%` }"
-          ></div>
+      <div class="input-group frame-type-group">
+        <label for="frame-type-toggle" class="frame-type-label">Frame:</label>
+        <div class="toggle-switch-container">
+          <label class="toggle-switch">
+            <input
+              id="frame-type-toggle"
+              v-model="isLight"
+              type="checkbox"
+              :disabled="exposureInProgress || !isConnected"
+            />
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">{{ isLight ? 'Light' : 'Dark' }}</span>
         </div>
-        <div class="aw-camera-exposure-control__progress-text">{{ percentComplete.toFixed(0) }}%</div>
-      </div>
-    </div>
-    
-    <div v-if="imageReady" class="aw-camera-exposure-control__status">
-      <div class="aw-status-indicator aw-status-indicator--success">Image ready</div>
-    </div>
-    
-    <div v-if="!imageReady && percentComplete >= 100" class="aw-camera-exposure-control__status">
-      <div class="aw-status-indicator aw-status-indicator--processing">
-        <span class="loading-dots">Processing image</span>
       </div>
     </div>
 
-    <div v-if="error" class="aw-form-error">
-      <span class="error-icon">
-        <Icon type="alert-triangle" aria-label="Warning" />
-      </span>
-      {{ error }}
+    <button
+      class="exposure-button"
+      :disabled="!isConnected || (exposureInProgress && percentComplete < 100)"
+      @click="startExposure"
+    >
+      <Icon v-if="exposureInProgress && percentComplete < 100" type="refresh" animation="spin" class="button-icon" />
+      <Icon v-else-if="buttonText === 'Abort'" type="player-stop" class="button-icon" />
+      <Icon v-else type="camera" class="button-icon" />
+      <span>{{ buttonText }}</span>
+    </button>
+
+    <div v-if="exposureInProgress" class="progress-bar-container">
+      <div class="progress-bar" :style="{ width: percentComplete + '%' }"></div>
+      <span class="progress-text">{{ percentComplete.toFixed(0) }}%</span>
     </div>
   </div>
 </template>
 
 <style scoped>
-.aw-camera-exposure-control {
+.aw-exposure-control {
   display: flex;
   flex-direction: column;
-  gap: var(--aw-spacing-md);
-  width: 100%;
-  border-radius: var(--aw-border-radius-md);
-  background-color: var(--aw-color-neutral-50);
-}
-
-.aw-camera-exposure-control__settings {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--aw-spacing-md);
-}
-
-.aw-camera-exposure-control__status-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.aw-camera-exposure-control__action {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.button-icon {
-  margin-right: 0.5rem;
-}
-
-.aw-connection-status {
-  font-size: 0.875rem;
-  padding: 0.25rem 0.5rem;
+  gap: var(--aw-spacing-sm);
+  padding: var(--aw-spacing-sm);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
+  background-color: var(--aw-panel-content-bg-color);
 }
 
-.aw-connection-status--connected {
-  background-color: var(--aw-color-success-100);
-  color: var(--aw-status-indicator-success-text-color);
+.aw-exposure-control.exposure-active {
+  border-color: var(--aw-primary-color);
 }
 
-.aw-connection-status--disconnected {
-  background-color: var(--aw-color-neutral-200);
-  color: var(--aw-color-neutral-700);
-}
-
-.aw-camera-exposure-control__progress {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.aw-progress-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--aw-color-neutral-700);
-}
-
-.aw-camera-exposure-control__progress-container {
+.error-message {
   display: flex;
   align-items: center;
-  gap: var(--aw-spacing-md);
-}
-
-.aw-camera-exposure-control__progress-bar {
-  flex: 1;
-  height: 0.75rem;
-  background-color: var(--aw-color-neutral-300);
-  border-radius: var(--aw-border-radius-sm);
-  overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.aw-camera-exposure-control__progress-fill {
-  height: 100%;
-  background-color: var(--aw-color-primary-500);
-  transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
-}
-
-.aw-camera-exposure-control__progress-fill.complete {
-  background-color: var(--aw-color-success-500);
-}
-
-.aw-camera-exposure-control__progress-text {
-  min-width: 3rem;
-  text-align: right;
-  font-weight: 500;
-  font-size: 0.875rem;
-}
-
-.aw-camera-exposure-control__status {
-  margin-top: 0.25rem;
-}
-
-.aw-status-indicator {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.875rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--aw-border-radius-sm);
-}
-
-.aw-status-indicator--success {
-  background-color: var(--aw-color-success-100);
-  color: var(--aw-status-indicator-success-text-color);
-}
-
-.aw-status-indicator--processing {
-  background-color: var(--aw-color-neutral-100);
-  color: var(--aw-color-neutral-800);
-}
-
-.loading-dots::after {
-  content: "...";
-  animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-  0% { content: "."; }
-  33% { content: ".."; }
-  66% { content: "..."; }
-}
-
-.aw-form-error {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
+  gap: var(--aw-spacing-xs);
+  background-color: var(--aw-color-error-muted);
   color: var(--aw-color-error-700);
-  background-color: var(--aw-color-error-100);
-  padding: 0.5rem;
+  padding: var(--aw-spacing-sm);
   border-radius: var(--aw-border-radius-sm);
+  font-size: 0.85rem;
 }
 
 .error-icon {
-  font-size: 1rem;
-  display: inline-flex;
-  align-items: center;
+  font-size: 1.1rem;
 }
 
-@media (max-width: 640px) {
-  .aw-camera-exposure-control__settings {
-    grid-template-columns: 1fr;
+.dismiss-error-button {
+  background: none;
+  border: none;
+  color: var(--aw-color-error-700);
+  cursor: pointer;
+  margin-left: auto;
+  padding: var(--aw-spacing-xxs);
+}
+
+.exposure-inputs {
+  display: flex;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: var(--aw-spacing-md); /* Gap between duration and frame type */
+  align-items: center; /* Align items vertically */
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-xs); /* Gap between label and input/toggle */
+  flex-grow: 1; /* Allow groups to grow */
+}
+
+.duration-input-group {
+  min-width: 150px; /* Minimum width for duration input */
+  flex-basis: 200px; /* Preferred basis */
+}
+
+.frame-type-group {
+  min-width: 120px;
+  justify-content: flex-start; /* Align toggle to the start */
+}
+
+.input-group label {
+  font-size: 0.9rem;
+  color: var(--aw-text-secondary-color);
+  white-space: nowrap;
+}
+
+.input-group input[type="number"] {
+  padding: var(--aw-spacing-xs);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
+  background-color: var(--aw-input-bg-color);
+  color: var(--aw-text-color);
+  width: 80px; /* Fixed width for duration input */
+}
+
+.toggle-switch-container {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-xs);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--aw-input-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: var(--aw-text-secondary-color);
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--aw-primary-color);
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+  background-color: var(--aw-button-primary-text);
+}
+
+.toggle-label {
+  font-size: 0.9rem;
+  color: var(--aw-text-color);
+}
+
+.exposure-button {
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md); /* Standardized padding */
+  font-size: 0.9rem; /* Slightly smaller font size */
+  background-color: var(--aw-primary-color);
+  color: var(--aw-button-primary-text);
+  border: none;
+  border-radius: var(--aw-border-radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--aw-spacing-xs);
+  transition: background-color 0.2s;
+  width: 100%; /* Make button take full width of its container */
+}
+
+.exposure-button:hover:not(:disabled) {
+  background-color: var(--aw-primary-hover-color);
+}
+
+.exposure-button:disabled {
+  background-color: var(--aw-disabled-bg-color);
+  color: var(--aw-disabled-text-color);
+  cursor: not-allowed;
+}
+
+.button-icon {
+  font-size: 1.1rem;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 20px;
+  background-color: var(--aw-input-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--aw-primary-color);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.8rem;
+  color: var(--aw-text-color); /* Ensure contrast against progress bar */
+  mix-blend-mode: difference; /* Helps with visibility */
+  filter: invert(1) grayscale(1) contrast(100); /* Alternative for better visibility */
+}
+
+/* Responsive adjustments for smaller containers if needed */
+@media (max-width: 400px) { /* Example breakpoint for when controls are in a very narrow space */
+  .exposure-inputs {
+    flex-direction: column; /* Stack inputs vertically */
+    align-items: stretch; /* Stretch items to full width */
+    gap: var(--aw-spacing-sm);
+  }
+  .input-group {
+    justify-content: space-between; /* Space out label and input fully */
+  }
+  .duration-input-group,
+  .frame-type-group {
+    min-width: unset; /* Remove min-width */
+    flex-basis: auto;
+  }
+  .input-group input[type="number"] {
+    width: auto; /* Allow input to grow */
+    flex-grow: 1;
   }
 }
+
 </style>
