@@ -16,6 +16,10 @@ const router = createRouter({
       component: SettingsView
     },
     {
+      path: '/',
+      redirect: '/panel-layout'
+    },
+    {
       path: '/panel-layout',
       name: 'panel-layout',
       component: () => import('../views/PanelLayoutView.vue')
