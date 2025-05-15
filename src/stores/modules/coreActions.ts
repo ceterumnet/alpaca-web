@@ -553,7 +553,7 @@ export function createCoreActions() {
 
       updateDeviceProperties(
         this: CoreState & {
-          updateDevice: (deviceId: string, updates: Partial<Device>) => boolean
+          // updateDevice: (deviceId: string, updates: Partial<Device>) => boolean // No longer calling updateDevice directly for property changes
           _emitEvent: (event: DeviceEvent) => void
           updateDeviceCapabilities?: (deviceId: string) => boolean
         },
@@ -563,52 +563,56 @@ export function createCoreActions() {
         const device = this.devices.get(deviceId)
         if (!device) return false
 
-        // Create a merged properties object to update the device
-        const updatedProperties = {
-          ...(device.properties || {}),
-          ...properties
+        // Ensure properties object exists
+        if (!device.properties) {
+          device.properties = {}
         }
 
-        // Update the device
-        const result = this.updateDevice(deviceId, {
-          properties: updatedProperties
-        })
-
-        // Emit events for each changed property
-        if (result) {
-          // Loop over new properties and emit change events
-          Object.entries(properties).forEach(([key, value]) => {
-            this._emitEvent({
-              type: 'devicePropertyChanged',
-              deviceId,
-              property: key,
-              value
-            })
-          })
-
-          // Check if any capability-related properties were updated
-          const hasCapabilityChanges = Object.keys(properties).some(
-            (key) => key.toLowerCase().startsWith('can') || key.toLowerCase().startsWith('has')
-          )
-
-          // If we have capability changes and the updateDeviceCapabilities function exists, update them
-          if (hasCapabilityChanges && this.updateDeviceCapabilities) {
-            this.updateDeviceCapabilities(deviceId)
+        // Mutate device.properties in place
+        for (const key in properties) {
+          if (Object.prototype.hasOwnProperty.call(properties, key)) {
+            if (device.properties[key] !== properties[key]) {
+              device.properties[key] = properties[key]
+              // Emit event for each changed property
+              this._emitEvent({
+                type: 'devicePropertyChanged',
+                deviceId,
+                property: key,
+                value: properties[key]
+              })
+            }
           }
-        } else {
-          console.warn(`Failed to update properties for device ${deviceId}`)
         }
 
-        // Map some properties to more user-friendly names
-        if (updatedProperties.binx !== undefined) updatedProperties.binningX = updatedProperties.binx
-        if (updatedProperties.biny !== undefined) updatedProperties.binningY = updatedProperties.biny
-        if (updatedProperties.cooleron !== undefined) updatedProperties.coolerEnabled = updatedProperties.cooleron
-        if (updatedProperties.ccdtemperature !== undefined) updatedProperties.currentTemperature = updatedProperties.ccdtemperature
+        // Check if any capability-related properties were updated
+        const hasCapabilityChanges = Object.keys(properties).some((key) => key.toLowerCase().startsWith('can') || key.toLowerCase().startsWith('has'))
+
+        // If we have capability changes and the updateDeviceCapabilities function exists, update them
+        if (hasCapabilityChanges && this.updateDeviceCapabilities) {
+          // updateDeviceCapabilities internally calls updateDevice, which is fine if capabilities themselves are top-level on Device object.
+          // Or, if updateDeviceCapabilities also mutates in place or is smarter.
+          // Assuming updateDeviceCapabilities handles its updates correctly.
+          this.updateDeviceCapabilities(deviceId)
+        }
+
+        // Map some properties to more user-friendly names (directly on device.properties)
+        const currentProps = device.properties
+        if (currentProps.binx !== undefined) currentProps.binningX = currentProps.binx
+        if (currentProps.biny !== undefined) currentProps.binningY = currentProps.biny
+        if (currentProps.cooleron !== undefined) currentProps.coolerEnabled = currentProps.cooleron
+        if (currentProps.ccdtemperature !== undefined) currentProps.currentTemperature = currentProps.ccdtemperature
 
         // Initialize default exposure time as it's not a standard ALPACA property
-        updatedProperties.exposureTime = updatedProperties.exposureTime || 1.0 // Default to 1 second exposure
+        if (currentProps.exposureTime === undefined) {
+          currentProps.exposureTime = 1.0 // Default to 1 second exposure
+        }
 
-        return result
+        // Since we mutated device.properties in place, the device object in devicesArray
+        // (if it shares the same reference) is already updated.
+        // For deep watchers, this is enough. For shallow watchers, they wouldn't be affected by property-only changes.
+        // The original `updateDevice` call is removed for property-only changes.
+
+        return true // Indicate success
       },
 
       _normalizeDevice(device: Device): Device {

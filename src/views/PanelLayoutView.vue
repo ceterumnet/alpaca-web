@@ -154,6 +154,15 @@ const cellConnectionStatus = ref<Record<string, boolean>>({});
 // Track if a connection attempt is in progress for a cell
 const cellConnectionAttemptStatus = ref<Record<string, boolean>>({});
 
+// Computed property for watching only relevant device statuses (id and isConnected)
+const relevantDeviceStatuses = computed(() => 
+  unifiedStore.devicesList.map(device => ({
+    id: device.id,
+    isConnected: device.isConnected
+    // Add other properties here if the watcher below needs them, but aim for minimal set
+  }))
+);
+
 // Handle device selection for a specific cell
 const assignDeviceToCell = (cellId: string, deviceId: string) => {
   console.log(`Assigning device ${deviceId} to cell ${cellId}`);
@@ -236,22 +245,33 @@ const toggleCellConnection = async (cellId: string) => {
   }
 };
 
-// Watch for external changes to device connection statuses
-watch(() => unifiedStore.devicesList, (newDevices) => {
-  console.log('PanelLayoutView - unifiedStore.devicesList changed, updating cell connection statuses.');
-  newDevices.forEach(device => {
-    if (device.id && device.id in cellDeviceAssignments.value) {
-      // Find all cells assigned to this device
-      Object.entries(cellDeviceAssignments.value).forEach(([cellId, assignedDeviceId]) => {
-        if (assignedDeviceId === device.id) {
-          if (cellConnectionStatus.value[cellId] !== device.isConnected) {
-            console.log(`Updating connection status for cell ${cellId} (device ${device.id}) to ${device.isConnected}`);
-            cellConnectionStatus.value[cellId] = device.isConnected;
-          }
+// Watch for external changes to device connection statuses (Optimized)
+watch(relevantDeviceStatuses, (currentDeviceStatuses /*, previousDeviceStatuses */) => {
+  // The watcher now fires only if id or isConnected changes for any device, or if devices are added/removed.
+  console.log('PanelLayoutView - relevantDeviceStatuses changed, updating cell connection statuses.');
+  
+  currentDeviceStatuses.forEach(deviceStatus => {
+    // Iterate over cells to find which ones are assigned this device
+    Object.entries(cellDeviceAssignments.value).forEach(([cellId, assignedDeviceId]) => {
+      if (assignedDeviceId === deviceStatus.id) {
+        // Check if the connection status for this cell needs an update
+        if (cellConnectionStatus.value[cellId] !== deviceStatus.isConnected) {
+          console.log(`Updating connection status for cell ${cellId} (device ${deviceStatus.id}) to ${deviceStatus.isConnected}`);
+          cellConnectionStatus.value[cellId] = deviceStatus.isConnected;
         }
-      });
-    }
+      }
+    });
   });
+  // Note: No need for { deep: true } on relevantDeviceStatuses if we are careful about how it's constructed.
+  // Vue's default watcher for a computed property returning an array of objects will trigger if the array 
+  // reference changes or if items are added/removed. If isConnected mutates on an existing object within 
+  // devicesList and relevantDeviceStatuses.map creates new objects, the watcher will fire.
+  // If devicesList itself is replaced, relevantDeviceStatuses recomputes, watcher fires.
+  // If a device object within devicesList has its isConnected property mutated directly, AND
+  // relevantDeviceStatuses.map re-uses existing device objects (it does not, it creates new ones),
+  // then deep:true would be needed. But since .map creates new objects, it should be fine.
+  // Let's keep deep: true for safety for now, as per the original optimization note, 
+  // but it might be removable if the store guarantees devicesList array itself is replaced on changes.
 }, { deep: true, immediate: true });
 
 // Get all available devices (not filtered by type)
@@ -726,7 +746,7 @@ const getPanelTypeName = (panelId: string): string => {
                 <template v-if="cellDeviceAssignments[position.panelId] && getComponentForCell(position.panelId)">
                   <component 
                     :is="getComponentForCell(position.panelId)"
-                    :key="`${cellDeviceAssignments[position.panelId]}-${cellConnectionStatus[position.panelId]}`"
+                    :key="cellDeviceAssignments[position.panelId] || position.panelId"
                     :device-id="cellDeviceAssignments[position.panelId]"
                     :title="getDeviceTitle(position.panelId)"
                     :is-connected="cellConnectionStatus[position.panelId] || false"
