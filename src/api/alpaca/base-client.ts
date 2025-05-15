@@ -96,12 +96,7 @@ export class AlpacaClient {
   /**
    * Log request/response information when enabled
    */
-  private logRequest(
-    method: string,
-    url: string,
-    params?: Record<string, unknown>,
-    data?: unknown
-  ): void {
+  private logRequest(method: string, url: string, params?: Record<string, unknown>, data?: unknown): void {
     if (logApiRequests.value) {
       console.group(`ALPACA API Request: ${method} ${url}`)
       if (params) console.log('Params:', params)
@@ -199,12 +194,7 @@ export class AlpacaClient {
       if (error instanceof AlpacaError) {
         throw error
       }
-      throw new AlpacaError(
-        'Failed to parse response as JSON',
-        ErrorType.UNKNOWN,
-        url,
-        response.status
-      )
+      throw new AlpacaError('Failed to parse response as JSON', ErrorType.UNKNOWN, url, response.status)
     }
   }
 
@@ -242,11 +232,7 @@ export class AlpacaClient {
       requestBody = body
     }
 
-    const {
-      timeout = DEFAULT_OPTIONS.timeout,
-      retries = DEFAULT_OPTIONS.retries || 0,
-      retryDelay = DEFAULT_OPTIONS.retryDelay || 0
-    } = options
+    const { timeout = DEFAULT_OPTIONS.timeout, retries = DEFAULT_OPTIONS.retries || 0, retryDelay = DEFAULT_OPTIONS.retryDelay || 0 } = options
 
     this.logRequest(method, fullUrl, params, requestBody)
 
@@ -341,8 +327,7 @@ export class AlpacaClient {
         this.logResponse(fullUrl, null, lastError)
 
         // Check if we should retry
-        const shouldRetry =
-          attemptCount <= retries && (lastError instanceof AlpacaError ? lastError.retry : true)
+        const shouldRetry = attemptCount <= retries && (lastError instanceof AlpacaError ? lastError.retry : true)
 
         if (shouldRetry) {
           // Wait before retrying
@@ -362,11 +347,7 @@ export class AlpacaClient {
   /**
    * GET method for retrieving device properties
    */
-  public async get(
-    method: string,
-    params: Record<string, unknown> = {},
-    options: RequestOptions = {}
-  ): Promise<unknown> {
+  public async get(method: string, params: Record<string, unknown> = {}, options: RequestOptions = {}): Promise<unknown> {
     const url = this.getDeviceUrl(method)
     return this.executeRequest('GET', url, options, params)
   }
@@ -374,11 +355,7 @@ export class AlpacaClient {
   /**
    * PUT method for updating device properties
    */
-  public async put(
-    method: string,
-    params: Record<string, unknown> = {},
-    options: RequestOptions = {}
-  ): Promise<unknown> {
+  public async put(method: string, params: Record<string, unknown> = {}, options: RequestOptions = {}): Promise<unknown> {
     const url = this.getDeviceUrl(method)
     return this.executeRequest('PUT', url, options, params)
   }
@@ -386,11 +363,7 @@ export class AlpacaClient {
   /**
    * Core method to call a device method with parameters
    */
-  public async callMethod(
-    method: string,
-    params: unknown[] = [],
-    options: RequestOptions = {}
-  ): Promise<unknown> {
+  public async callMethod(method: string, params: unknown[] = [], options: RequestOptions = {}): Promise<unknown> {
     // URL must be lowercase according to Alpaca specification
     const url = this.getDeviceUrl(method.toLowerCase())
 
@@ -414,11 +387,7 @@ export class AlpacaClient {
     if (this.device?.properties?.[propertyName]) {
       const expectedType = typeof this.device.properties[propertyName]
       if (!validatePropertyValue(value, expectedType)) {
-        throw new AlpacaError(
-          `Invalid property value type for ${propertyName}`,
-          ErrorType.DEVICE,
-          this.getDeviceUrl(propertyName)
-        )
+        throw new AlpacaError(`Invalid property value type for ${propertyName}`, ErrorType.DEVICE, this.getDeviceUrl(propertyName))
       }
     }
 
@@ -428,11 +397,7 @@ export class AlpacaClient {
   /**
    * Set a device property value with validation
    */
-  public async setProperty(
-    propertyName: string,
-    value: unknown,
-    options: RequestOptions = {}
-  ): Promise<unknown> {
+  public async setProperty(propertyName: string, value: unknown, options: RequestOptions = {}): Promise<unknown> {
     // Transform the value to ASCOM format before sending
     const ascomValue = toAscomValue(value)
 
@@ -447,10 +412,7 @@ export class AlpacaClient {
   /**
    * Get multiple device properties at once with validation
    */
-  public async getProperties(
-    propertyNames: string[],
-    options: RequestOptions = {}
-  ): Promise<Record<string, unknown>> {
+  public async getProperties(propertyNames: string[], options: RequestOptions = {}): Promise<Record<string, unknown>> {
     const results: Record<string, unknown> = {}
     await Promise.all(
       propertyNames.map(async (name) => {
@@ -492,10 +454,7 @@ export class AlpacaClient {
 
       return null
     } catch (error) {
-      console.warn(
-        `Error fetching device state for ${this.deviceType} ${this.deviceNumber}:`,
-        error
-      )
+      console.warn(`Error fetching device state for ${this.deviceType} ${this.deviceNumber}:`, error)
       return null
     }
   }

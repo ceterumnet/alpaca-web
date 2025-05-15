@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { setAlpacaProperty, callAlpacaMethod, getAlpacaProperties } from '@/utils/alpacaPropertyAccess'
+import { setAlpacaProperty, callAlpacaMethod } from '@/utils/alpacaPropertyAccess'
 
 const props = defineProps({
   deviceId: {
@@ -22,159 +22,101 @@ const props = defineProps({
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
-// Reset telescope state when device changes or on disconnect
-const resetTelescopeState = () => {
-  rightAscension.value = 0
-  declination.value = 0
-  altitude.value = 0
-  azimuth.value = 0
-  tracking.value = false
-  selectedTrackingRate.value = 0
-  targetRA.value = 0
-  targetDec.value = 0
-}
-
-// Poll for coordinates
-const updateCoordinates = async () => {
-  if (!props.isConnected || !props.deviceId) return
-  
-  try {
-    const properties = await getAlpacaProperties(props.deviceId, [
-      'rightAscension',
-      'declination',
-      'altitude',
-      'azimuth',
-      'tracking',
-      'trackingRate'
-    ])
-    
-    // Update coordinates
-    if (properties.rightAscension !== null && typeof properties.rightAscension === 'number') {
-      rightAscension.value = properties.rightAscension
-    }
-    
-    if (properties.declination !== null && typeof properties.declination === 'number') {
-      declination.value = properties.declination
-    }
-    
-    if (properties.altitude !== null && typeof properties.altitude === 'number') {
-      altitude.value = properties.altitude
-    }
-    
-    if (properties.azimuth !== null && typeof properties.azimuth === 'number') {
-      azimuth.value = properties.azimuth
-    }
-    
-    // Update tracking state
-    if (properties.tracking !== null && typeof properties.tracking === 'boolean') {
-      tracking.value = properties.tracking
-    }
-    
-    // Update tracking rate
-    if (properties.trackingRate !== null && typeof properties.trackingRate === 'number') {
-      selectedTrackingRate.value = properties.trackingRate
-    }
-  } catch (error) {
-    console.error('Error updating coordinates:', error)
-  }
-}
-
-// Get the current device
+// Get the current device from the store, this will be our source of truth
 const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
 
-// Tracking state
-const tracking = ref(false)
-const toggleTracking = async () => {
-  try {
-    await setAlpacaProperty(props.deviceId, 'tracking', !tracking.value)
-    // Let the update come from polling rather than setting it directly
-  } catch (error) {
-    console.error('Error toggling tracking:', error)
-  }
-}
-
-// Tracking rate options
-const trackingRates = [
-  { value: 0, label: 'Sidereal' },
-  { value: 1, label: 'Lunar' },
-  { value: 2, label: 'Solar' },
-  { value: 3, label: 'King' }
-]
-const selectedTrackingRate = ref(0)
-
-// Update tracking rate
-const updateTrackingRate = async () => {
-  try {
-    await setAlpacaProperty(props.deviceId, 'trackingRate', selectedTrackingRate.value)
-  } catch (error) {
-    console.error('Error setting tracking rate:', error)
-  }
-}
-
-// Watch for changes in the tracking rate dropdown
-watch(selectedTrackingRate, updateTrackingRate)
-
-// Coordinates (will be updated by polling)
-const rightAscension = ref(0)
-const declination = ref(0)
-const altitude = ref(0)
-const azimuth = ref(0)
-
-// Target RA/DEC for slewing (initialized by resetTelescopeState or first poll)
+// Local refs for UI interaction (e.g., slew targets)
 const targetRA = ref(0)
 const targetDec = ref(0)
 
+// Computed properties for display, derived from the store
+const rightAscension = computed(() => {
+  const props = currentDevice.value?.properties;
+  return (props?.rightAscension as number | undefined) ?? 0;
+})
+const declination = computed(() => {
+  const props = currentDevice.value?.properties;
+  return (props?.declination as number | undefined) ?? 0;
+})
+const altitude = computed(() => {
+  const props = currentDevice.value?.properties;
+  return (props?.altitude as number | undefined) ?? 0;
+})
+const azimuth = computed(() => {
+  const props = currentDevice.value?.properties;
+  return (props?.azimuth as number | undefined) ?? 0;
+})
+
+const tracking = computed({
+  get: (): boolean => {
+    const props = currentDevice.value?.properties;
+    return (props?.tracking as boolean | undefined) ?? false;
+  },
+  set: async (newValue: boolean) => {
+    if (!props.deviceId) return;
+    try {
+      await setAlpacaProperty(props.deviceId, 'tracking', newValue)
+    } catch (error) {
+      console.error('Error toggling tracking:', error)
+    }
+  }
+})
+
+// Selected tracking rate
+const selectedTrackingRate = computed({
+  get: (): number => {
+    const props = currentDevice.value?.properties;
+    return (props?.trackingRate as number | undefined) ?? 0;
+  },
+  set: async (newValue: number) => {
+    if (!props.deviceId) return;
+    try {
+      await setAlpacaProperty(props.deviceId, 'trackingRate', newValue)
+    } catch (error) {
+      console.error('Error setting tracking rate:', error)
+    }
+  }
+})
+
+// Reset telescope state (simplified: mainly for slew targets if needed)
+const resetTelescopeState = () => {
+  // Values from store will update automatically.
+  // Reset local UI state not directly tied to store properties.
+  targetRA.value = 0
+  targetDec.value = 0
+  // The local refs for RA, Dec, etc., are gone, so no need to reset them here.
+  // selectedTrackingRate will be derived from store, no need to reset its local ref if it becomes fully computed.
+}
+
 // Watch for device ID changes to update our state
-let coordUpdateInterval: number | undefined
 watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   if (newDeviceId !== oldDeviceId) {
     console.log(`SimplifiedTelescopePanel: Device changed from ${oldDeviceId} to ${newDeviceId}`)
-    
-    // Reset coordinate values
-    resetTelescopeState()
-    
-    // If we have a new device and it's connected, start monitoring it
-    if (props.isConnected) {
-      // Stop existing interval if any
-      if (coordUpdateInterval) {
-        clearInterval(coordUpdateInterval)
-        coordUpdateInterval = undefined;
-      }
-      
-      // Initial update
-      updateCoordinates()
-      // Start a new polling interval
-      coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
-    } else {
-      // If not connected, ensure polling is stopped
-      if (coordUpdateInterval) {
-        clearInterval(coordUpdateInterval)
-        coordUpdateInterval = undefined;
-      }
-    }
+    resetTelescopeState() // Reset local UI state like targets
+    // No need to call updateCoordinates() anymore. Data flows from store.
   }
 }, { immediate: true })
 
 // Format right ascension as HH:MM:SS
-const formattedRA = computed(() => {
-  const value = rightAscension.value
-  const hours = Math.floor(value)
-  const minutes = Math.floor((value - hours) * 60)
-  const seconds = Math.floor(((value - hours) * 60 - minutes) * 60)
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+const formattedRA = computed<string>(() => {
+  const value = rightAscension.value;
+  const hours = Math.floor(value);
+  const minutes = Math.floor((value - hours) * 60);
+  const seconds = Math.round(((value - hours) * 60 - minutes) * 60); // Use round for seconds for better display
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 })
 
 // Format declination as +/-DD:MM:SS
-const formattedDec = computed(() => {
-  const value = declination.value
-  const sign = value >= 0 ? '+' : '-'
-  const absDec = Math.abs(value)
-  const degrees = Math.floor(absDec)
-  const minutes = Math.floor((absDec - degrees) * 60)
-  const seconds = Math.floor(((absDec - degrees) * 60 - minutes) * 60)
-  return `${sign}${degrees.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+const formattedDec = computed<string>(() => {
+  const value = declination.value;
+  const sign = value >= 0 ? '+' : '-';
+  const absDec = Math.abs(value);
+  const degrees = Math.floor(absDec);
+  const minutes = Math.floor((absDec - degrees) * 60);
+  const seconds = Math.round(((absDec - degrees) * 60 - minutes) * 60); // Use round for seconds
+  return `${sign}${String(degrees).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 })
 
 // Simple slew to coordinates
@@ -249,21 +191,10 @@ const findHome = async () => {
 
 // Setup polling when mounted
 onMounted(() => {
-  // Initial setup if already connected when mounted
-  if (props.isConnected && props.deviceId) {
-    // Initial update
-    updateCoordinates()
-    
-    // Start regular polling
-    if (!coordUpdateInterval) {
-        coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
-    }
-  } else {
-     // Ensure polling is stopped if not connected
-    if (coordUpdateInterval) {
-      window.clearInterval(coordUpdateInterval)
-      coordUpdateInterval = undefined;
-    }
+  // No need to call updateCoordinates(). Data flows from store.
+  // resetTelescopeState() might be called if needed on mount for initial UI state.
+  if (props.deviceId) { // ensure deviceId is present before resetting state based on it
+      resetTelescopeState()
   }
 })
 
@@ -271,28 +202,30 @@ onMounted(() => {
 watch(() => props.isConnected, (newIsConnected) => {
   console.log(`SimplifiedTelescopePanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
   if (newIsConnected) {
-    // Start polling when connected
-    resetTelescopeState() // Reset state on new connection to fetch fresh data
-    updateCoordinates() // Initial fetch
-    if (!coordUpdateInterval) { // Avoid multiple intervals
-      coordUpdateInterval = window.setInterval(updateCoordinates, 1000)
-    }
+    // Data will flow from the store.
+    // Call resetTelescopeState if local UI elements (like targets) need resetting on new connection.
+    resetTelescopeState()
+    // No need to call updateCoordinates()
   } else {
-    // Stop polling when disconnected
-    if (coordUpdateInterval) {
-      window.clearInterval(coordUpdateInterval)
-      coordUpdateInterval = undefined;
-    }
     resetTelescopeState() // Clear data when disconnected
   }
-}, { immediate: false }) // immediate: true handled by deviceId watcher and onMounted
+}, { immediate: false })
 
 // Cleanup when unmounted
 onUnmounted(() => {
-  if (coordUpdateInterval) {
-    window.clearInterval(coordUpdateInterval)
-  }
+  // if (coordUpdateInterval) { // No longer needed
+  //   window.clearInterval(coordUpdateInterval)
+  //   // coordUpdateInterval = undefined; // Also clear the variable itself
+  // }
 })
+
+// Tracking rate options (this is fine)
+const trackingRates = [
+  { value: 0, label: 'Sidereal' },
+  { value: 1, label: 'Lunar' },
+  { value: 2, label: 'Solar' },
+  { value: 3, label: 'King' }
+]
 
 </script>
 
@@ -375,7 +308,7 @@ onUnmounted(() => {
             <div class="tracking-toggle">
               <span class="label">Tracking:</span>
               <label class="toggle">
-                <input v-model="tracking" type="checkbox" @change="toggleTracking">
+                <input v-model="tracking" type="checkbox">
                 <span class="slider"></span>
               </label>
             </div>
