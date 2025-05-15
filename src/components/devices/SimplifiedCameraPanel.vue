@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import CameraControls from '@/components/panels/CameraControls.vue'
+// import CameraControls from '@/components/panels/CameraControls.vue'
+import CameraImageDisplay from '@/components/panels/features/CameraImageDisplay.vue'
+import CameraExposureControl from '@/components/panels/features/CameraExposureControl.vue'
 import { setAlpacaProperty, getAlpacaProperties, getDeviceCapabilities } from '@/utils/alpacaPropertyAccess'
 import Icon from '@/components/ui/Icon.vue'
 
@@ -54,6 +56,9 @@ const isLoadingTargetTemp = ref(false)
 
 // Error message for settings
 const settingsError = ref<string | null>(null)
+
+// Image data for CameraImageDisplay
+const imageData = ref<ArrayBuffer>(new ArrayBuffer(0))
 
 // Function to clear settings error
 const clearSettingsError = () => {
@@ -129,6 +134,35 @@ const updateTargetTemp = async () => {
   } finally {
     isLoadingTargetTemp.value = false
   }
+}
+
+// Event handlers for CameraExposureControl
+const handleExposureStarted = (params: { duration: number; isLight: boolean }) => {
+  // Clear any previous exposure-related errors if settingsError is used for this
+  // settingsError.value = null; 
+  console.log(`SimplifiedCameraPanel: Exposure started: ${params.duration}s, Light: ${params.isLight}`)
+  // You might want to set a specific loading state related to exposure if needed elsewhere in this panel
+}
+
+const handleExposureComplete = () => {
+  console.log('SimplifiedCameraPanel: Exposure complete')
+  // Handle post-exposure actions if any specific to this panel
+}
+
+const handleImageDownloaded = (data: ArrayBuffer) => {
+  imageData.value = data
+  console.log(`SimplifiedCameraPanel: Image downloaded: ${data.byteLength} bytes`)
+}
+
+const handleExposureError = (error: string) => {
+  console.error('SimplifiedCameraPanel: Exposure error:', error)
+  settingsError.value = `Exposure failed: ${error}` // Display exposure error in the existing error display
+}
+
+// Handler for histogram generation from CameraImageDisplay
+const handleHistogramGenerated = (histogram: number[]) => {
+  console.log('SimplifiedCameraPanel: Histogram generated with', histogram.length, 'bins')
+  // Process histogram data if needed at this level
 }
 
 // Check device capabilities
@@ -249,6 +283,7 @@ watch(() => props.isConnected, (newIsConnected) => {
   if (newIsConnected) {
     // Reset capabilities
     resetCameraSettings() // Reset settings on new connection to ensure fresh state
+    imageData.value = new ArrayBuffer(0) // Reset image data on new connection
     capabilities.value = {
       canSetCCDTemperature: false
     }
@@ -281,6 +316,7 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
     console.log(`SimplifiedCameraPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
     // Reset settings when device changes
     resetCameraSettings()
+    imageData.value = new ArrayBuffer(0) // Also reset image data when device changes
     
     if (props.isConnected) {
       // Update capabilities for the new device
@@ -340,20 +376,16 @@ onUnmounted(() => {
         </div>
 
         <div class="main-layout-grid">
-          <!-- Left Column: Camera Controls -->
+          <!-- Left Column: Camera Image Display -->
           <div class="camera-controls-column">
-            <div class="panel-section camera-controls-section">
-              <div class="camera-controls-wrapper">
-                <CameraControls 
-                  :device-id="deviceId"
-                  :exposure-min="exposureMin"
-                  :exposure-max="exposureMax"
-                />
-              </div>
-            </div>
+            <!-- CameraImageDisplay is already styled as a panel, so no extra .panel-section needed -->
+            <CameraImageDisplay 
+              :image-data="imageData"
+              @histogram-generated="handleHistogramGenerated" 
+            />
           </div>
 
-          <!-- Right Column: Settings & Cooling -->
+          <!-- Right Column: Settings, Cooling & Exposure -->
           <div class="settings-cooling-column">
             <!-- Camera Settings Section -->
             <div class="panel-section">
@@ -409,6 +441,20 @@ onUnmounted(() => {
                   </div>
                 </div>
               </div>
+            </div>
+            
+            <!-- Exposure Control Section -->
+            <div class="panel-section exposure-controls-section">
+              <h3>Exposure</h3>
+              <CameraExposureControl
+                :device-id="deviceId"
+                :exposure-min="exposureMin"
+                :exposure-max="exposureMax"
+                @exposure-started="handleExposureStarted"
+                @exposure-complete="handleExposureComplete"
+                @image-downloaded="handleImageDownloaded"
+                @error="handleExposureError"
+              />
             </div>
           </div>
         </div>

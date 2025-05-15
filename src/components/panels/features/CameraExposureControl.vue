@@ -37,7 +37,7 @@ const props = defineProps({
   },
   label: {
     type: String,
-    default: 'Exposure'
+    default: 'Start Exposure'
   },
   method: {
     type: String,
@@ -75,6 +75,28 @@ const imageReady = ref(false)
 const error = ref('')
 const pollingIntervals = ref<number[]>([])
 
+const durationPresets = ref([0.1, 1, 5, 10, 30, 60, 120, 300]);
+
+// Method to clear the error message
+const clearError = () => {
+  error.value = ''
+}
+
+// Method to validate and clamp exposure duration
+const validateExposureDuration = () => {
+  if (exposureDuration.value < props.exposureMin) {
+    exposureDuration.value = props.exposureMin
+  }
+  if (exposureDuration.value > props.exposureMax) {
+    exposureDuration.value = props.exposureMax
+  }
+}
+
+const setExposureDuration = (presetValue: number) => {
+  exposureDuration.value = presetValue;
+  validateExposureDuration(); // Ensure it's within min/max if presets are outside
+};
+
 // Add reactive refs for component state tracking
 const componentState = ref({
   lastPropsUpdate: Date.now(),
@@ -94,7 +116,7 @@ const buttonText = computed(() => {
   if (exposureInProgress.value) {
     return 'Abort'
   }
-  return props.label || 'Expose'
+  return props.label
 })
 
 // Method to start an exposure
@@ -392,21 +414,6 @@ onMounted(() => {
     clearInterval(updateInterval)
   })
 })
-
-// Method to clear the error message
-const clearError = () => {
-  error.value = ''
-}
-
-// Method to validate and clamp exposure duration
-const validateExposureDuration = () => {
-  if (exposureDuration.value < props.exposureMin) {
-    exposureDuration.value = props.exposureMin
-  }
-  if (exposureDuration.value > props.exposureMax) {
-    exposureDuration.value = props.exposureMax
-  }
-}
 </script>
 
 <template>
@@ -430,23 +437,46 @@ const validateExposureDuration = () => {
           :max="exposureMax"
           step="0.1"
           :disabled="exposureInProgress || !isConnected"
+          class="aw-input"
           @change="validateExposureDuration"
         />
       </div>
+      <div class="duration-presets">
+        <button
+          v-for="preset in durationPresets"
+          :key="preset"
+          :disabled="exposureInProgress || !isConnected"
+          class="preset-button"
+          :class="{ 'active': exposureDuration === preset }"
+          @click="setExposureDuration(preset)"
+        >
+          {{ preset }}s
+        </button>
+      </div>
 
       <div class="input-group frame-type-group">
-        <label for="frame-type-toggle" class="frame-type-label">Frame:</label>
-        <div class="toggle-switch-container">
-          <label class="toggle-switch">
-            <input
-              id="frame-type-toggle"
-              v-model="isLight"
-              type="checkbox"
+        <label class="frame-type-label">Frame Type:</label>
+        <div class="frame-type-radios">
+          <label class="radio-label">
+            <input 
+              v-model="isLight" 
+              type="radio"
+              name="frameType" 
+              :value="true" 
               :disabled="exposureInProgress || !isConnected"
-            />
-            <span class="slider"></span>
+            >
+            <span class="radio-text">Light</span>
           </label>
-          <span class="toggle-label">{{ isLight ? 'Light' : 'Dark' }}</span>
+          <label class="radio-label">
+            <input 
+              v-model="isLight" 
+              type="radio"
+              name="frameType" 
+              :value="false" 
+              :disabled="exposureInProgress || !isConnected"
+            >
+            <span class="radio-text">Dark</span>
+          </label>
         </div>
       </div>
     </div>
@@ -481,7 +511,7 @@ const validateExposureDuration = () => {
 }
 
 .aw-exposure-control.exposure-active {
-  border-color: var(--aw-primary-color);
+  border-color: var(--aw-color-primary-500);
 }
 
 .error-message {
@@ -510,124 +540,130 @@ const validateExposureDuration = () => {
 
 .exposure-inputs {
   display: flex;
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
-  gap: var(--aw-spacing-md); /* Gap between duration and frame type */
-  align-items: center; /* Align items vertically */
+  flex-direction: column;
+  gap: var(--aw-spacing-md);
+  align-items: stretch;
 }
 
 .input-group {
   display: flex;
   align-items: center;
-  gap: var(--aw-spacing-xs); /* Gap between label and input/toggle */
-  flex-grow: 1; /* Allow groups to grow */
-}
-
-.duration-input-group {
-  min-width: 150px; /* Minimum width for duration input */
-  flex-basis: 200px; /* Preferred basis */
-}
-
-.frame-type-group {
-  min-width: 120px;
-  justify-content: flex-start; /* Align toggle to the start */
+  gap: var(--aw-spacing-xs);
+  width: 100%;
 }
 
 .input-group label {
   font-size: 0.9rem;
   color: var(--aw-text-secondary-color);
   white-space: nowrap;
+  margin-right: var(--aw-spacing-sm);
 }
 
-.input-group input[type="number"] {
-  padding: var(--aw-spacing-xs);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  background-color: var(--aw-input-bg-color);
-  color: var(--aw-text-color);
-  width: 80px; /* Fixed width for duration input */
-}
-
-.toggle-switch-container {
+.duration-input-group {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: var(--aw-spacing-xs);
 }
 
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
+.duration-input-group input[type="number"].aw-input {
+  flex-grow: 1;
+  width: auto;
 }
 
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+.duration-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aw-spacing-sm);
+  margin-top: var(--aw-spacing-xxs);
+  margin-bottom: var(--aw-spacing-xs);
 }
 
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.preset-button {
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  font-size: 0.8rem;
   background-color: var(--aw-input-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
-  transition: .4s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 4px;
-  bottom: 4px;
-  background-color: var(--aw-text-secondary-color);
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: var(--aw-primary-color);
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
-  background-color: var(--aw-button-primary-text);
-}
-
-.toggle-label {
-  font-size: 0.9rem;
   color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.preset-button:hover:not(:disabled) {
+  background-color: var(--aw-panel-button-hover-bg);
+  border-color: var(--aw-color-primary-500);
+}
+
+.preset-button.active {
+  background-color: var(--aw-color-primary-500);
+  color: var(--aw-button-primary-text);
+  border-color: var(--aw-color-primary-500);
+}
+
+.preset-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.frame-type-group {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.frame-type-label {
+  font-size: 0.9rem;
+  color: var(--aw-text-secondary-color);
+  white-space: nowrap;
+  margin-right: var(--aw-spacing-sm);
+}
+
+.frame-type-radios {
+  display: flex;
+  gap: var(--aw-spacing-md);
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-xxs);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+  margin-right: var(--aw-spacing-xxs);
 }
 
 .exposure-button {
-  padding: var(--aw-spacing-sm) var(--aw-spacing-md); /* Standardized padding */
-  font-size: 0.9rem; /* Slightly smaller font size */
-  background-color: var(--aw-primary-color);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+  font-size: 0.9rem;
+  background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
-  border: none;
+  border: 1px solid var(--aw-input-border-color);
   border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--aw-spacing-xs);
-  transition: background-color 0.2s;
-  width: 100%; /* Make button take full width of its container */
+  transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
+  width: 100%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .exposure-button:hover:not(:disabled) {
-  background-color: var(--aw-primary-hover-color);
+  background-color: var(--aw-button-primary-hover-bg);
+  border-color: var(--aw-button-primary-hover-bg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
 }
 
 .exposure-button:disabled {
   background-color: var(--aw-disabled-bg-color);
   color: var(--aw-disabled-text-color);
+  border-color: var(--aw-disabled-border-color, var(--aw-disabled-bg-color));
+  box-shadow: none;
   cursor: not-allowed;
 }
 
@@ -647,7 +683,7 @@ input:checked + .slider:before {
 
 .progress-bar {
   height: 100%;
-  background-color: var(--aw-primary-color);
+  background-color: var(--aw-color-primary-500);
   transition: width 0.3s ease;
 }
 
@@ -657,9 +693,9 @@ input:checked + .slider:before {
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 0.8rem;
-  color: var(--aw-text-color); /* Ensure contrast against progress bar */
-  mix-blend-mode: difference; /* Helps with visibility */
-  filter: invert(1) grayscale(1) contrast(100); /* Alternative for better visibility */
+  color: var(--aw-text-color);
+  mix-blend-mode: difference;
+  filter: invert(1) grayscale(1) contrast(100);
 }
 
 /* Responsive adjustments for smaller containers if needed */
@@ -683,4 +719,5 @@ input:checked + .slider:before {
   }
 }
 
+.toggle-switch-container { display: none; } /* Hide old toggle if necessary */
 </style>
