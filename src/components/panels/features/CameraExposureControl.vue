@@ -486,7 +486,7 @@ onMounted(() => {
   gap: var(--aw-spacing-md);
   width: 100%;
   border-radius: var(--aw-border-radius-md);
-  background-color: var(--aw-color-neutral-50, #f8f9fa);
+  background-color: var(--aw-color-neutral-50);
 }
 
 .aw-camera-exposure-control__settings {
@@ -517,13 +517,13 @@ onMounted(() => {
 }
 
 .aw-connection-status--connected {
-  background-color: var(--aw-color-success-100, #d4edda);
-  color: var(--aw-color-success-700, #0f5132);
+  background-color: var(--aw-color-success-100);
+  color: var(--aw-status-indicator-success-text-color);
 }
 
 .aw-connection-status--disconnected {
-  background-color: var(--aw-color-neutral-200, #e9ecef);
-  color: var(--aw-color-neutral-700, #495057);
+  background-color: var(--aw-color-neutral-200);
+  color: var(--aw-color-neutral-700);
 }
 
 .aw-camera-exposure-control__progress {
@@ -535,7 +535,7 @@ onMounted(() => {
 .aw-progress-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--aw-color-neutral-700, #495057);
+  color: var(--aw-color-neutral-700);
 }
 
 .aw-camera-exposure-control__progress-container {
@@ -547,7 +547,7 @@ onMounted(() => {
 .aw-camera-exposure-control__progress-bar {
   flex: 1;
   height: 0.75rem;
-  background-color: var(--aw-color-neutral-300, #dee2e6);
+  background-color: var(--aw-color-neutral-300);
   border-radius: var(--aw-border-radius-sm);
   overflow: hidden;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -555,12 +555,12 @@ onMounted(() => {
 
 .aw-camera-exposure-control__progress-fill {
   height: 100%;
-  background-color: var(--aw-color-primary-500, #0d6efd);
+  background-color: var(--aw-color-primary-500);
   transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
 }
 
 .aw-camera-exposure-control__progress-fill.complete {
-  background-color: var(--aw-color-success-500, #198754);
+  background-color: var(--aw-color-success-500);
 }
 
 .aw-camera-exposure-control__progress-text {
@@ -583,13 +583,13 @@ onMounted(() => {
 }
 
 .aw-status-indicator--success {
-  background-color: var(--aw-color-success-100, #d4edda);
-  color: var(--aw-color-success-700, #0f5132);
+  background-color: var(--aw-color-success-100);
+  color: var(--aw-status-indicator-success-text-color);
 }
 
 .aw-status-indicator--processing {
-  background-color: var(--aw-color-neutral-100, #f8f9fa);
-  color: var(--aw-color-neutral-800, #343a40);
+  background-color: var(--aw-color-neutral-100);
+  color: var(--aw-color-neutral-800);
 }
 
 .loading-dots::after {
@@ -608,8 +608,8 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--aw-color-danger-700, #842029);
-  background-color: var(--aw-color-danger-100, #f8d7da);
+  color: var(--aw-color-error-700);
+  background-color: var(--aw-color-error-100);
   padding: 0.5rem;
   border-radius: var(--aw-border-radius-sm);
 }

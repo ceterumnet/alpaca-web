@@ -145,6 +145,9 @@
   --aw-error-muted: rgba(244, 67, 54, 0.1);
   --aw-error-muted-hover: rgba(244, 67, 54, 0.2);
 
+  /* Status indicator text colors (add new) */
+  --aw-status-indicator-success-text-color: var(--aw-color-success-700);
+
   /* Icon Colors */
   --aw-device-camera-color: var(--aw-color-success-500);
   --aw-device-dome-color: var(--aw-color-primary-500);
@@ -236,8 +239,12 @@
   --aw-color-primary-rgb: 181, 63, 63; /* --aw-color-primary-500 */
 
   /* Success colors - reddish success for astronomy night vision */
+  --aw-color-success-50: #2c1f1d;
+  --aw-color-success-100: #4d2a24;
+  --aw-color-success-300: #733528;
   --aw-color-success-500: #a04030;
   --aw-color-success-700: #7a3020;
+  --aw-color-success-900: #612015;
 
   /* RGB variants for alpha operations (box-shadows, etc) */
   --aw-color-success-rgb: 160, 64, 48; /* --aw-color-success-500 */
@@ -310,6 +317,9 @@
   --aw-error-color: #9e2b2b;
   --aw-error-muted: rgba(158, 43, 43, 0.2);
   --aw-error-muted-hover: rgba(158, 43, 43, 0.3);
+
+  /* Status indicator text colors (add new) */
+  --aw-status-indicator-success-text-color: var(--aw-color-neutral-800);
 
   /* Icon Colors */
   --aw-device-camera-color: var(--aw-color-success-500);

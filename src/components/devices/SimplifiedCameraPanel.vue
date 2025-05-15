@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import CameraControls from '@/components/panels/CameraControls.vue'
 import { setAlpacaProperty, getAlpacaProperties, getDeviceCapabilities } from '@/utils/alpacaPropertyAccess'
+import Icon from '@/components/ui/Icon.vue'
 
 const props = defineProps({
   deviceId: {
@@ -44,54 +45,89 @@ const coolerOn = ref(false)
 const targetTemp = ref(-10)
 const CCDTemperature = ref(0)
 
+// Loading states for settings
+const isLoadingGain = ref(false)
+const isLoadingOffset = ref(false)
+const isLoadingBinning = ref(false)
+const isTogglingCooler = ref(false)
+const isLoadingTargetTemp = ref(false)
+
+// Error message for settings
+const settingsError = ref<string | null>(null)
+
+// Function to clear settings error
+const clearSettingsError = () => {
+  settingsError.value = null
+}
+
 // Toggle cooler
 const toggleCooler = async () => {
   if (!capabilities.value.canSetCCDTemperature) return
-  
+  isTogglingCooler.value = true
+  settingsError.value = null
   try {
     await setAlpacaProperty(props.deviceId, 'coolerOn', !coolerOn.value)
     coolerOn.value = !coolerOn.value
   } catch (error) {
     console.error('Error toggling cooler:', error)
+    settingsError.value = `Failed to toggle cooler: ${error instanceof Error ? error.message : String(error)}`
+  } finally {
+    isTogglingCooler.value = false
   }
 }
 
 // Update camera settings
 const updateGain = async () => {
-  
+  isLoadingGain.value = true
+  settingsError.value = null
   try {
     await setAlpacaProperty(props.deviceId, 'gain', gain.value)
   } catch (error) {
     console.error('Error setting gain:', error)
+    settingsError.value = `Failed to set gain: ${error instanceof Error ? error.message : String(error)}`
+  } finally {
+    isLoadingGain.value = false
   }
 }
 
 const updateOffset = async () => {
-  
+  isLoadingOffset.value = true
+  settingsError.value = null
   try {
     await setAlpacaProperty(props.deviceId, 'offset', offset.value)
   } catch (error) {
     console.error('Error setting offset:', error)
+    settingsError.value = `Failed to set offset: ${error instanceof Error ? error.message : String(error)}`
+  } finally {
+    isLoadingOffset.value = false
   }
 }
 
 const updateBinning = async () => {
-  
+  isLoadingBinning.value = true
+  settingsError.value = null
   try {
     await setAlpacaProperty(props.deviceId, 'binX', binning.value)
     await setAlpacaProperty(props.deviceId, 'binY', binning.value)
   } catch (error) {
     console.error('Error setting binning:', error)
+    settingsError.value = `Failed to set binning: ${error instanceof Error ? error.message : String(error)}`
+  } finally {
+    isLoadingBinning.value = false
   }
 }
 
 const updateTargetTemp = async () => {
   if (!capabilities.value.canSetCCDTemperature) return
-  
+  isLoadingTargetTemp.value = true
+  settingsError.value = null
   try {
     await setAlpacaProperty(props.deviceId, 'setCCDTemperature', targetTemp.value)
   } catch (error) {
     console.error('Error setting target temperature:', error)
+    settingsError.value = `Failed to set target temperature: ${error instanceof Error ? error.message : String(error)}`
+  } finally {
+    isLoadingTargetTemp.value = false
   }
 }
 
@@ -303,21 +339,41 @@ onUnmounted(() => {
           </div>
         </div>
         
+        <!-- Settings Error Display -->
+        <div v-if="settingsError" class="panel-section panel-error-display">
+          <div class="error-message-content">
+            <Icon type="alert-triangle" class="error-icon" />
+            <span>{{ settingsError }}</span>
+          </div>
+          <button class="dismiss-button" @click="clearSettingsError">
+            <Icon type="close" />
+          </button>
+        </div>
+
         <!-- Camera Settings Section -->
         <div class="panel-section">
           <h3>Settings</h3>
           <div class="camera-settings">
             <div class="setting-row">
-              <label>Gain:</label>
-              <input v-model.number="gain" type="number" min="0" max="100" step="1" @change="updateGain">
+              <label for="gain-input">Gain:</label>
+              <div class="input-with-spinner">
+                <input id="gain-input" v-model.number="gain" type="number" min="0" max="100" step="1" :disabled="isLoadingGain" @change="updateGain">
+                <Icon v-if="isLoadingGain" type="refresh" class="spinner-icon" animation="spin" />
+              </div>
             </div>
             <div class="setting-row">
-              <label>Offset:</label>
-              <input v-model.number="offset" type="number" min="0" max="100" step="1" @change="updateOffset">
+              <label for="offset-input">Offset:</label>
+              <div class="input-with-spinner">
+                <input id="offset-input" v-model.number="offset" type="number" min="0" max="100" step="1" :disabled="isLoadingOffset" @change="updateOffset">
+                <Icon v-if="isLoadingOffset" type="refresh" class="spinner-icon" animation="spin" />
+              </div>
             </div>
             <div class="setting-row">
-              <label>Binning:</label>
-              <input v-model.number="binning" type="number" min="1" max="4" step="1" @change="updateBinning">
+              <label for="binning-input">Binning:</label>
+              <div class="input-with-spinner">
+                <input id="binning-input" v-model.number="binning" type="number" min="1" max="4" step="1" :disabled="isLoadingBinning" @change="updateBinning">
+                <Icon v-if="isLoadingBinning" type="refresh" class="spinner-icon" animation="spin" />
+              </div>
             </div>
           </div>
         </div>
@@ -330,16 +386,22 @@ onUnmounted(() => {
               <span class="temperature-label">Current:</span>
               <span class="temperature-value">{{ CCDTemperature.toFixed(1) }}°C</span>
             </div>
-            <div v-if="capabilities.canSetCCDTemperature" class="cooling-toggle">
+            <div v-if="capabilities.canSetCCDTemperature" class="cooling-toggle setting-row">
               <span class="label">Cooler:</span>
-              <label class="toggle">
-                <input v-model="coolerOn" type="checkbox" @change="toggleCooler">
-                <span class="slider"></span>
-              </label>
+              <div class="input-with-spinner">
+                <label class="toggle">
+                  <input v-model="coolerOn" type="checkbox" :disabled="isTogglingCooler" @change="toggleCooler">
+                  <span class="slider"></span>
+                </label>
+                <Icon v-if="isTogglingCooler" type="refresh" class="spinner-icon" animation="spin" />
+              </div>
             </div>
-            <div v-if="capabilities.canSetCCDTemperature" class="temperature-target">
-              <label>Target Temp (°C):</label>
-              <input v-model.number="targetTemp" type="number" min="-50" max="50" step="1" @change="updateTargetTemp">
+            <div v-if="capabilities.canSetCCDTemperature" class="temperature-target setting-row">
+              <label for="target-temp-input">Target Temp (°C):</label>
+              <div class="input-with-spinner">
+                <input id="target-temp-input" v-model.number="targetTemp" type="number" min="-50" max="50" step="1" :disabled="isLoadingTargetTemp" @change="updateTargetTemp">
+                <Icon v-if="isLoadingTargetTemp" type="refresh" class="spinner-icon" animation="spin" />
+              </div>
             </div>
           </div>
         </div>
@@ -654,5 +716,68 @@ input:checked + .slider:before {
 .panel-tip {
   font-size: 0.8rem;
   color: var(--aw-text-secondary-color);
+}
+
+.panel-error-display {
+  background-color: var(--aw-color-error-muted, #f8d7da);
+  color: var(--aw-color-error-700, #842029);
+  padding: var(--aw-spacing-sm);
+  margin-bottom: var(--aw-spacing-md);
+  border-radius: var(--aw-border-radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-message-content {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-sm);
+}
+
+.error-icon {
+  font-size: 1.2rem; /* Make icon slightly larger */
+}
+
+.dismiss-button {
+  background: none;
+  border: none;
+  color: var(--aw-color-error-700, #842029);
+  cursor: pointer;
+  padding: var(--aw-spacing-xs);
+}
+
+.dismiss-button .icon {
+  font-size: 1rem;
+}
+
+.input-with-spinner {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-spinner input {
+  flex-grow: 1;
+}
+
+.spinner-icon {
+  margin-left: var(--aw-spacing-sm);
+  color: var(--aw-text-secondary-color);
+}
+
+/* Ensure toggle switch is vertically aligned with spinner */
+.cooling-toggle .input-with-spinner {
+  display: flex;
+  align-items: center;
+}
+
+.cooling-toggle .toggle {
+  margin-right: auto; /* Pushes spinner to the right if needed or centers */
+}
+
+/* Adjustments for setting rows if they contain input-with-spinner */
+.setting-row .input-with-spinner + .spinner-icon {
+  /* If spinner is outside input-with-spinner, style it here */
 }
 </style> 
