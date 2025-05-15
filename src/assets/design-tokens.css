@@ -143,6 +143,11 @@
   --aw-error-muted: rgba(244, 67, 54, 0.1);
   --aw-error-muted-hover: rgba(244, 67, 54, 0.2);
 
+  /* Icon Control Colors */
+  --aw-control-sliders-color: var(--aw-color-neutral-600);
+  --aw-control-park-color: var(--aw-color-neutral-700);
+  --aw-control-unpark-color: var(--aw-color-success-500);
+
   /* ============================================================
      SPACING TOKENS
      ============================================================ */
@@ -267,4 +272,9 @@
   --aw-error-color: #9e2b2b;
   --aw-error-muted: rgba(158, 43, 43, 0.2);
   --aw-error-muted-hover: rgba(158, 43, 43, 0.3);
+
+  /* Icon Control Colors */
+  --aw-control-sliders-color: var(--aw-color-neutral-600);
+  --aw-control-park-color: var(--aw-color-neutral-700);
+  --aw-control-unpark-color: var(--aw-color-success-500);
 }

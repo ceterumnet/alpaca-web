@@ -480,7 +480,6 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--aw-spacing-md);
   width: 100%;
-  /* padding: var(--aw-spacing-md); */
   border-radius: var(--aw-border-radius-md);
   background-color: var(--aw-color-neutral-50, #f8f9fa);
 }

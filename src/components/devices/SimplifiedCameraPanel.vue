@@ -294,7 +294,6 @@ onUnmounted(() => {
       <template v-else>
         <!-- Camera Controls section - uses existing component to maintain proper image flow -->
         <div class="panel-section camera-controls-section">
-          <h3>Camera Controls</h3>
           <div class="camera-controls-wrapper">
             <CameraControls 
               :device-id="deviceId"
@@ -365,7 +364,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 var(--aw-spacing-sm);
+  /* padding: 0 var(--aw-spacing-sm); */
   border-bottom: 1px solid var(--aw-panel-border-color);
   background-color: var(--aw-panel-header-bg-color);
 }
@@ -509,16 +508,12 @@ onUnmounted(() => {
   padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
-.camera-controls-section {
-  padding: 0;
-}
-
-.camera-controls-wrapper {
+/* .camera-controls-wrapper {
   border: 1px solid var(--aw-panel-border-color);
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   overflow: hidden;
   margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-}
+} */
 
 .camera-settings {
   display: grid;

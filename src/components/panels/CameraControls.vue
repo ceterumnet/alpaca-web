@@ -90,7 +90,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: var(--aw-spacing-md);
-  padding: 0;
+  /* padding: 0; */
   width: 100%;
 }
 
