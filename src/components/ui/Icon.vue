@@ -21,6 +21,7 @@ export type IconType =
   | 'cloud' // IconCloud
   | 'chevron-left' // IconChevronLeft
   | 'chevron-right' // IconChevronRight
+  | 'chevron-down' // IconChevronDown (Added)
   | 'settings' // IconSettings (for gear)
   | 'exposure' // IconExposure
   | 'x' // IconX (for close)
@@ -86,14 +87,11 @@ export default defineComponent({
     type: {
       type: String as () => IconType,
       required: false,
-      // Validator can be simplified or rely on TypeScript and default,
-      // but keeping it for now ensures only planned icons are used.
-      // This list should ideally be generated or kept in sync with IconType
       validator: (value: string): boolean => {
         return [
           'camera', 'building-observatory', 'telescope', 'sun', 'moon',
           'question-mark', 'search', 'focus-2', 'filter', 'cloud',
-          'chevron-left', 'chevron-right', 'settings', 'exposure', 'x',
+          'chevron-left', 'chevron-right', 'chevron-down', 'settings', 'exposure', 'x',
           'arrows-maximize', 'arrows-minimize', 'layout-sidebar-left-collapse',
           'layout-sidebar-left-expand', 'maximize', 'plug-connected', 'plug-x',
           'arrow-up', 'arrow-down', 'arrow-left', 'arrow-right',
@@ -111,8 +109,8 @@ export default defineComponent({
       default: 'question-mark' // Default to a Tabler icon
     },
     size: {
-      type: String, // Tabler icons accept size as number or string
-      default: '24'
+      type: [String, Number], // Allow string or number for size
+      default: 24 // Default to numeric 24 for pixels
     },
     color: {
       type: String,
@@ -120,7 +118,7 @@ export default defineComponent({
     },
     strokeWidth: { // Tabler specific prop
       type: [String, Number],
-      default: '2'
+      default: 2 // Default to numeric 2
     }
   },
 
@@ -163,193 +161,123 @@ export default defineComponent({
       if (ResolvedIcon && (typeof ResolvedIcon === 'function' || typeof ResolvedIcon === 'object')) {
         IconToRender.value = ResolvedIcon as Component;
       } else {
-        // console.warn(`Tabler Icon not found for type: ${props.type} (mapped to ${iconName}, resolved to ${pascalCaseName}). Falling back to IconQuestionMark.`);
         IconToRender.value = TablerIcons.IconQuestionMark as Component;
       }
     });
 
     return () =>
-      h(IconToRender.value, {
-        // The class `aw-icon--${props.type}` is crucial for existing scoped CSS color overrides.
-        // We use the original props.type here to ensure CSS matching.
-        class: [`aw-icon--${props.type}`],
-        size: props.size, // Pass size to Tabler icon
-        color: props.color || 'currentColor', // Pass color, Tabler uses currentColor if empty
-        strokeWidth: props.strokeWidth // Pass strokeWidth
-      })
+      h('div', { // Wrapper div
+        class: ['aw-icon', `aw-icon--${props.type}`],
+        style: {
+          width: `${props.size}px`,
+          height: `${props.size}px`,
+          display: 'inline-flex', // Ensure proper inline behavior and centering
+          alignItems: 'center',
+          justifyContent: 'center'
+        }
+      }, [
+        h(IconToRender.value, { // Tabler icon as a child
+          size: props.size, // Pass size for Tabler's internal SVG attributes
+          color: props.color || 'currentColor',
+          strokeWidth: props.strokeWidth
+        })
+      ]);
   }
-})
+});
 </script>
 
-<template>
-  <div class="aw-icon" :class="`aw-icon--${type}`"></div>
-</template>
-
 <style scoped>
-/* Base styles for .aw-icon container - can remain as is if they don't conflict */
+/* Base styles for .aw-icon container */
+/* The sizing and flex properties are now primarily handled by inline styles in the render function */
+/* This class is kept for potential generic .aw-icon styling and for the type-specific color overrides below */
 .aw-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* The width/height here might be overridden by Tabler's default or the size prop.
-     If direct control over the container is needed, adjust.
-     Tabler icons usually manage their own size via SVG attributes. */
-  width: var(--aw-icon-size, 24px);
-  height: var(--aw-icon-size, 24px);
+  /* display: inline-flex; align-items: center; justify-content: center; */
+  /* width: var(--aw-icon-size, 24px); height: var(--aw-icon-size, 24px); */
+  /* These can be uncommented if a CSS-driven default is preferred over inline styles, */
+  /* but inline styles from props provide more direct control. */
 }
-
-/*
-  The specific color overrides below using .aw-icon--[type] should still work
-  as long as the Tabler SVG components use `stroke="currentColor"` or `fill="currentColor"`,
-  which is typical for icon libraries designed for CSS customization.
-  The `color` prop passed to the Tabler component will be `currentColor` by default if not set,
-  or the specific color from these CSS rules if they apply due to the parent .aw-icon class.
-*/
 
 /* Device-related icons */
-.aw-icon--camera { /* Mapped to IconCamera */
+.aw-icon--camera {
   color: var(--aw-device-camera-color, var(--aw-color-success-500));
 }
-
-.aw-icon--dome, /* Mapped to IconBuildingObservatory */
+.aw-icon--dome,
 .aw-icon--building-observatory {
   color: var(--aw-device-dome-color, var(--aw-color-primary-500));
 }
-
-.aw-icon--telescope { /* Mapped to IconTelescope */
+.aw-icon--telescope {
   color: var(--aw-device-telescope-color, var(--aw-color-primary-700));
 }
-
-.aw-icon--filter { /* Mapped to IconFilter */
+.aw-icon--filter {
   color: var(--aw-device-filter-color, var(--aw-color-warning-700));
 }
-
-.aw-icon--focus, /* Mapped to IconFocus2 */
+.aw-icon--focus,
 .aw-icon--focus-2 {
   color: var(--aw-device-focus-color, var(--aw-color-primary-300));
 }
-
-.aw-icon--device-unknown, /* Mapped to IconQuestionMark */
+.aw-icon--device-unknown,
 .aw-icon--question-mark {
   color: var(--aw-device-unknown-color, var(--aw-color-neutral-500));
 }
 
 /* Celestial icons */
-.aw-icon--sun { /* Mapped to IconSun */
+.aw-icon--sun {
   color: var(--aw-celestial-sun-color, var(--aw-color-warning-500));
 }
-
-.aw-icon--moon { /* Mapped to IconMoon */
+.aw-icon--moon {
   color: var(--aw-celestial-moon-color, var(--aw-color-neutral-400));
 }
-
-.aw-icon--cloud { /* Mapped to IconCloud */
+.aw-icon--cloud {
   color: var(--aw-celestial-cloud-color, var(--aw-color-primary-300));
 }
 
-/* Navigation icons */
-.aw-icon--chevron-left, /* Mapped to IconChevronLeft */
-.aw-icon--chevron-right, /* Mapped to IconChevronRight */
-.aw-icon--arrow-up, /* Mapped to IconArrowUp */
-.aw-icon--arrow-down, /* Mapped to IconArrowDown */
-.aw-icon--arrow-left, /* Mapped to IconArrowLeft */
-.aw-icon--arrow-right { /* Mapped to IconArrowRight */
+/* Navigation icons (Example - more might be needed) */
+.aw-icon--chevron-left,
+.aw-icon--chevron-right,
+.aw-icon--arrow-up,
+.aw-icon--arrow-down,
+.aw-icon--arrow-left,
+.aw-icon--arrow-right {
   color: var(--aw-navigation-icon-color, var(--aw-color-neutral-600));
 }
-
-.aw-icon--home { /* Mapped to IconHome */
+.aw-icon--home {
   color: var(--aw-navigation-home-color, var(--aw-color-primary-500));
 }
 
-.aw-icon--search { /* Mapped to IconSearch */
-  color: var(--aw-navigation-search-color, var(--aw-color-neutral-600));
-}
-
-.aw-icon--files { /* Mapped to IconFiles */
-  color: var(--aw-navigation-files-color, var(--aw-color-warning-500));
-}
-
-.aw-icon--history { /* Mapped to IconHistory */
-  color: var(--aw-navigation-history-color, var(--aw-color-neutral-500));
-}
-
-/* Control icons */
-.aw-icon--gear, /* Mapped to IconSettings */
+/* Control icons (Example - more might be needed) */
+.aw-icon--gear,
 .aw-icon--settings {
   color: var(--aw-control-gear-color, var(--aw-color-neutral-600));
 }
-
-.aw-icon--exposure { /* Mapped to IconExposure */
+.aw-icon--exposure {
   color: var(--aw-control-exposure-color, var(--aw-color-error-500));
 }
-
-.aw-icon--close, /* Mapped to IconX */
-.aw-icon--x,
-.aw-icon--expand, /* Mapped to IconArrowsMaximize */
-.aw-icon--arrows-maximize,
-.aw-icon--collapse, /* Mapped to IconArrowsMinimize */
-.aw-icon--arrows-minimize {
+.aw-icon--close,
+.aw-icon--x {
   color: var(--aw-control-ui-color, var(--aw-color-neutral-600));
 }
 
-.aw-icon--compact, /* Mapped to IconLayoutSidebarLeftCollapse */
-.aw-icon--layout-sidebar-left-collapse,
-.aw-icon--detailed, /* Mapped to IconLayoutSidebarLeftExpand */
-.aw-icon--layout-sidebar-left-expand,
-.aw-icon--fullscreen, /* Mapped to IconMaximize */
-.aw-icon--maximize {
-  color: var(--aw-control-view-color, var(--aw-color-neutral-600));
-}
-
-.aw-icon--stop, /* Mapped to IconPlayerStop */
-.aw-icon--player-stop {
-  color: var(--aw-control-stop-color, var(--aw-color-error-500));
-}
-
-/* Status icons */
-.aw-icon--connected, /* Mapped to IconPlugConnected */
+/* Status icons (Example - more might be needed) */
+.aw-icon--connected,
 .aw-icon--plug-connected {
   color: var(--aw-status-connected-color, var(--aw-color-success-500));
 }
-
-.aw-icon--disconnected, /* Mapped to IconPlugX */
+.aw-icon--disconnected,
 .aw-icon--plug-x {
   color: var(--aw-status-disconnected-color, var(--aw-color-error-500));
 }
-
-.aw-icon--tracking-on, /* Mapped to IconTargetArrow */
-.aw-icon--target-arrow {
-  color: var(--aw-status-tracking-on-color, var(--aw-color-success-500));
+.aw-icon--alert-triangle {
+    color: var(--aw-status-warning-color, var(--aw-color-warning-500));
+}
+.aw-icon--info-circle {
+    color: var(--aw-status-info-color, var(--aw-color-info-500));
+}
+.aw-icon--check {
+    color: var(--aw-status-success-color, var(--aw-color-success-500));
 }
 
-.aw-icon--tracking-off, /* Mapped to IconTargetOff */
-.aw-icon--target-off {
-  color: var(--aw-status-tracking-off-color, var(--aw-color-error-500));
-}
 
-/* Added notification icons and other controls */
-.aw-icon--bell { /* Mapped to IconBell */
-  color: var(--aw-notification-bell-color, var(--aw-color-warning-500));
-}
+/* Add more type-specific color rules here as needed, matching your IconType definitions */
+/* and the --aw-color-* design tokens. */
 
-.aw-icon--reset, /* Mapped to IconRefresh */
-.aw-icon--refresh, /* Also for sync */
-.aw-icon--sync {
-  color: var(--aw-control-reset-color, var(--aw-color-error-500));
-}
-
-.aw-icon--sliders, /* Mapped to IconSlidersHorizontal */
-.aw-icon--sliders-horizontal {
-  color: var(--aw-control-sliders-color, var(--aw-color-neutral-600)); /* Added a new var here, can be same as gear or different */
-}
-
-.aw-icon--park, /* Mapped to IconParkingCircle */
-.aw-icon--parking-circle {
-  color: var(--aw-control-park-color, var(--aw-color-neutral-700)); /* Added new var */
-}
-
-.aw-icon--unpark, /* Mapped to IconPlayerPlay */
-.aw-icon--player-play {
-  color: var(--aw-control-unpark-color, var(--aw-color-success-600)); /* Added new var */
-}
 </style>

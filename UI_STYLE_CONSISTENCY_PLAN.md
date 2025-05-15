@@ -72,9 +72,9 @@
 
 1. Update existing UI components to use the new design token system:
 
-   - ✅ Button.vue
-   - ✅ Icon.vue
-   - ✅ EnhancedPanelComponent.vue
+   - □ Button.vue (Marked as previously complete, but found to be removed from the project. Unchecked.)
+   - ✅ Icon.vue (Added to Style Guide, sizing/styling reviewed and updated)
+   - □ EnhancedPanelComponent.vue (Marked as previously complete, but found to be removed from the project. Unchecked.)
    - ✅ ToastNotification.vue
    - ✅ ButtonGroup.vue
    - ✅ NotificationCenter.vue
@@ -102,6 +102,9 @@
    - ✅ SimplifiedCameraPanel.vue
    - ✅ GridLayoutDemo.vue
    - ✅ **Phase 5: Navigation and Routing Cleanup** (Home link, router paths, removal of /panel-layout direct use)
+     - Initial components for style guide: `Icon.vue`. (`Button.vue`, `EnhancedPanelComponent.vue` were initially planned but found to be removed.)
+     - `StyleGuideView.vue` created at `src/views/StyleGuideView.vue`.
+     - Route `/style-guide` added to `src/router/index.ts`.
 
 2. For each component:
 
@@ -112,7 +115,7 @@
 
 3. Document the updated components with usage examples ◻️ (Pending completion of all migrations)
 
-4. Create a simple style guide page within the app that showcases all components with their variants ◻️ (Pending completion of all migrations)
+4. Create a simple style guide page within the app that showcases all components with their variants ☑️ (Initiated with `Icon.vue`. Further components like `ToastNotification.vue`, `SettingsPanel.vue`, `DiscoveryIndicator.vue` identified as candidates for subsequent addition. Current view: `src/views/StyleGuideView.vue`)
 
 ### Phase 4: Migration Strategy
 
