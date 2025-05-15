@@ -146,7 +146,7 @@ const currentPositions = computed(() => {
 .aw-layout-container__grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  grid-auto-rows: minmax(100px, auto);
+  grid-auto-rows: minmax(var(--aw-layout-grid-min-row-height, 100px), auto);
   grid-auto-flow: dense; /* Help the grid fill in any gaps */
   gap: var(--aw-spacing-sm);
   padding: var(--aw-spacing-sm);
@@ -162,7 +162,7 @@ const currentPositions = computed(() => {
   min-height: 0;
   min-width: 0;
   /* Show border for debugging */
-  outline: 1px dashed rgba(255, 255, 255, 0.05);
+  outline: 1px dashed var(--aw-color-debug-border, rgba(255, 255, 255, 0.05));
   
   /* Firefox scrollbar styling */
   scrollbar-width: thin;
@@ -170,7 +170,7 @@ const currentPositions = computed(() => {
   
   /* WebKit scrollbar styling */
   &::-webkit-scrollbar {
-    width: 8px;
+    width: var(--aw-spacing-sm);
   }
   
   &::-webkit-scrollbar-track {
@@ -179,7 +179,7 @@ const currentPositions = computed(() => {
   
   &::-webkit-scrollbar-thumb {
     background-color: var(--aw-scrollbar-thumb, #666);
-    border-radius: 4px;
+    border-radius: var(--aw-spacing-xs);
   }
 }
 
@@ -202,6 +202,6 @@ const currentPositions = computed(() => {
   height: 100%;
   color: var(--aw-panel-content-color);
   font-size: var(--aw-font-size-lg, 1.125rem);
-  opacity: 0.7;
+  opacity: var(--aw-opacity-description, 0.7);
 }
 </style>

@@ -88,12 +88,14 @@
   /* Text colors */
   --aw-text-color: var(--aw-color-neutral-800);
   --aw-text-secondary-color: var(--aw-color-neutral-600);
-  --aw-link-color: var(--aw-color-primary-600);
+  --aw-link-color: var(--aw-color-primary-500);
 
   /* Panel colors */
   --aw-panel-bg-color: #ffffff;
   --aw-panels-bg-color: var(--aw-color-neutral-200);
   --aw-panel-border-color: var(--aw-color-neutral-300);
+  --aw-panel-header-bg-color: var(--aw-color-primary-500);
+  --aw-panel-header-text-color: #ffffff;
   --aw-panel-hover-bg-color: var(--aw-color-neutral-50);
   --aw-panel-content-bg-color: var(--aw-color-neutral-50);
   --aw-panel-content-color: var(--aw-text-color);
@@ -178,6 +180,10 @@
 
   --aw-notification-bell-color: var(--aw-color-warning-500);
 
+  /* Scrollbar colors */
+  --aw-scrollbar-thumb: var(--aw-color-neutral-600);
+  --aw-scrollbar-track: var(--aw-color-neutral-300);
+
   /* ============================================================
      SPACING TOKENS
      ============================================================ */
@@ -257,11 +263,13 @@
   --aw-text-color: var(--aw-color-neutral-800);
   --aw-text-secondary-color: var(--aw-color-neutral-600);
 
-  --aw-panel-bg-color: var(--aw-color-neutral-50);
+  --aw-panel-bg-color: var(--aw-color-neutral-200);
   --aw-panels-bg-color: var(--aw-color-neutral-200);
   --aw-panel-border-color: var(--aw-color-neutral-300);
   --aw-panel-hover-bg-color: var(--aw-color-neutral-300);
   --aw-panel-content-bg-color: var(--aw-color-neutral-50);
+  --aw-panel-header-bg-color: #4d1818;
+  --aw-panel-header-text-color: var(--aw-color-neutral-900);
   --aw-panel-menu-bar-bg-color: #4d1818;
   --aw-panel-menu-bar-color: var(--aw-color-neutral-900);
 
@@ -337,4 +345,8 @@
   --aw-status-tracking-off-color: var(--aw-color-error-500);
 
   --aw-notification-bell-color: var(--aw-color-warning-500);
+
+  /* Scrollbar colors */
+  --aw-scrollbar-thumb: var(--aw-color-neutral-500);
+  --aw-scrollbar-track: var(--aw-color-neutral-200);
 }

@@ -364,14 +364,16 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* padding: 0 var(--aw-spacing-sm); */
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   border-bottom: 1px solid var(--aw-panel-border-color);
   background-color: var(--aw-panel-header-bg-color);
+  color: var(--aw-panel-header-text-color);
 }
 
 .panel-header h2 {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 1rem;
+  font-weight: var(--aw-font-weight-bold, 600);
 }
 
 /* Device selector styles */
@@ -533,7 +535,7 @@ onUnmounted(() => {
 }
 
 .setting-row input {
-  padding: calc(var(--aw-spacing-xs) * 1.5);
+  padding: var(--aw-spacing-sm);
   background-color: var(--aw-input-bg-color);
   color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color);
@@ -625,7 +627,7 @@ input:checked + .slider:before {
 
 .temperature-target input {
   width: 80px;
-  padding: calc(var(--aw-spacing-xs) * 1.5);
+  padding: var(--aw-spacing-sm);
   background-color: var(--aw-input-bg-color);
   color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color);
@@ -637,7 +639,6 @@ input:checked + .slider:before {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 100px;
   background-color: var(--aw-panel-content-bg-color);
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));

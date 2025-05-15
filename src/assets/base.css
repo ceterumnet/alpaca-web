@@ -101,3 +101,58 @@ a:hover {
   outline: 2px solid var(--aw-color-primary-500);
   outline-offset: 2px;
 }
+
+/* Custom Scrollbar Styles */
+/* Define width once */
+:root {
+  --aw-scrollbar-width: 8px;
+}
+
+/* Universal WebKit Scrollbar Styles for width/height */
+*::-webkit-scrollbar {
+  width: var(--aw-scrollbar-width);
+  height: var(--aw-scrollbar-width);
+}
+
+/* Light Theme Scrollbar Styles (Default for any element) */
+*::-webkit-scrollbar-track {
+  background: var(--aw-color-neutral-200, #edf0f5); /* Light track */
+  border-radius: var(--aw-border-radius-sm);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--aw-color-neutral-400, #c0c8d0); /* Light thumb */
+  border-radius: var(--aw-border-radius-sm);
+  border: 2px solid var(--aw-color-neutral-200, #edf0f5); /* Border using light track color */
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--aw-color-neutral-500, #a0a8b0); /* Light thumb hover */
+}
+
+/* Dark Theme Scrollbar Styles (for any element within dark theme) */
+.dark-theme *::-webkit-scrollbar-track,
+:root.dark-theme *::-webkit-scrollbar-track {
+  background: var(--aw-color-neutral-200); /* Dark track: resolves to dark #220808 */
+  border-radius: var(--aw-border-radius-sm); /* Ensure radius is also applied here */
+}
+.dark-theme *::-webkit-scrollbar-thumb,
+:root.dark-theme *::-webkit-scrollbar-thumb {
+  background: var(--aw-color-neutral-500); /* Dark thumb: resolves to dark #902828 */
+  border-radius: var(--aw-border-radius-sm); /* Ensure radius is also applied here */
+  border: 2px solid var(--aw-color-neutral-200); /* Border using dark track color */
+}
+.dark-theme *::-webkit-scrollbar-thumb:hover,
+:root.dark-theme *::-webkit-scrollbar-thumb:hover {
+  background: var(--aw-color-primary-500); /* Dark thumb hover: resolves to dark #b53f3f */
+}
+
+/* Firefox scrollbar styling */
+html {
+  scrollbar-width: thin;
+  /* Light theme: thumb color, track color */
+  scrollbar-color: var(--aw-color-neutral-400, #c0c8d0) var(--aw-color-neutral-200, #edf0f5);
+}
+
+html.dark-theme, :root.dark-theme > html /* Support .dark-theme on html tag */ {
+  /* Dark theme: thumb color, track color - variables will resolve to dark versions */
+  scrollbar-color: var(--aw-color-neutral-500) var(--aw-color-neutral-200);
+}
