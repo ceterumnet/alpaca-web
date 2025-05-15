@@ -207,6 +207,9 @@
   --aw-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
   --aw-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
   --aw-shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15), 0 3px 6px rgba(0, 0, 0, 0.1);
+
+  /* THEME PRIMARY COLOR - Used for general purpose primary elements like histogram bars */
+  --aw-primary-color: var(--aw-color-primary-500);
 }
 
 /* ============================================================
@@ -226,6 +229,7 @@
   --aw-color-neutral-700: #e0b0b0; /* Primary text for dark elements */
   --aw-color-neutral-800: #f0d0d0; /* Primary text */
   --aw-color-neutral-900: #f8e0e0; /* High contrast text */
+  --aw-primary-color: var(--aw-color-neutral-800); /* Light reddish-grey for good contrast on dark red theme */
 
   /* RGB variants for alpha operations (box-shadows, etc) */
   --aw-color-neutral-rgb: 208, 160, 160; /* --aw-color-neutral-600 */
@@ -359,4 +363,6 @@
   /* Scrollbar colors */
   --aw-scrollbar-thumb: var(--aw-color-neutral-500);
   --aw-scrollbar-track: var(--aw-color-neutral-200);
+
+  /* THEME PRIMARY COLOR - Used for general purpose primary elements like histogram bars */
 }

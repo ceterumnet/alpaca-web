@@ -605,7 +605,7 @@ onMounted(() => {
 
 .aw-image-analysis__histogram-bar {
   flex: 1;
-  background-color: var(--aw-primary-color); 
+  background-color: red;
   margin: 0 1px;
   min-height: 1px;
 }

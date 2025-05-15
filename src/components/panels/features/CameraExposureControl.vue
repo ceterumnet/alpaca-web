@@ -75,7 +75,7 @@ const imageReady = ref(false)
 const error = ref('')
 const pollingIntervals = ref<number[]>([])
 
-const durationPresets = ref([0.1, 1, 5, 10, 30, 60, 120, 300]);
+const durationPresets = ref([0.01, 0.1, 1, 5, 10, 30, 60, 120, 300]);
 
 // Method to clear the error message
 const clearError = () => {

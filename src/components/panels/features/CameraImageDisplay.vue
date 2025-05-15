@@ -4,7 +4,7 @@ with advanced features: // - ASCOM Alpaca image format support // - Image stretc
 Real-time image updates
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue'
 import {
   processImageBytes,
   createStretchLUT,
@@ -49,6 +49,18 @@ const fullScreenImageSrc = ref('')
 
 // Store processed image data
 const processedImage = ref<ProcessedImageData | null>(null)
+
+// 1. Create a reactive ref for the current theme
+const currentThemeRef = ref<'light' | 'dark'>('light')
+
+// Function to update the current theme based on document.documentElement class
+const updateThemeRef = () => {
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  currentThemeRef.value = isDark ? 'dark' : 'light';
+  console.log(`[THEME] updateThemeRef: documentElement.classList has 'dark-theme'=${isDark}. currentThemeRef set to: ${currentThemeRef.value}`);
+}
+
+let themeObserver: MutationObserver | null = null
 
 // Draw the image on canvas
 const drawImage = async () => {
@@ -177,25 +189,44 @@ const calculateRobustPercentiles = (
 
 // Calculate histogram from the image data
 const calculateHistogram = () => {
-  if (props.imageData.byteLength === 0) return []
+  if (props.imageData.byteLength === 0) {
+    histogram.value = []; // Clear histogram data
+    // If canvas exists, clear it
+    if (histogramCanvas.value) {
+      const canvas = histogramCanvas.value;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    return [];
+  }
 
   // Process the image if not already done
   if (!processedImage.value) {
-    processedImage.value = processImageBytes(props.imageData, props.width, props.height)
+    processedImage.value = processImageBytes(props.imageData, props.width, props.height);
   }
 
   // Verify we have valid data
   if (!processedImage.value || processedImage.value.pixelData.length === 0) {
-    console.error('No valid image data for histogram calculation')
-    return []
+    console.error('No valid image data for histogram calculation');
+    histogram.value = []; // Clear histogram data
+    if (histogramCanvas.value) {
+      const canvas = histogramCanvas.value;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    return [];
   }
 
-  const imageWidth = processedImage.value.width
-  const imageHeight = processedImage.value.height
+  const imageWidth = processedImage.value.width;
+  const imageHeight = processedImage.value.height;
 
   // Calculate range for histogram
-  let min = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value
-  let max = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value
+  let min = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value;
+  let max = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value;
 
   // Apply robust stretch if enabled
   if (autoStretch.value && useRobustStretch.value) {
@@ -204,18 +235,18 @@ const calculateHistogram = () => {
       imageWidth,
       imageHeight,
       robustPercentile.value
-    )
+    );
 
     if (robustValues.max > robustValues.min) {
-      min = robustValues.min
-      max = robustValues.max
+      min = robustValues.min;
+      max = robustValues.max;
     }
   }
 
   // Store min/max for stretching and UI
   if (autoStretch.value) {
-    minPixelValue.value = min
-    maxPixelValue.value = max
+    minPixelValue.value = min;
+    maxPixelValue.value = max;
   }
 
   // Use library function to calculate histogram efficiently
@@ -226,43 +257,84 @@ const calculateHistogram = () => {
     min,
     max,
     256
-  )
+  );
 
-  // Draw the histogram
-  drawHistogram(hist)
+  histogram.value = hist; 
+  emit('histogram-generated', hist);
 
-  histogram.value = hist
-  emit('histogram-generated', hist)
-  return hist
-}
+  if (hist.length > 0) {
+    nextTick(() => {
+      if (histogramCanvas.value) { 
+        drawHistogram(hist);
+      } else {
+        console.warn('[Histogram] drawHistogram skipped: histogramCanvas ref not available even after nextTick.');
+      }
+    });
+  }
+  
+  return hist;
+};
 
 // Draw the histogram on canvas
 const drawHistogram = (histData: number[]) => {
-  if (!histogramCanvas.value || histData.length === 0) return
-
-  const canvas = histogramCanvas.value
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  // Clear the canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-  // Find the maximum value for scaling
-  const maxCount = Math.max(...histData)
-  if (maxCount === 0) return
-
-  // Set drawing style
-  ctx.fillStyle = 'rgba(0, 120, 212, 0.8)'
-
-  // Calculate bar width
-  const barWidth = canvas.width / histData.length
-
-  // Draw histogram bars
-  for (let i = 0; i < histData.length; i++) {
-    const barHeight = (histData[i] / maxCount) * canvas.height
-    ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight)
+  if (!histogramCanvas.value || histData.length === 0) { 
+    return;
   }
-}
+
+  const canvas = histogramCanvas.value;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    console.warn('[Histogram] No canvas context.');
+    return;
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  const maxCount = Math.max(...histData);
+  if (maxCount === 0) {
+    return;
+  }
+
+  let barColor = '#CCCCCC'; // Fallback if theme variable fails
+
+  if (canvas && typeof getComputedStyle === 'function') {
+    try {
+      const computedThemeColor = getComputedStyle(canvas).getPropertyValue('--aw-primary-color').trim();
+      if (computedThemeColor) {
+        barColor = computedThemeColor;
+      } else {
+        console.warn('[Histogram] CSS variable --aw-primary-color is empty or not found. Using #CCCCCC fallback.');
+      }
+    } catch (e) {
+      console.warn('[Histogram] Error accessing CSS variable --aw-primary-color. Using #CCCCCC fallback.', e);
+    }
+  } else {
+    // This case is highly unlikely in modern browsers
+    console.warn('[Histogram] getComputedStyle not available. Using #CCCCCC fallback.');
+  }
+  
+  ctx.fillStyle = barColor;
+  ctx.globalAlpha = 1.0; 
+
+  const barWidth = canvas.width / histData.length; // This is the total space per bar (bar + potential gap)
+
+  for (let i = 0; i < histData.length; i++) {
+    const barHeight = (histData[i] / maxCount) * canvas.height;
+    
+    let drawnBarActualWidth;
+    if (barWidth >= 2.0) { // If total space is 2px or more, make a 1px gap
+        drawnBarActualWidth = Math.floor(barWidth) - 1;
+    } else if (barWidth >= 1.0) { // If total space is between 1px and 2px (exclusive of 2px), draw a 1px bar
+        drawnBarActualWidth = 1.0;
+    } else { // If total space is less than 1px, draw the fractional width (browser will anti-alias)
+        drawnBarActualWidth = barWidth;
+    }
+    // Ensure we draw at least something visible if calculations result in very small/zero width
+    const finalDrawWidth = Math.max(0.5, drawnBarActualWidth); 
+
+    ctx.fillRect(i * barWidth, canvas.height - barHeight, finalDrawWidth, barHeight); 
+  }
+};
 
 // Apply stretch settings and redraw
 const applyStretch = () => {
@@ -296,6 +368,7 @@ watch(
   }
 )
 
+// 4. Add currentThemeRef to the watch dependencies for applyStretch
 watch(
   () => [
     stretchMethod.value,
@@ -303,18 +376,54 @@ watch(
     maxPixelValue.value,
     autoStretch.value,
     useRobustStretch.value,
-    robustPercentile.value
+    robustPercentile.value,
+    currentThemeRef.value // Dependency at index 6
   ],
-  () => {
-    applyStretch() // This will call drawImage, which updates fullScreenImageSrc if needed
-  }
+  (newValues, oldValues) => {
+    const newTheme = newValues[6];
+    const oldTheme = oldValues ? oldValues[6] : undefined; // oldValues might be undefined on first run after mount
+
+    console.log(`[THEME] Watcher for applyStretch triggered. Current theme value from watch: ${newTheme}`);
+
+    if (oldValues === undefined) { // This means it's the first run after component mount (if immediate: true) or first change
+      console.log('[THEME] Watcher: initial trigger or first change after mount.');
+      // applyStretch() will run anyway
+    } else if (newTheme !== oldTheme) {
+      console.log(`[THEME] Watcher: theme changed from "${oldTheme}" to "${newTheme}". Calling applyStretch().`);
+      // applyStretch() will run anyway
+    } else {
+      // console.log('[THEME] Watcher: triggered by another dependency, not theme.');
+    }
+    applyStretch();
+  },
+  { immediate: false } // Set to true if you want it to run once on mount using initial values
 )
 
 // Initialize on mount
 onMounted(() => {
+  // 2. Set initial theme and observe document.documentElement for class changes
+  updateThemeRef() // Set initial theme
+
+  themeObserver = new MutationObserver((mutationsList) => {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+        console.log('[THEME] MutationObserver detected class attribute change on document.documentElement.');
+        updateThemeRef()
+      }
+    }
+  })
+  themeObserver.observe(document.documentElement, { attributes: true })
+
   if (props.imageData.byteLength > 0) {
     calculateHistogram()
     drawImage()
+  }
+})
+
+// 3. Clean up observer
+onBeforeUnmount(() => {
+  if (themeObserver) {
+    themeObserver.disconnect()
   }
 })
 </script>
