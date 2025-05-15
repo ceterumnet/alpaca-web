@@ -314,8 +314,8 @@ onUnmounted(() => {
 
 <style scoped>
 .simplified-panel {
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
   border-radius: var(--aw-border-radius, 8px);
   border: 1px solid var(--aw-panel-border-color, #444);
   overflow: hidden;
@@ -328,9 +328,9 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0px 8px;
+  padding: 0 var(--aw-spacing-sm);
   border-bottom: 1px solid var(--aw-panel-border-color, #444);
-  background-color: var(--aw-panel-header-bg-color, #333);
+  background-color: var(--aw-panel-header-bg-color);
 }
 
 .panel-header h2 {
@@ -343,11 +343,11 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: calc(var(--aw-spacing-xs) / 2) var(--aw-spacing-sm);
   border: 1px solid var(--aw-panel-border-color, #444);
   border-radius: 4px;
   cursor: pointer;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  background-color: var(--aw-panel-content-bg-color);
   margin: 4px 0;
   min-width: 120px;
 }
@@ -371,7 +371,7 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   width: 200px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
+  background-color: var(--aw-panel-bg-color);
   border: 1px solid var(--aw-panel-border-color, #444);
   border-radius: 4px;
   z-index: 100;
@@ -391,11 +391,11 @@ onUnmounted(() => {
 }
 
 .device-item:hover {
-  background-color: var(--aw-panel-hover-bg-color, #444);
+  background-color: var(--aw-panel-hover-bg-color);
 }
 
 .device-selected {
-  background-color: var(--aw-primary-color-transparent, rgba(0, 119, 204, 0.2));
+  background-color: var(--aw-primary-color-transparent);
 }
 
 .device-info {
@@ -414,17 +414,17 @@ onUnmounted(() => {
 }
 
 .device-item-status.connected {
-  color: var(--aw-success-color, #66bb6a);
+  color: var(--aw-success-color);
 }
 
 .device-item-status.disconnected {
-  color: var(--aw-error-color, #ef5350);
+  color: var(--aw-error-color);
 }
 
 .device-empty {
-  padding: 12px 8px;
+  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)) var(--aw-spacing-sm);
   text-align: center;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
 }
 
@@ -441,7 +441,7 @@ onUnmounted(() => {
   width: 100%;
   padding: 6px 0;
   background-color: var(--aw-primary-color, #0077cc);
-  color: white;
+  color: var(--aw-button-primary-text);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -449,7 +449,7 @@ onUnmounted(() => {
 }
 
 .discover-button:hover {
-  background-color: var(--aw-primary-hover-color, #0066b3);
+  background-color: var(--aw-primary-hover-color);
 }
 
 .panel-content {
@@ -459,7 +459,7 @@ onUnmounted(() => {
 
 .panel-section {
   margin-bottom: 20px;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  background-color: var(--aw-panel-content-bg-color);
   border-radius: 6px;
   padding: 12px;
 }
@@ -474,34 +474,34 @@ onUnmounted(() => {
 
 .action-button {
   background-color: var(--aw-primary-color, #0077cc);
-  color: white;
+  color: var(--aw-button-primary-text);
   border: none;
   border-radius: 4px;
-  padding: 6px 12px;
+  padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
   font-weight: 500;
 }
 
 .action-button:hover {
-  background-color: var(--aw-primary-hover-color, #0066b3);
+  background-color: var(--aw-primary-hover-color);
 }
 
 .stop-button {
   background-color: var(--aw-error-color, #ef5350);
-  color: white;
+  color: var(--aw-button-danger-text);
   border: none;
   border-radius: 4px;
-  padding: 6px 12px;
+  padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
   font-weight: 500;
 }
 
 .stop-button:hover {
-  background-color: #d32f2f;
+  background-color: var(--aw-button-danger-hover-bg);
 }
 
 .stop-button:disabled {
-  background-color: #757575;
+  background-color: var(--aw-color-neutral-300);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -512,7 +512,7 @@ onUnmounted(() => {
   justify-content: center;
   align-items: center;
   height: 100px;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  background-color: var(--aw-panel-content-bg-color);
   border-radius: 6px;
   margin-bottom: 20px;
   gap: 12px;
@@ -520,7 +520,7 @@ onUnmounted(() => {
 }
 
 .connection-message {
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   font-size: 1.1rem;
 }
 
@@ -542,7 +542,7 @@ onUnmounted(() => {
 }
 
 .position-label {
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
 }
 
 .value {
@@ -553,11 +553,11 @@ onUnmounted(() => {
 .status-indicator {
   text-align: right;
   font-size: 0.9rem;
-  color: var(--aw-success-color, #66bb6a);
+  color: var(--aw-success-color);
 }
 
 .status-indicator.moving {
-  color: var(--aw-warning-color, #ffa726);
+  color: var(--aw-warning-color);
 }
 
 .position-controls {
@@ -575,14 +575,14 @@ onUnmounted(() => {
 }
 
 .position-input label {
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
 }
 
 .position-input input {
   flex: 1;
   padding: 6px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color, #444);
   border-radius: 4px;
 }
@@ -625,7 +625,7 @@ onUnmounted(() => {
   color: var(--aw-text-color, #f0f0f0);
   border: 1px solid var(--aw-panel-border-color, #444);
   border-radius: 4px;
-  padding: 8px 12px;
+  padding: var(--aw-spacing-sm) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
   font-weight: 500;
   display: flex;
@@ -704,6 +704,6 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(20px);
-  background-color: white;
+  background-color: var(--aw-button-primary-text);
 }
 </style> 

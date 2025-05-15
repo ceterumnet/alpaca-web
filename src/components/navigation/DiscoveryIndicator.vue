@@ -166,7 +166,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-sm);
-  padding: 6px 10px;
+  padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs) / 2);
   border: none;
   border-radius: var(--aw-border-radius-md);
   background-color: var(--aw-panel-hover-bg-color);
@@ -219,7 +219,7 @@ onUnmounted(() => {
   height: 16px;
   border-radius: 50%;
   background-color: var(--aw-color-success-500);
-  color: #ffffff;
+  color: var(--aw-button-success-text);
   font-size: 10px;
   font-weight: 700;
 }

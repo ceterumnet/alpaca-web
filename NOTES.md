@@ -6,6 +6,9 @@
 
 TODO:
 
+- [ ] Add all alpaca device types
+- [ ] Test standalone operation without a node server running
+  - [ ] Need to verify logic around proxy vs direct call
 - [ ] Revise device management system to:
   - [x] Automatically add all of the devices discovered to the device store
   - [x] Have better names for the devices, for example Camera 0 is ambiguous
@@ -34,15 +37,3 @@ TODO:
 
   - [x] Limited controls for device-specific panel configuration
   - [x] No drag-and-drop reordering of panels (only manual position editing)
-
-  User Experience Issues:
-
-  - Layout selector could benefit from thumbnails/previews
-  - No confirmation when overwriting existing layouts
-  - No visual feedback when making changes
-
-  Advanced Features:
-
-  - No export/import functionality for sharing layouts
-  - No layout versioning or history
-  - No layout templates or presets for common configurations

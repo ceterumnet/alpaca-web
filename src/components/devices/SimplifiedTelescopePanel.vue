@@ -339,10 +339,10 @@ const trackingRates = [
 
 <style scoped>
 .simplified-panel {
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border-radius: var(--aw-border-radius, 8px);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  border-radius: var(--aw-border-radius);
+  border: 1px solid var(--aw-panel-border-color);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -353,9 +353,9 @@ const trackingRates = [
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0px 8px;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
-  background-color: var(--aw-panel-header-bg-color, #333);
+  padding: 0 var(--aw-spacing-sm);
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  background-color: var(--aw-panel-header-bg-color);
 }
 
 .panel-header h2 {
@@ -368,11 +368,11 @@ const trackingRates = [
   position: relative;
   display: flex;
   align-items: center;
-  padding: 2px 8px;
-  border: 1px solid var(--aw-panel-border-color, #444);
+  padding: calc(var(--aw-spacing-xs) / 2) var(--aw-spacing-sm);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: 4px;
   cursor: pointer;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  background-color: var(--aw-panel-content-bg-color);
   margin: 4px 0;
   min-width: 120px;
 }
@@ -396,8 +396,8 @@ const trackingRates = [
   top: 100%;
   left: 0;
   width: 200px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  background-color: var(--aw-panel-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: 4px;
   z-index: 100;
   margin-top: 4px;
@@ -412,15 +412,15 @@ const trackingRates = [
 .device-item {
   padding: 8px;
   cursor: pointer;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+  border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
 .device-item:hover {
-  background-color: var(--aw-panel-hover-bg-color, #444);
+  background-color: var(--aw-panel-hover-bg-color);
 }
 
 .device-selected {
-  background-color: var(--aw-primary-color-transparent, rgba(0, 119, 204, 0.2));
+  background-color: var(--aw-primary-color-transparent);
 }
 
 .device-info {
@@ -439,23 +439,23 @@ const trackingRates = [
 }
 
 .device-item-status.connected {
-  color: var(--aw-success-color, #66bb6a);
+  color: var(--aw-success-color);
 }
 
 .device-item-status.disconnected {
-  color: var(--aw-error-color, #ef5350);
+  color: var(--aw-error-color);
 }
 
 .device-empty {
-  padding: 12px 8px;
+  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)) var(--aw-spacing-sm);
   text-align: center;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
 }
 
 .device-actions {
   padding: 8px;
-  border-top: 1px solid var(--aw-panel-border-color, #444);
+  border-top: 1px solid var(--aw-panel-border-color);
 }
 
 .discover-button {
@@ -465,8 +465,8 @@ const trackingRates = [
   gap: 6px;
   width: 100%;
   padding: 6px 0;
-  background-color: var(--aw-primary-color, #0077cc);
-  color: white;
+  background-color: var(--aw-primary-color);
+  color: var(--aw-button-primary-text);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -474,7 +474,7 @@ const trackingRates = [
 }
 
 .discover-button:hover {
-  background-color: var(--aw-primary-hover-color, #0066b3);
+  background-color: var(--aw-primary-hover-color);
 }
 
 .panel-content {
@@ -484,7 +484,7 @@ const trackingRates = [
 
 .panel-section {
   margin-bottom: 20px;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  background-color: var(--aw-panel-content-bg-color);
   border-radius: 6px;
   padding: 12px;
 }
@@ -493,7 +493,7 @@ const trackingRates = [
   margin-top: 0;
   margin-bottom: 12px;
   font-size: 1rem;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+  border-bottom: 1px solid var(--aw-panel-border-color);
   padding-bottom: 6px;
 }
 
@@ -510,7 +510,7 @@ const trackingRates = [
 }
 
 .label {
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
   margin-bottom: 2px;
 }
@@ -535,31 +535,31 @@ const trackingRates = [
 .slew-input label {
   display: block;
   margin-bottom: 4px;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
 }
 
 .slew-input input {
   width: 100%;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
 }
 
 .action-button {
-  background-color: var(--aw-primary-color, #0077cc);
-  color: white;
+  background-color: var(--aw-primary-color);
+  color: var(--aw-button-primary-text);
   border: none;
   border-radius: 4px;
-  padding: 6px 12px;
+  padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
   font-weight: 500;
 }
 
 .action-button:hover {
-  background-color: var(--aw-primary-hover-color, #0066b3);
+  background-color: var(--aw-primary-hover-color);
 }
 
 .direction-control {
@@ -579,9 +579,9 @@ const trackingRates = [
 .direction-button {
   width: 40px;
   height: 40px;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: 4px;
   display: flex;
   justify-content: center;
@@ -590,7 +590,7 @@ const trackingRates = [
 }
 
 .direction-button:hover {
-  background-color: var(--aw-panel-hover-bg-color, #3d3d3d);
+  background-color: var(--aw-panel-hover-bg-color);
 }
 
 .tracking-control {
@@ -625,8 +625,8 @@ const trackingRates = [
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  background-color: var(--aw-panel-bg-color);
+  border: 1px solid var(--aw-panel-border-color);
   transition: .4s;
   border-radius: 24px;
 }
@@ -638,18 +638,18 @@ const trackingRates = [
   width: 16px;
   left: 3px;
   bottom: 3px;
-  background-color: var(--aw-text-secondary-color, #aaa);
+  background-color: var(--aw-text-secondary-color);
   transition: .4s;
   border-radius: 50%;
 }
 
 input:checked + .slider {
-  background-color: var(--aw-primary-color, #0077cc);
+  background-color: var(--aw-primary-color);
 }
 
 input:checked + .slider:before {
   transform: translateX(20px);
-  background-color: white;
+  background-color: var(--aw-button-primary-text);
 }
 
 .tracking-rate {
@@ -659,11 +659,11 @@ input:checked + .slider:before {
 }
 
 .tracking-rate select {
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
   width: 120px;
 }
 
@@ -679,7 +679,7 @@ input:checked + .slider:before {
   justify-content: center;
   align-items: center;
   height: 100px;
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
+  background-color: var(--aw-panel-content-bg-color);
   border-radius: 6px;
   margin-bottom: 20px;
   gap: 12px;
@@ -687,7 +687,7 @@ input:checked + .slider:before {
 }
 
 .connection-message {
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   font-size: 1.1rem;
 }
 
@@ -697,6 +697,6 @@ input:checked + .slider:before {
 
 .panel-tip {
   font-size: 0.8rem;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
 }
 </style> 

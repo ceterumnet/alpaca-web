@@ -189,22 +189,22 @@ onBeforeUnmount(() => {
 
 .aw-toast__icon--success {
   background-color: var(--aw-color-success-500);
-  color: white;
+  color: var(--aw-button-success-text);
 }
 
 .aw-toast__icon--error {
   background-color: var(--aw-color-error-500);
-  color: white;
+  color: var(--aw-button-danger-text);
 }
 
 .aw-toast__icon--warning {
   background-color: var(--aw-color-warning-500);
-  color: white;
+  color: var(--aw-button-warning-text);
 }
 
 .aw-toast__icon--info {
   background-color: var(--aw-color-primary-500);
-  color: white;
+  color: var(--aw-button-primary-text);
 }
 
 .aw-toast__message {

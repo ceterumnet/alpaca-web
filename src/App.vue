@@ -13,7 +13,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useEnhancedDiscoveryStore } from '@/stores/useEnhancedDiscoveryStore'
-import '@/assets/colors.css' // Import the CSS
+// import '@/assets/colors.css' // Import the CSS
 import NavigationBar from '@/components/layout/NavigationBar.vue'
 import NotificationCenter from '@/components/ui/NotificationCenter.vue'
 import NotificationManager from '@/components/ui/NotificationManager.vue'

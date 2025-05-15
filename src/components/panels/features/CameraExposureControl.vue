@@ -203,7 +203,7 @@ const setupPolling = () => {
 
         console.log(
           '%c✅ CameraExposureControl: Exposure complete, starting image ready polling',
-          'color: green'
+          'color: #4caf50'
         )
 
         // Start image ready polling only after exposure is complete
@@ -231,7 +231,7 @@ const startImageReadyPolling = () => {
       if (imageReady.value) {
         console.log(
           '%c📷 CameraExposureControl: Image ready detected, stopping polling',
-          'color: green'
+          'color: #4caf50'
         )
         // Stop polling for image ready
         clearInterval(readyInterval)

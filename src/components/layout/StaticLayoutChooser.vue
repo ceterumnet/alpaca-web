@@ -210,18 +210,18 @@ const emit = defineEmits(['save', 'cancel'])
   margin-top: 2rem;
 }
 .layout-chooser__card {
-  border: 1px solid var(--aw-panel-border-color, #ccc);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: 8px;
   padding: 1rem;
   width: 180px;
   cursor: pointer;
-  background: var(--aw-panel-bg-color, #f9f9f9);
+  background: var(--aw-panel-bg-color);
   transition: box-shadow 0.2s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .layout-chooser__card:hover {
   box-shadow: 0 4px 16px rgba(0,0,0,0.10);
-  border-color: var(--aw-color-primary-500, #4a7adc);
+  border-color: var(--aw-color-primary-500);
 }
 .layout-chooser__card-title {
   font-weight: 600;
@@ -238,7 +238,7 @@ const emit = defineEmits(['save', 'cancel'])
   aspect-ratio: 3 / 2;
 }
 .layout-chooser__cell-preview {
-  background: var(--aw-panel-content-bg-color, #e9e9e9);
+  background: var(--aw-panel-content-bg-color);
   border-radius: 0;
   display: flex;
   align-items: center;
@@ -259,7 +259,7 @@ const emit = defineEmits(['save', 'cancel'])
   border-bottom: 1px solid #ddd;
 }
 .layout-chooser__cell-id {
-  color: #aaa;
+  color: var(--aw-text-secondary-color);
   font-size: 0.8rem;
 }
 .layout-chooser__assign {
@@ -274,7 +274,7 @@ const emit = defineEmits(['save', 'cancel'])
   margin-bottom: 0.5rem;
 }
 .layout-chooser__cell-unassigned {
-  color: #bbb;
+  color: var(--aw-color-neutral-500);
   font-style: italic;
 }
 .layout-chooser__device-select {

@@ -4,26 +4,26 @@
 
 ### Issues Identified:
 
-1. CSS variables from `colors.css` are inconsistently used across components
-2. Multiple styling approaches and naming conventions
-3. Some components use hardcoded color values instead of CSS variables
-4. Inconsistent button and control styling
-5. Dark theme implementation is inconsistent
+1. Legacy `colors.css` file removed; focus is now on consistent `design-tokens.css` usage.
+2. Multiple styling approaches and naming conventions still present in some components.
+3. Some components use hardcoded color values and spacing instead of CSS variables from `design-tokens.css` (audit confirmed specific instances).
+4. Inconsistent button and control styling (pending review after token migration).
+5. Dark theme implementation is inconsistent in components with hardcoded values.
 
 ### Existing Structure:
 
-- `src/assets/colors.css`: Defines CSS variables for theming
+- `src/assets/design-tokens.css`: Defines CSS variables for theming (intended single source of truth).
 - `src/assets/base.css`: Basic styling
 - `src/assets/modern-reset.css`: CSS reset
-- Component-level scoped CSS with inconsistent variable usage
+- Component-level scoped CSS with inconsistent variable usage in some areas.
 
 ## 2. Implementation Plan
 
 ### Phase 1: Audit & Documentation
 
-1. Complete a full audit of all component styles
-2. Document all color usage and UI patterns
-3. Create a comprehensive list of needed design tokens
+1. Complete a full audit of all component styles (Initial audit performed, ongoing review as refactoring occurs).
+2. Document all color usage and UI patterns (Ongoing).
+3. Create a comprehensive list of needed design tokens (Base list exists in `design-tokens.css`, may need refinement).
 
 ### Phase 2: Design System Creation
 
@@ -33,7 +33,7 @@
    /* Design tokens with clear naming conventions */
    :root {
      /* Base colors */
-     --aw-color-primary: #4a7adc;
+     --aw-color-primary: #4a7adc; /* Example: More granular tokens like --aw-color-primary-500 are used in design-tokens.css */
      --aw-color-primary-light: #789fea;
      --aw-color-primary-dark: #3a5fbc;
 
@@ -65,8 +65,8 @@
    }
    ```
 
-2. Create component-specific tokens that reference base tokens
-3. Implement proper dark theme using the same token structure
+2. Create component-specific tokens that reference base tokens (Partially done, ongoing).
+3. Implement proper dark theme using the same token structure (Foundation exists, consistency depends on token usage).
 
 ### Phase 3: Component Library Alignment
 
@@ -97,6 +97,12 @@
    - ✅ ResponsiveFocuserPanel.vue
    - ✅ DeviceDetailView.vue
    - ✅ DevicePalette.vue
+   - ✅ SimplifiedFocuserPanel.vue
+   - ✅ PanelLayoutView.vue
+   - ✅ StaticLayoutChooser.vue
+   - ◻️ SimplifiedTelescopePanel.vue (Audit: Hardcoded color names, spacing)
+   - ◻️ SimplifiedCameraPanel.vue (Audit: Hardcoded color names, spacing)
+   - ◻️ GridLayoutDemo.vue (Audit: Hardcoded color names)
 
 2. For each component:
 
@@ -105,9 +111,9 @@
    - Update style props to follow the new naming convention
    - Verify dark theme compatibility
 
-3. Document the updated components with usage examples ✅
+3. Document the updated components with usage examples ◻️ (Pending completion of all migrations)
 
-4. Create a simple style guide page within the app that showcases all components with their variants ✅
+4. Create a simple style guide page within the app that showcases all components with their variants ◻️ (Pending completion of all migrations)
 
 ### Phase 4: Migration Strategy
 

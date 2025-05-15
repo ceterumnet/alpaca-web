@@ -371,14 +371,14 @@ onMounted(() => {
   width: 100%;
   max-width: 1600px;
   margin: 0 auto;
-  padding: var(--aw-spacing-lg, 20px);
+  padding: var(--aw-spacing-lg);
 }
 
 .aw-image-analysis__header {
   display: flex;
   align-items: center;
-  margin-bottom: var(--aw-spacing-lg, 20px);
-  gap: var(--aw-spacing-md, 16px);
+  margin-bottom: var(--aw-spacing-lg);
+  gap: var(--aw-spacing-md);
 }
 
 .aw-image-analysis__header h1 {
@@ -388,11 +388,11 @@ onMounted(() => {
 }
 
 .aw-image-analysis__back-button {
-  padding: var(--aw-spacing-sm, 8px) var(--aw-spacing-md, 16px);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   background-color: var(--aw-panel-menu-bar-bg-color);
   color: var(--aw-panel-menu-bar-color);
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm, 4px);
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s ease;
@@ -409,16 +409,16 @@ onMounted(() => {
   justify-content: center;
   text-align: center;
   height: 60vh;
-  padding: var(--aw-spacing-lg, 20px);
+  padding: var(--aw-spacing-lg);
 }
 
 .aw-image-analysis__error h2 {
   color: var(--aw-error-color);
-  margin-bottom: var(--aw-spacing-sm, 10px);
+  margin-bottom: var(--aw-spacing-sm);
 }
 
 .aw-image-analysis__error p {
-  margin-bottom: var(--aw-spacing-lg, 20px);
+  margin-bottom: var(--aw-spacing-lg);
   max-width: 500px;
 }
 
@@ -426,7 +426,7 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--aw-spacing-lg, 20px);
+  gap: var(--aw-spacing-lg);
   height: calc(100vh - 120px);
 }
 
@@ -435,19 +435,19 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   background-color: var(--aw-panel-bg-color);
-  padding: var(--aw-spacing-md, 16px);
-  border-radius: var(--aw-border-radius-md, 8px);
+  padding: var(--aw-spacing-md);
+  border-radius: var(--aw-border-radius-md);
 }
 
 .aw-image-analysis__capture-button {
   display: flex;
   align-items: center;
-  gap: var(--aw-spacing-sm, 8px);
-  padding: var(--aw-spacing-sm, 10px) var(--aw-spacing-md, 16px);
+  gap: var(--aw-spacing-sm);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
   border: none;
-  border-radius: var(--aw-border-radius-sm, 4px);
+  border-radius: var(--aw-border-radius-sm);
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -484,8 +484,8 @@ onMounted(() => {
 }
 
 .aw-image-analysis__device-status {
-  padding: 6px 12px;
-  border-radius: var(--aw-border-radius-sm, 4px);
+  padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  border-radius: var(--aw-border-radius-sm);
   font-size: 0.9rem;
 }
 
@@ -503,15 +503,15 @@ onMounted(() => {
   flex: 1;
   display: grid;
   grid-template-columns: 3fr 2fr;
-  gap: var(--aw-spacing-lg, 20px);
+  gap: var(--aw-spacing-lg);
   height: 100%;
 }
 
 .aw-image-analysis__display,
 .aw-image-analysis__tools {
   background-color: var(--aw-panel-bg-color);
-  border-radius: var(--aw-border-radius-md, 8px);
-  padding: var(--aw-spacing-md, 16px);
+  border-radius: var(--aw-border-radius-md);
+  padding: var(--aw-spacing-md);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -521,11 +521,11 @@ onMounted(() => {
 .aw-image-analysis__tools h2,
 .aw-image-analysis__section h2 {
   margin-top: 0;
-  margin-bottom: var(--aw-spacing-md, 16px);
+  margin-bottom: var(--aw-spacing-md);
   font-size: 1.2rem;
   color: var(--aw-panel-content-color);
   border-bottom: 1px solid var(--aw-panel-border-color);
-  padding-bottom: var(--aw-spacing-sm, 8px);
+  padding-bottom: var(--aw-spacing-sm);
 }
 
 .aw-image-analysis__image-container {
@@ -539,10 +539,10 @@ onMounted(() => {
   max-width: 100%;
   max-height: calc(100% - 50px);
   object-fit: contain;
-  margin-bottom: var(--aw-spacing-md, 16px);
+  margin-bottom: var(--aw-spacing-md);
   background-color: rgba(0, 0, 0, 0.2);
-  border-radius: var(--aw-border-radius-sm, 4px);
-  padding: var(--aw-spacing-sm, 8px);
+  border-radius: var(--aw-border-radius-sm);
+  padding: var(--aw-spacing-sm);
 }
 
 .aw-image-analysis__metadata {
@@ -572,15 +572,15 @@ onMounted(() => {
 .aw-image-analysis__tools-container {
   display: flex;
   flex-direction: column;
-  gap: var(--aw-spacing-lg, 20px);
+  gap: var(--aw-spacing-lg);
   height: 100%;
   overflow-y: auto;
 }
 
 .aw-image-analysis__section {
   background-color: rgba(0, 0, 0, 0.1);
-  border-radius: var(--aw-border-radius-sm, 6px);
-  padding: var(--aw-spacing-md, 16px);
+  border-radius: var(--aw-border-radius-sm);
+  padding: var(--aw-spacing-md);
 }
 
 .aw-image-analysis__histogram {
@@ -595,7 +595,7 @@ onMounted(() => {
   align-items: flex-end;
   width: 100%;
   background-color: rgba(0, 0, 0, 0.2);
-  border-radius: var(--aw-border-radius-sm, 4px);
+  border-radius: var(--aw-border-radius-sm);
   padding: 4px;
   margin-bottom: 10px;
 }
@@ -663,17 +663,17 @@ onMounted(() => {
 }
 
 .aw-image-analysis__secondary-button {
-  padding: var(--aw-spacing-sm, 8px) var(--aw-spacing-md, 16px);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   background-color: var(--aw-button-secondary-bg);
   color: var(--aw-button-secondary-text);
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm, 4px);
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: var(--aw-spacing-sm, 8px);
+  gap: var(--aw-spacing-sm);
 }
 
 .aw-image-analysis__secondary-button:hover:not(:disabled) {

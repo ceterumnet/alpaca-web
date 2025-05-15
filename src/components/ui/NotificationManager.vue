@@ -336,7 +336,7 @@ function toggleFilterPanel() {
 }
 
 .aw-notification-manager__type-label {
-  padding: 2px 6px;
+  padding: calc(var(--aw-spacing-xs) / 2) calc(var(--aw-spacing-xs) * 1.5);
   border-radius: var(--aw-border-radius-sm);
   font-size: 0.7rem;
 }

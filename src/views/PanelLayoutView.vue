@@ -821,7 +821,7 @@ const getPanelTypeName = (panelId: string): string => {
   z-index: 1000 !important;
   width: 100% !important;
   height: 100% !important;
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
+  background-color: var(--aw-panel-bg-color);
 }
 
 .hidden-panel {
@@ -833,9 +833,9 @@ const getPanelTypeName = (panelId: string): string => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--aw-panel-header-bg-color, #333);
+  background-color: var(--aw-panel-header-bg-color);
   padding: 8px;
-  border-bottom: 1px solid var(--aw-panel-border-color, #444);
+  border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
 .panel-title {
@@ -854,7 +854,7 @@ const getPanelTypeName = (panelId: string): string => {
 
 .connection-info {
   font-size: 0.7rem;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -871,7 +871,7 @@ const getPanelTypeName = (panelId: string): string => {
 .minimize-panel-btn {
   background: none;
   border: none;
-  color: var(--aw-text-color, #f0f0f0);
+  color: var(--aw-text-color);
   cursor: pointer;
   font-size: 1rem;
   padding: 4px;
@@ -885,7 +885,7 @@ const getPanelTypeName = (panelId: string): string => {
 
 .maximize-panel-btn:hover,
 .minimize-panel-btn:hover {
-  background-color: var(--aw-panel-hover-bg-color, #444);
+  background-color: var(--aw-panel-hover-bg-color);
 }
 
 .maximize-icon,
@@ -894,9 +894,9 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .device-selector-dropdown {
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
-  color: var(--aw-text-color, #f0f0f0);
-  border: 1px solid var(--aw-panel-border-color, #444);
+  background-color: var(--aw-panel-content-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: 4px;
   padding: 4px;
   font-size: 0.8rem;
@@ -914,7 +914,7 @@ const getPanelTypeName = (panelId: string): string => {
   justify-content: center;
   align-items: center;
   height: 100%;
-  color: var(--aw-text-color, #ffffff);
+  color: var(--aw-text-color);
   font-size: 1.2rem;
   opacity: 0.7;
   padding: 2rem;
@@ -925,9 +925,9 @@ const getPanelTypeName = (panelId: string): string => {
 .create-layout-btn {
   font-size: 0.9rem;
   padding: 0.5rem 1rem;
-  background-color: var(--aw-button-bg-color, #333333);
-  color: var(--aw-text-color, #ffffff);
-  border: 1px solid var(--aw-border-color, #444444);
+  background-color: var(--aw-button-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-border-color);
   border-radius: 4px;
   cursor: pointer;
   display: flex;
@@ -937,8 +937,8 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .create-layout-btn:hover {
-  background-color: var(--aw-button-hover-bg-color, #444444);
-  border-color: var(--aw-primary-color, #1e88e5);
+  background-color: var(--aw-button-hover-bg-color);
+  border-color: var(--aw-primary-color);
 }
 
 @media (max-width: 768px) {
@@ -951,17 +951,17 @@ const getPanelTypeName = (panelId: string): string => {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 8px 16px;
-  background-color: var(--aw-secondary-bg-color, #1e1e1e);
-  border-bottom: 1px solid var(--aw-border-color, #333);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+  background-color: var(--aw-secondary-bg-color);
+  border-bottom: 1px solid var(--aw-border-color);
 }
 
 .toggle-panel-btn {
   background-color: var(--aw-primary-color, #0077cc);
-  color: white;
+  color: var(--aw-button-primary-text);
   border: none;
   border-radius: 4px;
-  padding: 6px 12px;
+  padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
   font-size: 0.9rem;
 }
@@ -999,7 +999,7 @@ const getPanelTypeName = (panelId: string): string => {
 .panel-coordinates {
   margin-top: auto;
   font-size: 0.8rem;
-  color: #888;
+  color: var(--aw-text-secondary-color);
 }
 
 .empty-panel-state {
@@ -1009,16 +1009,16 @@ const getPanelTypeName = (panelId: string): string => {
   justify-content: center;
   height: 100%;
   padding: 1rem;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   text-align: center;
 }
 
 .select-layout-btn {
   background-color: var(--aw-primary-color, #0077cc);
-  color: white;
+  color: var(--aw-button-primary-text);
   border: none;
   border-radius: 4px;
-  padding: 8px 16px;
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   cursor: pointer;
   font-weight: 500;
   display: flex;
@@ -1044,7 +1044,7 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .static-layout-modal-content {
-  background-color: var(--aw-panel-bg-color, #2a2a2a);
+  background-color: var(--aw-panel-bg-color);
   border-radius: 8px;
   max-width: 90%;
   max-height: 90%;
@@ -1059,14 +1059,14 @@ const getPanelTypeName = (panelId: string): string => {
   right: 12px;
   background: none;
   border: none;
-  color: var(--aw-text-color, #f0f0f0);
+  color: var(--aw-text-color);
   font-size: 1.5rem;
   cursor: pointer;
   z-index: 10;
 }
 
 .close-modal-btn:hover {
-  color: var(--aw-primary-color, #0077cc);
+  color: var(--aw-primary-color);
 }
 
 .loading-device {
@@ -1074,25 +1074,25 @@ const getPanelTypeName = (panelId: string): string => {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
 }
 
 .panel-device-type {
   font-size: 0.9rem;
   margin: 8px 0;
-  color: var(--aw-text-color, #f0f0f0);
+  color: var(--aw-text-color);
 }
 
 .panel-tip {
   font-size: 0.8rem;
   margin-top: 12px;
-  color: var(--aw-text-secondary-color, #aaa);
+  color: var(--aw-text-secondary-color);
   font-style: italic;
 }
 
 .connect-disconnect-btn {
-  padding: 4px 8px;
-  border: 1px solid var(--aw-panel-border-color, #444);
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  border: 1px solid var(--aw-panel-border-color);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.8rem;
@@ -1101,18 +1101,18 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .connect-disconnect-btn.connected {
-  background-color: var(--aw-error-color, #ef5350); /* Red for disconnect */
-  color: white;
+  background-color: var(--aw-error-color);
+  color: var(--aw-button-danger-text);
 }
 
 .connect-disconnect-btn.disconnected {
-  background-color: var(--aw-success-color, #66bb6a); /* Green for connect */
-  color: white;
+  background-color: var(--aw-success-color);
+  color: var(--aw-button-success-text);
 }
 
 .connect-disconnect-btn.connecting {
-  background-color: var(--aw-panel-content-bg-color, #3a3a3a);
-  color: var(--aw-text-secondary-color, #aaa);
+  background-color: var(--aw-panel-content-bg-color);
+  color: var(--aw-text-secondary-color);
   cursor: wait;
 }
 </style>
