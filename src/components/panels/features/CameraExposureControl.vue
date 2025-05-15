@@ -10,6 +10,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
+import Icon from '@/components/ui/Icon.vue'
 
 // Add a debug function
 function debugClientStatus(store: {
@@ -435,8 +436,10 @@ onMounted(() => {
           :disabled="!isConnected"
           @click="startExposure"
         >
-          <span v-if="exposureInProgress" class="button-icon">⏹</span>
-          <span v-else class="button-icon">📷</span>
+          <span class="button-icon">
+            <Icon v-if="exposureInProgress" type="player-stop" aria-label="Stop Exposure" />
+            <Icon v-else type="camera" aria-label="Start Exposure" />
+          </span>
           {{ buttonText }}
         </button>
       </div>
@@ -468,7 +471,9 @@ onMounted(() => {
     </div>
 
     <div v-if="error" class="aw-form-error">
-      <span class="error-icon">⚠️</span>
+      <span class="error-icon">
+        <Icon type="alert-triangle" aria-label="Warning" />
+      </span>
       {{ error }}
     </div>
   </div>
@@ -611,6 +616,8 @@ onMounted(() => {
 
 .error-icon {
   font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
 }
 
 @media (max-width: 640px) {

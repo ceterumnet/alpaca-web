@@ -17,6 +17,7 @@ import { useEnhancedDiscoveryStore } from '@/stores/useEnhancedDiscoveryStore'
 import NavigationBar from '@/components/layout/NavigationBar.vue'
 import NotificationCenter from '@/components/ui/NotificationCenter.vue'
 import NotificationManager from '@/components/ui/NotificationManager.vue'
+import Icon from '@/components/ui/Icon.vue' // Import Icon component
 
 // Get stores
 const uiStore = useUIPreferencesStore()
@@ -105,7 +106,7 @@ onMounted(() => {
               title="Open Notification Manager"
               @click="toggleNotificationManager"
             >
-              <i class="icon-notification"></i>
+              <Icon type="bell" size="20" />
             </button>
           </template>
         </NavigationBar>
@@ -369,10 +370,12 @@ p {
   background-color: var(--aw-nav-hover-bg-color);
 }
 
+/*
 .icon-notification::before {
   content: '🔔';
   font-size: 1.2rem;
 }
+*/
 </style>
 
 <style scoped>

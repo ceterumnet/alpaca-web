@@ -10,6 +10,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
+import Icon from '@/components/ui/Icon.vue'
 
 defineOptions({
   name: 'ImageAnalysis'
@@ -192,7 +193,9 @@ onMounted(() => {
 <template>
   <div class="aw-image-analysis">
     <div class="aw-image-analysis__header">
-      <button class="aw-image-analysis__back-button" @click="goToDeviceDetails">← Back to Device</button>
+      <button class="aw-image-analysis__back-button" @click="goToDeviceDetails">
+        <Icon type="arrow-left" size="16" style="margin-right: 0.25em; vertical-align: middle;" /> Back to Device
+      </button>
       <h1>{{ device?.name || 'Camera' }} - Image Analysis</h1>
     </div>
 
@@ -217,7 +220,7 @@ onMounted(() => {
             Capturing...
           </span>
           <span v-else>
-            <span class="aw-image-analysis__button-icon aw-image-analysis__button-icon--camera"></span>
+            <Icon type="camera" size="16" style="margin-right: 0.25em; vertical-align: middle;" />
             Capture Image
           </span>
         </button>

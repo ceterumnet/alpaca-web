@@ -143,10 +143,40 @@
   --aw-error-muted: rgba(244, 67, 54, 0.1);
   --aw-error-muted-hover: rgba(244, 67, 54, 0.2);
 
-  /* Icon Control Colors */
+  /* Icon Colors */
+  --aw-device-camera-color: var(--aw-color-success-500);
+  --aw-device-dome-color: var(--aw-color-primary-500);
+  --aw-device-telescope-color: var(--aw-color-primary-700);
+  --aw-device-filter-color: var(--aw-color-warning-700);
+  --aw-device-focus-color: var(--aw-color-primary-300);
+  --aw-device-unknown-color: var(--aw-color-neutral-500);
+
+  --aw-celestial-sun-color: var(--aw-color-warning-500);
+  --aw-celestial-moon-color: var(--aw-color-neutral-400);
+  --aw-celestial-cloud-color: var(--aw-color-primary-300);
+
+  --aw-navigation-icon-color: var(--aw-color-neutral-600);
+  --aw-navigation-home-color: var(--aw-color-primary-500);
+  --aw-navigation-search-color: var(--aw-color-neutral-600);
+  --aw-navigation-files-color: var(--aw-color-warning-500);
+  --aw-navigation-history-color: var(--aw-color-neutral-500);
+
+  --aw-control-gear-color: var(--aw-color-neutral-600);
+  --aw-control-exposure-color: var(--aw-color-error-500);
+  --aw-control-ui-color: var(--aw-color-neutral-600);
+  --aw-control-view-color: var(--aw-color-neutral-600);
+  --aw-control-stop-color: var(--aw-color-error-500);
+  --aw-control-reset-color: var(--aw-color-error-500);
   --aw-control-sliders-color: var(--aw-color-neutral-600);
   --aw-control-park-color: var(--aw-color-neutral-700);
   --aw-control-unpark-color: var(--aw-color-success-500);
+
+  --aw-status-connected-color: var(--aw-color-success-500);
+  --aw-status-disconnected-color: var(--aw-color-error-500);
+  --aw-status-tracking-on-color: var(--aw-color-success-500);
+  --aw-status-tracking-off-color: var(--aw-color-error-500);
+
+  --aw-notification-bell-color: var(--aw-color-warning-500);
 
   /* ============================================================
      SPACING TOKENS
@@ -273,8 +303,38 @@
   --aw-error-muted: rgba(158, 43, 43, 0.2);
   --aw-error-muted-hover: rgba(158, 43, 43, 0.3);
 
-  /* Icon Control Colors */
+  /* Icon Colors */
+  --aw-device-camera-color: var(--aw-color-success-500);
+  --aw-device-dome-color: var(--aw-color-primary-500);
+  --aw-device-telescope-color: var(--aw-color-primary-700);
+  --aw-device-filter-color: var(--aw-color-warning-700);
+  --aw-device-focus-color: var(--aw-color-primary-300);
+  --aw-device-unknown-color: var(--aw-color-neutral-500);
+
+  --aw-celestial-sun-color: var(--aw-color-warning-500);
+  --aw-celestial-moon-color: var(--aw-color-neutral-400);
+  --aw-celestial-cloud-color: var(--aw-color-primary-300);
+
+  --aw-navigation-icon-color: var(--aw-color-neutral-600);
+  --aw-navigation-home-color: var(--aw-color-primary-500);
+  --aw-navigation-search-color: var(--aw-color-neutral-600);
+  --aw-navigation-files-color: var(--aw-color-warning-500);
+  --aw-navigation-history-color: var(--aw-color-neutral-500);
+
+  --aw-control-gear-color: var(--aw-color-neutral-600);
+  --aw-control-exposure-color: var(--aw-color-error-500);
+  --aw-control-ui-color: var(--aw-color-neutral-600);
+  --aw-control-view-color: var(--aw-color-neutral-600);
+  --aw-control-stop-color: var(--aw-color-error-500);
+  --aw-control-reset-color: var(--aw-color-error-500);
   --aw-control-sliders-color: var(--aw-color-neutral-600);
   --aw-control-park-color: var(--aw-color-neutral-700);
   --aw-control-unpark-color: var(--aw-color-success-500);
+
+  --aw-status-connected-color: var(--aw-color-success-500);
+  --aw-status-disconnected-color: var(--aw-color-error-500);
+  --aw-status-tracking-on-color: var(--aw-color-success-500);
+  --aw-status-tracking-off-color: var(--aw-color-error-500);
+
+  --aw-notification-bell-color: var(--aw-color-warning-500);
 }

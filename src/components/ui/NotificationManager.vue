@@ -9,6 +9,8 @@ import {
   type NotificationType,
   type NotificationFilter
 } from '@/stores/useNotificationStore'
+import Icon from '@/components/ui/Icon.vue'
+import type { IconType } from '@/components/ui/Icon.vue'
 
 defineOptions({
   name: 'NotificationManager'
@@ -95,6 +97,22 @@ function formatTime(timestamp: number): string {
 function toggleFilterPanel() {
   showFilterPanel.value = !showFilterPanel.value
 }
+
+// Helper function to get icon type for notification
+function getIconForNotificationType(type: NotificationType): IconType {
+  switch (type) {
+    case 'success':
+      return 'check'
+    case 'error':
+      return 'x'
+    case 'warning':
+      return 'alert-circle'
+    case 'info':
+      return 'info-circle'
+    default:
+      return 'question-mark'
+  }
+}
 </script>
 
 <template>
@@ -103,19 +121,19 @@ function toggleFilterPanel() {
       <h2 class="aw-notification-manager__title">Notifications</h2>
       <div class="aw-notification-manager__actions">
         <button class="aw-notification-manager__action-btn" title="Filter notifications" @click="toggleFilterPanel">
-          <i class="aw-notification-manager__icon aw-notification-manager__icon--filter"></i>
+          <Icon type="filter" size="16" />
           <span>Filter</span>
         </button>
         <button class="aw-notification-manager__action-btn" title="Acknowledge all" @click="acknowledgeAllNotifications">
-          <i class="aw-notification-manager__icon aw-notification-manager__icon--check"></i>
+          <Icon type="check" size="16" />
           <span>Acknowledge All</span>
         </button>
         <button class="aw-notification-manager__action-btn" title="Clear all" @click="clearAllNotifications">
-          <i class="aw-notification-manager__icon aw-notification-manager__icon--clear"></i>
+          <Icon type="trash" size="16" />
           <span>Clear All</span>
         </button>
         <button class="aw-notification-manager__action-btn" title="Export history" @click="exportHistory">
-          <i class="aw-notification-manager__icon aw-notification-manager__icon--download"></i>
+          <Icon type="arrow-down" size="16" />
           <span>Export</span>
         </button>
       </div>
@@ -232,7 +250,9 @@ function toggleFilterPanel() {
           <div 
             class="aw-notification-manager__item-icon" 
             :class="`aw-notification-manager__item-icon--${notification.type}`"
-          ></div>
+          >
+            <Icon :type="getIconForNotificationType(notification.type)" size="18" />
+          </div>
           <div class="aw-notification-manager__item-details">
             <div class="aw-notification-manager__item-message">{{ notification.message }}</div>
             <div class="aw-notification-manager__item-time">{{ formatTime(notification.timestamp) }}</div>
@@ -447,30 +467,25 @@ function toggleFilterPanel() {
 .aw-notification-manager__item-icon {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
   margin-right: var(--aw-spacing-sm);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.aw-notification-manager__item-icon--success::before {
-  content: '✓';
+.aw-notification-manager__item-icon--success {
   color: var(--aw-color-success-500);
 }
 
-.aw-notification-manager__item-icon--error::before {
-  content: '✗';
+.aw-notification-manager__item-icon--error {
   color: var(--aw-color-error-500);
 }
 
-.aw-notification-manager__item-icon--warning::before {
-  content: '!';
+.aw-notification-manager__item-icon--warning {
   color: var(--aw-color-warning-500);
 }
 
-.aw-notification-manager__item-icon--info::before {
-  content: 'i';
+.aw-notification-manager__item-icon--info {
   color: var(--aw-color-primary-500);
 }
 
@@ -509,22 +524,5 @@ function toggleFilterPanel() {
 
 .aw-notification-manager__btn--dismiss:hover {
   background-color: var(--aw-panel-hover-bg-color);
-}
-
-/* Icons */
-.aw-notification-manager__icon--filter::before {
-  content: '🔍';
-}
-
-.aw-notification-manager__icon--check::before {
-  content: '✓';
-}
-
-.aw-notification-manager__icon--clear::before {
-  content: '🗑️';
-}
-
-.aw-notification-manager__icon--download::before {
-  content: '⬇️';
 }
 </style>

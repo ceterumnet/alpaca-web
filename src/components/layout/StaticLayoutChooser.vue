@@ -1,20 +1,28 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import Icon from '@/components/ui/Icon.vue'
+import type { IconType } from '@/components/ui/Icon.vue'
+
+interface DeviceTypeDefinition {
+  id: string;
+  name: string;
+  icon: IconType;
+}
 
 // Device types (copied from CustomLayoutBuilder.vue)
-const deviceTypes = [
-  { id: 'camera', name: 'Camera', icon: '📷' },
-  { id: 'telescope', name: 'Telescope', icon: '🔭' },
-  { id: 'focuser', name: 'Focuser', icon: '🔍' },
-  { id: 'filterwheel', name: 'Filter Wheel', icon: '🎨' },
-  { id: 'weather', name: 'Weather', icon: '☁️' },
-  { id: 'dome', name: 'Dome', icon: '🏠' },
-  { id: 'rotator', name: 'Rotator', icon: '🔄' },
-  { id: 'observingconditions', name: 'Observing Conditions', icon: '🌡️' },
-  { id: 'safetymonitor', name: 'Safety Monitor', icon: '🛡️' },
-  { id: 'switch', name: 'Switch', icon: '🔌' },
-  { id: 'covercalibrator', name: 'Cover Calibrator', icon: '🔦' },
-  { id: 'any', name: 'Any Device', icon: '📦' }
+const deviceTypes: DeviceTypeDefinition[] = [
+  { id: 'camera', name: 'Camera', icon: 'camera' },
+  { id: 'telescope', name: 'Telescope', icon: 'telescope' },
+  { id: 'focuser', name: 'Focuser', icon: 'focus-2' },
+  { id: 'filterwheel', name: 'Filter Wheel', icon: 'filter' },
+  { id: 'weather', name: 'Weather', icon: 'cloud' },
+  { id: 'dome', name: 'Dome', icon: 'building-observatory' },
+  { id: 'rotator', name: 'Rotator', icon: 'rotate-clockwise' },
+  { id: 'observingconditions', name: 'Observing Conditions', icon: 'temperature' },
+  { id: 'safetymonitor', name: 'Safety Monitor', icon: 'shield' },
+  { id: 'switch', name: 'Switch', icon: 'toggle-left' },
+  { id: 'covercalibrator', name: 'Cover Calibrator', icon: 'highlight' },
+  { id: 'any', name: 'Any Device', icon: 'package' }
 ]
 
 interface LayoutCell {
@@ -180,7 +188,7 @@ const emit = defineEmits(['save', 'cancel'])
           <select v-model="cellAssignments[cell.id]" class="layout-chooser__device-select">
             <option disabled value="">Select device</option>
             <option v-for="device in deviceTypes" :key="device.id" :value="device.id">
-              {{ device.icon }} {{ device.name }}
+              <Icon :type="device.icon" size="16" stroke-width="1.5" style="margin-right: 0.5em; vertical-align: middle;" /> {{ device.name }}
             </option>
           </select>
         </div>

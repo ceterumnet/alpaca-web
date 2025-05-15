@@ -13,6 +13,7 @@ import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
 import type { GridLayoutDefinition, LayoutRow, LayoutCell as StoreLayoutCell } from '@/types/layouts/LayoutDefinition'
 import StaticLayoutChooser from '@/components/layout/StaticLayoutChooser.vue'
+import Icon from '@/components/ui/Icon.vue'
 
 // Import the device component registry
 import deviceComponentRegistry from '@/services/DeviceComponentRegistry'
@@ -709,7 +710,7 @@ const getPanelTypeName = (panelId: string): string => {
                   :title="isPanelMaximized(position.panelId) ? 'Restore panel' : 'Maximize panel'"
                   @click="toggleMaximizePanel(position.panelId)"
                 >
-                  <span class="maximize-icon">{{ isPanelMaximized(position.panelId) ? '□' : '⬚' }}</span>
+                  <Icon :type="isPanelMaximized(position.panelId) ? 'arrows-minimize' : 'arrows-maximize'" size="16" />
                 </button>
                 
                 <!-- Connect/Disconnect Button -->
@@ -886,11 +887,6 @@ const getPanelTypeName = (panelId: string): string => {
 .maximize-panel-btn:hover,
 .minimize-panel-btn:hover {
   background-color: var(--aw-panel-hover-bg-color);
-}
-
-.maximize-icon,
-.minimize-icon {
-  line-height: 1;
 }
 
 .device-selector-dropdown {

@@ -46,6 +46,18 @@ export type IconType =
   | 'sliders-horizontal' // IconSlidersHorizontal (for sliders)
   | 'parking-circle' // IconParkingCircle (for park)
   | 'player-play' // IconPlayerPlay (for unpark - conceptually opposite of park/stop)
+  | 'alert-triangle' // IconAlertTriangle (for warning/error)
+  | 'temperature' // IconTemperature
+  | 'shield' // IconShield
+  | 'rotate-clockwise' // IconRotateClockwise
+  | 'toggle-left' // IconToggleLeft
+  | 'highlight' // IconHighlight
+  | 'package' // IconPackage
+  | 'trash' // IconTrash
+  | 'alert-circle' // IconAlertCircle
+  | 'info-circle' // IconInfoCircle
+  | 'check' // IconCheck
+  | 'x' // IconX (already used for close, but good to have explicitly for general cross mark)
   // Keep old names for CSS compatibility, but map them in setup or use new names in templates
   // Retaining old names for simpler CSS class matching for now.
   // The mapping to Tabler components will handle the new names.
@@ -86,7 +98,9 @@ export default defineComponent({
           'arrow-up', 'arrow-down', 'arrow-left', 'arrow-right',
           'player-stop', 'target-arrow', 'target-off', 'home', 'files',
           'history', 'bell', 'refresh', 'sliders-horizontal', 'parking-circle',
-          'player-play',
+          'player-play', 'alert-triangle',
+          'temperature', 'shield', 'rotate-clockwise', 'toggle-left', 'highlight', 'package',
+          'trash', 'alert-circle', 'info-circle', 'check', 'x',
           // Old names for compatibility, these will be mapped
           'device-unknown', 'gear', 'close', 'expand', 'collapse', 'compact',
           'detailed', 'fullscreen', 'disconnected', 'stop', 'tracking-on',
