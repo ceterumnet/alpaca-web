@@ -57,7 +57,7 @@ const currentThemeRef = ref<'light' | 'dark'>('light')
 const updateThemeRef = () => {
   const isDark = document.documentElement.classList.contains('dark-theme');
   currentThemeRef.value = isDark ? 'dark' : 'light';
-  console.log(`[THEME] updateThemeRef: documentElement.classList has 'dark-theme'=${isDark}. currentThemeRef set to: ${currentThemeRef.value}`);
+  // console.log(`[THEME] updateThemeRef: documentElement.classList has 'dark-theme'=${isDark}. currentThemeRef set to: ${currentThemeRef.value}`); // COMMENTED OUT
 }
 
 let themeObserver: MutationObserver | null = null
@@ -377,26 +377,12 @@ watch(
     autoStretch.value,
     useRobustStretch.value,
     robustPercentile.value,
-    currentThemeRef.value // Dependency at index 6
+    currentThemeRef.value
   ],
-  (newValues, oldValues) => {
-    const newTheme = newValues[6];
-    const oldTheme = oldValues ? oldValues[6] : undefined; // oldValues might be undefined on first run after mount
-
-    console.log(`[THEME] Watcher for applyStretch triggered. Current theme value from watch: ${newTheme}`);
-
-    if (oldValues === undefined) { // This means it's the first run after component mount (if immediate: true) or first change
-      console.log('[THEME] Watcher: initial trigger or first change after mount.');
-      // applyStretch() will run anyway
-    } else if (newTheme !== oldTheme) {
-      console.log(`[THEME] Watcher: theme changed from "${oldTheme}" to "${newTheme}". Calling applyStretch().`);
-      // applyStretch() will run anyway
-    } else {
-      // console.log('[THEME] Watcher: triggered by another dependency, not theme.');
-    }
+  () => {
     applyStretch();
   },
-  { immediate: false } // Set to true if you want it to run once on mount using initial values
+  { immediate: false }
 )
 
 // Initialize on mount
@@ -407,7 +393,7 @@ onMounted(() => {
   themeObserver = new MutationObserver((mutationsList) => {
     for (const mutation of mutationsList) {
       if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-        console.log('[THEME] MutationObserver detected class attribute change on document.documentElement.');
+        // console.log('[THEME] MutationObserver detected class attribute change on document.documentElement.'); // COMMENTED OUT
         updateThemeRef()
       }
     }
