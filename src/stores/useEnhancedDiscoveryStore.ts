@@ -19,11 +19,31 @@ import type {
   ManualDeviceParams,
   IDeviceDiscoveryService
 } from '@/services/interfaces/DeviceDiscoveryInterface'
+// Import DirectDiscoveryService to check instance type and call setManualHostPort
+import { DirectDiscoveryService } from '@/services/DirectDiscoveryService'
 
 export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => {
   // const notificationStore = useNotificationStore() // Comment out for now
   const deviceService: IDeviceDiscoveryService = discoveryService
   const discoveryResultsRef = ref<DiscoveryResult>(deviceService.getDiscoveryResults())
+
+  // State for manual discovery prompt
+  const showManualDiscoveryPrompt = ref(false)
+  const manualHostInput = ref('localhost') // Default or last used
+  const manualPortInput = ref<number | null>(11111) // Default or last used
+  let initialDirectDiscoveryAttemptFailed = false // Track if initial attempt failed
+
+  // Action to explicitly set the visibility of the manual discovery prompt
+  function setShowManualDiscoveryPrompt(value: boolean) {
+    showManualDiscoveryPrompt.value = value
+    if (!value) {
+      // Optional: Reset related state when hiding the prompt, if desired
+      // For example, if a user cancels, we might want to reset the 'initialDirectDiscoveryAttemptFailed' flag
+      // so that the next discovery error *without* a manual submission shows the prompt again.
+      // However, if they submit and it fails, 'initialDirectDiscoveryAttemptFailed' should remain true.
+      // Current logic in submitManualDiscovery and discoverDevices handles this.
+    }
+  }
 
   // Helper functions (not exported directly unless needed by components, but used by exported computed properties)
   function createUnifiedDevice(server: DeviceServer, device: DeviceServerDevice): UnifiedDevice {
@@ -37,40 +57,73 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
 
   // Actions
   async function discoverDevices(options?: DiscoveryOptions): Promise<DiscoveryResult> {
-    const results = await deviceService.discoverDevices(options)
-    console.log('[useEnhancedDiscoveryStore] Results from service (raw object):', results)
-    console.log('[useEnhancedDiscoveryStore] Results from service (JSON.stringified for inspection):', JSON.parse(JSON.stringify(results)))
-    discoveryResultsRef.value = results
+    try {
+      const results = await deviceService.discoverDevices(options)
+      console.log('[useEnhancedDiscoveryStore] Results from service (raw object):', results)
+      console.log('[useEnhancedDiscoveryStore] Results from service (JSON.stringified for inspection):', JSON.parse(JSON.stringify(results)))
+      discoveryResultsRef.value = results
+      initialDirectDiscoveryAttemptFailed = false // Reset on successful discovery
 
-    // === Add detailed check for results.servers ===
-    if (results && results.servers && Array.isArray(results.servers)) {
-      console.log('[useEnhancedDiscoveryStore] results.servers is an array. Length:', results.servers.length)
-      if (results.servers.length > 0) {
-        console.log('[useEnhancedDiscoveryStore] First server object:', JSON.parse(JSON.stringify(results.servers[0])))
-      }
-    } else {
-      console.error('[useEnhancedDiscoveryStore] results.servers is NOT a valid array or is missing! results.servers:', results.servers)
-      // Early exit or special handling if servers array is not as expected
-      return results // or throw error, depending on desired behavior
-    }
-    // === End of detailed check ===
-
-    const unifiedStore = useUnifiedStore()
-    results.servers.forEach((server) => {
-      console.log('[useEnhancedDiscoveryStore] Processing server:', server.id)
-      server.devices.forEach((device) => {
-        const unified = createUnifiedDevice(server, device)
-        console.log('[useEnhancedDiscoveryStore] Processing unified device:', JSON.parse(JSON.stringify(unified)))
-        const alreadyAdded = isDeviceAddedToStore(unified)
-        console.log('[useEnhancedDiscoveryStore] Is device already added?', alreadyAdded, 'Device ID:', unified.id)
-        if (!alreadyAdded) {
-          console.log('[useEnhancedDiscoveryStore] Attempting to add device to UnifiedStore:', unified.id)
-          const addedSuccess = unifiedStore.addDeviceWithCheck(unified)
-          console.log('[useEnhancedDiscoveryStore] Device add success?', addedSuccess, 'Device ID:', unified.id)
+      // === Add detailed check for results.servers ===
+      if (results && results.servers && Array.isArray(results.servers)) {
+        console.log('[useEnhancedDiscoveryStore] results.servers is an array. Length:', results.servers.length)
+        if (results.servers.length > 0) {
+          console.log('[useEnhancedDiscoveryStore] First server object:', JSON.parse(JSON.stringify(results.servers[0])))
         }
+      } else {
+        console.error('[useEnhancedDiscoveryStore] results.servers is NOT a valid array or is missing! results.servers:', results.servers)
+        // Early exit or special handling if servers array is not as expected
+        return results // or throw error, depending on desired behavior
+      }
+      // === End of detailed check ===
+
+      const unifiedStore = useUnifiedStore()
+      results.servers.forEach((server) => {
+        console.log('[useEnhancedDiscoveryStore] Processing server:', server.id)
+        server.devices.forEach((device) => {
+          const unified = createUnifiedDevice(server, device)
+          console.log('[useEnhancedDiscoveryStore] Processing unified device:', JSON.parse(JSON.stringify(unified)))
+          const alreadyAdded = isDeviceAddedToStore(unified)
+          console.log('[useEnhancedDiscoveryStore] Is device already added?', alreadyAdded, 'Device ID:', unified.id)
+          if (!alreadyAdded) {
+            console.log('[useEnhancedDiscoveryStore] Attempting to add device to UnifiedStore:', unified.id)
+            const addedSuccess = unifiedStore.addDeviceWithCheck(unified)
+            console.log('[useEnhancedDiscoveryStore] Device add success?', addedSuccess, 'Device ID:', unified.id)
+          }
+        })
       })
-    })
-    return results
+      return results
+    } catch (error) {
+      console.error('[EnhancedDiscoveryStore] Error during device discovery:', error)
+      // Check if in direct mode and if it's the first failure
+      // VITE_APP_DISCOVERY_MODE should be 'direct' or 'proxied'
+      const isDirectMode = import.meta.env.VITE_APP_DISCOVERY_MODE === 'direct'
+
+      if (isDirectMode && deviceService instanceof DirectDiscoveryService && !initialDirectDiscoveryAttemptFailed) {
+        console.log('[EnhancedDiscoveryStore] Initial direct discovery failed. Prompting for manual input.')
+        initialDirectDiscoveryAttemptFailed = true // Mark that the initial attempt has failed
+        showManualDiscoveryPrompt.value = true
+        // Do not process devices or add to store here, wait for manual input or next attempt
+        discoveryResultsRef.value = {
+          // Clear results or set to error state
+          servers: [],
+          status: 'error',
+          lastDiscoveryTime: new Date(),
+          error: error instanceof Error ? error.message : String(error)
+        }
+      } else if (isDirectMode && deviceService instanceof DirectDiscoveryService && initialDirectDiscoveryAttemptFailed) {
+        console.warn('[EnhancedDiscoveryStore] Manual direct discovery attempt also failed.')
+        // Potentially show a persistent error notification to the user
+        discoveryResultsRef.value = {
+          servers: [],
+          status: 'error',
+          lastDiscoveryTime: new Date(),
+          error: 'Manual discovery attempt failed. ' + (error instanceof Error ? error.message : String(error))
+        }
+      }
+      // Propagate the error so UI components can react if needed, or handle globally
+      throw error
+    }
   }
 
   async function addManualDevice(params: ManualDeviceParams): Promise<DeviceServer> {
@@ -94,6 +147,33 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
     return deviceService.getProxyUrl(server)
   }
 
+  // Action to handle manual host/port submission
+  async function submitManualDiscovery(host: string, port: number) {
+    if (!(deviceService instanceof DirectDiscoveryService)) {
+      console.error('[EnhancedDiscoveryStore] submitManualDiscovery called when not in DirectDiscoveryService mode.')
+      return
+    }
+    try {
+      deviceService.setManualHostPort(host, port)
+      manualHostInput.value = host // Store for potential pre-fill next time
+      manualPortInput.value = port
+      showManualDiscoveryPrompt.value = false
+      initialDirectDiscoveryAttemptFailed = true // Ensure next discoverDevices call knows a manual attempt is being made
+      // Retry discovery
+      await discoverDevices()
+    } catch (error) {
+      console.error('[EnhancedDiscoveryStore] Error setting manual host/port or re-discovering:', error)
+      // Optionally, update UI to show error during manual setup
+      discoveryResultsRef.value = {
+        servers: [],
+        status: 'error',
+        lastDiscoveryTime: new Date(),
+        error: 'Failed to apply manual settings. ' + (error instanceof Error ? error.message : String(error))
+      }
+      // Keep prompt open or handle error state appropriately
+    }
+  }
+
   // Return store public interface
   return {
     discoveryResults: computed(() => discoveryResultsRef.value),
@@ -102,6 +182,10 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
     lastDiscoveryTime: computed(() => deviceService.lastDiscoveryTime),
     lastError: computed(() => deviceService.lastError),
     isDiscovering: computed(() => deviceService.status === 'discovering'),
+    showManualDiscoveryPrompt: computed(() => showManualDiscoveryPrompt.value),
+    manualHostInput: computed(() => manualHostInput.value),
+    manualPortInput: computed(() => manualPortInput.value),
+    initialAttemptFailed: computed(() => initialDirectDiscoveryAttemptFailed),
     availableDevices: computed(() => {
       return discoveryResultsRef.value.servers.flatMap((server) =>
         server.devices.filter((device) => {
@@ -134,6 +218,8 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
     refreshDiscoveryResults,
     getProxyUrl,
     createUnifiedDevice,
-    isDeviceAdded: isDeviceAddedToStore
+    isDeviceAdded: isDeviceAddedToStore,
+    submitManualDiscovery, // Expose the new action
+    setShowManualDiscoveryPrompt // Expose the new action for controlling visibility
   }
 })

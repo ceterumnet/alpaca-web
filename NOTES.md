@@ -7,12 +7,12 @@
 TODO:
 
 - [ ] Add all alpaca device types
+- [ ] Need to cleanup the notification system...it's annoying and doesn't adhere to dark v light mode
 - [ ] Test standalone operation without a node server running
-  - [ ] Need to verify logic around proxy vs direct call
 - [ ] Revise device management system to:
   - [x] Automatically add all of the devices discovered to the device store
   - [x] Have better names for the devices, for example Camera 0 is ambiguous
-    - [ ] Probably a good idea to have customizable names
+    - [N] Probably a good idea to have customizable names
     - [x] Need to figure out canonical name scheme so that even between sessions we can keep the same settings / data associated with said device
   - [x] Disable autoconnect when adding a device from discovery
 - [ ] Figure out logging system
