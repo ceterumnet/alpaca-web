@@ -23,6 +23,9 @@ Corresponding Pinia store modules have been created to handle the logic for each
 - `src/stores/modules/domeActions.ts`
 - `src/stores/modules/observingConditionsActions.ts`
 - `src/stores/modules/switchActions.ts`
+- `src/stores/modules/coreActions.ts` (Central to device management)
+- `src/stores/modules/simulationActions.ts` (For device simulation)
+- `src/stores/modules/eventSystem.ts` (For store-wide events)
 
 These modules are integrated into the main `src/stores/UnifiedStore.ts`.
 
@@ -30,56 +33,56 @@ These modules are integrated into the main `src/stores/UnifiedStore.ts`.
 
 - The file `src/types/device.types.ts` has been manually edited to resolve duplicate type guards and ensure correct definitions for all device types, including `ObservingConditionsDevice` and its associated type guard `isObservingConditions`. This file currently reports no linter errors.
 
-## Current Status & Outstanding Issues
+### 4. Store Module Typing and "this" Context Refinements
 
-While the refactored panels and store modules are structurally in place, there are significant TypeScript typing issues that need to be addressed.
+Significant effort has been invested in resolving complex TypeScript typing issues within the `UnifiedStore` modules:
 
-### 1. TypeScript "this context" Errors in Panels
+- **Initial Challenge**: The modular store structure led to "this context" errors. TypeScript struggled with the `this` type within actions, especially concerning `CoreState` (particularly `deviceClients: Map<string, AlpacaClient>`) and `AlpacaClient` instances losing their method signatures when accessed from the reactive `Map`.
+- **Solution Strategy**:
+  - **Standardized `this` Context**: The `this` type for actions within all store modules (e.g., `coreActions.ts`, `simulationActions.ts`, `switchActions.ts`) has been standardized to `UnifiedStoreType`. `UnifiedStoreType` (derived from `ReturnType<typeof useUnifiedStore>`) represents the entire store instance, including all combined state and actions.
+  - **Explicit Action Signatures**: Each module creator function (e.g., `createCoreActions()`) now has an explicit return type, including a defined interface for its actions (e.g., `ICoreActions`, `ISimulationActions`, `SwitchActionsSignatures`). This improves type safety and clarity.
+  - **`AlpacaClient` Typing**: The issue of `AlpacaClient` instances in the `deviceClients` map losing their method signatures was addressed by:
+    - Using `markRaw()` when setting client instances into the `deviceClients` map. This tells Vue/Pinia to not make the client deeply reactive, preserving its class instance methods.
+    - Employing type assertions (e.g., `client as AlpacaClient`) when retrieving clients from the map to reassure TypeScript of the correct type.
+- **Specific Module Fixes**:
+  - **`coreActions.ts`**:
+    - `CoreState` and `ICoreActions` were refined.
+    - The `this` type for all actions in `ICoreActions` and their implementations was changed to `UnifiedStoreType`.
+    - Errors related to missing `shouldFallbackToSimulation` and `simulateDeviceMethod` were resolved by defining these in `simulationActions.ts` and ensuring they are correctly part of `UnifiedStoreType`.
+    - Unused `CoreActionContext` type was removed.
+  - **`simulationActions.ts`**:
+    - `shouldFallbackToSimulation` and `simulateDeviceMethod` were added with `this: UnifiedStoreType`.
+    - `createSimulationActions` now has an explicit return type and an `ISimulationActions` interface.
+    - `DeviceEvent` import usage was clarified with type assertions to satisfy the linter.
+  - **`switchActions.ts`**:
+    - Numerous "Property does not exist on type 'SwitchActionContext'" errors were resolved.
+    - The `this` type was changed from `SwitchActionContext` to `UnifiedStoreType` for all actions.
+    - `createSwitchActions` now has an explicit return type (`{ state: () => SwitchModuleState; actions: SwitchActionsSignatures; }`).
+    - Imports were updated (`UnifiedStoreType`, `DeviceEvent`), unused `CoreState` import removed.
+    - Explicit type annotations (e.g., `const device: Device | null`) were added where needed to satisfy linter for imported types.
+- **Architectural Review**: Confirmed that device-specific property fetching methods (e.g., `fetchCameraProperties`) were already correctly located in their respective modules (`cameraActions.ts`, `telescopeActions.ts`) and not in `coreActions.ts`.
 
-All refactored panels (`SimplifiedFilterWheelPanel.vue`, `SimplifiedDomePanel.vue`, `SimplifiedObservingConditionsPanel.vue`, `SimplifiedSwitchPanel.vue`) show TypeScript errors when calling actions on the `UnifiedStore` instance. The error message typically is:
+## Current Status
 
-```
-The 'this' context of type 'Store<"unifiedStore", { ... }>' is not assignable to method's 'this' of type '[DeviceType]ActionContext'.
-  Type 'Store<"unifiedStore", { ... }>' is not assignable to type 'CoreState'.
-    The types of 'deviceClients.forEach' are incompatible between these types.
-      Type '(callbackfn: (value: { ... }) => ...' is not assignable to type '(callbackfn: (value: AlpacaClient, ...)) => void'.
-        ...
-          Type '{ ... }' is missing the following properties from type 'AlpacaClient': getDeviceUrl, buildUrl, logRequest, logResponse, and 3 more.
-```
+The described changes have been applied to `coreActions.ts`, `simulationActions.ts`, and `switchActions.ts`. These modules should now be free of the previously discussed linter errors related to "this context" and property existence.
 
-This indicates a mismatch between the expected `this` context within the action modules (e.g., `FilterWheelActionContext`) and the actual `this` context provided by the Pinia store. The core of the issue seems to stem from how `CoreState` (defined in `src/stores/modules/coreActions.ts`) and its `deviceClients` property (which should hold instances of `AlpacaClient` or its derivatives) are typed and accessed across the composed store actions.
-
-### 2. Architectural Challenge: Store Modularity and Typing
-
-The current modular approach for `UnifiedStore.ts`, where actions from different files (`coreActions.ts`, `filterWheelActions.ts`, etc.) are combined, presents challenges for TypeScript's type inference and `this` context management.
-
-Each device-specific action module defines an `[DeviceType]ActionContext` type (e.g., `FilterWheelActionContext`) which combines its own state, `CoreState`, and its own action signatures. When an action is called from a Vue component (e.g., `store.setFilterWheelPosition(...)`), TypeScript expects the `this` inside `setFilterWheelPosition` to conform to `FilterWheelActionContext`. However, the actual `this` seems to be the broader Pinia store instance, which, while containing all parts of `CoreState`, might not be directly assignable, especially concerning the `deviceClients` map within `CoreState` and its expected `AlpacaClient` interface.
-
-Your note about `CoreState` and the mechanics of `this` and TypeScript being important was prescient.
-
-## Affected Files
-
-- **Panels (TypeScript errors):**
-  - `src/components/devices/SimplifiedFilterWheelPanel.vue`
-  - `src/components/devices/SimplifiedDomePanel.vue`
-  - `src/components/devices/SimplifiedObservingConditionsPanel.vue`
-  - `src/components/devices/SimplifiedSwitchPanel.vue`
-- **Store Modules (Define `ActionContext` types and actions):**
-  - `src/stores/modules/filterWheelActions.ts`
-  - `src/stores/modules/domeActions.ts`
-  - `src/stores/modules/observingConditionsActions.ts`
-  - `src/stores/modules/switchActions.ts`
-- **Core Store Files (Central to the typing issue):**
-  - `src/stores/UnifiedStore.ts`
-  - `src/stores/modules/coreActions.ts` (Defines `CoreState` and `deviceClients`)
-  - `src/api/alpaca/base-client.ts` (Defines `AlpacaClient`)
+The "this context" errors previously noted in the Vue panels (e.g., `SimplifiedSwitchPanel.vue`) — where the panel's store instance `this` (of `Store<"unifiedStore", ...>`) was not assignable to an action's expected `this` (e.g., `SwitchActionContext`) — should now be resolved. This is because the actions themselves now declare their `this` context as `UnifiedStoreType`, which aligns with the actual `this` provided by Pinia when actions are invoked from components.
 
 ## Next Steps
 
-Focus should be on resolving the TypeScript "this context" and `CoreState`/`AlpacaClient` typing issues within the `UnifiedStore` and its modules. This might involve:
+1.  **Verify Panel Linter Errors**: Confirm that the TypeScript errors in the refactored panels (`SimplifiedFilterWheelPanel.vue`, `SimplifiedDomePanel.vue`, `SimplifiedObservingConditionsPanel.vue`, `SimplifiedSwitchPanel.vue`) are indeed resolved following the store module updates.
+2.  **Review Other Device Action Modules**: Apply the same typing strategy (standardize `this` to `UnifiedStoreType`, explicit return types for creator functions, well-defined action interfaces) to other device-specific action modules if they exhibit similar typing issues:
+    - `src/stores/modules/filterWheelActions.ts`
+    - `src/stores/modules/domeActions.ts`
+    - `src/stores/modules/observingConditionsActions.ts`
+    - `src/stores/modules/cameraActions.ts`
+    - `src/stores/modules/telescopeActions.ts`
+3.  **Runtime Testing**: Conduct thorough runtime testing of all refactored panels and associated store functionality to ensure:
+    - Real device interactions are working correctly.
+    - Simulation fallbacks trigger as expected.
+    - State updates are propagating to the UI.
+    - No new runtime errors have been introduced.
+4.  **Continue Panel Refactoring**: If any device control panels have not yet been refactored to use the `UnifiedStore`, continue this process.
+5.  **Documentation**: Update any relevant developer documentation or comments to reflect the established store architecture and typing patterns.
 
-1.  Re-evaluating how `CoreState` (especially `deviceClients`) is defined and shared across modules.
-2.  Adjusting the `AlpacaClient` base class or how derived clients are stored/typed in `deviceClients`.
-3.  Modifying how `ActionContext` types are defined in each module to correctly align with Pinia's `this`.
-
-Once these typing issues are resolved, the refactored panels should be free of linter errors and operate as intended.
+Once these steps are complete, the simplified panels refactor should achieve its goal of a more maintainable and type-safe architecture.

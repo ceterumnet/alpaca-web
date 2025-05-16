@@ -225,13 +225,11 @@ const toggleCellConnection = async (cellId: string) => {
   try {
     if (device.isConnected) {
       console.log(`Disconnecting device ${deviceId} in cell ${cellId}`);
-      // @ts-expect-error - store typing
       await unifiedStore.disconnectDevice(deviceId);
       cellConnectionStatus.value[cellId] = false;
       console.log(`Device ${deviceId} disconnected successfully in cell ${cellId}`);
     } else {
       console.log(`Connecting device ${deviceId} in cell ${cellId}`);
-      // @ts-expect-error - store typing
       await unifiedStore.connectDevice(deviceId);
       cellConnectionStatus.value[cellId] = true;
       console.log(`Device ${deviceId} connected successfully in cell ${cellId}`);

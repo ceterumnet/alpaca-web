@@ -4,8 +4,8 @@
  * Provides functionality for interacting with dome devices.
  */
 
-// import type { Device, DeviceEvent } from '../types/device-store.types'
-import type { CoreState } from './coreActions'
+import type { UnifiedStoreType } from '../UnifiedStore'
+import type { Device, DeviceEvent } from '../types/device-store.types'
 import { DomeClient } from '@/api/alpaca/dome-client'
 import { isDome } from '@/types/device.types'
 
@@ -28,28 +28,29 @@ export interface DomeModuleState {
 
 // Signatures of actions in this module
 interface DomeActionsSignatures {
-  _getDomeClient: (deviceId: string) => DomeClient | null
-  fetchDomeStatus: (deviceId: string) => Promise<void>
+  _getDomeClient: (this: UnifiedStoreType, deviceId: string) => DomeClient | null
+  fetchDomeStatus: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   _executeDomeAction: (
+    this: UnifiedStoreType,
     deviceId: string,
     action: keyof Pick<DomeClient, 'openShutter' | 'closeShutter' | 'parkDome' | 'findHomeDome' | 'abortSlewDome'>
   ) => Promise<void>
-  openDomeShutter: (deviceId: string) => Promise<void>
-  closeDomeShutter: (deviceId: string) => Promise<void>
-  parkDomeDevice: (deviceId: string) => Promise<void>
-  findDomeHome: (deviceId: string) => Promise<void>
-  abortDomeSlew: (deviceId: string) => Promise<void>
-  startDomePolling: (deviceId: string) => void
-  stopDomePolling: (deviceId: string) => void
-  _pollDomeStatus: (deviceId: string) => Promise<void>
-  handleDomeConnected: (deviceId: string) => void
-  handleDomeDisconnected: (deviceId: string) => void
+  openDomeShutter: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  closeDomeShutter: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  parkDomeDevice: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  findDomeHome: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  abortDomeSlew: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  startDomePolling: (this: UnifiedStoreType, deviceId: string) => void
+  stopDomePolling: (this: UnifiedStoreType, deviceId: string) => void
+  _pollDomeStatus: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  handleDomeConnected: (this: UnifiedStoreType, deviceId: string) => void
+  handleDomeDisconnected: (this: UnifiedStoreType, deviceId: string) => void
 }
 
-// Combined type for 'this' in actions
-export type DomeActionContext = DomeModuleState & CoreState & DomeActionsSignatures
-
-export function createDomeActions() {
+export function createDomeActions(): {
+  state: () => DomeModuleState
+  actions: DomeActionsSignatures
+} {
   return {
     state: (): DomeModuleState => ({
       _dome_pollingTimers: new Map(),
@@ -57,8 +58,8 @@ export function createDomeActions() {
     }),
 
     actions: {
-      _getDomeClient(this: DomeActionContext, deviceId: string): DomeClient | null {
-        const device = this.getDeviceById(deviceId)
+      _getDomeClient(this: UnifiedStoreType, deviceId: string): DomeClient | null {
+        const device: Device | null = this.getDeviceById(deviceId)
         if (!device || !isDome(device)) {
           console.error(`[DomeStore] Device ${deviceId} not found or is not a Dome.`)
           return null
@@ -76,7 +77,7 @@ export function createDomeActions() {
         return new DomeClient(baseUrl, deviceNumber, device)
       },
 
-      async fetchDomeStatus(this: DomeActionContext, deviceId: string): Promise<void> {
+      async fetchDomeStatus(this: UnifiedStoreType, deviceId: string): Promise<void> {
         const client = this._getDomeClient(deviceId)
         if (!client) return
         try {
@@ -90,15 +91,15 @@ export function createDomeActions() {
             dome_slewing: (status.slewing as boolean) ?? null
           }
           this.updateDevice(deviceId, updates)
-          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'domeStatus', value: updates })
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'domeStatus', value: updates } as DeviceEvent)
         } catch (error) {
           console.error(`[DomeStore] Error fetching status for ${deviceId}:`, error)
-          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to fetch dome status: ${error}` })
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to fetch dome status: ${error}` } as DeviceEvent)
         }
       },
 
       async _executeDomeAction(
-        this: DomeActionContext,
+        this: UnifiedStoreType,
         deviceId: string,
         action: keyof Pick<DomeClient, 'openShutter' | 'closeShutter' | 'parkDome' | 'findHomeDome' | 'abortSlewDome'>
       ): Promise<void> {
@@ -107,31 +108,31 @@ export function createDomeActions() {
         try {
           await client[action]()
           await this.fetchDomeStatus(deviceId) // Refresh status after action
-          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: action, args: [], result: 'success' /* simplistic */ })
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: action, args: [], result: 'success' /* simplistic */ } as DeviceEvent)
         } catch (error) {
           console.error(`[DomeStore] Error executing ${action} on ${deviceId}:`, error)
-          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to ${action} dome: ${error}` })
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to ${action} dome: ${error}` } as DeviceEvent)
           await this.fetchDomeStatus(deviceId) // Refresh status even on error
         }
       },
 
-      openDomeShutter(this: DomeActionContext, deviceId: string): Promise<void> {
+      openDomeShutter(this: UnifiedStoreType, deviceId: string): Promise<void> {
         return this._executeDomeAction(deviceId, 'openShutter')
       },
-      closeDomeShutter(this: DomeActionContext, deviceId: string): Promise<void> {
+      closeDomeShutter(this: UnifiedStoreType, deviceId: string): Promise<void> {
         return this._executeDomeAction(deviceId, 'closeShutter')
       },
-      parkDomeDevice(this: DomeActionContext, deviceId: string): Promise<void> {
+      parkDomeDevice(this: UnifiedStoreType, deviceId: string): Promise<void> {
         return this._executeDomeAction(deviceId, 'parkDome')
       },
-      findDomeHome(this: DomeActionContext, deviceId: string): Promise<void> {
+      findDomeHome(this: UnifiedStoreType, deviceId: string): Promise<void> {
         return this._executeDomeAction(deviceId, 'findHomeDome')
       },
-      abortDomeSlew(this: DomeActionContext, deviceId: string): Promise<void> {
+      abortDomeSlew(this: UnifiedStoreType, deviceId: string): Promise<void> {
         return this._executeDomeAction(deviceId, 'abortSlewDome')
       },
 
-      async _pollDomeStatus(this: DomeActionContext, deviceId: string): Promise<void> {
+      async _pollDomeStatus(this: UnifiedStoreType, deviceId: string): Promise<void> {
         if (!this._dome_isPolling.get(deviceId)) return
         const device = this.getDeviceById(deviceId)
         if (!device || !device.isConnected) {
@@ -142,7 +143,7 @@ export function createDomeActions() {
         await this.fetchDomeStatus(deviceId)
       },
 
-      startDomePolling(this: DomeActionContext, deviceId: string): void {
+      startDomePolling(this: UnifiedStoreType, deviceId: string): void {
         const device = this.getDeviceById(deviceId)
         if (!device || !isDome(device) || !device.isConnected) return
         if (this._dome_pollingTimers.has(deviceId)) {
@@ -155,7 +156,7 @@ export function createDomeActions() {
         console.log(`[DomeStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
-      stopDomePolling(this: DomeActionContext, deviceId: string): void {
+      stopDomePolling(this: UnifiedStoreType, deviceId: string): void {
         this._dome_isPolling.set(deviceId, false)
         if (this._dome_pollingTimers.has(deviceId)) {
           clearInterval(this._dome_pollingTimers.get(deviceId)!)
@@ -164,13 +165,13 @@ export function createDomeActions() {
         }
       },
 
-      handleDomeConnected(this: DomeActionContext, deviceId: string): void {
+      handleDomeConnected(this: UnifiedStoreType, deviceId: string): void {
         console.log(`[DomeStore] Dome ${deviceId} connected. Fetching status and starting poll.`)
         this.fetchDomeStatus(deviceId)
         this.startDomePolling(deviceId)
       },
 
-      handleDomeDisconnected(this: DomeActionContext, deviceId: string): void {
+      handleDomeDisconnected(this: UnifiedStoreType, deviceId: string): void {
         console.log(`[DomeStore] Dome ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopDomePolling(deviceId)
         const clearedProps: DomeDeviceProperties = {
