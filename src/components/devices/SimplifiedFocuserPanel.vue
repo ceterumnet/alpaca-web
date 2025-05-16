@@ -42,7 +42,6 @@ const resetFocuserState = () => {
   position.value = 0
   isMoving.value = false
   temperature.value = null
-  stepSize.value = 10
   maxStep.value = 1000
   maxIncrement.value = 1000
   tempComp.value = false
@@ -50,52 +49,72 @@ const resetFocuserState = () => {
 }
 
 // Functions for movement
-const moveToPosition = async (targetPosition: number) => {
+const moveToPosition = async (targetPositionValue: number) => {
+  if (!props.deviceId) return;
   try {
     await callAlpacaMethod(props.deviceId, 'move', {
-      position: targetPosition
+      Position: targetPositionValue
     })
+    updateFocuserStatus()
   } catch (error) {
     console.error('Error moving to position:', error)
   }
 }
 
 const moveIn = async () => {
+  if (!props.deviceId || position.value === null || stepSize.value === null) return;
   try {
-    await callAlpacaMethod(props.deviceId, 'moveIn')
+    const targetPositionValue = position.value - stepSize.value;
+    await callAlpacaMethod(props.deviceId, 'move', { 
+      Position: targetPositionValue 
+    });
+    updateFocuserStatus();
   } catch (error) {
-    console.error('Error moving in:', error)
+    console.error('Error moving in:', error);
   }
-}
+};
 
 const moveOut = async () => {
+  if (!props.deviceId || position.value === null || stepSize.value === null) return;
   try {
-    await callAlpacaMethod(props.deviceId, 'moveOut')
+    const targetPositionValue = position.value + stepSize.value;
+    await callAlpacaMethod(props.deviceId, 'move', { 
+      Position: targetPositionValue 
+    });
+    updateFocuserStatus();
   } catch (error) {
-    console.error('Error moving out:', error)
+    console.error('Error moving out:', error);
   }
-}
+};
 
 const halt = async () => {
+  if (!props.deviceId) return;
   try {
     await callAlpacaMethod(props.deviceId, 'halt')
+    updateFocuserStatus()
   } catch (error) {
     console.error('Error halting movement:', error)
   }
 }
 
 // Update settings
+/*
 const updateStepSize = async () => {
   try {
-    await setAlpacaProperty(props.deviceId, 'stepSize', stepSize.value)
+    // StepSize is a GET-only property in Alpaca Focuser specification
+    // await setAlpacaProperty(props.deviceId, 'stepSize', stepSize.value)
+    console.warn('Attempted to set read-only property StepSize for Focuser')
   } catch (error) {
     console.error('Error setting step size:', error)
   }
 }
+*/
 
 const updateTempComp = async () => {
+  if (!props.deviceId) return;
   try {
     await setAlpacaProperty(props.deviceId, 'tempComp', tempComp.value)
+    updateFocuserStatus()
   } catch (error) {
     console.error('Error setting temperature compensation:', error)
   }
@@ -274,8 +293,8 @@ onUnmounted(() => {
           <h3>Movement</h3>
           <div class="movement-controls">
             <div class="step-size-control">
-              <label>Step Size:</label>
-              <input v-model.number="stepSize" type="number" min="1" :max="maxIncrement" step="1" @change="updateStepSize">
+              <label>Step Size (microns):</label>
+              <input v-model.number="stepSize" type="number" readonly>
             </div>
             
             <div class="movement-buttons">
