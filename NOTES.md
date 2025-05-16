@@ -4,13 +4,24 @@
 - Breadrumb and navigation state have been removed by me because I'm not sure they will be needed
 -
 
-TODO:
+FUTURE:
+
+- [ ] Wire up PHD2 monitor - https://github.com/OpenPHDGuiding/phd2/wiki/EventMonitoring
+- [ ] add support for Alpaca supported actions
+
+        Ok - we have the base client along with the other clients in@api- Additionally, we have @UnifiedStore.ts along with some other helpers such as @AlpacaFeatureMap.ts @alpacaPropertyAccess.ts
+
+        There is a part of the alpaca spec that I would like to implement which is supportedactions.
+
+        The return result is a list of values that can then be used in the "action" API endpoint with a PUT per the spec.
+
+  TODO:
 
 - [ ] Ensure all docs are up to date, deleted, or created
-- [ ] Add all alpaca device types
+- [x] Add all alpaca device types
 - [ ] Need to cleanup the notification system...it's annoying and doesn't adhere to dark v light mode
 - [x] Test standalone operation without a node server running
-- [ ] Revise device management system to:
+- [x] Revise device management system to:
   - [x] Automatically add all of the devices discovered to the device store
   - [x] Have better names for the devices, for example Camera 0 is ambiguous
     - [N] Probably a good idea to have customizable names
@@ -20,7 +31,6 @@ TODO:
 - [ ] Wire settings up
 - [x] New visual layouts for the panels
 - [x] Integrate layout edit button more nicely - it's a giant bar right now...doesn't need to be
-- [ ] Wire up PHD2 monitor - https://github.com/OpenPHDGuiding/phd2/wiki/EventMonitoring
 - [x] The buttons on the top right of the panels aren't wired up
 
 - [x] Layout Management:

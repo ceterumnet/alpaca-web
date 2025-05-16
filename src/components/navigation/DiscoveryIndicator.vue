@@ -171,7 +171,7 @@ onUnmounted(() => {
   border: none;
   border-radius: var(--aw-border-radius-md);
   background-color: var(--aw-panel-hover-bg-color);
-  color: var(--aw-panel-content-color);
+  /* color: var(--aw-panel-content-color); */
   cursor: pointer;
   transition: all 0.2s ease;
 }

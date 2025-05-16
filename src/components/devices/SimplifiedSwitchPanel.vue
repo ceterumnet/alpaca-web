@@ -9,21 +9,15 @@
         <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
 
-      <template v-else-if="isLoading">
-        <div class="loading-notice">
-          <p>Loading switch details...</p>
-        </div>
-      </template>
-
-      <template v-else-if="switches.length === 0">
+      <template v-else-if="!storedSwitches || storedSwitches.length === 0">
          <div class="panel-section">
             <h3>Switches</h3>
-            <p>No switches available for this device.</p>
+            <p>No switches available for this device, or still loading.</p>
         </div>
       </template>
 
       <template v-else>
-        <div v-for="(sw, index) in switches" :key="index" class="panel-section switch-item">
+        <div v-for="(sw, index) in storedSwitches" :key="sw.name + '-' + index" class="panel-section switch-item">
           <h3>{{ sw.name }}</h3>
           <p class="switch-description">{{ sw.description }}</p>
           
@@ -52,10 +46,9 @@
             </template>
           </div>
 
-          <!-- Allow editing switch name -->
           <div class="switch-name-edit">
-            <input type="text" :value="editableSwitchNames[index]" placeholder="Edit name" @input="editableSwitchNames[index] = ($event.target as HTMLInputElement).value" />
-            <button :disabled="editableSwitchNames[index] === sw.name" @click="updateSwitchName(index)">Save Name</button>
+            <input v-model="editableSwitchNames[index]" type="text" placeholder="Edit name" />
+            <button :disabled="editableSwitchNames[index] === sw.name || !editableSwitchNames[index]" @click="updateSwitchName(index)">Save Name</button>
           </div>
 
         </div>
@@ -65,10 +58,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { callAlpacaMethod } from '@/utils/alpacaPropertyAccess'
-import type { ISwitchDetail } from '@/api/alpaca/switch-client' // Import the interface
+import type { ISwitchDetail } from '@/api/alpaca/switch-client'
 
 const props = defineProps({
   deviceId: {
@@ -82,153 +74,85 @@ const props = defineProps({
 })
 
 const store = useUnifiedStore()
-const isLoading = ref(true)
 
 const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
 
-const switches = ref<ISwitchDetail[]>([])
+const storedSwitches = computed(() => {
+  return currentDevice.value?.properties?.sw_switches as ISwitchDetail[] | undefined | null;
+});
+
 const editableSwitchNames = ref<string[]>([])
 
+watch(storedSwitches, (newSwitches) => {
+  if (newSwitches) {
+    editableSwitchNames.value = newSwitches.map(sw => sw.name);
+  } else {
+    editableSwitchNames.value = [];
+  }
+}, { immediate: true, deep: true });
+
 const isBooleanSwitch = (sw: ISwitchDetail): boolean => {
-  // Heuristic: if min=0, max=1, step=1, treat as boolean for setSwitch method.
-  // Alpaca's getswitchvalue always returns a number (double).
   return sw.min === 0 && sw.max === 1 && sw.step === 1;
 }
 
-const fetchSwitchDetails = async () => {
-  if (!props.isConnected || !props.deviceId) {
-    switches.value = []
-    editableSwitchNames.value = []
-    isLoading.value = false
-    return
-  }
-  isLoading.value = true
-  try {
-    // `getAllSwitchDetails` is a custom method in our SwitchClient
-    const details = await callAlpacaMethod(props.deviceId, 'getAllSwitchDetails') as ISwitchDetail[]
-    switches.value = details
-    editableSwitchNames.value = details.map(sw => sw.name) // Initialize editable names
-  } catch (error) {
-    console.error('Error fetching switch details:', error)
-    switches.value = []
-    editableSwitchNames.value = []
-  }
-  isLoading.value = false
-}
-
 const toggleBooleanSwitch = async (switchIndex: number, newState: boolean) => {
-  if (!props.deviceId) return
+  if (!props.deviceId) return;
   try {
-    await callAlpacaMethod(props.deviceId, 'setSwitch', { Id: switchIndex, State: newState })
-    // Refresh only the affected switch value for responsiveness
-    const newValue = await callAlpacaMethod(props.deviceId, 'getSwitchValue', { Id: switchIndex }) as number;
-    if (switches.value[switchIndex]) {
-        switches.value[switchIndex].value = newValue;
-    }
+    await store.setDeviceSwitchValue(props.deviceId, switchIndex, newState);
   } catch (error) {
-    console.error(`Error toggling switch ${switchIndex}:`, error)
-    // Optionally re-fetch all if single update fails or state is complex
-    // await fetchSwitchDetails() 
+    console.error(`Error toggling switch ${switchIndex} via store:`, error);
   }
 }
 
 const setNumericSwitchValue = async (switchIndex: number, newValue: number) => {
-  if (!props.deviceId) return
+  if (!props.deviceId || isNaN(newValue)) return;
   try {
-    await callAlpacaMethod(props.deviceId, 'setSwitchValue', { Id: switchIndex, Value: newValue })
-    // Refresh the affected switch value
-    const updatedValue = await callAlpacaMethod(props.deviceId, 'getSwitchValue', { Id: switchIndex }) as number;
-     if (switches.value[switchIndex]) {
-        switches.value[switchIndex].value = updatedValue;
-    }
+    await store.setDeviceSwitchValue(props.deviceId, switchIndex, newValue);
   } catch (error) {
-    console.error(`Error setting value for switch ${switchIndex}:`, error)
+    console.error(`Error setting value for switch ${switchIndex} via store:`, error);
   }
 }
 
 const updateSwitchName = async (switchIndex: number) => {
   if (!props.deviceId || !editableSwitchNames.value[switchIndex]) return;
   const newName = editableSwitchNames.value[switchIndex];
+  const oldName = storedSwitches.value?.[switchIndex]?.name;
+  if (newName === oldName) return;
+
   try {
-    await callAlpacaMethod(props.deviceId, 'setSwitchName', { Id: switchIndex, Name: newName });
-    // Refresh the switch name locally after successful update
-    if (switches.value[switchIndex]) {
-        switches.value[switchIndex].name = newName;
-    }
+    await store.setDeviceSwitchName(props.deviceId, switchIndex, newName);
   } catch (error) {
-    console.error(`Error updating name for switch ${switchIndex}:`, error);
-    // Revert editable name if API call fails
-    editableSwitchNames.value[switchIndex] = switches.value[switchIndex]?.name || '';
+    console.error(`Error updating name for switch ${switchIndex} via store:`, error);
+    if(oldName) editableSwitchNames.value[switchIndex] = oldName;
   }
 }
 
-let pollTimer: number | undefined
-
-const pollSwitchValues = async () => {
-  if (!props.isConnected || !props.deviceId || switches.value.length === 0) return
-
-  try {
-    for (let i = 0; i < switches.value.length; i++) {
-      const currentValue = await callAlpacaMethod(props.deviceId, 'getSwitchValue', { Id: i }) as number
-      if (switches.value[i] && switches.value[i].value !== currentValue) {
-        switches.value[i].value = currentValue
-      }
-      // Optionally update names too, if they can change dynamically (less common)
-      // const currentName = await callAlpacaMethod(props.deviceId, 'getSwitchName', { Id: i }) as string;
-      // if (switches.value[i].name !== currentName) {
-      //   switches.value[i].name = currentName;
-      //   editableSwitchNames.value[i] = currentName;
-      // }
-    }
-  } catch (error) {
-    console.error('Error polling switch values:', error)
+onMounted(() => {
+  if (props.deviceId && props.isConnected) {
+    store.handleSwitchConnected(props.deviceId);
   }
-}
+});
 
-onMounted(async () => {
-  await fetchSwitchDetails() 
-  if (props.isConnected && props.deviceId && !pollTimer) {
-    pollTimer = window.setInterval(pollSwitchValues, 5000) // Poll every 5 seconds
-  }
-})
-
-watch(() => props.isConnected, async (newIsConnected) => {
-  await fetchSwitchDetails() // Refetch all details on connection change
-  if (newIsConnected && props.deviceId) {
-    if (!pollTimer) {
-      pollTimer = window.setInterval(pollSwitchValues, 5000)
-    }
-  } else {
-    if (pollTimer) {
-      window.clearInterval(pollTimer)
-      pollTimer = undefined
+watch(() => props.isConnected, (newIsConnected, oldIsConnected) => {
+  if (props.deviceId) {
+    if (newIsConnected && !oldIsConnected) {
+      store.handleSwitchConnected(props.deviceId);
+    } else if (!newIsConnected && oldIsConnected) {
+      store.handleSwitchDisconnected(props.deviceId);
     }
   }
-})
+});
 
-watch(() => props.deviceId, async (newDeviceId, oldDeviceId) => {
-  if (newDeviceId !== oldDeviceId) {
-    await fetchSwitchDetails() // Refetch all details on device change
-     if (props.isConnected && props.deviceId) {
-        if (!pollTimer) {
-            pollTimer = window.setInterval(pollSwitchValues, 5000);
-        }
-    } else {
-        if (pollTimer) {
-            clearInterval(pollTimer);
-            pollTimer = undefined;
-        }
-    }
+watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
+  if (oldDeviceId && props.isConnected) {
+    store.handleSwitchDisconnected(oldDeviceId);
   }
-}, { immediate: true })
-
-onUnmounted(() => {
-  if (pollTimer) {
-    window.clearInterval(pollTimer)
+  if (newDeviceId && props.isConnected) {
+    store.handleSwitchConnected(newDeviceId);
   }
-})
+}, { immediate: false });
 
 </script>
 
@@ -265,7 +189,7 @@ onUnmounted(() => {
   padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
-.connection-notice, .loading-notice {
+.connection-notice {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -278,91 +202,32 @@ onUnmounted(() => {
   color: var(--aw-text-secondary-color);
 }
 
-.connection-message {
-  font-size: 1.1rem;
-}
-
-.panel-tip {
-  font-size: 0.8rem;
-}
+.connection-message { font-size: 1.1rem; }
+.panel-tip { font-size: 0.8rem; }
 
 .switch-item {
-  /* styles for individual switch sections if needed */
+  /* Specific styles for switch items if needed */
 }
 
 .switch-description {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--aw-text-secondary-color);
   margin-bottom: var(--aw-spacing-sm);
+  min-height: 1.2em;
 }
 
 .switch-controls {
   display: flex;
   align-items: center;
-  gap: var(--aw-spacing-sm);
+  gap: var(--aw-spacing-md);
   margin-bottom: var(--aw-spacing-sm);
 }
 
-.numeric-input {
-  padding: var(--aw-spacing-xs);
-  background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-input-border-color, var(--aw-panel-border-color));
-  border-radius: var(--aw-border-radius-sm);
-  width: 80px;
-}
-
-.value-label, .range-label {
-  font-size: 0.9rem;
-}
-
-.range-label {
-  color: var(--aw-text-secondary-color);
-  font-size: 0.8rem;
-}
-
-.switch-name-edit {
-  display: flex;
-  gap: var(--aw-spacing-sm);
-  align-items: center;
-  margin-top: var(--aw-spacing-xs);
-}
-
-.switch-name-edit input {
-  flex-grow: 1;
-  padding: var(--aw-spacing-xs);
-  background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-input-border-color, var(--aw-panel-border-color));
-  border-radius: var(--aw-border-radius-sm);
-}
-
-.switch-name-edit button {
-  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
-  background-color: var(--aw-button-secondary-bg-color, var(--aw-primary-color));
-  color: var(--aw-button-secondary-text-color, var(--aw-button-primary-text));
-  border: 1px solid var(--aw-button-secondary-border-color, var(--aw-primary-color));
-  border-radius: var(--aw-border-radius-sm);
-  cursor: pointer;
-}
-
-.switch-name-edit button:hover {
-  background-color: var(--aw-button-secondary-hover-bg-color, var(--aw-primary-hover-color));
-}
-
-.switch-name-edit button:disabled {
-  background-color: var(--aw-color-neutral-300);
-  border-color: var(--aw-color-neutral-300);
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-/* Toggle switch styles from other panels */
 .toggle {
   position: relative;
   display: inline-block;
-  width: 44px;
-  height: 24px;
+  width: 50px;
+  height: 28px;
 }
 
 .toggle input {
@@ -378,30 +243,84 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--aw-panel-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
+  background-color: var(--aw-input-bg-color, #ccc);
   transition: .4s;
-  border-radius: var(--aw-spacing-lg);
+  border-radius: 28px;
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--aw-text-secondary-color);
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
   transition: .4s;
   border-radius: 50%;
 }
 
 input:checked + .slider {
-  background-color: var(--aw-primary-color);
+  background-color: var(--aw-primary-accent-color, #2196F3);
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px var(--aw-primary-accent-color, #2196F3);
 }
 
 input:checked + .slider:before {
-  transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
-  background-color: var(--aw-button-primary-text);
+  transform: translateX(22px);
 }
+
+.value-label {
+  font-size: 0.9rem;
+  min-width: 80px;
+}
+
+.numeric-input {
+  width: 80px;
+  padding: var(--aw-spacing-xs);
+  background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-input-border-color, var(--aw-panel-border-color));
+  border-radius: var(--aw-border-radius-sm);
+}
+
+.range-label {
+  font-size: 0.8rem;
+  color: var(--aw-text-tertiary-color);
+}
+
+.switch-name-edit {
+  margin-top: var(--aw-spacing-sm);
+  display: flex;
+  gap: var(--aw-spacing-xs);
+  align-items: center;
+}
+
+.switch-name-edit input[type="text"] {
+  flex-grow: 1;
+  padding: var(--aw-spacing-xs);
+  background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-input-border-color, var(--aw-panel-border-color));
+  border-radius: var(--aw-border-radius-sm);
+}
+
+.switch-name-edit button {
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  background-color: var(--aw-button-secondary-bg-color);
+  color: var(--aw-button-secondary-text-color);
+  border: 1px solid var(--aw-button-secondary-border-color);
+  border-radius: var(--aw-border-radius-sm);
+  cursor: pointer;
+}
+
+.switch-name-edit button:disabled {
+  background-color: var(--aw-button-disabled-bg-color);
+  color: var(--aw-button-disabled-text-color);
+  border-color: var(--aw-button-disabled-border-color);
+  cursor: not-allowed;
+}
+
 </style> 

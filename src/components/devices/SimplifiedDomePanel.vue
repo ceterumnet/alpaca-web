@@ -14,28 +14,28 @@
           <h3>Status</h3>
           <div class="status-grid">
             <div><span class="label">Shutter:</span> <span class="value">{{ shutterStatusText }}</span></div>
-            <div><span class="label">Slewing:</span> <span class="value">{{ slewing === null ? 'N/A' : (slewing ? 'Yes' : 'No') }}</span></div>
-            <div><span class="label">At Home:</span> <span class="value">{{ atHome === null ? 'N/A' : (atHome ? 'Yes' : 'No') }}</span></div>
-            <div><span class="label">At Park:</span> <span class="value">{{ atPark === null ? 'N/A' : (atPark ? 'Yes' : 'No') }}</span></div>
+            <div><span class="label">Slewing:</span> <span class="value">{{ domeSlewing === null ? 'N/A' : (domeSlewing ? 'Yes' : 'No') }}</span></div>
+            <div><span class="label">At Home:</span> <span class="value">{{ domeAtHome === null ? 'N/A' : (domeAtHome ? 'Yes' : 'No') }}</span></div>
+            <div><span class="label">At Park:</span> <span class="value">{{ domeAtPark === null ? 'N/A' : (domeAtPark ? 'Yes' : 'No') }}</span></div>
           </div>
         </div>
 
         <div class="panel-section">
           <h3>Position</h3>
            <div class="status-grid">
-            <div><span class="label">Altitude:</span> <span class="value">{{ altitude === null ? 'N/A' : altitude.toFixed(2) + '°' }}</span></div>
-            <div><span class="label">Azimuth:</span> <span class="value">{{ azimuth === null ? 'N/A' : azimuth.toFixed(2) + '°' }}</span></div>
+            <div><span class="label">Altitude:</span> <span class="value">{{ domeAltitude === null ? 'N/A' : domeAltitude.toFixed(2) + '°' }}</span></div>
+            <div><span class="label">Azimuth:</span> <span class="value">{{ domeAzimuth === null ? 'N/A' : domeAzimuth.toFixed(2) + '°' }}</span></div>
           </div>
         </div>
 
         <div class="panel-section">
           <h3>Controls</h3>
           <div class="control-buttons">
-            <button class="action-button" :disabled="slewing === true || shutterStatus === 0 || shutterStatus === 2" @click="openShutter">Open Shutter</button>
-            <button class="action-button" :disabled="slewing === true || shutterStatus === 1 || shutterStatus === 3" @click="closeShutter">Close Shutter</button>
-            <button class="action-button" :disabled="slewing === true" @click="parkDome">Park Dome</button>
-            <button class="action-button" :disabled="slewing === true" @click="findHomeDome">Find Home</button>
-            <button class="stop-button" :disabled="slewing !== true" @click="abortSlewDome">Abort Slew</button>
+            <button class="action-button" :disabled="domeSlewing === true || domeShutterStatus === 0 || domeShutterStatus === 2" @click="openShutter">Open Shutter</button>
+            <button class="action-button" :disabled="domeSlewing === true || domeShutterStatus === 1 || domeShutterStatus === 3" @click="closeShutter">Close Shutter</button>
+            <button class="action-button" :disabled="domeSlewing === true" @click="parkDome">Park Dome</button>
+            <button class="action-button" :disabled="domeSlewing === true" @click="findHome">Find Home</button>
+            <button class="stop-button" :disabled="domeSlewing !== true" @click="abortSlew">Abort Slew</button>
           </div>
         </div>
       </template>
@@ -44,10 +44,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { callAlpacaMethod, getAlpacaProperties } from '@/utils/alpacaPropertyAccess'
-// import type { Device } from '@/stores/types/device-store.types' // Not directly used, currentDevice is typed by store
+// DomeClient import is no longer needed here
 
 const props = defineProps({
   deviceId: {
@@ -66,17 +65,17 @@ const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
 
-// Dome state refs
-const altitude = ref<number | null>(null)
-const azimuth = ref<number | null>(null)
-const atHome = ref<boolean | null>(null)
-const atPark = ref<boolean | null>(null)
-const shutterStatus = ref<number | null>(null) // 0=Open, 1=Closed, 2=Opening, 3=Closing, 4=Error
-const slewing = ref<boolean | null>(null)
+// Computed properties to get dome state from store
+const domeAltitude = computed(() => currentDevice.value?.properties?.dome_altitude as number | null)
+const domeAzimuth = computed(() => currentDevice.value?.properties?.dome_azimuth as number | null)
+const domeAtHome = computed(() => currentDevice.value?.properties?.dome_atHome as boolean | null)
+const domeAtPark = computed(() => currentDevice.value?.properties?.dome_atPark as boolean | null)
+const domeShutterStatus = computed(() => currentDevice.value?.properties?.dome_shutterStatus as number | null)
+const domeSlewing = computed(() => currentDevice.value?.properties?.dome_slewing as boolean | null)
 
 const shutterStatusText = computed(() => {
-  if (shutterStatus.value === null) return 'Unknown'
-  switch (shutterStatus.value) {
+  if (domeShutterStatus.value === null) return 'Unknown'
+  switch (domeShutterStatus.value) {
     case 0: return 'Open'
     case 1: return 'Closed'
     case 2: return 'Opening'
@@ -86,150 +85,45 @@ const shutterStatusText = computed(() => {
   }
 })
 
-const resetDomeState = () => {
-  altitude.value = null
-  azimuth.value = null
-  atHome.value = null
-  atPark.value = null
-  shutterStatus.value = null
-  slewing.value = null
-}
+// Actions (dispatch to store)
+const openShutter = () => store.openDomeShutter(props.deviceId)
+const closeShutter = () => store.closeDomeShutter(props.deviceId)
+const parkDome = () => store.parkDomeDevice(props.deviceId)
+const findHome = () => store.findDomeHome(props.deviceId)
+const abortSlew = () => store.abortDomeSlew(props.deviceId)
 
-// Alpaca actions
-const openShutter = async () => {
-  if (!props.deviceId) return
-  try {
-    await callAlpacaMethod(props.deviceId, 'openShutter')
-    updateDomeStatus() // Refresh status after action
-  } catch (error) {
-    console.error('Error opening shutter:', error)
-  }
-}
-
-const closeShutter = async () => {
-  if (!props.deviceId) return
-  try {
-    await callAlpacaMethod(props.deviceId, 'closeShutter')
-    updateDomeStatus() // Refresh status after action
-  } catch (error) {
-    console.error('Error closing shutter:', error)
-  }
-}
-
-const parkDome = async () => {
-  if (!props.deviceId) return
-  try {
-    await callAlpacaMethod(props.deviceId, 'parkDome') 
-    updateDomeStatus() // Refresh status after action
-  } catch (error) {
-    console.error('Error parking dome:', error)
-  }
-}
-
-const findHomeDome = async () => {
-  if (!props.deviceId) return
-  try {
-    await callAlpacaMethod(props.deviceId, 'findHomeDome') 
-    updateDomeStatus() // Refresh status after action
-  } catch (error) {
-    console.error('Error finding home for dome:', error)
-  }
-}
-
-const abortSlewDome = async () => {
-  if (!props.deviceId) return
-  try {
-    await callAlpacaMethod(props.deviceId, 'abortSlewDome') 
-    updateDomeStatus() // Refresh status after action
-  } catch (error) {
-    console.error('Error aborting dome slew:', error)
-  }
-}
-
-let statusTimer: number | undefined
-
-const updateDomeStatus = async () => {
-  if (!props.isConnected || !props.deviceId) return
-
-  try {
-    const properties = await getAlpacaProperties(props.deviceId, [
-      'altitude',
-      'azimuth',
-      'athome',
-      'atpark',
-      'shutterstatus',
-      'slewing'
-    ])
-
-    altitude.value = properties.altitude as number ?? null
-    azimuth.value = properties.azimuth as number ?? null
-    atHome.value = properties.athome as boolean ?? null
-    atPark.value = properties.atpark as boolean ?? null
-    shutterStatus.value = properties.shutterstatus as number ?? null
-    slewing.value = properties.slewing as boolean ?? null
-  } catch (error) {
-    console.error('Error updating dome status:', error)
-    // resetDomeState() // Avoid resetting on every poll error, could flash UI
-  }
-}
-
+// Lifecycle hooks and watchers for store interaction
 onMounted(() => {
-  if (props.isConnected && props.deviceId) {
-    updateDomeStatus()
-    if (!statusTimer) {
-      statusTimer = window.setInterval(updateDomeStatus, 2000) // Poll every 2 seconds
-    }
-  } else {
-    if (statusTimer) {
-      window.clearInterval(statusTimer)
-      statusTimer = undefined
-    }
+  if (props.deviceId && props.isConnected) {
+    // Initial fetch might be triggered by store's connect logic
+    // store.fetchDomeStatus(props.deviceId); // Or ensure it happens on connect
   }
 })
 
 watch(() => props.isConnected, (newIsConnected) => {
-  if (newIsConnected && props.deviceId) {
-    resetDomeState() // Reset state on new connection or device change
-    updateDomeStatus()
-    if (!statusTimer) {
-      statusTimer = window.setInterval(updateDomeStatus, 2000)
-    }
-  } else {
-    if (statusTimer) {
-      window.clearInterval(statusTimer)
-      statusTimer = undefined
-    }
-    resetDomeState()
-  }
-})
-
-watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
-  if (newDeviceId !== oldDeviceId) {
-    resetDomeState()
-    if (props.isConnected) {
-      updateDomeStatus()
-      if (!statusTimer) {
-        statusTimer = window.setInterval(updateDomeStatus, 2000)
-      }
+  if (props.deviceId) {
+    if (newIsConnected) {
+      // store.handleDomeConnected(props.deviceId); // Managed by core device connect logic
+      store.fetchDomeStatus(props.deviceId); // Explicitly fetch on reconnect or first connect if panel loaded later
     } else {
-      if (statusTimer) {
-        clearInterval(statusTimer)
-        statusTimer = undefined
-      }
+      // store.handleDomeDisconnected(props.deviceId); // Managed by core device connect logic
     }
   }
-}, { immediate: true })
+});
 
-onUnmounted(() => {
-  if (statusTimer) {
-    window.clearInterval(statusTimer)
+watch(() => props.deviceId, (newDeviceId) => {
+  if (newDeviceId && props.isConnected) {
+    // store.handleDomeConnected(newDeviceId); // Managed by core device connect logic
+    store.fetchDomeStatus(newDeviceId);
   }
-})
+}, { immediate: true });
+
+// onUnmounted: Polling is managed by the store.
 
 </script>
 
 <style scoped>
-/* Using styles similar to SimplifiedFocuserPanel and SimplifiedTelescopePanel */
+/* Styles remain the same */
 .simplified-panel {
   background-color: var(--aw-panel-bg-color);
   color: var(--aw-text-color);
@@ -244,7 +138,7 @@ onUnmounted(() => {
 .panel-content {
   overflow-y: auto;
   flex: 1;
-  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)); /* Added padding to content area */
+  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)); 
 }
 
 .panel-section {
@@ -294,7 +188,7 @@ onUnmounted(() => {
 .status-grid > div {
   display: flex;
   justify-content: space-between;
-  align-items: center; /* Vertically align items */
+  align-items: center; 
 }
 
 .label {
@@ -316,7 +210,7 @@ onUnmounted(() => {
 
 .action-button, .stop-button {
   flex-grow: 1;
-  min-width: 120px; /* Ensure buttons have a minimum width */
+  min-width: 120px; 
   background-color: var(--aw-primary-color);
   color: var(--aw-button-primary-text);
   border: none;

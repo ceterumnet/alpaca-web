@@ -8,40 +8,35 @@
         <div class="connection-message">Observing Conditions ({{ currentDevice.name }}) not connected.</div>
         <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
-      <template v-else-if="isLoading">
-        <div class="loading-notice">
-          <p>Loading observing conditions...</p>
-        </div>
-      </template>
       <template v-else>
         <div class="panel-section">
           <h3>Ambient Conditions</h3>
           <div class="conditions-grid">
-            <div><span class="label">Temperature:</span> <span class="value">{{ formatValue(conditions?.temperature, '°C') }}</span></div>
-            <div><span class="label">Humidity:</span> <span class="value">{{ formatValue(conditions?.humidity, '%') }}</span></div>
-            <div><span class="label">Pressure:</span> <span class="value">{{ formatValue(conditions?.pressure, 'hPa') }}</span></div>
-            <div><span class="label">Dew Point:</span> <span class="value">{{ formatValue(conditions?.dewpoint, '°C') }}</span></div>
+            <div><span class="label">Temperature:</span> <span class="value">{{ formatValue(storedConditions?.temperature, '°C') }}</span></div>
+            <div><span class="label">Humidity:</span> <span class="value">{{ formatValue(storedConditions?.humidity, '%') }}</span></div>
+            <div><span class="label">Pressure:</span> <span class="value">{{ formatValue(storedConditions?.pressure, 'hPa') }}</span></div>
+            <div><span class="label">Dew Point:</span> <span class="value">{{ formatValue(storedConditions?.dewpoint, '°C') }}</span></div>
           </div>
         </div>
 
         <div class="panel-section">
           <h3>Sky Conditions</h3>
           <div class="conditions-grid">
-            <div><span class="label">Cloud Cover:</span> <span class="value">{{ formatValue(conditions?.cloudcover, '%') }}</span></div>
-            <div><span class="label">Sky Temperature:</span> <span class="value">{{ formatValue(conditions?.skytemperature, '°C') }}</span></div>
-            <div><span class="label">Sky Brightness:</span> <span class="value">{{ formatValue(conditions?.skybrightness, 'lux') }}</span></div>
-            <div><span class="label">Sky Quality:</span> <span class="value">{{ formatValue(conditions?.skyquality, 'mag/arcsec²') }}</span></div>
-            <div><span class="label">Star FWHM:</span> <span class="value">{{ formatValue(conditions?.starfwhm, 'arcsec') }}</span></div>
-            <div><span class="label">Rain Rate:</span> <span class="value">{{ formatValue(conditions?.rainrate, 'mm/hr') }}</span></div>
+            <div><span class="label">Cloud Cover:</span> <span class="value">{{ formatValue(storedConditions?.cloudcover, '%') }}</span></div>
+            <div><span class="label">Sky Temperature:</span> <span class="value">{{ formatValue(storedConditions?.skytemperature, '°C') }}</span></div>
+            <div><span class="label">Sky Brightness:</span> <span class="value">{{ formatValue(storedConditions?.skybrightness, 'lux') }}</span></div>
+            <div><span class="label">Sky Quality:</span> <span class="value">{{ formatValue(storedConditions?.skyquality, 'mag/arcsec²') }}</span></div>
+            <div><span class="label">Star FWHM:</span> <span class="value">{{ formatValue(storedConditions?.starfwhm, 'arcsec') }}</span></div>
+            <div><span class="label">Rain Rate:</span> <span class="value">{{ formatValue(storedConditions?.rainrate, 'mm/hr') }}</span></div>
           </div>
         </div>
 
         <div class="panel-section">
           <h3>Wind Conditions</h3>
           <div class="conditions-grid">
-            <div><span class="label">Wind Speed:</span> <span class="value">{{ formatValue(conditions?.windspeed, 'm/s') }}</span></div>
-            <div><span class="label">Wind Gust:</span> <span class="value">{{ formatValue(conditions?.windgust, 'm/s') }}</span></div>
-            <div><span class="label">Wind Direction:</span> <span class="value">{{ formatValue(conditions?.winddirection, '°') }}</span></div>
+            <div><span class="label">Wind Speed:</span> <span class="value">{{ formatValue(storedConditions?.windspeed, 'm/s') }}</span></div>
+            <div><span class="label">Wind Gust:</span> <span class="value">{{ formatValue(storedConditions?.windgust, 'm/s') }}</span></div>
+            <div><span class="label">Wind Direction:</span> <span class="value">{{ formatValue(storedConditions?.winddirection, '°') }}</span></div>
           </div>
         </div>
         
@@ -65,10 +60,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { callAlpacaMethod } from '@/utils/alpacaPropertyAccess'
-import type { Device } from '@/stores/types/device-store.types'
 import type { IObservingConditionsData } from '@/api/alpaca/observingconditions-client'
 
 const props = defineProps({
@@ -83,104 +76,62 @@ const props = defineProps({
 })
 
 const store = useUnifiedStore()
-const isLoading = ref(true)
 
-const currentDevice = computed(() => store.getDeviceById(props.deviceId) as Device | undefined)
-const conditions = ref<IObservingConditionsData | null>(null)
+const currentDevice = computed(() => store.getDeviceById(props.deviceId))
+
+const storedConditions = computed(() => {
+  return currentDevice.value?.properties?.oc_conditions as IObservingConditionsData | null | undefined;
+});
+
 const averagePeriodInput = ref<number | null>(null)
-
-let pollTimer: number | undefined
 
 const formatValue = (value: number | undefined | null, unit: string = '', precision: number = 1): string => {
   if (value === null || typeof value === 'undefined') return 'N/A'
   return `${value.toFixed(precision)} ${unit}`.trim()
 }
 
-const resetState = () => {
-  conditions.value = null
-  averagePeriodInput.value = null
-  isLoading.value = true
-}
-
-const fetchAllConditions = async () => {
-  if (!props.isConnected || !props.deviceId) {
-    resetState()
-    return
-  }
-  isLoading.value = true
-  try {
-    // Uses the getAllConditions helper from the client
-    const data = await callAlpacaMethod(props.deviceId, 'getAllConditions') as IObservingConditionsData
-    conditions.value = data
-    if (data?.averageperiod !== undefined && averagePeriodInput.value === null) {
-      averagePeriodInput.value = data.averageperiod
-    }
-  } catch (error) {
-    console.error(`Error fetching observing conditions for ${props.deviceId}:`, error)
-    conditions.value = null // Clear data on error
-  }
-  isLoading.value = false
-}
-
 const setAveragePeriodHandler = async () => {
   if (!props.deviceId || averagePeriodInput.value === null || averagePeriodInput.value < 0) {
-    // Optionally revert or show error if input is invalid
-    if (conditions.value?.averageperiod !== undefined) {
-        averagePeriodInput.value = conditions.value.averageperiod;
+    if (storedConditions.value?.averageperiod !== undefined) {
+        averagePeriodInput.value = storedConditions.value.averageperiod;
     }
     return;
   }
   try {
-    await callAlpacaMethod(props.deviceId, 'setAveragePeriod', { Period: averagePeriodInput.value })
-    // Refresh conditions to confirm change or rely on poll
-    fetchAllConditions(); 
+    await store.setObservingConditionsAveragePeriod(props.deviceId, averagePeriodInput.value);
   } catch (error) {
-    console.error('Error setting average period:', error)
-    // Revert input on error
-    if (conditions.value?.averageperiod !== undefined) {
-        averagePeriodInput.value = conditions.value.averageperiod;
+    console.error('Error setting average period via store:', error);
+    if (storedConditions.value?.averageperiod !== undefined) {
+        averagePeriodInput.value = storedConditions.value.averageperiod;
     }
   }
 }
 
-watch(() => props.deviceId, (newId) => {
-  if (newId) {
-    resetState()
-    if (props.isConnected) {
-      fetchAllConditions()
-    }
+watch(storedConditions, (newConditions) => {
+  if (newConditions?.averageperiod !== undefined) {
+    averagePeriodInput.value = newConditions.averageperiod;
   }
-}, { immediate: true })
-
-watch(() => props.isConnected, (newIsConnected) => {
-  if (newIsConnected && props.deviceId) {
-    fetchAllConditions()
-    if (!pollTimer) {
-      pollTimer = window.setInterval(fetchAllConditions, 15000) // Poll every 15 seconds
-    }
-  } else {
-    resetState()
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = undefined
-    }
-  }
-}, { immediate: true })
+}, { immediate: true, deep: true });
 
 onMounted(() => {
-  if (props.isConnected && props.deviceId) {
-    fetchAllConditions()
-    if (!pollTimer) {
-      pollTimer = window.setInterval(fetchAllConditions, 15000) 
+  if (props.deviceId && props.isConnected) {
+    store.fetchObservingConditions(props.deviceId);
+  }
+});
+
+watch(() => props.isConnected, (newIsConnected) => {
+  if (props.deviceId) {
+    if (newIsConnected) {
+      store.fetchObservingConditions(props.deviceId);
     }
   }
-})
+});
 
-onUnmounted(() => {
-  if (pollTimer) {
-    clearInterval(pollTimer)
+watch(() => props.deviceId, (newDeviceId) => {
+  if (newDeviceId && props.isConnected) {
+    store.fetchObservingConditions(newDeviceId);
   }
-})
+}, { immediate: true });
 
 </script>
 
@@ -249,6 +200,7 @@ onUnmounted(() => {
 
 .label {
   color: var(--aw-text-secondary-color);
+  margin-right: var(--aw-spacing-sm);
 }
 
 .value {
@@ -260,15 +212,15 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-sm);
+  margin-top: var(--aw-spacing-xs);
 }
 
 .input-group label {
-  color: var(--aw-text-secondary-color);
-  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .input-group input[type="number"] {
-  width: 100px;
+  width: 80px;
   padding: var(--aw-spacing-xs);
   background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
   color: var(--aw-text-color);

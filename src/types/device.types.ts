@@ -282,6 +282,27 @@ export interface WeatherDevice extends UnifiedDevice {
 }
 
 /**
+ * ObservingConditions-specific device interface
+ */
+export interface ObservingConditionsDevice extends UnifiedDevice {
+  type: 'observingconditions' // Standardized type name
+  averageperiod?: number
+  cloudcover?: number
+  dewpoint?: number
+  humidity?: number
+  pressure?: number
+  rainrate?: number
+  skybrightness?: number
+  skyquality?: number
+  skytemperature?: number
+  starfwhm?: number
+  temperature?: number // Overlaps with WeatherDevice, but context is different
+  winddirection?: number
+  windgust?: number
+  windspeed?: number // Overlaps with WeatherDevice
+}
+
+/**
  * Dome-specific device interface
  */
 export interface DomeDevice extends UnifiedDevice {
@@ -405,6 +426,10 @@ export function isWeather(device: UnifiedDevice): device is WeatherDevice {
   return device.type === 'weather'
 }
 
+export function isObservingConditions(device: UnifiedDevice): device is ObservingConditionsDevice {
+  return device.type === 'observingconditions'
+}
+
 export function isDome(device: UnifiedDevice): device is DomeDevice {
   return device.type === 'dome'
 }
@@ -434,6 +459,7 @@ export type SpecificDevice =
   | FocuserDevice
   | FilterWheelDevice
   | WeatherDevice
+  | ObservingConditionsDevice
   | DomeDevice
   | CoverCalibratorDevice
   | RotatorDevice
@@ -885,3 +911,11 @@ export function isValidStateTransition(from: DeviceState, to: DeviceState): bool
 
   return validTransitions[from]?.includes(to) ?? false
 }
+
+// export const isSwitch = (device: Device | UnifiedDevice): device is UnifiedDevice & { deviceType: 'Switch' } => {
+//   return device.deviceType === 'Switch'
+// }
+
+// export const isObservingConditions = (device: Device | UnifiedDevice): device is UnifiedDevice & { deviceType: 'ObservingConditions' } => {
+//   return device.deviceType === 'ObservingConditions'
+// }

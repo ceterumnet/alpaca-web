@@ -8,30 +8,25 @@
         <div class="connection-message">Filter Wheel ({{ currentDevice.name }}) not connected.</div>
         <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
-      <template v-else-if="isLoading">
-        <div class="loading-notice">
-          <p>Loading filter wheel details...</p>
-        </div>
-      </template>
       <template v-else>
         <!-- Current Position -->
         <div class="panel-section">
           <h3>Current Filter</h3>
           <div class="current-filter-display">
             <span class="label">Position:</span>
-            <span class="value">{{ currentPosition === -1 ? 'Unknown' : currentPosition }}</span>
+            <span class="value">{{ currentPositionDisplay }}</span>
             <span class="label">Name:</span>
-            <span class="value">{{ currentFilterName }}</span>
+            <span class="value">{{ currentFilterNameDisplay }}</span>
           </div>
         </div>
 
         <!-- Filter Selection -->
         <div class="panel-section">
           <h3>Select Filter</h3>
-          <div v-if="filterNames.length > 0" class="filter-selection">
+          <div v-if="filterNamesArray.length > 0" class="filter-selection">
             <select v-model="selectedFilterPosition" @change="selectFilter">
-              <option v-for="(name, index) in filterNames" :key="index" :value="index">
-                {{ index }}: {{ name }} (Offset: {{ focusOffsets[index] !== undefined ? focusOffsets[index] : 'N/A' }})
+              <option v-for="(name, index) in filterNamesArray" :key="index" :value="index">
+                {{ index }}: {{ name }} (Offset: {{ focusOffsetsArray[index] !== undefined ? focusOffsetsArray[index] : 'N/A' }})
               </option>
             </select>
           </div>
@@ -41,19 +36,19 @@
         <!-- Filter Details & Edit -->
         <div class="panel-section">
           <h3>Filter Details & Edit Names</h3>
-          <div v-if="filterNames.length > 0" class="filter-details-grid">
+          <div v-if="filterNamesArray.length > 0" class="filter-details-grid">
             <div class="grid-header">
               <span>#</span>
               <span>Name (Editable)</span>
               <span>Offset</span>
               <span>Action</span>
             </div>
-            <div v-for="(name, index) in filterNames" :key="index" class="grid-row">
+            <div v-for="(name, index) in filterNamesArray" :key="index" class="grid-row">
               <span>{{ index }}</span>
               <input v-model="editableFilterNames[index]" type="text" class="name-input" />
-              <span>{{ focusOffsets[index] !== undefined ? focusOffsets[index] : 'N/A' }}</span>
+              <span>{{ focusOffsetsArray[index] !== undefined ? focusOffsetsArray[index] : 'N/A' }}</span>
               <button 
-                :disabled="editableFilterNames[index] === filterNames[index]" 
+                :disabled="!editableFilterNames[index] || editableFilterNames[index] === filterNamesArray[index]" 
                 class="action-button-small"
                 @click="updateFilterName(index)"
               >Save</button>
@@ -67,9 +62,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { callAlpacaMethod, getAlpacaProperties } from '@/utils/alpacaPropertyAccess'
 
 const props = defineProps({
   deviceId: {
@@ -83,154 +77,121 @@ const props = defineProps({
 })
 
 const store = useUnifiedStore()
-const isLoading = ref(true)
 
 const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
 
-// FilterWheel state refs
-const currentPosition = ref<number>(-1) // -1 for unknown
-const filterNames = ref<string[]>([])
-const focusOffsets = ref<number[]>([])
+// Local state for UI interaction
 const editableFilterNames = ref<string[]>([])
+const selectedFilterPosition = ref<number>(0) // Default selection
 
-// Selection ref
-const selectedFilterPosition = ref<number>(0)
+// Computed properties to get data from the store
+const currentPosition = computed(() => {
+  return currentDevice.value?.properties?.fw_currentPosition as number | undefined ?? -1;
+});
 
-const currentFilterName = computed(() => {
-  if (currentPosition.value >= 0 && currentPosition.value < filterNames.value.length) {
-    return filterNames.value[currentPosition.value]
+const filterNamesArray = computed(() => {
+  return (currentDevice.value?.properties?.fw_filterNames as string[] | undefined) || [];
+});
+
+const focusOffsetsArray = computed(() => {
+  return (currentDevice.value?.properties?.fw_focusOffsets as number[] | undefined) || [];
+});
+
+const currentPositionDisplay = computed(() => {
+  return currentPosition.value === -1 ? 'Unknown' : currentPosition.value;
+});
+
+const currentFilterNameDisplay = computed(() => {
+  if (currentPosition.value >= 0 && currentPosition.value < filterNamesArray.value.length) {
+    return filterNamesArray.value[currentPosition.value];
   }
-  return 'Unknown'
-})
+  return 'Unknown';
+});
 
-const resetFilterWheelState = () => {
-  currentPosition.value = -1
-  filterNames.value = []
-  focusOffsets.value = []
-  editableFilterNames.value = []
-  selectedFilterPosition.value = 0
-}
-
-const fetchFilterWheelDetails = async () => {
-  if (!props.isConnected || !props.deviceId) {
-    resetFilterWheelState()
-    isLoading.value = false
-    return
+// Initialize editable names and selected position when filter names change from store
+watch(filterNamesArray, (newNames) => {
+  editableFilterNames.value = [...newNames];
+  // also update selectedFilterPosition if currentPosition is valid
+  if (currentPosition.value !== -1 && currentPosition.value < newNames.length) {
+    selectedFilterPosition.value = currentPosition.value;
   }
-  isLoading.value = true
-  try {
-    const properties = await getAlpacaProperties(props.deviceId, ['position', 'names', 'focusoffsets'])
-    
-    currentPosition.value = properties.position as number ?? -1
-    filterNames.value = Array.isArray(properties.names) ? properties.names as string[] : []
-    focusOffsets.value = Array.isArray(properties.focusoffsets) ? properties.focusoffsets as number[] : []
-    
-    editableFilterNames.value = [...filterNames.value] // Initialize editable names
+}, { immediate: true, deep: true });
 
-    if (currentPosition.value !== -1) {
-      selectedFilterPosition.value = currentPosition.value
-    }
-
-  } catch (error) {
-    console.error('Error fetching filter wheel details:', error)
-    resetFilterWheelState()
+// Update selectedFilterPosition when currentPosition from store changes (e.g. due to polling)
+watch(currentPosition, (newPos) => {
+  if (newPos !== -1 && newPos < filterNamesArray.value.length) {
+    selectedFilterPosition.value = newPos;
   }
-  isLoading.value = false
-}
+});
 
 const selectFilter = async () => {
-  if (!props.deviceId || selectedFilterPosition.value === null) return
-  try {
-    await callAlpacaMethod(props.deviceId, 'setPosition', { Position: selectedFilterPosition.value })
-    // Fetch new position to confirm, or wait for poll
-    const newPos = await callAlpacaMethod(props.deviceId, 'getPosition') as number
-    currentPosition.value = newPos
-  } catch (error) {
-    console.error(`Error setting filter position to ${selectedFilterPosition.value}:`, error)
-    // Revert selection on error if desired, or rely on next poll to correct UI
-    if (currentPosition.value !== -1) selectedFilterPosition.value = currentPosition.value;
+  if (props.deviceId && selectedFilterPosition.value !== null) {
+    try {
+      // Call store action
+      await store.setFilterWheelPosition(props.deviceId, selectedFilterPosition.value)
+      // The store action will update fw_currentPosition, and computed props will react.
+    } catch (error) {
+      console.error(`Error setting filter position via store to ${selectedFilterPosition.value}:`, error)
+      // Optionally, revert selection if store action failed and didn't update position
+      // This depends on how store handles errors and updates state on failure.
+      // For now, assume store handles state consistency.
+    }
   }
 }
 
 const updateFilterName = async (filterIndex: number) => {
-  if (!props.deviceId || !editableFilterNames.value[filterIndex]) return
-  const newName = editableFilterNames.value[filterIndex]
-  try {
-    // Assumes FilterWheelClient.setFilterName (PUT to /name with FilterNumber, FilterName)
-    await callAlpacaMethod(props.deviceId, 'setFilterName', { filterNumber: filterIndex, filterName: newName })
-    // Refresh names
-    filterNames.value[filterIndex] = newName
-    // Note: This directly updates the local copy. A full re-fetch might be safer:
-    // await fetchFilterWheelDetails(); 
-  } catch (error) {
-    console.error(`Error updating name for filter ${filterIndex}:`, error)
-    // Revert editable name if API call fails
-    editableFilterNames.value[filterIndex] = filterNames.value[filterIndex] || '';
+  if (props.deviceId && editableFilterNames.value[filterIndex]) {
+    const newName = editableFilterNames.value[filterIndex];
+    try {
+      // Call store action
+      await store.setFilterWheelName(props.deviceId, filterIndex, newName);
+      // Store action should refresh fw_filterNames, triggering reactive updates.
+    } catch (error) {
+      console.error(`Error updating name for filter ${filterIndex} via store:`, error)
+      // Revert editable name if API call fails and store doesn't handle it
+      // This part might need adjustment based on store error handling behavior
+      if (filterNamesArray.value[filterIndex]) {
+         editableFilterNames.value[filterIndex] = filterNamesArray.value[filterIndex];
+      }
+    }
   }
 }
 
-let pollTimer: number | undefined
-
-const pollFilterWheelStatus = async () => {
-  if (!props.isConnected || !props.deviceId) return
-  try {
-    const pos = await callAlpacaMethod(props.deviceId, 'getPosition') as number | null
-    if (pos !== null && pos !== currentPosition.value) {
-      currentPosition.value = pos
-      if (pos !== -1) {
-        selectedFilterPosition.value = pos
-      }
-    }
-    // Optionally re-fetch names/offsets if they can change, though less common for polling
-  } catch (error) {
-    console.error('Error polling filter wheel status:', error)
+// Lifecycle hooks for store-based polling/setup trigger if needed
+onMounted(() => {
+  if (props.deviceId && props.isConnected) {
+    // Initial fetch if not already handled by connect logic in store
+    // The store's handleFilterWheelConnected should ideally cover this.
+    // store.fetchFilterWheelDetails(props.deviceId);
+    // store.startFilterWheelPolling(props.deviceId); // Polling now managed by store on connect
   }
-}
+});
 
-onMounted(async () => {
-  await fetchFilterWheelDetails()
-  if (props.isConnected && props.deviceId && !pollTimer) {
-    pollTimer = window.setInterval(pollFilterWheelStatus, 3000) // Poll every 3 seconds
-  }
-})
-
-watch(() => props.isConnected, async (newIsConnected) => {
-  await fetchFilterWheelDetails()
-  if (newIsConnected && props.deviceId) {
-    if (!pollTimer) {
-      pollTimer = window.setInterval(pollFilterWheelStatus, 3000)
-    }
-  } else {
-    if (pollTimer) {
-      window.clearInterval(pollTimer)
-      pollTimer = undefined
-    }
-  }
-})
-
-watch(() => props.deviceId, async (newDeviceId, oldDeviceId) => {
-  if (newDeviceId !== oldDeviceId) {
-    await fetchFilterWheelDetails()
-    if (props.isConnected && props.deviceId) {
-      if (!pollTimer) {
-        pollTimer = window.setInterval(pollFilterWheelStatus, 3000)
-      }
+// Watch for connection status changes to trigger store actions if necessary
+// This logic might be redundant if coreActions already calls handleFilterWheelConnected/Disconnected
+watch(() => props.isConnected, (newIsConnected) => {
+  if (props.deviceId) {
+    if (newIsConnected) {
+      // store.handleFilterWheelConnected(props.deviceId); // Should be called by core store logic
+      // Ensure data is fresh upon reconnect if polling didn't catch up or for initial load
+      store.fetchFilterWheelDetails(props.deviceId);
     } else {
-      if (pollTimer) {
-        clearInterval(pollTimer)
-        pollTimer = undefined
-      }
+      // store.handleFilterWheelDisconnected(props.deviceId); // Should be called by core store logic
     }
   }
-}, { immediate: true })
+});
 
-onUnmounted(() => {
-  if (pollTimer) {
-    window.clearInterval(pollTimer)
+watch(() => props.deviceId, (newDeviceId) => {
+  if (newDeviceId && props.isConnected) {
+      // store.handleFilterWheelConnected(newDeviceId); // Called by core store logic
+      // Fetch details for the new device
+      store.fetchFilterWheelDetails(newDeviceId);
   }
-})
+}, { immediate: true });
+
+// onUnmounted: Polling is managed by the store, so less cleanup here unless specific listeners were added.
 
 </script>
 
@@ -267,7 +228,7 @@ onUnmounted(() => {
   padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
-.connection-notice, .loading-notice {
+.connection-notice, .loading-notice { /* loading-notice might be removed if not used */
   display: flex;
   flex-direction: column;
   justify-content: center;

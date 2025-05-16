@@ -24,6 +24,10 @@ import { createSimulationActions } from './modules/simulationActions'
 import { createDiscoveryActions } from './modules/discoveryActions'
 import { createCameraActions } from './modules/cameraActions'
 import { createTelescopeActions } from './modules/telescopeActions'
+import { createFilterWheelActions } from './modules/filterWheelActions'
+import { createDomeActions } from './modules/domeActions'
+import { createObservingConditionsActions } from './modules/observingConditionsActions'
+import { createSwitchActions } from './modules/switchActions'
 
 // Re-export type for convenience
 export type { Device }
@@ -38,7 +42,11 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createSimulationActions().state(),
       ...createDiscoveryActions().state(),
       ...createCameraActions().state(),
-      ...createTelescopeActions().state()
+      ...createTelescopeActions().state(),
+      ...createFilterWheelActions().state(),
+      ...createDomeActions().state(),
+      ...createObservingConditionsActions().state(),
+      ...createSwitchActions().state()
     }
   },
 
@@ -55,7 +63,11 @@ export const useUnifiedStore = defineStore('unifiedStore', {
     ...createSimulationActions().actions,
     ...createDiscoveryActions().actions,
     ...createCameraActions().actions,
-    ...createTelescopeActions().actions
+    ...createTelescopeActions().actions,
+    ...createFilterWheelActions().actions,
+    ...createDomeActions().actions,
+    ...createObservingConditionsActions().actions,
+    ...createSwitchActions().actions
   }
 })
 
