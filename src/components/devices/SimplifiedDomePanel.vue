@@ -23,8 +23,8 @@
         <div class="panel-section">
           <h3>Position</h3>
            <div class="status-grid">
-            <div><span class="label">Altitude:</span> <span class="value">{{ domeAltitude === null ? 'N/A' : domeAltitude.toFixed(2) + '°' }}</span></div>
-            <div><span class="label">Azimuth:</span> <span class="value">{{ domeAzimuth === null ? 'N/A' : domeAzimuth.toFixed(2) + '°' }}</span></div>
+            <div><span class="label">Altitude:</span> <span class="value">{{ typeof domeAltitude === 'number' ? domeAltitude.toFixed(2) + '°' : 'N/A' }}</span></div>
+            <div><span class="label">Azimuth:</span> <span class="value">{{ typeof domeAzimuth === 'number' ? domeAzimuth.toFixed(2) + '°' : 'N/A' }}</span></div>
           </div>
         </div>
 

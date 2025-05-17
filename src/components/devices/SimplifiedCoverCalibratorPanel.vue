@@ -24,23 +24,23 @@
         <div class="panel-section">
           <h3>Calibrator Control</h3>
           <div class="control-grid">
-            <button :disabled="calibratorStateComputed === 'Ready' || calibratorStateComputed === 'NotReady' || (deviceState?.maxBrightness !== null && deviceState?.maxBrightness <= 0)" @click="calibratorOnHandler">Turn On</button>
-            <button :disabled="calibratorStateComputed === 'Off' || calibratorStateComputed === 'Unknown' || (deviceState?.maxBrightness !== null && deviceState?.maxBrightness <= 0)" @click="calibratorOffHandler">Turn Off</button>
+            <button :disabled="calibratorStateComputed === 'Ready' || calibratorStateComputed === 'NotReady' || !deviceState || deviceState.maxBrightness == null || deviceState.maxBrightness <= 0" @click="calibratorOnHandler">Turn On</button>
+            <button :disabled="calibratorStateComputed === 'Off' || calibratorStateComputed === 'Unknown' || !deviceState || deviceState.maxBrightness == null || deviceState.maxBrightness <= 0" @click="calibratorOffHandler">Turn Off</button>
           </div>
-          <div v-if="deviceState?.maxBrightness !== null && deviceState?.maxBrightness > 0" class="brightness-control">
-            <label :for="deviceId + '-brightness'">Brightness (0 - {{ deviceState?.maxBrightness }}):</label>
+          <div v-if="deviceState && deviceState.maxBrightness != null && deviceState.maxBrightness > 0" class="brightness-control">
+            <label :for="deviceId + '-brightness'">Brightness (0 - {{ deviceState.maxBrightness }}):</label>
             <input
               :id="deviceId + '-brightness'"
               v-model.number="targetBrightnessInput"
               type="number"
               min="0"
-              :max="deviceState?.maxBrightness !== null ? Number(deviceState?.maxBrightness) : undefined"
+              :max="Number(deviceState.maxBrightness)"
               :disabled="calibratorStateComputed === 'Off' || calibratorStateComputed === 'Unknown'"
             />
           </div>
           <p>Calibrator Status: <strong>{{ calibratorStateComputed }}</strong></p>
-          <p v-if="deviceState?.maxBrightness !== null && deviceState?.maxBrightness > 0">Current Brightness: <strong>{{ deviceState?.currentBrightness ?? 'N/A' }}</strong></p>
-          <p v-else-if="deviceState?.maxBrightness === 0">Calibrator light not available.</p>
+          <p v-if="deviceState && deviceState.maxBrightness != null && deviceState.maxBrightness > 0">Current Brightness: <strong>{{ deviceState?.currentBrightness ?? 'N/A' }}</strong></p>
+          <p v-else-if="deviceState && deviceState.maxBrightness === 0">Calibrator light not available.</p>
         </div>
 
         <!-- Device Status Section -->
