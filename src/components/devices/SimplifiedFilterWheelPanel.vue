@@ -79,7 +79,8 @@ const props = defineProps({
 const store = useUnifiedStore()
 
 const currentDevice = computed(() => {
-  return store.getDeviceById(props.deviceId)
+  const device = store.getDeviceById(props.deviceId);
+  return device;
 })
 
 // Local state for UI interaction
@@ -88,15 +89,17 @@ const selectedFilterPosition = ref<number>(0) // Default selection
 
 // Computed properties to get data from the store
 const currentPosition = computed(() => {
-  return currentDevice.value?.properties?.fw_currentPosition as number | undefined ?? -1;
+  const pos = currentDevice.value?.fw_currentPosition as number | undefined ?? -1;
+  return pos;
 });
 
 const filterNamesArray = computed(() => {
-  return (currentDevice.value?.properties?.fw_filterNames as string[] | undefined) || [];
+  const names = (currentDevice.value?.fw_filterNames as string[] | undefined) || [];
+  return names;
 });
 
 const focusOffsetsArray = computed(() => {
-  return (currentDevice.value?.properties?.fw_focusOffsets as number[] | undefined) || [];
+  return (currentDevice.value?.fw_focusOffsets as number[] | undefined) || [];
 });
 
 const currentPositionDisplay = computed(() => {

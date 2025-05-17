@@ -80,7 +80,7 @@ const currentDevice = computed(() => {
 })
 
 const storedSwitches = computed(() => {
-  return currentDevice.value?.properties?.sw_switches as ISwitchDetail[] | undefined | null;
+  return currentDevice.value?.sw_switches as ISwitchDetail[] | undefined | null;
 });
 
 const editableSwitchNames = ref<string[]>([])

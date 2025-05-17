@@ -5,7 +5,7 @@
         <div class="connection-message">No Cover Calibrator selected or available</div>
       </div>
       <div v-else-if="!isConnected" class="connection-notice">
-        <div class="connection-message">Cover Calibrator ({{ currentDevice.name }}) not connected.</div>
+        <div class="connection-message">Cover Calibrator ({{ currentDevice?.name }}) not connected.</div>
         <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
       <template v-else>
@@ -13,9 +13,9 @@
         <div class="panel-section">
           <h3>Cover Control</h3>
           <div class="control-grid">
-            <button :disabled="isCoverOperationInProgress || coverStateComputed === 'Open'" @click="openCover">Open Cover</button>
-            <button :disabled="isCoverOperationInProgress || coverStateComputed === 'Closed'" @click="closeCover">Close Cover</button>
-            <button :disabled="!isCoverOperationInProgress" @click="haltCover">Halt Cover</button>
+            <button :disabled="isCoverOperationInProgress || coverStateComputed === 'Open'" @click="openCoverHandler">Open Cover</button>
+            <button :disabled="isCoverOperationInProgress || coverStateComputed === 'Closed'" @click="closeCoverHandler">Close Cover</button>
+            <button :disabled="!isCoverOperationInProgress" @click="haltCoverHandler">Halt Cover</button>
           </div>
           <p>Cover Status: <strong>{{ coverStateComputed }}</strong></p>
         </div>
@@ -24,30 +24,31 @@
         <div class="panel-section">
           <h3>Calibrator Control</h3>
           <div class="control-grid">
-            <button :disabled="calibratorStateComputed === 'Ready' || calibratorStateComputed === 'NotReady' || (maxBrightness !== null && maxBrightness <= 0)" @click="calibratorOnHandler">Turn On</button>
-            <button :disabled="calibratorStateComputed === 'Off' || calibratorStateComputed === 'Unknown' || (maxBrightness !== null && maxBrightness <= 0)" @click="calibratorOff">Turn Off</button>
+            <button :disabled="calibratorStateComputed === 'Ready' || calibratorStateComputed === 'NotReady' || (deviceState?.maxBrightness !== null && deviceState?.maxBrightness <= 0)" @click="calibratorOnHandler">Turn On</button>
+            <button :disabled="calibratorStateComputed === 'Off' || calibratorStateComputed === 'Unknown' || (deviceState?.maxBrightness !== null && deviceState?.maxBrightness <= 0)" @click="calibratorOffHandler">Turn Off</button>
           </div>
-          <div v-if="maxBrightness !== null && maxBrightness > 0" class="brightness-control">
-            <label :for="deviceId + '-brightness'">Brightness (0 - {{ maxBrightness }}):</label>
+          <div v-if="deviceState?.maxBrightness !== null && deviceState?.maxBrightness > 0" class="brightness-control">
+            <label :for="deviceId + '-brightness'">Brightness (0 - {{ deviceState?.maxBrightness }}):</label>
             <input
               :id="deviceId + '-brightness'"
-              v-model.number="targetBrightness"
+              v-model.number="targetBrightnessInput"
               type="number"
               min="0"
-              :max="maxBrightness !== null ? Number(maxBrightness) : undefined"
+              :max="deviceState?.maxBrightness !== null ? Number(deviceState?.maxBrightness) : undefined"
               :disabled="calibratorStateComputed === 'Off' || calibratorStateComputed === 'Unknown'"
             />
           </div>
           <p>Calibrator Status: <strong>{{ calibratorStateComputed }}</strong></p>
-          <p v-if="maxBrightness !== null && maxBrightness > 0">Current Brightness: <strong>{{ currentBrightness ?? 'N/A' }}</strong></p>
-          <p v-else-if="maxBrightness === 0">Calibrator light not available.</p>
+          <p v-if="deviceState?.maxBrightness !== null && deviceState?.maxBrightness > 0">Current Brightness: <strong>{{ deviceState?.currentBrightness ?? 'N/A' }}</strong></p>
+          <p v-else-if="deviceState?.maxBrightness === 0">Calibrator light not available.</p>
         </div>
 
         <!-- Device Status Section -->
         <div class="panel-section">
           <h3>Device Information</h3>
-          <p>Device Name: <strong>{{ currentDevice.name }}</strong></p>
-          <p>Description: <strong>{{ currentDevice.description }}</strong></p>
+          <p>Device Name: <strong>{{ currentDevice?.name }}</strong></p>
+          <!-- Removed description as it's not typically in simplified panels and not in store state for covercalibrator -->
+          <!-- <p>Description: <strong>{{ currentDevice.description }}</strong></p> -->
         </div>
       </template>
     </div>
@@ -57,8 +58,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { callAlpacaMethod, getAlpacaProperties } from '@/utils/alpacaPropertyAccess' // Assuming getAlpacaProperties is also used or needed
-import type { Device } from '@/stores/types/device-store.types'
+// Removed: import { callAlpacaMethod, getAlpacaProperties } from '@/utils/alpacaPropertyAccess'
+import type { Device } from '@/stores/types/device-store.types' // Kept for currentDevice typing
 
 const props = defineProps({
   deviceId: {
@@ -71,168 +72,185 @@ const props = defineProps({
   }
 })
 
-// Enum-like objects for states
+// Enum-like objects for states - can remain in panel for display logic
 const CoverStates: Record<number, string> = {
-  0: 'Unknown', 1: 'Not Present', 2: 'Closed', 3: 'Moving', 4: 'Open', 5: 'Error'
+  0: 'Unknown', // Alpaca: Unknown
+  1: 'Not Present', // Alpaca: NotPresent
+  2: 'Closed', // Alpaca: Closed
+  3: 'Moving', // Alpaca: Moving
+  4: 'Open', // Alpaca: Open
+  5: 'Error' // Alpaca: Error
 }
 const CalibratorStates: Record<number, string> = {
-  0: 'Unknown', 1: 'Off', 2: 'NotReady', 3: 'Ready', 4: 'Error'
+  0: 'Unknown', // Alpaca: Unknown
+  1: 'Off', // Alpaca: Off
+  2: 'NotReady', // Alpaca: NotReady (Calibrator is warming up)
+  3: 'Ready', // Alpaca: Ready (Calibrator is ready for use)
+  4: 'Error' // Alpaca: Error
 }
 
 const store = useUnifiedStore()
 const currentDevice = computed(() => store.getDeviceById(props.deviceId) as Device | undefined)
 
-const coverState = ref<number | null>(null)
-const calibratorState = ref<number | null>(null)
-const currentBrightness = ref<number | null>(null)
-const maxBrightness = ref<number | null>(null)
-const targetBrightness = ref(0)
+// Computed property to get CoverCalibrator state from the store
+const deviceState = computed(() => {
+  return store.coverCalibratorData.get(props.deviceId)
+})
 
-let pollInterval: number | undefined
+const targetBrightnessInput = ref(0)
 
-const resetState = () => {
-  coverState.value = null
-  calibratorState.value = null
-  currentBrightness.value = null
-  maxBrightness.value = null
-  // targetBrightness.value = 0 // Keep user input or reset based on preference
+let pollTimer: number | undefined
+
+const resetLocalInputs = () => {
+  // targetBrightnessInput.value = 0 // Reset based on preference, or sync with currentBrightness from store
 }
 
-const fetchDeviceProperties = async () => {
+const fetchDeviceStatus = async () => {
   if (!props.deviceId || !props.isConnected) {
-    resetState()
     return
   }
   try {
-    // Using getAlpacaProperties for batch fetching if preferred
-    const properties = await getAlpacaProperties(props.deviceId, ['coverstate', 'calibratorstate', 'maxbrightness', 'brightness'])
-    
-    coverState.value = properties.coverstate as number ?? null
-    calibratorState.value = properties.calibratorstate as number ?? null
-    maxBrightness.value = properties.maxbrightness as number ?? null
-
-    if (maxBrightness.value !== null && maxBrightness.value > 0) {
-      currentBrightness.value = properties.brightness as number ?? null
-      if (targetBrightness.value === 0 && currentBrightness.value !== null) {
-         targetBrightness.value = currentBrightness.value
-      }
-    } else {
-      currentBrightness.value = null // No brightness if maxBrightness is 0 or null
-    }
-
+    await store.fetchCoverCalibratorStatus(props.deviceId)
   } catch (error) {
-    console.error(`Error fetching CoverCalibrator properties for ${props.deviceId}:`, error)
-    resetState()
+    console.error(`Error fetching CoverCalibrator status for ${props.deviceId} via store:`, error)
   }
 }
 
 const coverStateComputed = computed(() => {
-  return coverState.value !== null ? CoverStates[coverState.value] || 'Error (Unknown State)' : 'N/A'
+  const stateVal = deviceState.value?.coverState
+  return stateVal !== null && stateVal !== undefined ? (CoverStates[stateVal] || `Error (Unknown State ${stateVal})`) : 'N/A'
 })
 
 const calibratorStateComputed = computed(() => {
-  return calibratorState.value !== null ? CalibratorStates[calibratorState.value] || 'Error (Unknown State)' : 'N/A'
+  const stateVal = deviceState.value?.calibratorState
+  return stateVal !== null && stateVal !== undefined ? (CalibratorStates[stateVal] || `Error (Unknown State ${stateVal})`) : 'N/A'
 })
 
-const isCoverOperationInProgress = computed(() => coverState.value === 3) // Moving
+const isCoverOperationInProgress = computed(() => deviceState.value?.coverState === 3) // 3 = Moving
 
 // --- Cover Methods ---
-const openCover = async () => {
+const openCoverHandler = async () => {
   if (!props.deviceId) return
   try {
-    await callAlpacaMethod(props.deviceId, 'opencover', {})
-    fetchDeviceProperties()
+    await store.openCover(props.deviceId)
   } catch (error) {
-    console.error('Error opening cover:', error)
+    console.error('Error opening cover via store:', error)
   }
 }
 
-const closeCover = async () => {
+const closeCoverHandler = async () => {
   if (!props.deviceId) return
   try {
-    await callAlpacaMethod(props.deviceId, 'closecover', {})
-    fetchDeviceProperties()
+    await store.closeCover(props.deviceId)
   } catch (error) {
-    console.error('Error closing cover:', error)
+    console.error('Error closing cover via store:', error)
   }
 }
 
-const haltCover = async () => {
+const haltCoverHandler = async () => {
   if (!props.deviceId) return
   try {
-    await callAlpacaMethod(props.deviceId, 'haltcover', {})
-    fetchDeviceProperties()
+    await store.haltCover(props.deviceId)
   } catch (error) {
-    console.error('Error halting cover:', error)
+    console.error('Error halting cover via store:', error)
   }
 }
 
 // --- Calibrator Methods ---
 const calibratorOnHandler = async () => {
-  if (!props.deviceId || (maxBrightness.value !== null && maxBrightness.value <= 0)) return
+  if (!props.deviceId) return
+  const currentMaxBrightness = deviceState.value?.maxBrightness
+  if (currentMaxBrightness === null || currentMaxBrightness === undefined || currentMaxBrightness <= 0) return
+  
   try {
-    let brightnessToSend = targetBrightness.value
-    if (maxBrightness.value !== null && brightnessToSend > maxBrightness.value) {
-      brightnessToSend = maxBrightness.value
+    let brightnessToSend = targetBrightnessInput.value
+    if (brightnessToSend > currentMaxBrightness) {
+      brightnessToSend = currentMaxBrightness
     }
     if (brightnessToSend < 0) {
       brightnessToSend = 0
     }
-    await callAlpacaMethod(props.deviceId, 'calibratoron', { Brightness: brightnessToSend })
-    fetchDeviceProperties()
+    await store.calibratorOn(props.deviceId, brightnessToSend)
   } catch (error) {
-    console.error('Error turning calibrator on:', error)
+    console.error('Error turning calibrator on via store:', error)
   }
 }
 
-const calibratorOff = async () => {
-  if (!props.deviceId || (maxBrightness.value !== null && maxBrightness.value <= 0)) return
-  try {
-    await callAlpacaMethod(props.deviceId, 'calibratoroff', {})
-    fetchDeviceProperties()
-  } catch (error) {
-    console.error('Error turning calibrator off:', error)
+const calibratorOffHandler = async () => {
+  if (!props.deviceId) return
+  const currentMaxBrightness = deviceState.value?.maxBrightness;
+  if (currentMaxBrightness === null || currentMaxBrightness === undefined || currentMaxBrightness <= 0) return;
+  try { await store.calibratorOff(props.deviceId) } catch (e) { console.error('Error calibratorOff:', e) }
+}
+
+// Sync targetBrightnessInput with currentBrightness from store when it changes and is not zero
+watch(() => deviceState.value?.currentBrightness, (newBrightness) => {
+  if (newBrightness !== null && newBrightness !== undefined) {
+    targetBrightnessInput.value = newBrightness
+  }
+}, { immediate: true })
+
+// Watchers for connection and deviceId changes
+const startPolling = () => {
+  if (pollTimer) clearInterval(pollTimer)
+  if (props.isConnected && props.deviceId) {
+    pollTimer = window.setInterval(fetchDeviceStatus, 5000) // Poll every 5 seconds
   }
 }
 
-watch(() => props.deviceId, (newId, oldId) => {
-  if (newId !== oldId) {
-    resetState()
-    if (props.isConnected) {
-        fetchDeviceProperties()
-    }
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = undefined
   }
-}, { immediate: true })
-
-watch(() => props.isConnected, (newIsConnected) => {
-  if (newIsConnected && props.deviceId) {
-    fetchDeviceProperties()
-    if (!pollInterval) {
-      pollInterval = window.setInterval(fetchDeviceProperties, 5000)
-    }
-  } else {
-    resetState()
-    if (pollInterval) {
-      clearInterval(pollInterval)
-      pollInterval = undefined
-    }
-  }
-}, { immediate: true })
+}
 
 onMounted(() => {
-  if (props.isConnected && props.deviceId) {
-     fetchDeviceProperties()
-     if (!pollInterval) {
-        pollInterval = window.setInterval(fetchDeviceProperties, 5000)
-     }
+  if (props.deviceId) {
+    store.initializeCoverCalibratorState(props.deviceId)
+    if (props.isConnected) {
+      fetchDeviceStatus()
+      startPolling()
+    }
   }
 })
 
-onUnmounted(() => {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-    pollInterval = undefined
+watch(() => props.isConnected, (newIsConnected) => {
+  if (props.deviceId) {
+    if (newIsConnected) {
+      store.initializeCoverCalibratorState(props.deviceId) // Ensure state exists
+      fetchDeviceStatus()
+      startPolling()
+    } else {
+      stopPolling()
+      // store.clearCoverCalibratorState(props.deviceId) // Clear state on disconnect - decide if needed or keep last state
+      resetLocalInputs()
+    }
   }
+})
+
+watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
+  if (oldDeviceId) {
+    stopPolling()
+    // store.clearCoverCalibratorState(oldDeviceId) // Clear state for old device
+  }
+  if (newDeviceId) {
+    store.initializeCoverCalibratorState(newDeviceId)
+    resetLocalInputs() // Reset inputs for the new device
+    if (props.isConnected) {
+      fetchDeviceStatus()
+      startPolling()
+    }
+  } else {
+    stopPolling()
+    resetLocalInputs()
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  stopPolling()
+  // Optionally clear state if component is truly destroyed and device no longer relevant
+  // if (props.deviceId) store.clearCoverCalibratorState(props.deviceId)
 })
 
 </script>

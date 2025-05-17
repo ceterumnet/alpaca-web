@@ -5,9 +5,9 @@
  */
 
 // import type { Device, DeviceEvent } from '../types/device-store.types'
-import type { CoreState } from './coreActions'
 import { ObservingConditionsClient, type IObservingConditionsData } from '@/api/alpaca/observingconditions-client'
 import { isObservingConditions } from '@/types/device.types'
+import type { UnifiedStoreType } from '../UnifiedStore' // Assuming this path
 
 // Properties that this module will manage on the Device object in the store
 export interface ObservingConditionsDeviceProperties extends Partial<IObservingConditionsData> {
@@ -29,21 +29,25 @@ export interface ObservingConditionsModuleState {
 }
 
 // Signatures of actions in this module
-interface ObservingConditionsActionsSignatures {
-  _getOCClient: (deviceId: string) => ObservingConditionsClient | null
-  fetchObservingConditions: (deviceId: string) => Promise<void>
-  setObservingConditionsAveragePeriod: (deviceId: string, period: number) => Promise<void>
-  startObservingConditionsPolling: (deviceId: string) => void
-  stopObservingConditionsPolling: (deviceId: string) => void
-  _pollObservingConditions: (deviceId: string) => Promise<void>
-  handleObservingConditionsConnected: (deviceId: string) => void
-  handleObservingConditionsDisconnected: (deviceId: string) => void
+// Updated to use UnifiedStoreType for 'this'
+interface IObservingConditionsActions {
+  _getOCClient: (this: UnifiedStoreType, deviceId: string) => ObservingConditionsClient | null
+  fetchObservingConditions: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  setObservingConditionsAveragePeriod: (this: UnifiedStoreType, deviceId: string, period: number) => Promise<void>
+  startObservingConditionsPolling: (this: UnifiedStoreType, deviceId: string) => void
+  stopObservingConditionsPolling: (this: UnifiedStoreType, deviceId: string) => void
+  _pollObservingConditions: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  handleObservingConditionsConnected: (this: UnifiedStoreType, deviceId: string) => void
+  handleObservingConditionsDisconnected: (this: UnifiedStoreType, deviceId: string) => void
 }
 
 // Combined type for 'this' in actions
-export type ObservingConditionsActionContext = ObservingConditionsModuleState & CoreState & ObservingConditionsActionsSignatures
+// export type ObservingConditionsActionContext = ObservingConditionsModuleState & CoreState & ObservingConditionsActionsSignatures // No longer needed
 
-export function createObservingConditionsActions() {
+export function createObservingConditionsActions(): {
+  state: () => ObservingConditionsModuleState
+  actions: IObservingConditionsActions
+} {
   return {
     state: (): ObservingConditionsModuleState => ({
       _oc_pollingTimers: new Map(),
@@ -51,7 +55,7 @@ export function createObservingConditionsActions() {
     }),
 
     actions: {
-      _getOCClient(this: ObservingConditionsActionContext, deviceId: string): ObservingConditionsClient | null {
+      _getOCClient(this: UnifiedStoreType, deviceId: string): ObservingConditionsClient | null {
         const device = this.getDeviceById(deviceId)
         if (!device || !isObservingConditions(device)) {
           console.error(`[OCStore] Device ${deviceId} not found or is not an ObservingConditions device.`)
@@ -70,7 +74,7 @@ export function createObservingConditionsActions() {
         return new ObservingConditionsClient(baseUrl, deviceNumber, device)
       },
 
-      async fetchObservingConditions(this: ObservingConditionsActionContext, deviceId: string): Promise<void> {
+      async fetchObservingConditions(this: UnifiedStoreType, deviceId: string): Promise<void> {
         const client = this._getOCClient(deviceId)
         if (!client) return
         try {
@@ -83,7 +87,7 @@ export function createObservingConditionsActions() {
         }
       },
 
-      async setObservingConditionsAveragePeriod(this: ObservingConditionsActionContext, deviceId: string, period: number): Promise<void> {
+      async setObservingConditionsAveragePeriod(this: UnifiedStoreType, deviceId: string, period: number): Promise<void> {
         const client = this._getOCClient(deviceId)
         if (!client) return
         try {
@@ -98,7 +102,7 @@ export function createObservingConditionsActions() {
         }
       },
 
-      async _pollObservingConditions(this: ObservingConditionsActionContext, deviceId: string): Promise<void> {
+      async _pollObservingConditions(this: UnifiedStoreType, deviceId: string): Promise<void> {
         if (!this._oc_isPolling.get(deviceId)) return
         const device = this.getDeviceById(deviceId)
         if (!device || !device.isConnected) {
@@ -108,7 +112,7 @@ export function createObservingConditionsActions() {
         await this.fetchObservingConditions(deviceId)
       },
 
-      startObservingConditionsPolling(this: ObservingConditionsActionContext, deviceId: string): void {
+      startObservingConditionsPolling(this: UnifiedStoreType, deviceId: string): void {
         const device = this.getDeviceById(deviceId)
         if (!device || !isObservingConditions(device) || !device.isConnected) return
         if (this._oc_pollingTimers.has(deviceId)) {
@@ -121,7 +125,7 @@ export function createObservingConditionsActions() {
         console.log(`[OCStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
-      stopObservingConditionsPolling(this: ObservingConditionsActionContext, deviceId: string): void {
+      stopObservingConditionsPolling(this: UnifiedStoreType, deviceId: string): void {
         this._oc_isPolling.set(deviceId, false)
         if (this._oc_pollingTimers.has(deviceId)) {
           clearInterval(this._oc_pollingTimers.get(deviceId)!)
@@ -130,13 +134,13 @@ export function createObservingConditionsActions() {
         }
       },
 
-      handleObservingConditionsConnected(this: ObservingConditionsActionContext, deviceId: string): void {
+      handleObservingConditionsConnected(this: UnifiedStoreType, deviceId: string): void {
         console.log(`[OCStore] ObservingConditions ${deviceId} connected. Fetching data and starting poll.`)
         this.fetchObservingConditions(deviceId)
         this.startObservingConditionsPolling(deviceId)
       },
 
-      handleObservingConditionsDisconnected(this: ObservingConditionsActionContext, deviceId: string): void {
+      handleObservingConditionsDisconnected(this: UnifiedStoreType, deviceId: string): void {
         console.log(`[OCStore] ObservingConditions ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopObservingConditionsPolling(deviceId)
         this.updateDevice(deviceId, { oc_conditions: null })

@@ -14,11 +14,11 @@
         <div class="panel-section">
           <h3>Status</h3>
           <div class="status-grid">
-            <div><span class="label">Sky Angle:</span> <span class="value">{{ position?.toFixed(2) ?? 'N/A' }}°</span></div>
-            <div><span class="label">Mech Angle:</span> <span class="value">{{ mechanicalPosition?.toFixed(2) ?? 'N/A' }}°</span></div>
-            <div><span class="label">Moving:</span> <span class="value">{{ isMoving === null ? 'N/A' : (isMoving ? 'Yes' : 'No') }}</span></div>
-            <div><span class="label">Target:</span> <span class="value">{{ targetPositionDisplay?.toFixed(2) ?? 'N/A' }}°</span></div>
-            <div v-if="canReverse !== null"><span class="label">Reversed:</span> <span class="value">{{ reverse === null ? 'N/A' : (reverse ? 'Yes' : 'No') }}</span></div>
+            <div><span class="label">Sky Angle:</span> <span class="value">{{ rotatorState?.position?.toFixed(2) ?? 'N/A' }}°</span></div>
+            <div><span class="label">Mech Angle:</span> <span class="value">{{ rotatorState?.mechanicalPosition?.toFixed(2) ?? 'N/A' }}°</span></div>
+            <div><span class="label">Moving:</span> <span class="value">{{ rotatorState?.isMoving === null ? 'N/A' : (rotatorState?.isMoving ? 'Yes' : 'No') }}</span></div>
+            <div><span class="label">Target:</span> <span class="value">{{ rotatorState?.targetPosition?.toFixed(2) ?? 'N/A' }}°</span></div>
+            <div v-if="rotatorState?.canReverse !== null"><span class="label">Reversed:</span> <span class="value">{{ rotatorState?.reverse === null ? 'N/A' : (rotatorState?.reverse ? 'Yes' : 'No') }}</span></div>
           </div>
         </div>
 
@@ -29,14 +29,14 @@
             <div class="input-group">
               <label for="targetAngle">Target Sky Angle (°):</label>
               <input id="targetAngle" v-model.number="targetAngleInput" type="number" step="0.1" />
-              <button class="action-button" :disabled="isMoving === true" @click="moveAbsoluteHandler">Move Absolute</button>
+              <button class="action-button" :disabled="rotatorState?.isMoving === true" @click="moveAbsoluteHandler">Move Absolute</button>
             </div>
             <div class="input-group">
               <label for="relativeAngle">Relative Move (°):</label>
               <input id="relativeAngle" v-model.number="relativeAngleInput" type="number" step="0.1" />
-              <button class="action-button" :disabled="isMoving === true" @click="moveRelativeHandler">Move Relative</button>
+              <button class="action-button" :disabled="rotatorState?.isMoving === true" @click="moveRelativeHandler">Move Relative</button>
             </div>
-            <button class="stop-button wide-button" :disabled="isMoving !== true" @click="haltHandler">Halt</button>
+            <button class="stop-button wide-button" :disabled="rotatorState?.isMoving !== true" @click="haltHandler">Halt</button>
           </div>
         </div>
 
@@ -44,17 +44,17 @@
         <div class="panel-section">
           <h3>Advanced</h3>
           <div class="advanced-controls">
-            <div v-if="canReverse === true" class="input-group">
+            <div v-if="rotatorState?.canReverse === true" class="input-group">
               <label class="toggle-label">Reverse Direction:</label>
               <label class="toggle">
-                <input v-model="reverseInput" type="checkbox" :disabled="isMoving === true" @change="setReverseHandler">
+                <input v-model="reverseInput" type="checkbox" :disabled="rotatorState?.isMoving === true" @change="setReverseHandler">
                 <span class="slider"></span>
               </label>
             </div>
             <div class="input-group">
               <label for="syncAngle">Sync Sky Angle (°):</label>
               <input id="syncAngle" v-model.number="syncAngleInput" type="number" step="0.1" />
-              <button class="action-button" :disabled="isMoving === true" @click="syncHandler">Sync</button>
+              <button class="action-button" :disabled="rotatorState?.isMoving === true" @click="syncHandler">Sync</button>
             </div>
           </div>
         </div>
@@ -66,7 +66,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { callAlpacaMethod, getAlpacaProperties, checkDeviceCapability } from '@/utils/alpacaPropertyAccess'
+// Removed: import { callAlpacaMethod, getAlpacaProperties, checkDeviceCapability } from '@/utils/alpacaPropertyAccess'
 
 const props = defineProps({
   deviceId: {
@@ -85,178 +85,174 @@ const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
 
-// Rotator state refs
-const position = ref<number | null>(null)
-const mechanicalPosition = ref<number | null>(null)
-const isMoving = ref<boolean | null>(null)
-const reverse = ref<boolean | null>(null)
-const canReverse = ref<boolean | null>(null)
-const targetPositionDisplay = ref<number | null>(null) // For displaying target position from device
+// Computed property to get rotator state from the store
+const rotatorState = computed(() => {
+  return store.rotatorData.get(props.deviceId)
+})
 
-// Input refs
+// Input refs - these remain local to the component for form handling
 const targetAngleInput = ref<number>(0)
 const relativeAngleInput = ref<number>(0)
 const syncAngleInput = ref<number>(0)
-const reverseInput = ref<boolean>(false)
+const reverseInput = ref<boolean>(false) // This will be synced with store.rotatorData.reverse
 
-const resetRotatorState = () => {
-  position.value = null
-  mechanicalPosition.value = null
-  isMoving.value = null
-  reverse.value = null
-  // canReverse is a capability, should not reset frequently, fetched once
-  targetPositionDisplay.value = null
+const resetLocalInputs = () => {
   targetAngleInput.value = 0
   relativeAngleInput.value = 0
   syncAngleInput.value = 0
-  // reverseInput should be updated from reverse.value when status updates
+  // reverseInput is managed by watcher below
 }
 
 const updateRotatorStatus = async () => {
   if (!props.isConnected || !props.deviceId) return
-
   try {
-    const properties = await getAlpacaProperties(props.deviceId, [
-      'position',
-      'mechanicalposition',
-      'ismoving',
-      'reverse',
-      'targetposition' // Fetching targetposition to display
-    ])
-
-    position.value = properties.position as number ?? null
-    mechanicalPosition.value = properties.mechanicalposition as number ?? null
-    isMoving.value = properties.ismoving as boolean ?? null
-    reverse.value = properties.reverse as boolean ?? null
-    targetPositionDisplay.value = properties.targetposition as number ?? null
-
-    // Update reverseInput to match current device state if not already matching
-    if (reverse.value !== null && reverseInput.value !== reverse.value) {
-      reverseInput.value = reverse.value
-    }
-    // Initialize targetAngleInput if position is known
-    if (position.value !== null && targetAngleInput.value === 0) {
-        targetAngleInput.value = parseFloat(position.value.toFixed(1));
-    }
-
+    await store.fetchRotatorStatus(props.deviceId)
   } catch (error) {
-    console.error('Error updating rotator status:', error)
+    console.error('Error updating rotator status via store:', error)
   }
 }
 
 const fetchCapabilities = async () => {
   if (!props.deviceId) return;
-  canReverse.value = await checkDeviceCapability(props.deviceId, 'canreverse', false)
+  try {
+    await store.fetchRotatorCapabilities(props.deviceId)
+  } catch (error) {
+    console.error('Error fetching rotator capabilities via store:', error)
+  }
 }
 
-// Alpaca actions
+// Watch for changes in store's rotator state to update local inputs if necessary
+watch(() => rotatorState.value?.reverse, (newReverse) => {
+  if (newReverse !== null && newReverse !== undefined) {
+    reverseInput.value = newReverse
+  }
+}, { immediate: true })
+
+watch(() => rotatorState.value?.position, (newPosition) => {
+  if (newPosition !== null && newPosition !== undefined && targetAngleInput.value === 0) {
+    targetAngleInput.value = parseFloat(newPosition.toFixed(1))
+  }
+  if (newPosition !== null && newPosition !== undefined && syncAngleInput.value === 0) {
+    syncAngleInput.value = parseFloat(newPosition.toFixed(1)) // Also init sync input
+  }
+}, { immediate: true })
+
+// Alpaca actions - now dispatch to store
 const moveAbsoluteHandler = async () => {
   if (!props.deviceId || targetAngleInput.value === null) return
   try {
-    await callAlpacaMethod(props.deviceId, 'moveAbsolute', { Position: targetAngleInput.value })
-    updateRotatorStatus()
+    await store.moveAbsolute(props.deviceId, targetAngleInput.value)
   } catch (error) {
-    console.error('Error moving absolute:', error)
+    console.error('Error moving absolute via store:', error)
   }
 }
 
 const moveRelativeHandler = async () => {
   if (!props.deviceId || relativeAngleInput.value === null) return
   try {
-    await callAlpacaMethod(props.deviceId, 'move', { Position: relativeAngleInput.value })
-    updateRotatorStatus()
+    await store.moveRelative(props.deviceId, relativeAngleInput.value)
   } catch (error) {
-    console.error('Error moving relative:', error)
+    console.error('Error moving relative via store:', error)
   }
 }
 
 const haltHandler = async () => {
   if (!props.deviceId) return
   try {
-    await callAlpacaMethod(props.deviceId, 'halt')
-    updateRotatorStatus()
+    await store.haltRotator(props.deviceId)
   } catch (error) {
-    console.error('Error halting rotator:', error)
+    console.error('Error halting rotator via store:', error)
   }
 }
 
 const syncHandler = async () => {
   if (!props.deviceId || syncAngleInput.value === null) return
   try {
-    await callAlpacaMethod(props.deviceId, 'syncToPosition', { Position: syncAngleInput.value })
-    updateRotatorStatus()
+    await store.syncToPosition(props.deviceId, syncAngleInput.value)
   } catch (error) {
-    console.error('Error syncing rotator:', error)
+    console.error('Error syncing rotator via store:', error)
   }
 }
 
 const setReverseHandler = async () => {
   if (!props.deviceId || reverseInput.value === null) return
   try {
-    await callAlpacaMethod(props.deviceId, 'setReverse', { Reverse: reverseInput.value })
-    updateRotatorStatus()
+    await store.setRotatorReverse(props.deviceId, reverseInput.value)
   } catch (error) {
-    console.error('Error setting reverse state:', error)
-    if (reverse.value !== null) reverseInput.value = reverse.value;
+    console.error('Error setting reverse state via store:', error)
+    // If store action handles reverting optimistic updates or re-fetches state, this might not be needed
+    // For safety, ensure reverseInput reflects the actual store state after an error
+    if (rotatorState.value?.reverse !== null && rotatorState.value?.reverse !== undefined) {
+      reverseInput.value = rotatorState.value.reverse
+    }
   }
 }
 
 let statusTimer: number | undefined
 
-onMounted(async () => {
-  await fetchCapabilities() // Fetch capabilities once
+const startPolling = () => {
+  if (statusTimer) clearInterval(statusTimer);
   if (props.isConnected && props.deviceId) {
-    await updateRotatorStatus()
-    if (!statusTimer) {
-      statusTimer = window.setInterval(updateRotatorStatus, 2000) // Poll every 2 seconds
-    }
-  } else {
-    if (statusTimer) {
-      window.clearInterval(statusTimer)
-      statusTimer = undefined
+    statusTimer = window.setInterval(updateRotatorStatus, 2000) // Poll every 2 seconds
+  }
+}
+
+const stopPolling = () => {
+  if (statusTimer) {
+    window.clearInterval(statusTimer)
+    statusTimer = undefined
+  }
+}
+
+onMounted(async () => {
+  if (props.deviceId) {
+    store.initializeRotatorState(props.deviceId)
+    if (props.isConnected) {
+      await fetchCapabilities()
+      await updateRotatorStatus()
+      startPolling()
     }
   }
 })
 
 watch(() => props.isConnected, async (newIsConnected) => {
-  if (newIsConnected && props.deviceId) {
-    resetRotatorState()
-    await fetchCapabilities() // Re-fetch capabilities on new connection
-    await updateRotatorStatus()
-    if (!statusTimer) {
-      statusTimer = window.setInterval(updateRotatorStatus, 2000)
+  if (props.deviceId) {
+    if (newIsConnected) {
+      store.initializeRotatorState(props.deviceId) // Ensure state is ready
+      await fetchCapabilities()
+      await updateRotatorStatus()
+      startPolling()
+    } else {
+      stopPolling()
+      store.clearRotatorState(props.deviceId) // Clear state on disconnect
+      resetLocalInputs()
     }
-  } else {
-    if (statusTimer) {
-      window.clearInterval(statusTimer)
-      statusTimer = undefined
-    }
-    resetRotatorState()
   }
 })
 
 watch(() => props.deviceId, async (newDeviceId, oldDeviceId) => {
-  if (newDeviceId !== oldDeviceId) {
-    resetRotatorState()
-    await fetchCapabilities()
+  if (oldDeviceId) {
+    stopPolling()
+    store.clearRotatorState(oldDeviceId) // Clear state for old device
+  }
+  if (newDeviceId) {
+    store.initializeRotatorState(newDeviceId)
+    resetLocalInputs() // Reset inputs for the new device
     if (props.isConnected) {
+      await fetchCapabilities()
       await updateRotatorStatus()
-      if (!statusTimer) {
-        statusTimer = window.setInterval(updateRotatorStatus, 2000)
-      }
-    } else {
-      if (statusTimer) {
-        clearInterval(statusTimer)
-        statusTimer = undefined
-      }
+      startPolling()
     }
+  } else {
+    stopPolling()
+    resetLocalInputs()
   }
 }, { immediate: true })
 
 onUnmounted(() => {
-  if (statusTimer) {
-    window.clearInterval(statusTimer)
-  }
+  stopPolling()
+  // Optionally clear state if component is truly destroyed and device no longer relevant
+  // if (props.deviceId) store.clearRotatorState(props.deviceId)
 })
 
 </script>

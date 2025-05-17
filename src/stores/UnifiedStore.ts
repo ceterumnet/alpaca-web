@@ -28,6 +28,8 @@ import { createFilterWheelActions } from './modules/filterWheelActions'
 import { createDomeActions } from './modules/domeActions'
 import { createObservingConditionsActions } from './modules/observingConditionsActions'
 import { createSwitchActions } from './modules/switchActions'
+import { createRotatorActions } from './modules/rotatorActions'
+import { createCoverCalibratorActions } from './modules/coverCalibratorActions'
 
 // Re-export type for convenience
 export type { Device }
@@ -46,7 +48,9 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createFilterWheelActions().state(),
       ...createDomeActions().state(),
       ...createObservingConditionsActions().state(),
-      ...createSwitchActions().state()
+      ...createSwitchActions().state(),
+      ...createRotatorActions().state(),
+      ...createCoverCalibratorActions().state()
     }
   },
 
@@ -67,7 +71,9 @@ export const useUnifiedStore = defineStore('unifiedStore', {
     ...createFilterWheelActions().actions,
     ...createDomeActions().actions,
     ...createObservingConditionsActions().actions,
-    ...createSwitchActions().actions
+    ...createSwitchActions().actions,
+    ...createRotatorActions().actions,
+    ...createCoverCalibratorActions().actions
   }
 })
 

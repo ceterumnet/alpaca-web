@@ -93,7 +93,7 @@ export function createSwitchActions(): {
           } else {
             await client.setSwitchValue(switchId, value)
           }
-          const currentSwitches = (this.getDeviceById(deviceId)?.properties?.sw_switches as ISwitchDetail[] | undefined) || []
+          const currentSwitches = (this.getDeviceById(deviceId)?.sw_switches as ISwitchDetail[] | undefined) || []
           if (currentSwitches[switchId]) {
             const updatedSwitchDetail = await client.getSwitchDetails(switchId)
             const newSwitches = [...currentSwitches]
@@ -120,7 +120,7 @@ export function createSwitchActions(): {
         if (!client) return
         try {
           await client.setSwitchName(switchId, name)
-          const currentSwitches = (this.getDeviceById(deviceId)?.properties?.sw_switches as ISwitchDetail[] | undefined) || []
+          const currentSwitches = (this.getDeviceById(deviceId)?.sw_switches as ISwitchDetail[] | undefined) || []
           if (currentSwitches[switchId]) {
             const updatedSwitchDetail = await client.getSwitchDetails(switchId)
             const newSwitches = [...currentSwitches]
@@ -147,7 +147,7 @@ export function createSwitchActions(): {
         const client = this._getSwitchClient(deviceId)
         if (!client) return
 
-        const oldSwitches = device.properties?.sw_switches as ISwitchDetail[] | undefined
+        const oldSwitches = device.sw_switches as ISwitchDetail[] | undefined
         if (!oldSwitches) {
           await this.fetchSwitchDetails(deviceId) // Fetch all if not available
           return

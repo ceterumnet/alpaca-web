@@ -14,6 +14,7 @@ The following panels have been refactored to use the `UnifiedStore` for their da
 - `src/components/devices/SimplifiedDomePanel.vue`
 - `src/components/devices/SimplifiedObservingConditionsPanel.vue`
 - `src/components/devices/SimplifiedSwitchPanel.vue`
+- `src/components/devices/SimplifiedRotatorPanel.vue`
 
 ### 2. Store Modules Created
 
@@ -23,6 +24,7 @@ Corresponding Pinia store modules have been created to handle the logic for each
 - `src/stores/modules/domeActions.ts`
 - `src/stores/modules/observingConditionsActions.ts`
 - `src/stores/modules/switchActions.ts`
+- `src/stores/modules/rotatorActions.ts`
 - `src/stores/modules/coreActions.ts` (Central to device management)
 - `src/stores/modules/simulationActions.ts` (For device simulation)
 - `src/stores/modules/eventSystem.ts` (For store-wide events)
@@ -39,8 +41,8 @@ Significant effort has been invested in resolving complex TypeScript typing issu
 
 - **Initial Challenge**: The modular store structure led to "this context" errors. TypeScript struggled with the `this` type within actions, especially concerning `CoreState` (particularly `deviceClients: Map<string, AlpacaClient>`) and `AlpacaClient` instances losing their method signatures when accessed from the reactive `Map`.
 - **Solution Strategy**:
-  - **Standardized `this` Context**: The `this` type for actions within all store modules (e.g., `coreActions.ts`, `simulationActions.ts`, `switchActions.ts`) has been standardized to `UnifiedStoreType`. `UnifiedStoreType` (derived from `ReturnType<typeof useUnifiedStore>`) represents the entire store instance, including all combined state and actions.
-  - **Explicit Action Signatures**: Each module creator function (e.g., `createCoreActions()`) now has an explicit return type, including a defined interface for its actions (e.g., `ICoreActions`, `ISimulationActions`, `SwitchActionsSignatures`). This improves type safety and clarity.
+  - **Standardized `this` Context**: The `this` type for actions within all store modules (e.g., `coreActions.ts`, `simulationActions.ts`, `switchActions.ts`, `rotatorActions.ts`) has been standardized to `UnifiedStoreType`. `UnifiedStoreType` (derived from `ReturnType<typeof useUnifiedStore>`) represents the entire store instance, including all combined state and actions.
+  - **Explicit Action Signatures**: Each module creator function (e.g., `createCoreActions()`) now has an explicit return type, including a defined interface for its actions (e.g., `ICoreActions`, `ISimulationActions`, `SwitchActionsSignatures`, `IRotatorActions`). This improves type safety and clarity.
   - **`AlpacaClient` Typing**: The issue of `AlpacaClient` instances in the `deviceClients` map losing their method signatures was addressed by:
     - Using `markRaw()` when setting client instances into the `deviceClients` map. This tells Vue/Pinia to not make the client deeply reactive, preserving its class instance methods.
     - Employing type assertions (e.g., `client as AlpacaClient`) when retrieving clients from the map to reassure TypeScript of the correct type.
@@ -60,17 +62,22 @@ Significant effort has been invested in resolving complex TypeScript typing issu
     - `createSwitchActions` now has an explicit return type (`{ state: () => SwitchModuleState; actions: SwitchActionsSignatures; }`).
     - Imports were updated (`UnifiedStoreType`, `DeviceEvent`), unused `CoreState` import removed.
     - Explicit type annotations (e.g., `const device: Device | null`) were added where needed to satisfy linter for imported types.
+  - **`rotatorActions.ts`** (New):
+    - Created with `RotatorModuleState` and `IRotatorActions`.
+    - `this` context standardized to `UnifiedStoreType`.
+    - Alpaca calls use generic `client.get()` and `client.put()` methods, assuming these are provided by `AlpacaClient` from `coreActions`.
+    - Assumes existence of `handleAlpacaError` and `emitDeviceEvent` on `UnifiedStoreType`.
 - **Architectural Review**: Confirmed that device-specific property fetching methods (e.g., `fetchCameraProperties`) were already correctly located in their respective modules (`cameraActions.ts`, `telescopeActions.ts`) and not in `coreActions.ts`.
 
 ## Current Status
 
-The described changes have been applied to `coreActions.ts`, `simulationActions.ts`, and `switchActions.ts`. These modules should now be free of the previously discussed linter errors related to "this context" and property existence.
+The described changes have been applied to `coreActions.ts`, `simulationActions.ts`, `switchActions.ts`, and now `rotatorActions.ts`. These modules should now be free of the previously discussed linter errors related to "this context" and property existence.
 
-The "this context" errors previously noted in the Vue panels (e.g., `SimplifiedSwitchPanel.vue`) — where the panel's store instance `this` (of `Store<"unifiedStore", ...>`) was not assignable to an action's expected `this` (e.g., `SwitchActionContext`) — should now be resolved. This is because the actions themselves now declare their `this` context as `UnifiedStoreType`, which aligns with the actual `this` provided by Pinia when actions are invoked from components.
+The "this context" errors previously noted in the Vue panels (e.g., `SimplifiedSwitchPanel.vue`, and potentially `SimplifiedRotatorPanel.vue` before this refactor) — where the panel's store instance `this` (of `Store<"unifiedStore", ...>`) was not assignable to an action's expected `this` (e.g., `SwitchActionContext`) — should now be resolved. This is because the actions themselves now declare their `this` context as `UnifiedStoreType`, which aligns with the actual `this` provided by Pinia when actions are invoked from components.
 
 ## Next Steps
 
-1.  **Verify Panel Linter Errors**: Confirm that the TypeScript errors in the refactored panels (`SimplifiedFilterWheelPanel.vue`, `SimplifiedDomePanel.vue`, `SimplifiedObservingConditionsPanel.vue`, `SimplifiedSwitchPanel.vue`) are indeed resolved following the store module updates.
+1.  **Verify Panel Linter Errors**: Confirm that the TypeScript errors in the refactored panels (`SimplifiedFilterWheelPanel.vue`, `SimplifiedDomePanel.vue`, `SimplifiedObservingConditionsPanel.vue`, `SimplifiedSwitchPanel.vue`, `SimplifiedRotatorPanel.vue`) are indeed resolved following the store module updates.
 2.  **Review Other Device Action Modules**: Apply the same typing strategy (standardize `this` to `UnifiedStoreType`, explicit return types for creator functions, well-defined action interfaces) to other device-specific action modules if they exhibit similar typing issues:
     - `src/stores/modules/filterWheelActions.ts`
     - `src/stores/modules/domeActions.ts`

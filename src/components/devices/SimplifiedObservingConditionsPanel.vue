@@ -80,7 +80,7 @@ const store = useUnifiedStore()
 const currentDevice = computed(() => store.getDeviceById(props.deviceId))
 
 const storedConditions = computed(() => {
-  return currentDevice.value?.properties?.oc_conditions as IObservingConditionsData | null | undefined;
+  return currentDevice.value?.oc_conditions as IObservingConditionsData | null | undefined;
 });
 
 const averagePeriodInput = ref<number | null>(null)

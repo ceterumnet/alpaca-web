@@ -156,7 +156,6 @@ const startExposure = async () => {
     try {
       // Always use callDeviceMethod for abortexposure
       console.log('Using callDeviceMethod for abortexposure')
-      // @ts-expect-error - Store has TypeScript 'this' context issues that need to be fixed
       await unifiedStore.callDeviceMethod(props.deviceId, props.stopMethod)
       
       console.log('Exposure aborted')
