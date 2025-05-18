@@ -8,7 +8,7 @@ This document tracks the progress of creating unit tests for the Alpaca client f
 - [x] `covercalibrator-client.ts`
 - [x] `dome-client.ts`
 - [x] `filterwheel-client.ts`
-- [ ] `focuser-client.ts`
+- [x] `focuser-client.ts`
 - [ ] `observingconditions-client.ts`
 - [ ] `rotator-client.ts`
 - [ ] `safetymonitor-client.ts`
@@ -163,7 +163,20 @@ By paying close attention to these details, the process of writing unit tests fo
     - For `covercalibrator-client.test.ts`, test mocks for `driverversion` had to provide a number (`1`) to ensure assertions like `expect(result.driverVersion).toBe(mockProperties.driverversion)` passed. Be prepared for potential similar behavior with `driverVersion` in other clients.
 
 14. **Robust Mocking for `getProperties()` and Complex Getters**:
+
     - When testing methods that internally call `getProperties()` (e.g., `getCoverCalibratorState`, `getCameraInfo`, `getDomeState`), ensure your `mockFetch` implementation is precise and comprehensive:
       - **Specific Property Matching**: Use reliable methods to extract the Alpaca property name from the `fetch` URL (e.g., last path segment) for conditioning your mock's responses, rather than relying on broad `url.includes('someprop')`.
       - **Comprehensive Mocking**: If you're testing a scenario where one sub-property fetch fails (and `getProperties` logs a warning), your mock must still provide valid successful responses for _all other properties_ that the method under test will fetch via `getProperties`. Failure to do so can lead to multiple, unexpected `console.warn` calls from `getProperties`'s internal error handling for successfully fetched but unmocked (or poorly mocked) properties, which can complicate `console.warn` spy assertions.
       - The test `CoverCalibratorClient > getCoverCalibratorState > should return partial data and warn if an individual property fetch fails` provides a good pattern using an `expectedProperties` map to manage all potential fetched values and ensure only the intentionally failing property triggers a warning.
+
+15. **Prefer `setProperty` for Client Setter Methods:**
+
+    - Client methods designed to set device properties (e.g., `setGain`, `setTempComp`) should use `this.setProperty('propertyName', value)`.
+    - This ensures that `toParamFormat` correctly formats the parameter name (usually to PascalCase, e.g., `tempComp` -> `TempComp`) and `toAscomValue` correctly transforms the value (e.g., boolean `true` to string `"True"`) before it's sent in the PUT request body.
+    - **Pitfall**: Avoid using `this.put('propertyNameInUrl', { PropertyNameInBody: value })` directly for setting properties, as this bypasses the `toAscomValue` transformation for the `value` in the body, potentially leading to incorrect formatting (e.g., sending lowercase `"true"` instead of `"True"` for booleans). It also requires manual management of parameter name casing in the body. `setProperty` handles these details automatically. (Reinforces and expands on Pattern #7).
+
+16. **Testing `console.warn` in Client Getters with `try/catch`:**
+    - When testing client getter methods that wrap `this.getProperty()` in their own `try/catch` block (e.g., `getTemperature`, `isTempCompAvailable` in `focuser-client.ts`):
+      - **Case 1: `getProperty` returns a non-error value that the getter handles.** If `this.getProperty()` returns a value that the client method processes and then decides to return a default (e.g., `getTemperature` receiving 'N/A' and returning `null`), and this handling does _not_ involve the method's own `catch` block, then `console.warn` from _that method's catch block_ should **not** be expected.
+      - **Case 2: `getProperty` (or underlying `fetch`) throws an error.** If `this.getProperty()` throws an `AlpacaError`, or if `fetch` itself is rejected (e.g., via `mockFetch.mockRejectedValueOnce(new Error(...))`) and this error propagates to be caught by the client method's `catch` block, then `console.warn` _from that method's catch block_ **should** be expected.
+      - **Specific `TypeError` for `fetch` Rejection**: Be aware that if `mockFetch.mockRejectedValueOnce(new Error('Some custom error'))` is used, the error ultimately caught and logged by the client method's `console.warn(..., error)` might be a `TypeError: Cannot read properties of undefined (reading 'ok')`. This appears to be an artifact of how `AlpacaClient` currently handles raw `fetch` rejections. Test expectations for the warning message string should match this observed `TypeError` in such cases.

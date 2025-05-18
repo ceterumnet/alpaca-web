@@ -63,8 +63,9 @@ export class FocuserClient extends AlpacaClient {
 
   // Write methods
   async setTempComp(enable: boolean): Promise<void> {
-    // Parameter name is 'TempComp'
-    await this.put('tempcomp', { TempComp: enable })
+    // Parameter name is 'TempComp' in the Alpaca PUT body
+    // Use setProperty to ensure correct casing and value transformation (e.g. boolean to "True"/"False")
+    await this.setProperty('tempComp', enable)
   }
 
   async halt(): Promise<void> {
