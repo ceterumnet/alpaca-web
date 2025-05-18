@@ -218,6 +218,14 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           } catch (propError) {
             console.error(`Error fetching telescope properties: ${propError}`)
           }
+        } else if (device.type === 'focuser' && this.handleFocuserConnected) {
+          try {
+            console.log(`Device ${deviceId} is a focuser, handling connection.`)
+            this.handleFocuserConnected(deviceId)
+            this.updateDeviceCapabilities(deviceId)
+          } catch (focuserError) {
+            console.error(`Error handling focuser connection: ${focuserError}`)
+          }
         } else if (device.type === 'safetymonitor' && this.handleSafetyMonitorConnected) {
           try {
             console.log(`Device ${deviceId} is a safety monitor, handling connection.`)
@@ -290,6 +298,14 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           }
           if (this._deviceStateUnsupported) {
             this._deviceStateUnsupported.delete(deviceId)
+          }
+        }
+        if (device.type === 'focuser' && this.handleFocuserDisconnected) {
+          try {
+            console.log(`Device ${deviceId} is a focuser, handling disconnection.`)
+            this.handleFocuserDisconnected(deviceId)
+          } catch (focuserError) {
+            console.error(`Error handling focuser disconnection: ${focuserError}`)
           }
         }
         if (device.type === 'safetymonitor' && this.handleSafetyMonitorDisconnected) {
@@ -500,6 +516,17 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
             this.stopTelescopePropertyPolling(telescope.id)
           } catch (error) {
             console.error(`Error stopping telescope property polling: ${error}`)
+          }
+        }
+      }
+      if (this.stopFocuserPolling) {
+        const focuserDevices = this.devicesArray.filter((device: Device) => device.type === 'focuser')
+        for (const focuser of focuserDevices) {
+          try {
+            console.log(`Stopping property polling for focuser ${focuser.id}`)
+            this.stopFocuserPolling(focuser.id)
+          } catch (error) {
+            console.error(`Error stopping focuser property polling: ${error}`)
           }
         }
       }

@@ -31,6 +31,7 @@ import { createSwitchActions } from './modules/switchActions'
 import { createRotatorActions } from './modules/rotatorActions'
 import { createCoverCalibratorActions } from './modules/coverCalibratorActions'
 import { createSafetyMonitorActions } from './modules/safetyMonitorActions'
+import { createFocuserActions } from './modules/focuserActions'
 
 // Re-export type for convenience
 export type { Device }
@@ -52,7 +53,8 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createSwitchActions().state(),
       ...createRotatorActions().state(),
       ...createCoverCalibratorActions().state(),
-      ...createSafetyMonitorActions().state()
+      ...createSafetyMonitorActions().state(),
+      ...createFocuserActions().state()
       // SafetyMonitor state is managed within coreState's deviceSpecificStates
     }
   },
@@ -77,7 +79,8 @@ export const useUnifiedStore = defineStore('unifiedStore', {
     ...createSwitchActions().actions,
     ...createRotatorActions().actions,
     ...createCoverCalibratorActions().actions,
-    ...createSafetyMonitorActions().actions
+    ...createSafetyMonitorActions().actions,
+    ...createFocuserActions().actions
   }
 })
 

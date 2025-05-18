@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { setAlpacaProperty, callAlpacaMethod, getAlpacaProperties } from '@/utils/alpacaPropertyAccess'
 
 const props = defineProps({
   deviceId: {
@@ -21,199 +20,110 @@ const props = defineProps({
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
-// Get the current device
+// Get the current device from the store
 const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
 
-// Focuser position
-const position = ref(0)
-const isMoving = ref(false)
-const temperature = ref<number | null>(null)
+// --- Computed properties deriving state from the store ---
+const position = computed(() => {
+  const val = currentDevice.value?.properties.focuser_position;
+  return typeof val === 'number' ? val : 0;
+})
+const isMoving = computed(() => currentDevice.value?.properties.focuser_isMoving ?? false)
+const temperature = computed(() => {
+  const val = currentDevice.value?.properties.focuser_temperature;
+  return typeof val === 'number' ? val : null;
+})
+const stepSize = computed(() => {
+  const val = currentDevice.value?.properties.focuser_stepSize;
+  return typeof val === 'number' ? val : 10;
+})
+const maxStep = computed(() => {
+  const val = currentDevice.value?.properties.focuser_maxStep;
+  return typeof val === 'number' ? val : 1000;
+})
 
-// Focuser settings
-const stepSize = ref(10)
-const maxStep = ref(1000)
-const maxIncrement = ref(1000)
-const tempComp = ref(false)
+const tempComp = computed({
+  get: () => currentDevice.value?.properties.focuser_tempComp ?? false,
+  set: (newValue: boolean) => {
+    if (!props.deviceId) return
+    store.setFocuserTempComp(props.deviceId, newValue)
+  }
+})
 
-// Reset focuser state when device changes
-const resetFocuserState = () => {
-  position.value = 0
-  isMoving.value = false
-  temperature.value = null
-  maxStep.value = 1000
-  maxIncrement.value = 1000
-  tempComp.value = false
-  targetPosition.value = 0
+// Local UI state (not directly from device properties)
+const targetPosition = ref(0)
+
+// Initialize targetPosition when current position becomes available or changes
+watch(position, (newPos) => {
+  // Only set initially or if panel is reset and new device has different position
+  if (targetPosition.value === 0 || targetPosition.value !== newPos) {
+      targetPosition.value = newPos
+  }
+}, { immediate: true })
+
+
+// Reset focuser state (local UI state) when device changes or disconnects
+const resetFocuserPanelState = () => {
+  // Device properties are now reactive from the store, so no need to reset them here.
+  // We only reset local UI state not directly tied to store properties.
+  const currentPos = position.value
+  targetPosition.value = currentPos // Reset target to current actual position
 }
 
-// Functions for movement
+// --- Actions that call store methods ---
 const moveToPosition = async (targetPositionValue: number) => {
-  if (!props.deviceId) return;
-  try {
-    await callAlpacaMethod(props.deviceId, 'move', {
-      Position: targetPositionValue
-    })
-    updateFocuserStatus()
-  } catch (error) {
-    console.error('Error moving to position:', error)
-  }
+  if (!props.deviceId) return
+  store.moveFocuser(props.deviceId, targetPositionValue)
 }
 
 const moveIn = async () => {
-  if (!props.deviceId || position.value === null || stepSize.value === null) return;
-  try {
-    const targetPositionValue = position.value - stepSize.value;
-    await callAlpacaMethod(props.deviceId, 'move', { 
-      Position: targetPositionValue 
-    });
-    updateFocuserStatus();
-  } catch (error) {
-    console.error('Error moving in:', error);
-  }
-};
+  if (!props.deviceId) return
+  // position and stepSize are now guaranteed to be numbers by computed properties
+  await store.moveFocuser(props.deviceId, position.value - stepSize.value)
+}
 
 const moveOut = async () => {
-  if (!props.deviceId || position.value === null || stepSize.value === null) return;
-  try {
-    const targetPositionValue = position.value + stepSize.value;
-    await callAlpacaMethod(props.deviceId, 'move', { 
-      Position: targetPositionValue 
-    });
-    updateFocuserStatus();
-  } catch (error) {
-    console.error('Error moving out:', error);
-  }
-};
+  if (!props.deviceId) return
+  // position and stepSize are now guaranteed to be numbers by computed properties
+  await store.moveFocuser(props.deviceId, position.value + stepSize.value)
+}
 
 const halt = async () => {
-  if (!props.deviceId) return;
-  try {
-    await callAlpacaMethod(props.deviceId, 'halt')
-    updateFocuserStatus()
-  } catch (error) {
-    console.error('Error halting movement:', error)
-  }
+  if (!props.deviceId) return
+  store.haltFocuser(props.deviceId)
 }
 
-// Update settings
-/*
-const updateStepSize = async () => {
-  try {
-    // StepSize is a GET-only property in Alpaca Focuser specification
-    // await setAlpacaProperty(props.deviceId, 'stepSize', stepSize.value)
-    console.warn('Attempted to set read-only property StepSize for Focuser')
-  } catch (error) {
-    console.error('Error setting step size:', error)
-  }
-}
-*/
+// updateTempComp is handled by the computed setter for tempComp
 
-const updateTempComp = async () => {
-  if (!props.deviceId) return;
-  try {
-    await setAlpacaProperty(props.deviceId, 'tempComp', tempComp.value)
-    updateFocuserStatus()
-  } catch (error) {
-    console.error('Error setting temperature compensation:', error)
-  }
-}
-
-// Target position for move to
-const targetPosition = ref(0)
 const moveToTarget = async () => {
   await moveToPosition(targetPosition.value)
 }
 
-// Poll for focuser status
-let statusTimer: number | undefined
+// Polling is now handled by focuserActions.ts in the store.
+// Removed statusTimer and updateFocuserStatus
 
-const updateFocuserStatus = async () => {
-  if (!props.isConnected || !props.deviceId) return
-  
-  try {
-    const properties = await getAlpacaProperties(props.deviceId, [
-      'position',
-      'isMoving',
-      'temperature',
-      'stepSize',
-      'maxStep',
-      'maxIncrement',
-      'tempComp'
-    ])
-    
-    // Update local state with device values
-    if (properties.position !== null && typeof properties.position === 'number') {
-      position.value = properties.position
-      // If we don't have a target position yet, initialize it to current position
-      if (targetPosition.value === 0) {
-        targetPosition.value = properties.position
-      }
-    }
-    
-    if (properties.isMoving !== null && typeof properties.isMoving === 'boolean') {
-      isMoving.value = properties.isMoving
-    }
-    
-    if (properties.temperature !== null && typeof properties.temperature === 'number') {
-      temperature.value = properties.temperature
-    } else {
-      temperature.value = null
-    }
-    
-    if (properties.stepSize !== null && typeof properties.stepSize === 'number') {
-      stepSize.value = properties.stepSize
-    }
-    
-    if (properties.maxStep !== null && typeof properties.maxStep === 'number') {
-      maxStep.value = properties.maxStep
-    }
-    
-    if (properties.maxIncrement !== null && typeof properties.maxIncrement === 'number') {
-      maxIncrement.value = properties.maxIncrement
-    }
-    
-    if (properties.tempComp !== null && typeof properties.tempComp === 'boolean') {
-      tempComp.value = properties.tempComp
-    }
-  } catch (error) {
-    console.error('Error updating focuser status:', error)
-  }
-}
-
-// Setup polling when mounted
+// Setup when mounted
 onMounted(() => {
+  // Data flows from the store.
+  // Call resetFocuserPanelState if local UI elements (like targets) need resetting on mount.
   if (props.isConnected && props.deviceId) {
-    updateFocuserStatus()
-    if(!statusTimer) {
-        statusTimer = window.setInterval(updateFocuserStatus, 1000)
-    }
-  } else {
-    if (statusTimer) {
-        window.clearInterval(statusTimer);
-        statusTimer = undefined;
-    }
+    // Initial data fetch is handled by handleFocuserConnected in store
+    // Initialize local UI state
+    resetFocuserPanelState()
   }
 })
 
 // Watch for changes in connection status (from parent)
 watch(() => props.isConnected, (newIsConnected) => {
   console.log(`SimplifiedFocuserPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
-  if (newIsConnected) {
-    // Start polling when connected
-    resetFocuserState() // Reset state on new connection
-    updateFocuserStatus()
-    if (!statusTimer) { // Avoid multiple intervals
-      statusTimer = window.setInterval(updateFocuserStatus, 1000)
-    }
+  if (newIsConnected && props.deviceId) {
+    // Connection logic (fetching details, starting polling) is handled by
+    // handleFocuserConnected in focuserActions.ts when the store detects connection.
+    resetFocuserPanelState() // Reset local UI state
   } else {
-    // Stop polling when disconnected
-    if (statusTimer) {
-      window.clearInterval(statusTimer)
-      statusTimer = undefined;
-    }
-    resetFocuserState() // Clear data when disconnected
+    resetFocuserPanelState() // Clear/reset local UI data when disconnected
   }
 })
 
@@ -221,29 +131,23 @@ watch(() => props.isConnected, (newIsConnected) => {
 watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   if (newDeviceId !== oldDeviceId) {
     console.log(`SimplifiedFocuserPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
-    // Reset settings when device changes
-    resetFocuserState()
+    resetFocuserPanelState() // Reset local UI state for the new device
     
-    if (props.isConnected) {
-      // Get updated status
-      updateFocuserStatus()
-      if (!statusTimer) {
-        statusTimer = window.setInterval(updateFocuserStatus, 1000);
-      }
-    } else {
-        if (statusTimer) {
-            clearInterval(statusTimer);
-            statusTimer = undefined;
-        }
+    // If connected, the store's connection handler for the new device would have already
+    // fetched initial data and started polling.
+    // If we need to ensure targetPosition is specifically updated for the new device's current position:
+    if (props.isConnected && currentDevice.value) {
+        // Use the computed, type-checked position value
+        targetPosition.value = position.value;
     }
   }
-}, { immediate: true })
+}, { immediate: true }) // immediate: true to run on initial setup
 
 // Cleanup when unmounted
 onUnmounted(() => {
-  if (statusTimer) {
-    window.clearInterval(statusTimer)
-  }
+  // Polling is managed by the store, so no interval to clear here.
+  // The store's handleFocuserDisconnected or a general device removal logic
+  // should handle stopping polling for this deviceId if the panel is destroyed.
 })
 
 </script>
@@ -294,6 +198,7 @@ onUnmounted(() => {
           <div class="movement-controls">
             <div class="step-size-control">
               <label>Step Size (microns):</label>
+              <!-- StepSize is typically read-only from device, display it -->
               <input v-model.number="stepSize" type="number" readonly>
             </div>
             
@@ -320,7 +225,7 @@ onUnmounted(() => {
             <div class="temp-comp-control">
               <span class="label">Temperature Compensation:</span>
               <label class="toggle">
-                <input v-model="tempComp" type="checkbox" @change="updateTempComp">
+                <input v-model="tempComp" type="checkbox"> <!-- No @change needed, computed setter handles it -->
                 <span class="slider"></span>
               </label>
             </div>
@@ -724,5 +629,10 @@ input:checked + .slider {
 input:checked + .slider:before {
   transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
   background-color: var(--aw-button-primary-text);
+}
+
+.panel-tip {
+  font-size: 0.8rem;
+  color: var(--aw-text-secondary-color);
 }
 </style> 
