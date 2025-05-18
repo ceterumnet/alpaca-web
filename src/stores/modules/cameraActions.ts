@@ -30,6 +30,35 @@ export interface CameraState {
   _deviceStateUnsupported: Set<string> // Track devices that don't support devicestate
 }
 
+// Define an interface for the actions specific to the camera module
+// This helps in typing 'this' context for actions if needed, and for clear definition of available actions
+export interface CameraActionsSignatures {
+  startCameraExposure: (deviceId: string, exposureTime: number, isLight?: boolean) => Promise<boolean>
+  trackExposureProgress: (deviceId: string, exposureTime: number) => void
+  handleExposureComplete: (deviceId: string) => Promise<void>
+  abortCameraExposure: (deviceId: string) => Promise<boolean>
+  setCameraCooler: (deviceId: string, enabled: boolean, targetTemperature?: number) => Promise<boolean>
+  setCameraBinning: (deviceId: string, binX: number, binY: number) => Promise<boolean>
+  fetchCameraProperties: (deviceId: string) => Promise<boolean>
+  startCameraPropertyPolling: (deviceId: string) => void
+  stopCameraPropertyPolling: (deviceId: string) => void
+  setPropertyPollingInterval: (deviceId: string, intervalMs: number) => void
+  setPreferredImageFormat: (deviceId: string, format: 'binary' | 'json') => void
+  cleanupDeviceState: (deviceId: string) => void
+  handleDeviceDisconnected: (deviceId: string) => void
+  handleDeviceConnected: (deviceId: string) => void
+
+  // New actions based on audit and gain/offset discussion
+  setCameraGain: (deviceId: string, desiredGain: number | string) => Promise<void>
+  setCameraOffset: (deviceId: string, desiredOffset: number | string) => Promise<void>
+  setCameraReadoutMode: (deviceId: string, modeIndex: number) => Promise<void> // Alpaca expects index
+  setCameraSubframe: (deviceId: string, startX: number, startY: number, numX: number, numY: number) => Promise<void>
+  stopCameraExposure: (deviceId: string, earlyImageReadout?: boolean) => Promise<void> // earlyImageReadout for consistency with potential future client changes
+  pulseGuideCamera: (deviceId: string, direction: number, duration: number) => Promise<void>
+  setCameraSubExposureDuration: (deviceId: string, duration: number) => Promise<void>
+  // getCameraSubExposureDuration might be covered by fetchCameraProperties if subexposureduration is polled
+}
+
 export function createCameraActions() {
   return {
     state: (): CameraState => ({
@@ -658,102 +687,48 @@ export function createCameraActions() {
         }
 
         try {
-          // Define the read-only properties we want to fetch
-          const readOnlyProperties = [
-            // Camera capabilities
-            'canabortexposure',
-            'canasymmetricbin',
-            'canfastreadout',
-            'cangetcoolerpower',
-            'canpulseguide',
-            'cansetccdtemperature',
-            'canstopexposure',
-            // Camera dimensions & hardware limits
-            'bayeroffsetx',
-            'bayeroffsety',
-            'cameraxsize',
-            'cameraysize',
-            // Min/max values
-            'gainmin',
-            'gainmax',
-            'offsetmin',
-            'offsetmax',
-            'exposuremin',
-            'exposuremax',
-            'exposureresolution',
-            // Available options
-            'readoutmodes'
-          ]
+          // Fetch all read-only properties
+          // The camera-client's getCameraInfo() fetches many of these.
+          // We should ensure all necessary static and dynamic properties are covered.
+          // Let's assume client.getCameraInfo() gets most static props.
+          // We'll explicitly fetch dynamic or potentially missing ones.
 
-          // Try to get all properties via devicestate first
-          const properties: Record<string, unknown> = {}
-          let deviceState: Record<string, unknown> | null = null
+          const cameraInfo = await (client as import('@/api/alpaca/camera-client').CameraClient).getCameraInfo()
+          const properties: Record<string, unknown> = { ...cameraInfo }
 
-          try {
-            deviceState = await this.fetchDeviceState(deviceId, {
-              forceRefresh: true,
-              cacheTtlMs: 5000 // Cache for 5 seconds
-            })
+          // Ensure specific properties for gain/offset modes are present
+          // These might come from getCameraInfo or need separate getProperty calls if not.
+          // For this example, let's assume they are part of cameraInfo or fetched if not.
+          const gains = (properties.gains as string[] | undefined) ?? []
+          const gainmin = properties.gainmin as number | undefined
+          const gainmax = properties.gainmax as number | undefined
+          const offsets = (properties.offsets as string[] | undefined) ?? []
+          const offsetmin = properties.offsetmin as number | undefined
+          const offsetmax = properties.offsetmax as number | undefined
+          const subexposureduration = properties.subexposureduration as number | undefined // Ensure this is fetched
 
-            if (deviceState) {
-              // Extract properties from device state
-              for (const property of readOnlyProperties) {
-                if (deviceState[property] !== undefined) {
-                  properties[property] = deviceState[property]
-                }
-              }
-            }
-          } catch (error) {
-            console.warn(`Error fetching device state for ${deviceId}:`, error)
-            deviceState = null
+          // Determine cam_gainMode
+          let gainMode: 'list' | 'value' | 'unknown' = 'unknown'
+          if (gains && gains.length > 0) {
+            gainMode = 'list'
+          } else if (typeof gainmin === 'number' && typeof gainmax === 'number') {
+            gainMode = 'value'
           }
+          properties.cam_gainMode = gainMode
 
-          // For any properties not found in device state, fetch them individually
-          for (const property of readOnlyProperties) {
-            if (properties[property] === undefined) {
-              try {
-                const value = await client.getProperty(property)
-                properties[property] = value
-                console.log(`Camera ${deviceId} property ${property} = ${value}`)
-              } catch (error) {
-                console.warn(`Failed to get camera property ${property}:`, error)
-              }
-            }
+          // Determine cam_offsetMode
+          let offsetMode: 'list' | 'value' | 'unknown' = 'unknown'
+          if (offsets && offsets.length > 0) {
+            offsetMode = 'list'
+          } else if (typeof offsetmin === 'number' && typeof offsetmax === 'number') {
+            offsetMode = 'value'
           }
+          properties.cam_offsetMode = offsetMode
 
-          // Determine gain mode (Index vs Value) by trying to fetch gains
-          let gainMode = 'Value'
-          let gains = null
-          try {
-            gains = await client.getProperty('gains')
-            if (gains && Array.isArray(gains) && gains.length > 0) {
-              gainMode = 'Index'
-              properties.gains = gains
-              console.log(`Camera ${deviceId} is in Gain Index mode, gains:`, gains)
-            } else {
-              console.log(`Camera ${deviceId} gains array is empty, assuming Value mode`)
-            }
-          } catch {
-            console.log(`Camera ${deviceId} does not support Gain Index mode, using Value mode`)
+          // Ensure subexposureduration is in the properties if fetched
+          if (typeof subexposureduration === 'number') {
+            properties.subexposureduration = subexposureduration
           }
-          properties.gainMode = gainMode
-
-          // Determine offset mode (Index vs Value) by trying to fetch offsets
-          let offsetMode = 'Value'
-          let offsets = null
-          try {
-            offsets = await client.getProperty('offsets')
-            if (offsets && Array.isArray(offsets) && offsets.length > 0) {
-              offsetMode = 'Index'
-              properties.offsets = offsets
-              console.log(`Camera ${deviceId} is in Offset Index mode, offsets:`, offsets)
-            } else {
-              console.log(`Camera ${deviceId} offsets array is empty, assuming Value mode`)
-            }
-          } catch {
-            console.log(`Camera ${deviceId} does not support Offset Index mode, using Value mode`)
-          }
-          properties.offsetMode = offsetMode
 
           // Map properties to friendlier names
           const friendlyProperties: Record<string, unknown> = {}
@@ -1159,7 +1134,271 @@ export function createCameraActions() {
 
         // Start property polling
         this.startCameraPropertyPolling(deviceId)
+      },
+
+      // Implementation of new actions
+
+      async setCameraGain(
+        this: CameraState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => BaseAlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          fetchCameraProperties: (deviceId: string) => Promise<boolean> // To refresh state
+        },
+        deviceId: string,
+        desiredGain: number | string
+      ): Promise<void> {
+        const device = this.getDeviceById(deviceId)
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        if (!device || !client) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client or device not found for setCameraGain' })
+          return
+        }
+
+        const currentGainMode = device.properties?.cam_gainMode as 'list' | 'value' | 'unknown' | undefined
+        const gainsList = (device.properties?.gains as string[] | undefined) ?? []
+        const gainMin = device.properties?.gainmin as number | undefined
+        const gainMax = device.properties?.gainmax as number | undefined
+        let numericValueToSend: number | undefined
+
+        if (currentGainMode === 'list') {
+          if (typeof desiredGain === 'string') {
+            const index = gainsList.indexOf(desiredGain)
+            if (index !== -1) {
+              numericValueToSend = index
+            } else {
+              this._emitEvent({ type: 'deviceApiError', deviceId, error: `Gain name '${desiredGain}' not found in list.` })
+              return
+            }
+          } else if (typeof desiredGain === 'number') {
+            if (desiredGain >= 0 && desiredGain < gainsList.length) {
+              numericValueToSend = desiredGain
+            } else {
+              this._emitEvent({ type: 'deviceApiError', deviceId, error: `Gain index ${desiredGain} out of bounds.` })
+              return
+            }
+          }
+        } else if (currentGainMode === 'value') {
+          if (typeof desiredGain === 'string') {
+            numericValueToSend = parseInt(desiredGain, 10)
+            if (isNaN(numericValueToSend)) {
+              this._emitEvent({ type: 'deviceApiError', deviceId, error: `Invalid gain value string '${desiredGain}'.` })
+              return
+            }
+          } else {
+            numericValueToSend = desiredGain
+          }
+          if (typeof gainMin === 'number' && numericValueToSend < gainMin) numericValueToSend = gainMin // Clamp or error? For now, clamp.
+          if (typeof gainMax === 'number' && numericValueToSend > gainMax) numericValueToSend = gainMax // Clamp or error? For now, clamp.
+        } else {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Gain mode is unknown. Cannot set gain.' })
+          return
+        }
+
+        if (typeof numericValueToSend === 'number') {
+          try {
+            await client.setGain(numericValueToSend)
+            this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setGain', args: [numericValueToSend], result: 'success' })
+            await this.fetchCameraProperties(deviceId) // Refresh state
+          } catch (error) {
+            this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set gain: ${error}` })
+          }
+        } else {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Could not determine numeric gain value to send.' })
+        }
+      },
+
+      async setCameraOffset(
+        this: CameraState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => BaseAlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          fetchCameraProperties: (deviceId: string) => Promise<boolean>
+        },
+        deviceId: string,
+        desiredOffset: number | string
+      ): Promise<void> {
+        const device = this.getDeviceById(deviceId)
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        if (!device || !client) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client or device not found for setCameraOffset' })
+          return
+        }
+
+        const currentOffsetMode = device.properties?.cam_offsetMode as 'list' | 'value' | 'unknown' | undefined
+        const offsetsList = (device.properties?.offsets as string[] | undefined) ?? []
+        const offsetMin = device.properties?.offsetmin as number | undefined
+        const offsetMax = device.properties?.offsetmax as number | undefined
+        let numericValueToSend: number | undefined
+
+        if (currentOffsetMode === 'list') {
+          if (typeof desiredOffset === 'string') {
+            const index = offsetsList.indexOf(desiredOffset)
+            if (index !== -1) {
+              numericValueToSend = index
+            } else {
+              this._emitEvent({ type: 'deviceApiError', deviceId, error: `Offset name '${desiredOffset}' not found in list.` })
+              return
+            }
+          } else if (typeof desiredOffset === 'number') {
+            if (desiredOffset >= 0 && desiredOffset < offsetsList.length) {
+              numericValueToSend = desiredOffset
+            } else {
+              this._emitEvent({ type: 'deviceApiError', deviceId, error: `Offset index ${desiredOffset} out of bounds.` })
+              return
+            }
+          }
+        } else if (currentOffsetMode === 'value') {
+          if (typeof desiredOffset === 'string') {
+            numericValueToSend = parseInt(desiredOffset, 10)
+            if (isNaN(numericValueToSend)) {
+              this._emitEvent({ type: 'deviceApiError', deviceId, error: `Invalid offset value string '${desiredOffset}'.` })
+              return
+            }
+          } else {
+            numericValueToSend = desiredOffset
+          }
+          if (typeof offsetMin === 'number' && numericValueToSend < offsetMin) numericValueToSend = offsetMin
+          if (typeof offsetMax === 'number' && numericValueToSend > offsetMax) numericValueToSend = offsetMax
+        } else {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Offset mode is unknown. Cannot set offset.' })
+          return
+        }
+
+        if (typeof numericValueToSend === 'number') {
+          try {
+            await client.setOffset(numericValueToSend)
+            this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setOffset', args: [numericValueToSend], result: 'success' })
+            await this.fetchCameraProperties(deviceId)
+          } catch (error) {
+            this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set offset: ${error}` })
+          }
+        } else {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Could not determine numeric offset value to send.' })
+        }
+      },
+
+      async setCameraReadoutMode(
+        this: CameraState & {
+          getDeviceClient: (id: string) => BaseAlpacaClient | null
+          _emitEvent: (event: DeviceEvent) => void
+          fetchCameraProperties: (deviceId: string) => Promise<boolean>
+        },
+        deviceId: string,
+        modeIndex: number
+      ): Promise<void> {
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        if (!client) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setCameraReadoutMode' })
+          return
+        }
+        try {
+          await client.setReadoutMode(modeIndex)
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setReadoutMode', args: [modeIndex], result: 'success' })
+          await this.fetchCameraProperties(deviceId)
+        } catch (error) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set readout mode: ${error}` })
+        }
+      },
+
+      async setCameraSubframe(
+        this: CameraState & {
+          getDeviceClient: (id: string) => BaseAlpacaClient | null
+          _emitEvent: (event: DeviceEvent) => void
+          fetchCameraProperties: (deviceId: string) => Promise<boolean>
+        },
+        deviceId: string,
+        startX: number,
+        startY: number,
+        numX: number,
+        numY: number
+      ): Promise<void> {
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        if (!client) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setCameraSubframe' })
+          return
+        }
+        try {
+          await client.setSubframe(startX, startY, numX, numY)
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setSubframe', args: [startX, startY, numX, numY], result: 'success' })
+          await this.fetchCameraProperties(deviceId)
+        } catch (error) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set subframe: ${error}` })
+        }
+      },
+
+      async stopCameraExposure(
+        this: CameraState & {
+          getDeviceClient: (id: string) => BaseAlpacaClient | null
+          _emitEvent: (event: DeviceEvent) => void
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          // earlyImageReadout is not a param for client.stopExposure(), Alpaca spec for StopExposure implies image is available.
+        },
+        deviceId: string
+        // earlyImageReadout: boolean = true // Client.stopExposure does not take this.
+      ): Promise<void> {
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        if (!client) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for stopCameraExposure' })
+          return
+        }
+        try {
+          await client.stopExposure() // Alpaca method does not take earlyImageReadout
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'stopExposure', args: [], result: 'success' })
+          // Update state: exposure stopped, image might be ready or reading. Polling will pick it up.
+          this.updateDeviceProperties(deviceId, { isExposing: false }) // Tentative, polling/handleExposureComplete should confirm
+        } catch (error) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to stop exposure: ${error}` })
+        }
+      },
+
+      async pulseGuideCamera(
+        this: CameraState & {
+          getDeviceClient: (id: string) => BaseAlpacaClient | null
+          _emitEvent: (event: DeviceEvent) => void
+        },
+        deviceId: string,
+        direction: number,
+        duration: number
+      ): Promise<void> {
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        if (!client) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for pulseGuideCamera' })
+          return
+        }
+        try {
+          await client.pulseGuide(direction, duration)
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'pulseGuide', args: [direction, duration], result: 'success' })
+          // Pulse guiding is a command, ispulseguiding property will be updated by polling if it changes.
+        } catch (error) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to pulse guide: ${error}` })
+        }
+      },
+
+      async setCameraSubExposureDuration(
+        this: CameraState & {
+          getDeviceClient: (id: string) => BaseAlpacaClient | null
+          _emitEvent: (event: DeviceEvent) => void
+          fetchCameraProperties: (deviceId: string) => Promise<boolean>
+        },
+        deviceId: string,
+        duration: number
+      ): Promise<void> {
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        if (!client) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setSubExposureDuration' })
+          return
+        }
+        try {
+          await client.setSubExposureDuration(duration)
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setSubExposureDuration', args: [duration], result: 'success' })
+          await this.fetchCameraProperties(deviceId) // Refresh as subexposureduration changed
+        } catch (error) {
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set sub-exposure duration: ${error}` })
+        }
       }
-    }
+    } as CameraActionsSignatures // Cast to ensure all actions are covered
   }
 }

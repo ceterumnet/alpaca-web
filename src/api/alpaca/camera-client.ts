@@ -245,63 +245,253 @@ export class CameraClient extends AlpacaClient {
    * Get comprehensive camera information
    */
   async getCameraInfo(): Promise<Record<string, unknown>> {
-    const properties = [
-      'bayeroffsetx',
-      'bayeroffsety',
+    const cameraInfo: Record<string, unknown> = {}
+
+    // Stage 1: Fetch fundamental capabilities and mode discriminators
+    try {
+      cameraInfo['sensortype'] = await this.getProperty('sensortype')
+    } catch (e) {
+      console.warn('Failed to fetch sensortype', e)
+    }
+
+    let canGetCoolerPower = false
+    try {
+      canGetCoolerPower = (await this.getProperty('cangetcoolerpower')) as boolean
+    } catch (e) {
+      console.warn("Could not fetch 'cangetcoolerpower'. Assuming false.", e)
+    }
+    cameraInfo['cangetcoolerpower'] = canGetCoolerPower
+
+    let canSetCCDTemperature = false
+    try {
+      canSetCCDTemperature = (await this.getProperty('cansetccdtemperature')) as boolean
+    } catch (e) {
+      console.warn("Could not fetch 'cansetccdtemperature'. Assuming false.", e)
+    }
+    cameraInfo['cansetccdtemperature'] = canSetCCDTemperature
+
+    let canFastReadout = false
+    try {
+      canFastReadout = (await this.getProperty('canfastreadout')) as boolean
+    } catch (e) {
+      console.warn("Could not fetch 'canfastreadout'. Assuming false.", e)
+    }
+    cameraInfo['canfastreadout'] = canFastReadout
+
+    // These capabilities are directly fetched and stored if successful, otherwise they remain undefined in cameraInfo
+    try {
+      cameraInfo['canabortexposure'] = await this.getProperty('canabortexposure')
+    } catch (e) {
+      console.warn('Failed to fetch canabortexposure', e)
+    }
+    try {
+      cameraInfo['canasymmetricbin'] = await this.getProperty('canasymmetricbin')
+    } catch (e) {
+      console.warn('Failed to fetch canasymmetricbin', e)
+    }
+    try {
+      cameraInfo['canpulseguide'] = await this.getProperty('canpulseguide')
+    } catch (e) {
+      console.warn('Failed to fetch canpulseguide', e)
+    }
+    try {
+      cameraInfo['canstopexposure'] = await this.getProperty('canstopexposure')
+    } catch (e) {
+      console.warn('Failed to fetch canstopexposure', e)
+    }
+
+    let gainsList: string[] | number[] | undefined
+    try {
+      gainsList = (await this.getProperty('gains')) as string[] | number[] | undefined
+    } catch (e) {
+      console.warn("Could not fetch 'gains' list.", e)
+    }
+    if (gainsList !== undefined) cameraInfo['gains'] = gainsList
+
+    let offsetsList: string[] | number[] | undefined
+    try {
+      offsetsList = (await this.getProperty('offsets')) as string[] | number[] | undefined
+    } catch (e) {
+      console.warn("Could not fetch 'offsets' list.", e)
+    }
+    if (offsetsList !== undefined) cameraInfo['offsets'] = offsetsList
+
+    // Stage 2: Fetch truly common, non-conditional properties (minimal list based on logs)
+    // Note: this.getProperties is a Promise.all of getProperty, so individual failures are possible.
+    // We will fetch these individually for max resilience due to observed device quirks.
+
+    const baseCommonProperties = [
       'binx',
       'biny',
       'camerastate',
       'cameraxsize',
       'cameraysize',
-      'canabortexposure',
-      'canasymmetricbin',
-      'canfastreadout',
-      'cangetcoolerpower',
-      'canpulseguide',
-      'cansetccdtemperature',
-      'canstopexposure',
-      'ccdtemperature',
-      'cooleron',
-      'coolerpower',
       'electronsperadu',
       'exposuremax',
       'exposuremin',
       'exposureresolution',
-      'fastreadout',
       'fullwellcapacity',
-      'gain',
-      'gains',
-      'gainmax',
-      'gainmin',
       'hasshutter',
-      'heatsinktemperature',
-      'imagearray',
       'imageready',
-      'ispulseguiding',
-      'lastexposureduration',
-      'lastexposurestarttime',
       'maxadu',
       'maxbinx',
       'maxbiny',
       'numx',
       'numy',
-      'offset',
-      'offsetmax',
-      'offsetmin',
-      'offsets',
       'percentcompleted',
       'pixelsizex',
       'pixelsizey',
       'readoutmode',
       'readoutmodes',
       'sensorname',
-      'sensortype',
-      'setccdtemperature',
       'startx',
       'starty',
       'subexposureduration'
+      // 'lastexposureduration', 'lastexposurestarttime', 'ispulseguiding' are often state-dependent or not implemented
     ]
 
-    return this.getProperties(properties)
+    for (const propName of baseCommonProperties) {
+      try {
+        cameraInfo[propName] = await this.getProperty(propName)
+      } catch (e) {
+        console.warn(`Failed to fetch base property: ${propName}`, e)
+      }
+    }
+
+    // State-dependent properties (attempt fetch, but failure is common)
+    try {
+      cameraInfo['ispulseguiding'] = await this.getProperty('ispulseguiding')
+    } catch (e) {
+      console.warn('Failed to fetch ispulseguiding (may be normal if not supported/active)', e)
+    }
+    try {
+      cameraInfo['lastexposureduration'] = await this.getProperty('lastexposureduration')
+    } catch (e) {
+      console.warn('Failed to fetch lastexposureduration (may be normal if no exposure taken)', e)
+    }
+    try {
+      cameraInfo['lastexposurestarttime'] = await this.getProperty('lastexposurestarttime')
+    } catch (e) {
+      console.warn('Failed to fetch lastexposurestarttime (may be normal if no exposure or not supported)', e)
+    }
+
+    // Stage 3: Conditional fetching based on capabilities and modes
+
+    // Gain properties
+    if (gainsList && gainsList.length > 0) {
+      try {
+        cameraInfo['gain'] = await this.getProperty('gain')
+      } catch (error) {
+        // Index
+        console.error("Error fetching 'gain' (index) in List Mode:", error)
+      }
+    } else {
+      try {
+        cameraInfo['gain'] = await this.getProperty('gain')
+      } catch (error) {
+        // Value
+        console.warn("Failed to fetch 'gain' (value) in Value Mode:", error)
+      }
+      try {
+        cameraInfo['gainmin'] = await this.getProperty('gainmin')
+      } catch (error) {
+        console.warn("Failed to fetch 'gainmin' in Value Mode (may be normal if gain list used or not supported):", error)
+      }
+      try {
+        cameraInfo['gainmax'] = await this.getProperty('gainmax')
+      } catch (error) {
+        console.warn("Failed to fetch 'gainmax' in Value Mode (may be normal if gain list used or not supported):", error)
+      }
+    }
+
+    // Offset properties
+    if (offsetsList && offsetsList.length > 0) {
+      try {
+        cameraInfo['offset'] = await this.getProperty('offset')
+      } catch (error) {
+        // Index
+        console.error("Error fetching 'offset' (index) in List Mode:", error)
+      }
+    } else {
+      try {
+        cameraInfo['offset'] = await this.getProperty('offset')
+      } catch (error) {
+        // Value
+        console.warn("Failed to fetch 'offset' (value) in Value Mode:", error)
+      }
+      try {
+        cameraInfo['offsetmin'] = await this.getProperty('offsetmin')
+      } catch (error) {
+        console.warn("Failed to fetch 'offsetmin' in Value Mode (may be normal if offset list used or not supported):", error)
+      }
+      try {
+        cameraInfo['offsetmax'] = await this.getProperty('offsetmax')
+      } catch (error) {
+        console.warn("Failed to fetch 'offsetmax' in Value Mode (may be normal if offset list used or not supported):", error)
+      }
+    }
+
+    // Bayer properties if color camera (sensortype already in cameraInfo)
+    const sensorTypeValue = cameraInfo['sensortype'] as number | undefined
+    if (sensorTypeValue !== undefined && sensorTypeValue > 0) {
+      try {
+        cameraInfo['bayeroffsetx'] = await this.getProperty('bayeroffsetx')
+      } catch (e) {
+        console.warn('Failed to fetch bayeroffsetx', e)
+      }
+      try {
+        cameraInfo['bayeroffsety'] = await this.getProperty('bayeroffsety')
+      } catch (e) {
+        console.warn('Failed to fetch bayeroffsety', e)
+      }
+    }
+
+    // Cooler related properties
+    if (canGetCoolerPower) {
+      try {
+        cameraInfo['coolerpower'] = await this.getProperty('coolerpower')
+      } catch (e) {
+        console.warn('Failed to fetch coolerpower, though CanGetCoolerPower is true.', e)
+      }
+    }
+    // HeatSinkTemperature is fetched only if cooler can be controlled or power read, to avoid the specific device error
+    if (canSetCCDTemperature || canGetCoolerPower) {
+      try {
+        cameraInfo['heatsinktemperature'] = await this.getProperty('heatsinktemperature')
+      } catch (e) {
+        console.warn('Failed to fetch heatsinktemperature', e)
+      }
+    }
+
+    if (canSetCCDTemperature) {
+      try {
+        cameraInfo['ccdtemperature'] = await this.getProperty('ccdtemperature')
+      } catch (e) {
+        console.warn('Failed to fetch ccdtemperature, though CanSetCCDTemperature is true.', e)
+      }
+      try {
+        cameraInfo['cooleron'] = await this.getProperty('cooleron')
+      } catch (e) {
+        console.warn('Failed to fetch cooleron, though CanSetCCDTemperature is true.', e)
+      }
+      try {
+        cameraInfo['setccdtemperature'] = await this.getProperty('setccdtemperature')
+      } catch (e) {
+        // GET for current setpoint
+        console.warn('Failed to fetch setccdtemperature (GET setpoint), though CanSetCCDTemperature is true.', e)
+      }
+    }
+
+    // Fast Readout
+    if (canFastReadout) {
+      try {
+        cameraInfo['fastreadout'] = await this.getProperty('fastreadout')
+      } catch (e) {
+        console.warn('Failed to fetch fastreadout, though CanFastReadout is true.', e)
+      }
+    }
+
+    console.log('[CameraClient.getCameraInfo] Final fetched properties:', JSON.stringify(Object.keys(cameraInfo).sort()))
+    return cameraInfo
   }
 }

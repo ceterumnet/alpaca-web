@@ -17,18 +17,32 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 **Findings:**
 
 - **Exposed & Used Client Functionalities:**
+
   - Exposure control: `CameraClient.startExposure()`, `CameraClient.abortExposure()`.
   - Image data retrieval: `CameraClient.getImageData()` (functionally covered).
-  - State & capability reads: `CameraClient.getCameraState()`, `CameraClient.isImageReady()`, most `can...` methods, sensor dimensions, exposure limits, gain/offset modes/limits are read via `fetchCameraProperties` and polling actions.
+  - State & capability reads: `CameraClient.getCameraState()`, `CameraClient.isImageReady()`, most `can...` methods, sensor dimensions, exposure limits are read via `fetchCameraProperties` and polling actions.
+  - The `fetchCameraProperties` action now also determines and stores `cam_gainMode` and `cam_offsetMode` to correctly interpret gain/offset values, and ensures properties like `gains`, `gainmin`, `gainmax`, `offsets`, `offsetmin`, `offsetmax`, `readoutmodes`, and `subexposureduration` are fetched.
   - Setting binning: `CameraClient.setBinning()`.
   - Setting cooler state & target temperature: `CameraClient.setCooler()` and `CameraClient.setTemperature()`.
+
+- **Client Functionalities NOW Exposed by Store Actions:**
+
+  - `CameraClient.setGain(...)` (exposed via `setCameraGain` action, handles list/value modes).
+  - `CameraClient.setOffset(...)` (exposed via `setCameraOffset` action, handles list/value modes).
+  - `CameraClient.setReadoutMode(...)` (exposed via `setCameraReadoutMode` action).
+  - `CameraClient.setSubframe(...)` (exposed via `setCameraSubframe` action).
+  - `CameraClient.stopExposure()` (exposed via `stopCameraExposure` action).
+  - `CameraClient.pulseGuide(...)` (exposed via `pulseGuideCamera` action).
+  - `CameraClient.getSubExposureDuration()` (now fetched by `fetchCameraProperties`).
+  - `CameraClient.setSubExposureDuration(...)` (exposed via `setCameraSubExposureDuration` action).
+
 - **Partially Exposed or Indirectly Used Client Functionalities:**
-  - Setting gain, offset, readout mode, subframe: The current values of these properties are polled and read by store actions. However, dedicated store actions to _set_ these values (e.g., an action that would call `CameraClient.setGain()`, `CameraClient.setOffset()`, `CameraClient.setReadoutMode()`, or `CameraClient.setSubframe()`) are not present.
+
+  - None remaining from the previously listed items.
+
 - **Client Functionalities NOT Exposed/Used by Store Actions:**
-  - `CameraClient.stopExposure()`: No store action is available to stop an ongoing exposure and attempt to retrieve the partial image data.
-  - `CameraClient.pulseGuide(...)`: No store action for camera pulse guiding. The `canPulseGuide` capability is read.
-  - `CameraClient.getSubExposureDuration()`: This property is not explicitly fetched by store actions for UI display or logic, though it could be added to polling or `fetchCameraProperties`.
-  - `CameraClient.setSubExposureDuration(...)`: No store action is available to set the sub-exposure duration.
+  - None remaining from the previously listed items.
+- **Special Note on Gain/Offset:** The `setCameraGain` and `setCameraOffset` actions now incorporate logic to handle Alpaca's dual-mode (list/index vs. direct value) for these settings, based on `cam_gainMode` and `cam_offsetMode` determined during property fetching.
 
 ### 2. CoverCalibrator
 
