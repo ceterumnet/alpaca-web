@@ -70,8 +70,7 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 
 **Findings:**
 
-- **Exposed & Used Client Functionalities:** All public methods from `FilterWheelClient` (`getFocusOffsets`, `getFilterNames`, `getPosition`, `setPosition`, `setFilterName`) are utilized by the store actions. The client's `getFilterWheelState()` helper is not directly called, but the `fetchFilterWheelDetails` action achieves similar data retrieval.
-- **Note:** The `setFilterName` functionality in both the client and store action relies on a method that the client implementation itself notes as potentially speculative concerning the official Alpaca specification.
+- **Exposed & Used Client Functionalities:** Public methods from `FilterWheelClient` such as `getFocusOffsets`, `getFilterNames`, `getPosition`, and `setPosition` are utilized by the store actions. The client's `getFilterWheelState()` helper is not directly called, but the `fetchFilterWheelDetails` action achieves similar data retrieval. The `setFilterName` method was removed from the client as it was non-standard.
 - **Conclusion:** The `filterWheelActions.ts` fully exposes the functionalities currently offered by `FilterWheelClient.ts`.
 
 ### 5. Focuser
@@ -102,6 +101,7 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 - **Client Functionalities NOT Exposed/Used by Store Actions:**
   - `ObservingConditionsClient.getSensorDescription(...)`
   - `ObservingConditionsClient.getTimeSinceLastUpdate(...)`
+  - `ObservingConditionsClient.refresh()` (This method was recently added to the client for spec compliance).
 
 ### 7. Rotator
 
@@ -134,8 +134,14 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 
 **Findings:**
 
-- **Exposed & Used Client Functionalities:** All public methods of the `SwitchClient` (e.g., `maxSwitch`, `getSwitchName`, `getSwitchValue`, `setSwitchName`, `setSwitchValue`, `setSwitch`) are utilized by the store actions. Reads are often consolidated via `client.getAllSwitchDetails()` within the `fetchSwitchDetails` action.
-- **Conclusion:** The `switchActions.ts` appears to fully expose the functionalities currently offered by `SwitchClient.ts` (noting that the client itself may not implement all async/capability features from the full Alpaca Switch spec).
+- **Exposed & Used Client Functionalities:** Core public methods of the `SwitchClient` (e.g., `maxSwitch`, `getSwitchName`, `getSwitchValue`, `setSwitchName`, `setSwitchValue`, `setSwitch`) are utilized by the store actions. Reads are often consolidated via `client.getAllSwitchDetails()` within the `fetchSwitchDetails` action.
+- **Client Functionalities NOT Exposed/Used by Store Actions:**
+  - `SwitchClient.canAsync(id)`
+  - `SwitchClient.canWrite(id)`
+  - `SwitchClient.setAsyncSwitch(id, state)`
+  - `SwitchClient.setAsyncSwitchValue(id, value)`
+  - `SwitchClient.isStateChangeComplete(id, transactionID)`
+- **Conclusion:** The `switchActions.ts` appears to fully expose the synchronous functionalities offered by `SwitchClient.ts`. The client now implements asynchronous operations and capability checks as per the Alpaca Switch specification, which are not yet utilized by the store actions.
 
 ### 10. Telescope
 
@@ -160,7 +166,22 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
         - `TelescopeClient.moveAxis(...)` (The `canMoveAxis` capability is read, but no store action calls `moveAxis`.)
         - `TelescopeClient.pulseGuide(...)` (The `canPulseGuide` capability is read, but no store action calls `pulseGuide`.)
         - `TelescopeClient.setUTCDate(...)` (The `utcdate` property is read via polling, but no store action to explicitly set it.)
-        - Several specific GET methods for advanced capabilities or detailed properties (e.g., `aperturearea`, `guideratedeclination` (GET/PUT methods in client if implemented), `axisrates`, `destinationsideofpier`) are not directly exposed through dedicated store actions, though some values might be part of the data fetched by `getTelescopeState()`.
+        - `TelescopeClient.getApertureArea()`
+        - `TelescopeClient.getApertureDiameter()`
+        - `TelescopeClient.getGuideRateDeclination()`
+        - `TelescopeClient.setGuideRateDeclination(...)`
+        - `TelescopeClient.getGuideRateRightAscension()`
+        - `TelescopeClient.setGuideRateRightAscension(...)`
+        - `TelescopeClient.isPulseGuiding()` (The `canPulseGuide` capability is read from `TelescopeClient.canPulseGuide()`, but `TelescopeClient.isPulseGuiding()` which returns the current pulse guiding state is not explicitly used by store actions).
+        - `TelescopeClient.getSlewSettleTime()`
+        - `TelescopeClient.setSlewSettleTime(...)`
+        - `TelescopeClient.canSetDeclinationRate()`
+        - `TelescopeClient.canSetGuideRates()`
+        - `TelescopeClient.canSetPierSide()`
+        - `TelescopeClient.canSetRightAscensionRate()`
+        - `TelescopeClient.getAxisRates(...)`
+        - `TelescopeClient.getDestinationSideOfPier(...)`
+        - Several other specific GET methods for advanced capabilities or detailed properties now present in the client might not be directly exposed through dedicated store actions, though some values might be part of the data fetched by `getTelescopeState()`.
 
 ---
 
