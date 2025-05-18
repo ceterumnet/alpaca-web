@@ -211,7 +211,7 @@ watch(() => props.deviceId, (newDeviceId) => {
 .action-button, .stop-button {
   flex-grow: 1;
   min-width: 120px; 
-  background-color: var(--aw-primary-color);
+  background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
   border: none;
   border-radius: var(--aw-border-radius-sm);
@@ -222,7 +222,7 @@ watch(() => props.deviceId, (newDeviceId) => {
 }
 
 .action-button:hover {
-  background-color: var(--aw-primary-hover-color);
+  background-color: var(--aw-button-primary-hover-bg);
 }
 
 .action-button:disabled {
@@ -232,7 +232,7 @@ watch(() => props.deviceId, (newDeviceId) => {
 }
 
 .stop-button {
-  background-color: var(--aw-error-color);
+  background-color: var(--aw-button-danger-bg);
   color: var(--aw-button-danger-text);
 }
 

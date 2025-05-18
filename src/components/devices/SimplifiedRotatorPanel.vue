@@ -358,7 +358,7 @@ onUnmounted(() => {
 
 .action-button, .stop-button {
   padding: calc(var(--aw-spacing-xs) * 1.5) var(--aw-spacing-sm);
-  background-color: var(--aw-primary-color);
+  background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
   border: none;
   border-radius: var(--aw-border-radius-sm);
@@ -368,7 +368,7 @@ onUnmounted(() => {
   flex-grow: 1; /* Allow buttons to grow if space allows */
 }
 
-.action-button:hover { background-color: var(--aw-primary-hover-color); }
+.action-button:hover { background-color: var(--aw-button-primary-hover-bg); }
 .action-button:disabled { 
   background-color: var(--aw-color-neutral-300);
   cursor: not-allowed;
@@ -376,7 +376,7 @@ onUnmounted(() => {
 }
 
 .stop-button {
-  background-color: var(--aw-error-color);
+  background-color: var(--aw-button-danger-bg);
   color: var(--aw-button-danger-text);
 }
 .stop-button.wide-button {
@@ -420,7 +420,7 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-input:checked + .slider { background-color: var(--aw-primary-color); }
+input:checked + .slider { background-color: var(--aw-success-color); }
 input:checked + .slider:before {
   transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
   background-color: var(--aw-button-primary-text);

@@ -314,7 +314,7 @@ onUnmounted(() => {
 
 .control-grid button, .action-button {
   padding: calc(var(--aw-spacing-xs) * 1.5) var(--aw-spacing-sm);
-  background-color: var(--aw-primary-color);
+  background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
   border: none;
   border-radius: var(--aw-border-radius-sm);
@@ -324,7 +324,7 @@ onUnmounted(() => {
 }
 
 .control-grid button:hover:not(:disabled), .action-button:hover:not(:disabled) {
-  background-color: var(--aw-primary-hover-color);
+  background-color: var(--aw-button-primary-hover-bg);
 }
 
 .control-grid button:disabled, .action-button:disabled {

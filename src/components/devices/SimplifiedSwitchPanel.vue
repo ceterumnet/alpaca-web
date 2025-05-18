@@ -243,7 +243,8 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--aw-input-bg-color, #ccc);
+  background-color: var(--aw-input-bg-color);
+  border: 1px solid var(--aw-input-border-color);
   transition: .4s;
   border-radius: 28px;
 }
@@ -261,11 +262,11 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
 }
 
 input:checked + .slider {
-  background-color: var(--aw-primary-accent-color, #2196F3);
+  background-color: var(--aw-success-color);
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px var(--aw-primary-accent-color, #2196F3);
+  box-shadow: 0 0 1px var(--aw-primary-color);
 }
 
 input:checked + .slider:before {
@@ -288,7 +289,7 @@ input:checked + .slider:before {
 
 .range-label {
   font-size: 0.8rem;
-  color: var(--aw-text-tertiary-color);
+  color: var(--aw-text-secondary-color);
 }
 
 .switch-name-edit {
@@ -309,18 +310,17 @@ input:checked + .slider:before {
 
 .switch-name-edit button {
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
-  background-color: var(--aw-button-secondary-bg-color);
-  color: var(--aw-button-secondary-text-color);
-  border: 1px solid var(--aw-button-secondary-border-color);
+  background-color: var(--aw-button-secondary-bg);
+  color: var(--aw-button-secondary-text);
+  border: none;
   border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
 }
 
 .switch-name-edit button:disabled {
-  background-color: var(--aw-button-disabled-bg-color);
-  color: var(--aw-button-disabled-text-color);
-  border-color: var(--aw-button-disabled-border-color);
+  background-color: var(--aw-color-neutral-300);
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
 </style> 
