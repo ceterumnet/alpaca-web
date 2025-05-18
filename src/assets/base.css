@@ -50,7 +50,7 @@ a {
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--aw-link-color);
 }
 
 /* Selection states */
@@ -155,4 +155,9 @@ html {
 html.dark-theme, :root.dark-theme > html /* Support .dark-theme on html tag */ {
   /* Dark theme: thumb color, track color - variables will resolve to dark versions */
   scrollbar-color: var(--aw-color-neutral-500) var(--aw-color-neutral-200);
+}
+
+input[type='radio'],
+input[type='checkbox'] {
+  accent-color: var(--aw-accent-color);
 }

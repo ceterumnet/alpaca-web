@@ -640,7 +640,7 @@ onMounted(() => {
   font-size: 0.9rem;
   background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
-  border: 1px solid var(--aw-input-border-color);
+  border: none;
   border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   display: flex;
@@ -654,16 +654,16 @@ onMounted(() => {
 
 .exposure-button:hover:not(:disabled) {
   background-color: var(--aw-button-primary-hover-bg);
-  border-color: var(--aw-button-primary-hover-bg);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
 }
 
 .exposure-button:disabled {
-  background-color: var(--aw-disabled-bg-color);
-  color: var(--aw-disabled-text-color);
-  border-color: var(--aw-disabled-border-color, var(--aw-disabled-bg-color));
+  background-color: var(--aw-color-neutral-300);
+  color: var(--aw-button-primary-text);
+  border: none;
   box-shadow: none;
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .button-icon {

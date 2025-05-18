@@ -110,6 +110,7 @@
   --aw-form-bg-color: #ffffff;
   --aw-input-bg-color: #ffffff;
   --aw-input-border-color: var(--aw-color-neutral-300);
+  --aw-accent-color: var(--aw-color-primary-500);
 
   /* Button colors */
   --aw-button-primary-bg: var(--aw-color-primary-500);
@@ -287,6 +288,7 @@
   --aw-form-bg-color: var(--aw-color-neutral-50);
   --aw-input-bg-color: #3a1818;
   --aw-input-border-color: var(--aw-color-neutral-300);
+  --aw-accent-color: var(--aw-color-primary-500);
 
   /* Button colors - red theme for astronomy */
   --aw-button-primary-bg: #7a2020;

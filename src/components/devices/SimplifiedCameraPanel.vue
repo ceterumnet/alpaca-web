@@ -595,7 +595,7 @@ onUnmounted(() => {
   gap: calc(var(--aw-spacing-xs) * 1.5);
   width: 100%;
   padding: calc(var(--aw-spacing-xs) * 1.5) 0;
-  background-color: var(--aw-primary-color);
+  background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
   border: none;
   border-radius: var(--aw-border-radius-sm);
@@ -604,7 +604,7 @@ onUnmounted(() => {
 }
 
 .discover-button:hover {
-  background-color: var(--aw-primary-hover-color);
+  background-color: var(--aw-button-primary-hover-bg);
 }
 
 .panel-content {
@@ -775,7 +775,7 @@ onUnmounted(() => {
 }
 
 input:checked + .slider {
-  background-color: var(--aw-primary-color);
+  background-color: var(--aw-success-color);
 }
 
 input:checked + .slider:before {
