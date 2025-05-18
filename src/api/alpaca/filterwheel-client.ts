@@ -26,6 +26,14 @@ export class FilterWheelClient extends AlpacaClient {
     await this.put('position', { Position: filterNumber })
   }
 
+  async setFilterName(filterNumber: number, name: string): Promise<void> {
+    // Sets the name of a specified filter slot (0-based)
+    // This is a common custom extension, not a standard Alpaca method.
+    // The exact endpoint and payload might vary by device implementation.
+    // Assuming a PUT to 'name' with { FilterNumber, Name }
+    await this.put('name', { FilterNumber: filterNumber, Name: name })
+  }
+
   // Helper to get all relevant filter wheel properties
   async getFilterWheelState(): Promise<Record<string, unknown>> {
     const properties = [

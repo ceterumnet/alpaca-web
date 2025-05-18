@@ -113,38 +113,42 @@ export function debayerImage(
           if (x_coord % 2 === 0) {
             // Even cols: R
             r = getPixel(x_coord, y_coord)
-            g =
+            g = Math.floor(
               (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord) + getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 4
-            b =
+            )
+            b = Math.floor(
               (getPixel(x_coord - 1, y_coord - 1) +
                 getPixel(x_coord + 1, y_coord - 1) +
                 getPixel(x_coord - 1, y_coord + 1) +
                 getPixel(x_coord + 1, y_coord + 1)) /
-              4
+                4
+            )
           } else {
             // Odd cols: G
             g = getPixel(x_coord, y_coord)
-            r = (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2
-            b = (getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2
+            r = Math.floor((getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2)
+            b = Math.floor((getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2)
           }
         } else {
           // Odd rows: G B G B ...
           if (x_coord % 2 === 0) {
             // Even cols: G
             g = getPixel(x_coord, y_coord)
-            r = (getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2
-            b = (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2
+            r = Math.floor((getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2)
+            b = Math.floor((getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2)
           } else {
             // Odd cols: B
             b = getPixel(x_coord, y_coord)
-            g =
+            g = Math.floor(
               (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord) + getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 4
-            r =
+            )
+            r = Math.floor(
               (getPixel(x_coord - 1, y_coord - 1) +
                 getPixel(x_coord + 1, y_coord - 1) +
                 getPixel(x_coord - 1, y_coord + 1) +
                 getPixel(x_coord + 1, y_coord + 1)) /
-              4
+                4
+            )
           }
         }
       } else if (pattern === 'GRBG') {
@@ -153,38 +157,42 @@ export function debayerImage(
           if (x_coord % 2 === 0) {
             // Even cols: G
             g = getPixel(x_coord, y_coord)
-            r = (getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2 // R is vertical
-            b = (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2 // B is horizontal
+            r = Math.floor((getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2) // R is vertical
+            b = Math.floor((getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2) // B is horizontal
           } else {
             // Odd cols: R
             r = getPixel(x_coord, y_coord)
-            g =
+            g = Math.floor(
               (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord) + getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 4
-            b =
+            )
+            b = Math.floor(
               (getPixel(x_coord - 1, y_coord - 1) +
                 getPixel(x_coord + 1, y_coord - 1) +
                 getPixel(x_coord - 1, y_coord + 1) +
                 getPixel(x_coord + 1, y_coord + 1)) /
-              4
+                4
+            )
           }
         } else {
           // Odd rows: B G B G ...
           if (x_coord % 2 === 0) {
             // Even cols: B
             b = getPixel(x_coord, y_coord)
-            g =
+            g = Math.floor(
               (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord) + getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 4
-            r =
+            )
+            r = Math.floor(
               (getPixel(x_coord - 1, y_coord - 1) +
                 getPixel(x_coord + 1, y_coord - 1) +
                 getPixel(x_coord - 1, y_coord + 1) +
                 getPixel(x_coord + 1, y_coord + 1)) /
-              4
+                4
+            )
           } else {
             // Odd cols: G
             g = getPixel(x_coord, y_coord)
-            r = (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2 // R is horizontal
-            b = (getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2 // B is vertical
+            r = Math.floor((getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2) // R is horizontal
+            b = Math.floor((getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2) // B is vertical
           }
         }
       } else if (pattern === 'GBRG') {
@@ -193,38 +201,42 @@ export function debayerImage(
           if (x_coord % 2 === 0) {
             // Even cols: G
             g = getPixel(x_coord, y_coord)
-            b = (getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2 // B is vertical
-            r = (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2 // R is horizontal
+            b = Math.floor((getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2) // B is vertical
+            r = Math.floor((getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2) // R is horizontal
           } else {
             // Odd cols: B
             b = getPixel(x_coord, y_coord)
-            g =
+            g = Math.floor(
               (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord) + getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 4
-            r =
+            )
+            r = Math.floor(
               (getPixel(x_coord - 1, y_coord - 1) +
                 getPixel(x_coord + 1, y_coord - 1) +
                 getPixel(x_coord - 1, y_coord + 1) +
                 getPixel(x_coord + 1, y_coord + 1)) /
-              4
+                4
+            )
           }
         } else {
           // Odd rows: R G R G ...
           if (x_coord % 2 === 0) {
             // Even cols: R
             r = getPixel(x_coord, y_coord)
-            g =
+            g = Math.floor(
               (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord) + getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 4
-            b =
+            )
+            b = Math.floor(
               (getPixel(x_coord - 1, y_coord - 1) +
                 getPixel(x_coord + 1, y_coord - 1) +
                 getPixel(x_coord - 1, y_coord + 1) +
                 getPixel(x_coord + 1, y_coord + 1)) /
-              4
+                4
+            )
           } else {
             // Odd cols: G
             g = getPixel(x_coord, y_coord)
-            b = (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2 // B is horizontal
-            r = (getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2 // R is vertical
+            b = Math.floor((getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2) // B is horizontal
+            r = Math.floor((getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2) // R is vertical
           }
         }
       } else if (pattern === 'BGGR') {
@@ -233,38 +245,42 @@ export function debayerImage(
           if (x_coord % 2 === 0) {
             // Even cols: B
             b = getPixel(x_coord, y_coord)
-            g =
+            g = Math.floor(
               (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord) + getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 4
-            r =
+            )
+            r = Math.floor(
               (getPixel(x_coord - 1, y_coord - 1) +
                 getPixel(x_coord + 1, y_coord - 1) +
                 getPixel(x_coord - 1, y_coord + 1) +
                 getPixel(x_coord + 1, y_coord + 1)) /
-              4
+                4
+            )
           } else {
             // Odd cols: G
             g = getPixel(x_coord, y_coord)
-            b = (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2 // B is horizontal
-            r = (getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2 // R is vertical
+            b = Math.floor((getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2) // B is horizontal
+            r = Math.floor((getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2) // R is vertical
           }
         } else {
           // Odd rows: G R G R ...
           if (x_coord % 2 === 0) {
             // Even cols: G
             g = getPixel(x_coord, y_coord)
-            b = (getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2 // B is vertical
-            r = (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2 // R is horizontal
+            b = Math.floor((getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 2) // B is vertical
+            r = Math.floor((getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord)) / 2) // R is horizontal
           } else {
             // Odd cols: R
             r = getPixel(x_coord, y_coord)
-            g =
+            g = Math.floor(
               (getPixel(x_coord - 1, y_coord) + getPixel(x_coord + 1, y_coord) + getPixel(x_coord, y_coord - 1) + getPixel(x_coord, y_coord + 1)) / 4
-            b =
+            )
+            b = Math.floor(
               (getPixel(x_coord - 1, y_coord - 1) +
                 getPixel(x_coord + 1, y_coord - 1) +
                 getPixel(x_coord - 1, y_coord + 1) +
                 getPixel(x_coord + 1, y_coord + 1)) /
-              4
+                4
+            )
           }
         }
       } else {
@@ -748,13 +764,21 @@ function calculateImageStatistics(
       return { min: 0, max: defaultMaxVal, mean: defaultMaxVal / 2 }
     } else {
       // RGB, stats based on luminance
-      return { min: 0, max: defaultMaxVal, mean: defaultMaxVal / 2 }
+      return { min: 0, max: Math.round(defaultMaxVal), mean: Math.round(defaultMaxVal / 2) }
+    }
+  }
+
+  if (channels === 3) {
+    return {
+      min: Math.floor(min),
+      max: Math.round(max),
+      mean: sum / count // Keep mean as float
     }
   }
 
   return {
-    min,
-    max,
+    min, // For monochrome, min can be float if input data is float
+    max, // For monochrome, max can be float
     mean: sum / count
   }
 }

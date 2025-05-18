@@ -29,7 +29,7 @@ interface FilterWheelActionsSignatures {
   _getFilterWheelClient: (this: UnifiedStoreType, deviceId: string) => FilterWheelClient | null
   fetchFilterWheelDetails: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   setFilterWheelPosition: (this: UnifiedStoreType, deviceId: string, position: number) => Promise<void>
-  setFilterWheelName: (this: UnifiedStoreType, deviceId: string, filterIndex: number, name: string) => Promise<void>
+  setFilterWheelName: (this: UnifiedStoreType, deviceId: string, filterIndex: number, newName: string) => Promise<void>
   _pollFilterWheelStatus: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   startFilterWheelPolling: (this: UnifiedStoreType, deviceId: string) => void
   stopFilterWheelPolling: (this: UnifiedStoreType, deviceId: string) => void
@@ -120,19 +120,42 @@ export function createFilterWheelActions(): {
       },
 
       /**
-       * Sets the name of a specific filter slot.
+       * Sets the name of a specific filter in the filter wheel.
        */
-      async setFilterWheelName(this: UnifiedStoreType, deviceId: string, filterIndex: number, name: string): Promise<void> {
+      async setFilterWheelName(this: UnifiedStoreType, deviceId: string, filterIndex: number, newName: string): Promise<void> {
         const client = this._getFilterWheelClient(deviceId)
-        if (!client) return
+        if (!client) {
+          console.error(`[FilterWheelStore] Could not get client for device ${deviceId} to set filter name.`)
+          return Promise.reject(new Error(`FilterWheel client not found for device ${deviceId}.`))
+        }
+
+        const device = this.getDeviceById(deviceId)
+        let oldName = 'unknown'
+        if (device && Array.isArray(device.fw_filterNames)) {
+          oldName = device.fw_filterNames[filterIndex] ?? 'unknown'
+        }
 
         try {
-          await client.setFilterName(filterIndex, name)
+          await client.setFilterName(filterIndex, newName)
           await this.fetchFilterWheelDetails(deviceId)
-          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'fw_filterNames', value: name } as DeviceEvent)
+
+          this._emitEvent({
+            type: 'devicePropertyChanged',
+            deviceId,
+            property: 'fw_filterNames',
+            value: { index: filterIndex, oldName, newName },
+            message: `Filter ${filterIndex} name changed from "${oldName}" to "${newName}"`
+          } as DeviceEvent)
+          console.log(`[FilterWheelStore] Successfully set name for filter ${filterIndex} on ${deviceId} to "${newName}".`)
         } catch (error) {
-          console.error(`[FilterWheelStore] Error setting name for filter ${filterIndex} on ${deviceId}:`, error)
-          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set filter name: ${error}` } as DeviceEvent)
+          console.error(`[FilterWheelStore] Error setting name for filter ${filterIndex} on ${deviceId} to "${newName}":`, error)
+          this._emitEvent({
+            type: 'deviceApiError',
+            deviceId,
+            error: `Failed to set filter name for index ${filterIndex} to "${newName}": ${error}`,
+            message: `Error setting filter ${filterIndex} name. Original name: "${oldName}". Attempted: "${newName}".`
+          } as DeviceEvent)
+          return Promise.reject(error)
         }
       },
 

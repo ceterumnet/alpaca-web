@@ -403,7 +403,7 @@ onUnmounted(() => {
             <!-- CameraImageDisplay is already styled as a panel, so no extra .panel-section needed -->
             <CameraImageDisplay 
               :image-data="imageData"
-              :sensor-type="cameraSensorType" 
+              :sensor-type="cameraSensorType === null ? undefined : cameraSensorType" 
               :detected-bayer-pattern="detectedBayerPatternFromSensorType"
               @histogram-generated="handleHistogramGenerated"
             />
