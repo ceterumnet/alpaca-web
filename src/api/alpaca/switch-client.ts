@@ -44,6 +44,15 @@ export class SwitchClient extends AlpacaClient {
     return this.get('switchstep', { Id: id }) as Promise<number>
   }
 
+  // Capability checks
+  async canAsync(id: number): Promise<boolean> {
+    return this.get('canasync', { Id: id }) as Promise<boolean>
+  }
+
+  async canWrite(id: number): Promise<boolean> {
+    return this.get('canwrite', { Id: id }) as Promise<boolean>
+  }
+
   // PUT Methods
   async setSwitchName(id: number, name: string): Promise<void> {
     await this.put('setswitchname', { Id: id, Name: name })
@@ -55,6 +64,20 @@ export class SwitchClient extends AlpacaClient {
 
   async setSwitch(id: number, state: boolean): Promise<void> {
     await this.put('setswitch', { Id: id, State: state })
+  }
+
+  // Asynchronous PUT Methods
+  async setAsyncSwitch(id: number, state: boolean): Promise<void> {
+    await this.put('setasync', { Id: id, State: state })
+  }
+
+  async setAsyncSwitchValue(id: number, value: number): Promise<void> {
+    await this.put('setasyncvalue', { Id: id, Value: value })
+  }
+
+  // Asynchronous GET Method
+  async isStateChangeComplete(id: number, transactionID: number): Promise<boolean> {
+    return this.get('statechangecomplete', { Id: id, TransactionID: transactionID }) as Promise<boolean>
   }
 
   // Helper to get all details for a specific switch

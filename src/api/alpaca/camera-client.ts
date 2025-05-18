@@ -253,7 +253,6 @@ export class CameraClient extends AlpacaClient {
       'camerastate',
       'cameraxsize',
       'cameraysize',
-      'cameratype',
       'canabortexposure',
       'canasymmetricbin',
       'canfastreadout',

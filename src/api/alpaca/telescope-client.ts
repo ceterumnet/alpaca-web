@@ -71,6 +71,22 @@ export class TelescopeClient extends AlpacaClient {
     return this.get('canmoveaxis', { Axis: axis }) as Promise<boolean>
   }
 
+  async canSetDeclinationRate(): Promise<boolean> {
+    return this.getProperty('cansetdeclinationrate') as Promise<boolean>
+  }
+
+  async canSetGuideRates(): Promise<boolean> {
+    return this.getProperty('cansetguiderates') as Promise<boolean>
+  }
+
+  async canSetPierSide(): Promise<boolean> {
+    return this.getProperty('cansetpierside') as Promise<boolean>
+  }
+
+  async canSetRightAscensionRate(): Promise<boolean> {
+    return this.getProperty('cansetrightascensionrate') as Promise<boolean>
+  }
+
   // Telescope-specific methods for parking/unparking - these use PUT with no parameters
   async park(): Promise<void> {
     await this.callMethod('park', [])
@@ -192,6 +208,57 @@ export class TelescopeClient extends AlpacaClient {
   // Date/time methods - these use PUT with properly named parameters
   async setUTCDate(utcDate: Date): Promise<void> {
     await this.setProperty('utcdate', utcDate.toISOString())
+  }
+
+  // Additional GET Properties
+  async getApertureArea(): Promise<number> {
+    return this.getProperty('aperturearea') as Promise<number>
+  }
+
+  async getApertureDiameter(): Promise<number> {
+    return this.getProperty('aperturediameter') as Promise<number>
+  }
+
+  async getGuideRateDeclination(): Promise<number> {
+    return this.getProperty('guideratedeclination') as Promise<number>
+  }
+
+  async getGuideRateRightAscension(): Promise<number> {
+    return this.getProperty('guideraterightascension') as Promise<number>
+  }
+
+  async isPulseGuiding(): Promise<boolean> {
+    return this.getProperty('ispulseguiding') as Promise<boolean>
+  }
+
+  async getSlewSettleTime(): Promise<number> {
+    return this.getProperty('slewsettletime') as Promise<number>
+  }
+
+  // Additional PUT Methods for Properties
+  async setGuideRateDeclination(rate: number): Promise<void> {
+    await this.put('guideratedeclination', { Value: rate })
+  }
+
+  async setGuideRateRightAscension(rate: number): Promise<void> {
+    await this.put('guideraterightascension', { Value: rate })
+  }
+
+  async setSlewSettleTime(time: number): Promise<void> {
+    await this.put('slewsettletime', { Value: time })
+  }
+
+  // Additional GET Methods
+  async getAxisRates(axis: number): Promise<object[]> {
+    // Assuming axis is 0 for RA/Azm and 1 for Dec/Alt
+    return this.get('axisrates', { Axis: axis }) as Promise<object[]>
+  }
+
+  async getDestinationSideOfPier(rightAscension: number, declination: number): Promise<number> {
+    return this.get('destinationsideofpier', {
+      RightAscension: rightAscension,
+      Declination: declination
+    }) as Promise<number>
   }
 
   // Comprehensive state - uses GET to retrieve multiple properties

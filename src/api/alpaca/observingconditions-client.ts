@@ -90,6 +90,11 @@ export class ObservingConditionsClient extends AlpacaClient {
     await this.put('averageperiod', { AveragePeriod: period })
   }
 
+  // Method to refresh sensor readings
+  async refresh(): Promise<void> {
+    await this.put('refresh', {})
+  }
+
   // Methods for specific sensor info (less commonly used in simple panels)
   async getSensorDescription(sensorName: string): Promise<string> {
     return this.get('sensordescription', { SensorName: sensorName }) as Promise<string>
