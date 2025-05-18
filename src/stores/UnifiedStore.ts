@@ -30,6 +30,7 @@ import { createObservingConditionsActions } from './modules/observingConditionsA
 import { createSwitchActions } from './modules/switchActions'
 import { createRotatorActions } from './modules/rotatorActions'
 import { createCoverCalibratorActions } from './modules/coverCalibratorActions'
+import { createSafetyMonitorActions } from './modules/safetyMonitorActions'
 
 // Re-export type for convenience
 export type { Device }
@@ -50,7 +51,9 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createObservingConditionsActions().state(),
       ...createSwitchActions().state(),
       ...createRotatorActions().state(),
-      ...createCoverCalibratorActions().state()
+      ...createCoverCalibratorActions().state(),
+      ...createSafetyMonitorActions().state()
+      // SafetyMonitor state is managed within coreState's deviceSpecificStates
     }
   },
 
@@ -73,7 +76,8 @@ export const useUnifiedStore = defineStore('unifiedStore', {
     ...createObservingConditionsActions().actions,
     ...createSwitchActions().actions,
     ...createRotatorActions().actions,
-    ...createCoverCalibratorActions().actions
+    ...createCoverCalibratorActions().actions,
+    ...createSafetyMonitorActions().actions
   }
 })
 

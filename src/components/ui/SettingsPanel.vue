@@ -12,7 +12,6 @@ import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useLayoutStore } from '@/stores/useLayoutStore'
 import Icon from '@/components/ui/Icon.vue'
-import { UIMode } from '@/stores/useUIPreferencesStore'
 import { 
   LAYOUT_STORAGE_KEY, 
   LAYOUTS_STORAGE_KEY, 
@@ -86,24 +85,10 @@ function saveSettings() {
   notificationStore.showSuccess('Settings saved successfully.')
 }
 
-// Reset settings
-function resetSettings() {
-  // Reset form state to current store values
-  formState.isDarkMode = uiStore.isDarkMode
-  formState.defaultUIMode = uiStore.globalUIMode
-  formState.isSidebarVisible = uiStore.isSidebarVisible
-  formState.maxNotificationHistory = notificationStore.maxHistory
-
-  // Show notification
-  notificationStore.showInfo('Settings reset to current values.')
-}
-
 // Reset to defaults
 function resetToDefaults() {
   // Reset to application defaults
   formState.isDarkMode = false
-  formState.defaultUIMode = UIMode.OVERVIEW
-  formState.isSidebarVisible = true
   formState.maxNotificationHistory = 50
 
   // Apply changes
@@ -232,16 +217,6 @@ function resetLayoutStorage() {
         </button>
 
         <button
-          data-testid="tab-layout"
-          class="aw-settings__tab-btn"
-          :class="{ 'aw-settings__tab-btn--active': activeTab === 'layout' }"
-          @click="setActiveTab('layout')"
-        >
-          <Icon type="compact" />
-          <span>Layout</span>
-        </button>
-
-        <button
           data-testid="tab-devices"
           class="aw-settings__tab-btn"
           :class="{ 'aw-settings__tab-btn--active': activeTab === 'devices' }"
@@ -290,38 +265,6 @@ function resetLayoutStorage() {
                 <span class="aw-settings__toggle-slider"></span>
               </label>
             </div>
-
-            <div class="aw-settings__row">
-              <label>Default UI Mode</label>
-              <select
-                v-model="formState.defaultUIMode"
-                data-testid="select-ui-mode"
-                class="aw-settings__select"
-              >
-                <option value="standard">Standard</option>
-                <option value="compact">Compact</option>
-                <option value="comfortable">Comfortable</option>
-              </select>
-            </div>
-
-            <div class="aw-settings__row">
-              <label>Show Sidebar</label>
-              <label class="aw-settings__toggle">
-                <input
-                  v-model="formState.isSidebarVisible"
-                  data-testid="toggle-sidebar"
-                  type="checkbox"
-                />
-                <span class="aw-settings__toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="aw-settings__actions">
-            <button class="aw-settings__btn" @click="resetSettings">
-              <Icon type="reset" />
-              Reset Changes
-            </button>
           </div>
         </div>
 

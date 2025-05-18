@@ -5,14 +5,14 @@
         <div class="connection-message">No safety monitor selected or available</div>
       </div>
       <div v-else-if="!props.isConnected" class="connection-notice">
-        <div class="connection-message">Safety Monitor ({{ currentDevice.name }}) not connected.</div>
+        <div class="connection-message">Safety Monitor ({{ currentDevice.name ? currentDevice.name : 'N/A' }}) not connected.</div>
         <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
       <template v-else>
         <div class="panel-section safety-status-section" :class="safetyStatusClass">
           <h3>Safety Status</h3>
           <div class="status-text">
-            {{ isSafe === null ? 'Status: Unknown' : (isSafe ? 'Status: SAFE' : 'Status: UNSAFE') }}
+            {{ safetyStatusText }}
           </div>
           <div v-if="currentDevice?.description" class="device-description">
             {{ currentDevice.description }}
@@ -24,99 +24,65 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { getAlpacaProperties } from '@/utils/alpacaPropertyAccess'
+import { computed, watch, onMounted } from 'vue';
+import { useUnifiedStore } from '@/stores/UnifiedStore';
+import type { SafetyMonitorDevice } from '@/types/device.types';
 
 const props = defineProps({
   deviceId: {
     type: String,
-    required: true
+    required: true,
   },
   isConnected: {
     type: Boolean,
-    required: true
-  }
-})
+    required: true,
+  },
+});
 
-const store = useUnifiedStore()
+const store = useUnifiedStore();
 
 const currentDevice = computed(() => {
-  return store.getDeviceById(props.deviceId)
-})
+  return store.getDeviceById(props.deviceId) as 
+    (Partial<SafetyMonitorDevice> & { safety_isSafe?: boolean | null; name?: string; description?: string }) | null;
+});
 
-const isSafe = ref<boolean | null>(null)
+const isSafe = computed(() => {
+  return currentDevice.value?.safety_isSafe ?? null;
+});
+
+const safetyStatusText = computed(() => {
+  if (isSafe.value === null) return 'Status: Unknown';
+  return isSafe.value ? 'Status: SAFE' : 'Status: UNSAFE';
+});
 
 const safetyStatusClass = computed(() => {
-  if (isSafe.value === null) return 'status-unknown'
-  return isSafe.value ? 'status-safe' : 'status-unsafe'
-})
+  if (isSafe.value === null) return 'status-unknown';
+  return isSafe.value ? 'status-safe' : 'status-unsafe';
+});
 
-const resetSafetyMonitorState = () => {
-  isSafe.value = null
-}
-
-const updateSafetyStatus = async () => {
-  if (!props.isConnected || !props.deviceId) return
-  try {
-    const properties = await getAlpacaProperties(props.deviceId, ['issafe'])
-    isSafe.value = properties.issafe as boolean ?? null
-  } catch (error) {
-    console.error('Error updating safety monitor status:', error)
-    isSafe.value = null // Set to null on error to indicate unknown status
-  }
-}
-
-let pollTimer: number | undefined
-
-onMounted(async () => {
+onMounted(() => {
   if (props.isConnected && props.deviceId) {
-    await updateSafetyStatus()
-    if (!pollTimer) {
-      pollTimer = window.setInterval(updateSafetyStatus, 5000) // Poll every 5 seconds
+    // store.fetchSafetyMonitorDeviceStatus(props.deviceId);
+  }
+});
+
+watch(
+  () => props.isConnected,
+  (newIsConnected) => {
+    if (newIsConnected && props.deviceId) {
+      // store.fetchSafetyMonitorDeviceStatus(props.deviceId);
+    } 
+  }
+);
+
+watch(
+  () => props.deviceId,
+  (newDeviceId) => {
+    if (newDeviceId && props.isConnected) {
+      // store.fetchSafetyMonitorDeviceStatus(newDeviceId);
     }
   }
-})
-
-watch(() => props.isConnected, async (newIsConnected) => {
-  if (newIsConnected && props.deviceId) {
-    resetSafetyMonitorState()
-    await updateSafetyStatus()
-    if (!pollTimer) {
-      pollTimer = window.setInterval(updateSafetyStatus, 5000)
-    }
-  } else {
-    if (pollTimer) {
-      window.clearInterval(pollTimer)
-      pollTimer = undefined
-    }
-    resetSafetyMonitorState()
-  }
-})
-
-watch(() => props.deviceId, async (newDeviceId, oldDeviceId) => {
-  if (newDeviceId !== oldDeviceId) {
-    resetSafetyMonitorState()
-    if (props.isConnected) {
-      await updateSafetyStatus()
-      if (!pollTimer) {
-        pollTimer = window.setInterval(updateSafetyStatus, 5000)
-      }
-    } else {
-      if (pollTimer) {
-        clearInterval(pollTimer)
-        pollTimer = undefined
-      }
-    }
-  }
-}, { immediate: true })
-
-onUnmounted(() => {
-  if (pollTimer) {
-    window.clearInterval(pollTimer)
-  }
-})
-
+);
 </script>
 
 <style scoped>
@@ -194,5 +160,4 @@ onUnmounted(() => {
   color: var(--aw-text-secondary-color);
   margin-top: var(--aw-spacing-sm);
 }
-
 </style> 

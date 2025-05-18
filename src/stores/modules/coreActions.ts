@@ -218,6 +218,13 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           } catch (propError) {
             console.error(`Error fetching telescope properties: ${propError}`)
           }
+        } else if (device.type === 'safetymonitor' && this.handleSafetyMonitorConnected) {
+          try {
+            console.log(`Device ${deviceId} is a safety monitor, handling connection.`)
+            this.handleSafetyMonitorConnected(deviceId)
+          } catch (smError) {
+            console.error(`Error handling safety monitor connection: ${smError}`)
+          }
         }
         return true
       } catch (error) {
@@ -283,6 +290,14 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           }
           if (this._deviceStateUnsupported) {
             this._deviceStateUnsupported.delete(deviceId)
+          }
+        }
+        if (device.type === 'safetymonitor' && this.handleSafetyMonitorDisconnected) {
+          try {
+            console.log(`Device ${deviceId} is a safety monitor, handling disconnection.`)
+            this.handleSafetyMonitorDisconnected(deviceId)
+          } catch (smError) {
+            console.error(`Error handling safety monitor disconnection: ${smError}`)
           }
         }
         await client.setProperty('connected', false)
