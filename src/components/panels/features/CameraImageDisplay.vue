@@ -4,7 +4,7 @@ with advanced features: // - ASCOM Alpaca image format support // - Image stretc
 Real-time image updates
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, onMounted, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import {
   processImageBytes,
   createStretchLUT,
@@ -26,6 +26,14 @@ const props = defineProps({
   height: {
     type: Number,
     default: 0
+  },
+  sensorType: { // 0: Mono, 1: Color (no bayer), 2: RGGB, 3:CMYG, 4:CMYG2, 5:LRGB, 6: TrueSense Mono (Kodak)
+    type: Number,
+    default: null // null if unknown or not provided
+  },
+  detectedBayerPattern: {
+    type: String as () => BayerPattern | null,
+    default: null
   }
 })
 
@@ -47,6 +55,15 @@ const robustPercentile = ref(98) // Exclude top 2% of pixels as outliers
 const enableDebayer = ref(false)
 const selectedBayerPattern = ref<BayerPattern>('RGGB')
 const bayerPatternOptions = ref<BayerPattern[]>(['RGGB', 'GRBG', 'GBRG', 'BGGR'])
+const userHasManuallySelectedPattern = ref(false)
+const autoDetectedPatternDisplay = ref<BayerPattern | null>(null)
+
+// Computed property to determine if the sensor is monochrome or unknown
+const isMonochromeOrUnknown = computed(() => {
+  // SensorType: 0=Mono, 1=Color (no Bayer mosaic), 2=RGGB, 3=CMYG, 4=CMYG2, 5=LRGB (e.g. LRGB filter wheel), 6=TrueSense Mono (Kodak)
+  // Consider null (unknown), 0 (Mono), 1 (Color no bayer), and 6 (TrueSense Mono) as non-debayerable for our Bayer patterns.
+  return props.sensorType === null || props.sensorType === 0 || props.sensorType === 1 || props.sensorType === 6;
+});
 
 // Full-screen state
 const isFullScreen = ref(false)
@@ -73,15 +90,16 @@ const drawImage = async () => {
     return
   }
 
-  // Process the image if not already done, or if debayer settings changed
-  // The processedImage will be null if props.imageData changes (see watch below)
-  // or if we need to re-process due to bayer settings.
   if (!processedImage.value) {
+    let bayerPatternToUse: BayerPattern | undefined = undefined;
+    if (!isMonochromeOrUnknown.value && enableDebayer.value) {
+      bayerPatternToUse = selectedBayerPattern.value;
+    }
     processedImage.value = processImageBytes(
         props.imageData,
         props.width,
         props.height,
-        enableDebayer.value ? selectedBayerPattern.value : undefined
+        bayerPatternToUse
       )
   }
   
@@ -248,8 +266,8 @@ const calculateRobustPercentiles = (
 
 // Calculate histogram from the image data
 const calculateHistogram = () => {
-  if (props.imageData.byteLength === 0 || !processedImage.value) {
-    histogram.value = []; // Clear histogram data
+  if (props.imageData.byteLength === 0) { // Removed !processedImage.value check here, it's re-checked or processed below
+    histogram.value = []; 
     // If canvas exists, clear it
     if (histogramCanvas.value) {
       const canvas = histogramCanvas.value;
@@ -265,11 +283,15 @@ const calculateHistogram = () => {
   // This is typically handled by the watcher for props.imageData or bayer settings.
   // However, if called directly and processedImage is null, we should try to process.
   if (!processedImage.value) {
+     let bayerPatternToUse: BayerPattern | undefined = undefined;
+     if (!isMonochromeOrUnknown.value && enableDebayer.value) {
+       bayerPatternToUse = selectedBayerPattern.value;
+     }
      processedImage.value = processImageBytes(
         props.imageData,
         props.width,
         props.height,
-        enableDebayer.value ? selectedBayerPattern.value : undefined
+        bayerPatternToUse
       )
       if (!processedImage.value) {
           console.error("Image processing failed in calculateHistogram");
@@ -423,17 +445,13 @@ watch(
   () => props.imageData,
   (newValue) => {
     if (newValue.byteLength > 0) {
-      // Clear cached data and reprocess
       processedImage.value = null 
-      // applyStretch will be called by the other watcher if settings change, 
-      // or call it directly here if only image data changes without other settings.
-      // For simplicity, let the multi-param watcher handle it.
-      // However, to ensure immediate update on image change, we need to call it.
       applyStretch(); 
     } else {
-        // Clear image and histogram if no image data
         processedImage.value = null;
         histogram.value = [];
+        minPixelValue.value = 0; // Reset manual stretch values
+        maxPixelValue.value = 255;
         if (canvasRef.value) {
             const ctx = canvasRef.value.getContext('2d');
             if (ctx) ctx.clearRect(0,0, canvasRef.value.width, canvasRef.value.height);
@@ -445,6 +463,54 @@ watch(
     }
   }
 )
+
+// Watch for changes in detectedBayerPattern from props
+watch(() => props.detectedBayerPattern, (newDetectedPattern) => {
+  autoDetectedPatternDisplay.value = newDetectedPattern;
+  if (newDetectedPattern && !userHasManuallySelectedPattern.value && !isMonochromeOrUnknown.value) {
+    if (bayerPatternOptions.value.includes(newDetectedPattern)) {
+      selectedBayerPattern.value = newDetectedPattern;
+      if (!enableDebayer.value) {
+        enableDebayer.value = true; // Auto-enable if a pattern is detected and we are not monochrome
+      } else {
+        // If debayer was already enabled, changing pattern should trigger reprocess
+        processedImage.value = null;
+        applyStretch();
+      }
+    }
+  }
+}, { immediate: true });
+
+// Watch for user manually changing the selectedBayerPattern
+watch(selectedBayerPattern, (newValue, oldValue) => {
+  if (newValue !== oldValue && newValue !== props.detectedBayerPattern) {
+      userHasManuallySelectedPattern.value = true;
+  }
+  // If user selects a pattern that IS the auto-detected one, reset manual flag if desired
+  // This logic can be nuanced. For now, any direct change is manual.
+  // Re-processing is handled by the main watcher that includes selectedBayerPattern.value
+});
+
+// Watch for enableDebayer changes initiated by user
+watch(enableDebayer, (newValue, oldValue) => {
+    if (newValue !== oldValue) {
+        // If user enables debayering and we have a detected pattern, but they haven't manually picked one, select the detected one.
+        if (newValue && props.detectedBayerPattern && !userHasManuallySelectedPattern.value && !isMonochromeOrUnknown.value) {
+            if (selectedBayerPattern.value !== props.detectedBayerPattern) {
+                 if (bayerPatternOptions.value.includes(props.detectedBayerPattern)) {
+                    selectedBayerPattern.value = props.detectedBayerPattern;
+                    // This change in selectedBayerPattern will trigger the main watcher for reprocessing
+                 }
+            }
+        }
+        // If user disables debayering, they might expect it to revert to monochrome even if a pattern was auto-selected.
+        // The main watcher including enableDebayer.value will trigger reprocessing.
+        // Setting userHasManuallySelectedPattern to false if debayer is disabled might be good to allow auto-detection again if re-enabled.
+        if (!newValue) {
+            userHasManuallySelectedPattern.value = false;
+        }
+    }
+});
 
 // 4. Add currentThemeRef to the watch dependencies for applyStretch
 watch(
@@ -504,7 +570,7 @@ onBeforeUnmount(() => {
     <div ref="imageContainerRef" class="image-container">
       <canvas ref="canvasRef" class="image-canvas"></canvas>
       <button v-if="props.imageData.byteLength > 0" class="fullscreen-button" title="View Full Screen" @click="toggleFullScreen">
-        <Icon type="search" size="18" /> <!-- Using search icon & reduced size -->
+        <Icon type="search" size="18" />
       </button>
     </div>
     <div v-if="props.imageData.byteLength > 0" class="controls">
@@ -535,19 +601,21 @@ onBeforeUnmount(() => {
         <input id="robust-percentile" v-model.number="robustPercentile" type="number" min="80" max="100" @change="applyStretch">
       </div>
       
-      <!-- Debayer Controls -->
-      <div class="control-group">
-        <label for="enable-debayer">Debayer Image:</label>
-        <input id="enable-debayer" v-model="enableDebayer" type="checkbox" @change="applyStretch">
-      </div>
-      <div v-if="enableDebayer" class="control-group">
-        <label for="bayer-pattern">Bayer Pattern:</label>
-        <select id="bayer-pattern" v-model="selectedBayerPattern" @change="applyStretch">
-          <option v-for="pattern in bayerPatternOptions" :key="pattern" :value="pattern">
-            {{ pattern }}
-          </option>
-        </select>
-      </div>
+      <!-- Debayer Controls - Conditionally shown -->
+      <template v-if="!isMonochromeOrUnknown">
+        <div class="control-group">
+          <label for="enable-debayer">Debayer Image:</label>
+          <input id="enable-debayer" v-model="enableDebayer" type="checkbox" @change="applyStretch">
+        </div>
+        <div v-if="enableDebayer" class="control-group">
+          <label for="bayer-pattern">Bayer Pattern:</label>
+          <select id="bayer-pattern" v-model="selectedBayerPattern" @change="applyStretch">
+            <option v-for="pattern in bayerPatternOptions" :key="pattern" :value="pattern">
+              {{ pattern }}{{ pattern === autoDetectedPatternDisplay ? ' (detected)' : '' }}
+            </option>
+          </select>
+        </div>
+      </template>
       <!-- End Debayer Controls -->
 
     </div>

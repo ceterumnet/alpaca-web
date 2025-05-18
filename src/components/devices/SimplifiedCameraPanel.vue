@@ -6,6 +6,7 @@ import CameraImageDisplay from '@/components/panels/features/CameraImageDisplay.
 import CameraExposureControl from '@/components/panels/features/CameraExposureControl.vue'
 import { setAlpacaProperty, getAlpacaProperties, getDeviceCapabilities } from '@/utils/alpacaPropertyAccess'
 import Icon from '@/components/ui/Icon.vue'
+import type { BayerPattern } from '@/lib/ASCOMImageBytes';
 
 const props = defineProps({
   deviceId: {
@@ -46,6 +47,9 @@ const binning = ref(1)
 const coolerOn = ref(false)
 const targetTemp = ref(-10)
 const CCDTemperature = ref(0)
+
+// Sensor Type and Detected Bayer Pattern
+const cameraSensorType = ref<number | null>(null) // 0: Mono, 1: Color (no bayer), 2: RGGB, ...
 
 // Loading states for settings
 const isLoadingGain = ref(false)
@@ -165,6 +169,15 @@ const handleHistogramGenerated = (histogram: number[]) => {
   // Process histogram data if needed at this level
 }
 
+const detectedBayerPatternFromSensorType = computed<BayerPattern | null>(() => {
+  if (cameraSensorType.value === 2) {
+    return 'RGGB' // ASCOM SensorType 2 is RGGB
+  }
+  // Add other mappings if SensorType provides them for GRBG, GBRG, BGGR
+  // For now, only RGGB is directly derived from SensorType standard values.
+  return null
+})
+
 // Check device capabilities
 const updateDeviceCapabilities = async () => {
   if (!props.isConnected || !props.deviceId) return
@@ -191,7 +204,11 @@ const updateCameraStatus = async () => {
   
   try {
     // Build property list based on device capabilities
-    const propertiesToFetch = ['exposureMin', 'exposureMax', 'gain', 'offset', 'binX', 'binY', 'CCDTemperature'] // Always fetch exposure limits
+    const propertiesToFetch = [
+      'exposureMin', 'exposureMax', 
+      'gain', 'offset', 'binX', 'binY', 
+      'CCDTemperature', 'sensorType' // Added sensorType
+    ]
     
     // Add optional properties based on capabilities
     if (capabilities.value.canSetCCDTemperature) {
@@ -228,6 +245,10 @@ const updateCameraStatus = async () => {
       }
     }
 
+    if (properties.sensorType !== null && typeof properties.sensorType === 'number') {
+      cameraSensorType.value = properties.sensorType
+    }
+
     // Update exposure limits if available
     if (properties.exposureMin !== null && typeof properties.exposureMin === 'number') {
       exposureMin.value = properties.exposureMin
@@ -251,6 +272,7 @@ const resetCameraSettings = () => {
   CCDTemperature.value = 0
   exposureMin.value = 0.001
   exposureMax.value = 3600
+  cameraSensorType.value = null // Reset sensor type
   capabilities.value = {
     canSetCCDTemperature: false
   }
@@ -381,7 +403,9 @@ onUnmounted(() => {
             <!-- CameraImageDisplay is already styled as a panel, so no extra .panel-section needed -->
             <CameraImageDisplay 
               :image-data="imageData"
-              @histogram-generated="handleHistogramGenerated" 
+              :sensor-type="cameraSensorType" 
+              :detected-bayer-pattern="detectedBayerPatternFromSensorType"
+              @histogram-generated="handleHistogramGenerated"
             />
           </div>
 
