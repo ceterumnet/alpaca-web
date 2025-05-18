@@ -3,7 +3,7 @@ import { FocuserClient } from '@/api/alpaca/focuser-client'
 import type { Device } from '@/stores/types/device-store.types'
 import type { FocuserDevice } from '@/types/device.types'
 import { AlpacaError } from '@/api/alpaca/errors'
-import { DEFAULT_OPTIONS } from '@/api/alpaca/types' // For Pattern #11
+import { DEFAULT_OPTIONS, type RequestOptions } from '@/api/alpaca/types' // For Pattern #11
 
 const mockFetch = (global.fetch = vi.fn())
 
@@ -149,12 +149,40 @@ describe('FocuserClient', () => {
 
   describe('getTemperature', () => {
     let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+    let originalDefaultOptions_retries: RequestOptions['retries']
+    let originalDefaultOptions_retryDelay: RequestOptions['retryDelay']
+    let originalDefaultOptions_timeout: RequestOptions['timeout']
 
     beforeEach(() => {
+      // Store and override DEFAULT_OPTIONS for speed
+      originalDefaultOptions_retries = DEFAULT_OPTIONS.retries
+      originalDefaultOptions_retryDelay = DEFAULT_OPTIONS.retryDelay
+      originalDefaultOptions_timeout = DEFAULT_OPTIONS.timeout
+
+      DEFAULT_OPTIONS.retries = 0 // No retries from base client for these tests
+      DEFAULT_OPTIONS.retryDelay = 1 // ms
+      DEFAULT_OPTIONS.timeout = 10 // ms
+
       consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     })
 
     afterEach(() => {
+      // Restore DEFAULT_OPTIONS explicitly
+      if (originalDefaultOptions_retries === undefined) {
+        DEFAULT_OPTIONS.retries = undefined
+      } else {
+        DEFAULT_OPTIONS.retries = originalDefaultOptions_retries
+      }
+      if (originalDefaultOptions_retryDelay === undefined) {
+        DEFAULT_OPTIONS.retryDelay = undefined
+      } else {
+        DEFAULT_OPTIONS.retryDelay = originalDefaultOptions_retryDelay
+      }
+      if (originalDefaultOptions_timeout === undefined) {
+        DEFAULT_OPTIONS.timeout = undefined
+      } else {
+        DEFAULT_OPTIONS.timeout = originalDefaultOptions_timeout
+      }
       consoleWarnSpy.mockRestore()
     })
 
@@ -188,10 +216,9 @@ describe('FocuserClient', () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'))
       const result = await client.getTemperature()
       expect(result).toBeNull()
+      expect(mockFetch).toHaveBeenCalledTimes(1) // Ensure fetch was attempted once
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Error reading temperature for focuser ${client.device.id}: TypeError: Cannot read properties of undefined (reading 'ok')`
-        )
+        expect.stringContaining(`Error reading temperature for focuser ${client.device.id}: Error: Network error`)
       )
     })
 
@@ -203,6 +230,7 @@ describe('FocuserClient', () => {
       })
       const result = await client.getTemperature()
       expect(result).toBeNull()
+      expect(mockFetch).toHaveBeenCalledTimes(1) // Ensure fetch was attempted once
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining(`Error reading temperature for focuser ${client.device.id}: AlpacaError: ${alpacaErrorMessage}`)
       )
@@ -211,12 +239,40 @@ describe('FocuserClient', () => {
 
   describe('isTempCompAvailable', () => {
     let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+    let originalDefaultOptions_retries: RequestOptions['retries']
+    let originalDefaultOptions_retryDelay: RequestOptions['retryDelay']
+    let originalDefaultOptions_timeout: RequestOptions['timeout']
 
     beforeEach(() => {
+      // Store and override DEFAULT_OPTIONS for speed
+      originalDefaultOptions_retries = DEFAULT_OPTIONS.retries
+      originalDefaultOptions_retryDelay = DEFAULT_OPTIONS.retryDelay
+      originalDefaultOptions_timeout = DEFAULT_OPTIONS.timeout
+
+      DEFAULT_OPTIONS.retries = 0
+      DEFAULT_OPTIONS.retryDelay = 1
+      DEFAULT_OPTIONS.timeout = 10
+
       consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     })
 
     afterEach(() => {
+      // Restore DEFAULT_OPTIONS explicitly
+      if (originalDefaultOptions_retries === undefined) {
+        DEFAULT_OPTIONS.retries = undefined
+      } else {
+        DEFAULT_OPTIONS.retries = originalDefaultOptions_retries
+      }
+      if (originalDefaultOptions_retryDelay === undefined) {
+        DEFAULT_OPTIONS.retryDelay = undefined
+      } else {
+        DEFAULT_OPTIONS.retryDelay = originalDefaultOptions_retryDelay
+      }
+      if (originalDefaultOptions_timeout === undefined) {
+        DEFAULT_OPTIONS.timeout = undefined
+      } else {
+        DEFAULT_OPTIONS.timeout = originalDefaultOptions_timeout
+      }
       consoleWarnSpy.mockRestore()
     })
 
@@ -239,10 +295,9 @@ describe('FocuserClient', () => {
       mockFetch.mockRejectedValueOnce(new Error('Device not responding'))
       const result = await client.isTempCompAvailable()
       expect(result).toBe(false)
+      expect(mockFetch).toHaveBeenCalledTimes(1) // Ensure fetch was attempted once
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Error checking tempcompavailable for focuser ${client.device.id}: TypeError: Cannot read properties of undefined (reading 'ok')`
-        )
+        expect.stringContaining(`Error checking tempcompavailable for focuser ${client.device.id}: Error: Device not responding`)
       )
     })
 
@@ -254,6 +309,7 @@ describe('FocuserClient', () => {
       })
       const result = await client.isTempCompAvailable()
       expect(result).toBe(false)
+      expect(mockFetch).toHaveBeenCalledTimes(1) // Ensure fetch was attempted once
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining(`Error checking tempcompavailable for focuser ${client.device.id}: AlpacaError: ${alpacaErrorMessage}`)
       )
@@ -262,12 +318,38 @@ describe('FocuserClient', () => {
 
   describe('getTempComp', () => {
     let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+    let originalDefaultOptions_retries: RequestOptions['retries']
+    let originalDefaultOptions_retryDelay: RequestOptions['retryDelay']
+    let originalDefaultOptions_timeout: RequestOptions['timeout']
 
     beforeEach(() => {
+      originalDefaultOptions_retries = DEFAULT_OPTIONS.retries
+      originalDefaultOptions_retryDelay = DEFAULT_OPTIONS.retryDelay
+      originalDefaultOptions_timeout = DEFAULT_OPTIONS.timeout
+
+      DEFAULT_OPTIONS.retries = 0
+      DEFAULT_OPTIONS.retryDelay = 1
+      DEFAULT_OPTIONS.timeout = 10
       consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     })
 
     afterEach(() => {
+      // Restore DEFAULT_OPTIONS explicitly
+      if (originalDefaultOptions_retries === undefined) {
+        DEFAULT_OPTIONS.retries = undefined
+      } else {
+        DEFAULT_OPTIONS.retries = originalDefaultOptions_retries
+      }
+      if (originalDefaultOptions_retryDelay === undefined) {
+        DEFAULT_OPTIONS.retryDelay = undefined
+      } else {
+        DEFAULT_OPTIONS.retryDelay = originalDefaultOptions_retryDelay
+      }
+      if (originalDefaultOptions_timeout === undefined) {
+        DEFAULT_OPTIONS.timeout = undefined
+      } else {
+        DEFAULT_OPTIONS.timeout = originalDefaultOptions_timeout
+      }
       consoleWarnSpy.mockRestore()
     })
 
@@ -291,9 +373,7 @@ describe('FocuserClient', () => {
       const result = await client.getTempComp()
       expect(result).toBeNull()
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Error reading tempcomp for focuser ${client.device.id}: TypeError: Cannot read properties of undefined (reading 'ok')`
-        )
+        expect.stringContaining(`Error reading tempcomp for focuser ${client.device.id}: Error: Device error`)
       )
     })
 
@@ -308,6 +388,58 @@ describe('FocuserClient', () => {
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining(`Error reading tempcomp for focuser ${client.device.id}: AlpacaError: ${alpacaErrorMessage}`)
       )
+    })
+  })
+
+  describe('getAbsolute', () => {
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+    let originalDefaultOptions_retries: RequestOptions['retries']
+    let originalDefaultOptions_retryDelay: RequestOptions['retryDelay']
+    let originalDefaultOptions_timeout: RequestOptions['timeout']
+
+    beforeEach(() => {
+      originalDefaultOptions_retries = DEFAULT_OPTIONS.retries
+      originalDefaultOptions_retryDelay = DEFAULT_OPTIONS.retryDelay
+      originalDefaultOptions_timeout = DEFAULT_OPTIONS.timeout
+
+      DEFAULT_OPTIONS.retries = 0
+      DEFAULT_OPTIONS.retryDelay = 1
+      DEFAULT_OPTIONS.timeout = 10
+      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+      // Restore DEFAULT_OPTIONS explicitly
+      if (originalDefaultOptions_retries === undefined) {
+        DEFAULT_OPTIONS.retries = undefined
+      } else {
+        DEFAULT_OPTIONS.retries = originalDefaultOptions_retries
+      }
+      if (originalDefaultOptions_retryDelay === undefined) {
+        DEFAULT_OPTIONS.retryDelay = undefined
+      } else {
+        DEFAULT_OPTIONS.retryDelay = originalDefaultOptions_retryDelay
+      }
+      if (originalDefaultOptions_timeout === undefined) {
+        DEFAULT_OPTIONS.timeout = undefined
+      } else {
+        DEFAULT_OPTIONS.timeout = originalDefaultOptions_timeout
+      }
+      consoleWarnSpy.mockRestore()
+    })
+
+    it('should get absolute status', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ Value: true, ErrorNumber: 0, ErrorMessage: '' })
+      })
+      const result = await client.getAbsolute()
+      expect(result).toBe(true)
+      expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/v1/focuser/${deviceNumber}/absolute?ClientID=${client.clientId}`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: expect.any(AbortSignal)
+      })
     })
   })
 
@@ -478,7 +610,7 @@ describe('FocuserClient', () => {
       // Example: getPosition
       await expect(client.getPosition()).rejects.toThrowError('Network Error 2') // Should throw the error from the last attempt
 
-      expect(mockFetch).toHaveBeenCalledTimes(1 + DEFAULT_OPTIONS.retries) // Initial call + 1 retry
+      expect(mockFetch).toHaveBeenCalledTimes(1 + DEFAULT_OPTIONS.retries!) // Initial call + configured retries
       expect(mockFetch).toHaveBeenNthCalledWith(
         1,
         `${baseUrl}/api/v1/focuser/${deviceNumber}/position?ClientID=${client.clientId}`,
@@ -497,7 +629,7 @@ describe('FocuserClient', () => {
       // Example: halt
       await expect(client.halt()).rejects.toThrowError('Network Error 2 Put')
 
-      expect(mockFetch).toHaveBeenCalledTimes(1 + DEFAULT_OPTIONS.retries) // Initial call + 1 retry
+      expect(mockFetch).toHaveBeenCalledTimes(1 + DEFAULT_OPTIONS.retries!) // Initial call + configured retries
       const expectedBody = new URLSearchParams()
       expectedBody.append('ClientID', client.clientId.toString())
       expect(mockFetch).toHaveBeenNthCalledWith(

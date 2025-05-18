@@ -1,43 +1,62 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ObservingConditionsClient } from '@/api/alpaca/observingconditions-client'
 import { AlpacaError } from '@/api/alpaca/errors'
-import type { Device, UnifiedDevice, DeviceState } from '@/types/device.types'
+import type { UnifiedDevice, DeviceState, ObservingConditionsDevice } from '@/types/device.types'
 import { DEFAULT_OPTIONS, type RequestOptions } from '@/api/alpaca/types'
 
 const mockFetch = (global.fetch = vi.fn())
-const baseUrl = 'http://localhost'
-const deviceNumber = 0
+// const globalBaseUrl = 'http://localhost' // Removed unused variable
+const globalDeviceNumber = 0
 
 const mockAlpacaDeviceProperties = {
-  DeviceNumber: deviceNumber,
+  DeviceNumber: globalDeviceNumber,
   DeviceName: 'Mock ObservingConditions Alpaca',
-  DeviceType: 'ObservingConditions',
+  DeviceType: 'observingconditions', // Corrected to lowercase
   DriverVersion: '1.0',
   SupportedActions: []
 }
 
-const mockStoreDevice: UnifiedDevice = {
+const mockDeviceForClient: UnifiedDevice & ObservingConditionsDevice = {
   ...mockAlpacaDeviceProperties,
-  id: `observingconditions:${deviceNumber}`,
+  id: `observingconditions:${globalDeviceNumber}`,
   name: 'Mock OCS Store Name',
-  type: 'ObservingConditions',
+  type: 'observingconditions', // Ensured this is lowercase
   isConnected: true,
   isConnecting: false,
   isDisconnecting: false,
   status: 'connected' as DeviceState,
-  properties: { ...mockAlpacaDeviceProperties },
-  deviceAttributes: { customAttribute: 'someValue' }
+  properties: {
+    ...mockAlpacaDeviceProperties
+  },
+  deviceAttributes: { customAttribute: 'someValue' },
+  averageperiod: 0,
+  cloudcover: 0,
+  dewpoint: 0,
+  humidity: 0,
+  pressure: 0,
+  rainrate: 0,
+  skybrightness: 0,
+  skytemperature: 0,
+  starfwhm: 0,
+  temperature: 0,
+  winddirection: 0,
+  windgust: 0,
+  windspeed: 0,
+  sensorname: '',
+  sensordescription: '',
+  timeutcsinceupdate: ''
 }
 
 describe('ObservingConditionsClient', () => {
+  const baseUrl = 'http://localhost:11111'
+  const deviceNumber = 0
   let client: ObservingConditionsClient
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>
   let originalRetries: RequestOptions['retries']
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    client = new ObservingConditionsClient(baseUrl, deviceNumber, mockStoreDevice as Device)
+    client = new ObservingConditionsClient(baseUrl, deviceNumber, mockDeviceForClient)
     mockFetch.mockReset()
-    // @ts-expect-error TS6133: 'consoleWarnSpy' is declared but its value is never read.
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     originalRetries = DEFAULT_OPTIONS.retries
   })
@@ -45,14 +64,17 @@ describe('ObservingConditionsClient', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     DEFAULT_OPTIONS.retries = originalRetries
+    if (consoleWarnSpy) {
+      consoleWarnSpy.mockRestore()
+    }
   })
 
   it('should initialize correctly', () => {
     expect(client.baseUrl).toBe(baseUrl)
     expect(client.deviceNumber).toBe(deviceNumber)
     expect(client.deviceType).toBe('observingconditions')
-    expect(client.device).toBe(mockStoreDevice)
-    expect(client.device.DeviceName).toBe(mockStoreDevice.DeviceName)
+    expect(client.device).toBe(mockDeviceForClient)
+    expect(client.device.DeviceName).toBe(mockDeviceForClient.DeviceName)
   })
 
   describe('getAveragePeriod', () => {
@@ -99,16 +121,14 @@ describe('ObservingConditionsClient', () => {
     })
 
     it(`should handle fetch error when getting ${propertyName} (e.g. server error, JSON parse fails)`, async () => {
-      // Simulate a server error where the response body isn't valid JSON, or an intermediate proxy error.
       const fetchErrorResponse = {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-        // Make .json() throw an error to simulate non-JSON response or parse failure
         json: async () => {
           throw new SyntaxError('Unexpected token < in JSON at position 0')
         },
-        text: async () => '<html><body><h1>500 Internal Server Error</h1></body></html>' // Example non-JSON text
+        text: async () => '<html><body><h1>500 Internal Server Error</h1></body></html>'
       }
       mockFetch.mockResolvedValue(fetchErrorResponse)
 
@@ -123,14 +143,10 @@ describe('ObservingConditionsClient', () => {
 
       expect(caughtError).toBeInstanceOf(AlpacaError)
       if (caughtError) {
-        // This will now trigger the generic HTTP error in base-client's handleResponse catch block
         expect(caughtError.message).toMatch(/HTTP error 500: Internal Server Error|Failed to parse response as JSON/)
         expect(caughtError.deviceError?.errorNumber).toBeUndefined()
         expect(caughtError.statusCode).toBe(500)
       }
     })
   })
-
-  // @ts-expect-error TS6133: 'DEFAULT_OPTIONS' is declared but its value is never read (placeholder for future tests).
-  const _unusedDefaultOptions = DEFAULT_OPTIONS
 })

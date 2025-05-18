@@ -61,6 +61,10 @@ export class FocuserClient extends AlpacaClient {
     }
   }
 
+  async getAbsolute(): Promise<boolean | null> {
+    return this.getProperty('absolute') as Promise<boolean | null>
+  }
+
   // Write methods
   async setTempComp(enable: boolean): Promise<void> {
     // Parameter name is 'TempComp' in the Alpaca PUT body

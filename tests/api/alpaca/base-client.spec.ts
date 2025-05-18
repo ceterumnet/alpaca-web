@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { AlpacaClient } from '@/api/alpaca/base-client'
 import { AlpacaError, ErrorType } from '@/api/alpaca/errors'
 import type { Device, UnifiedDevice } from '@/types/device.types'
+import { DEFAULT_OPTIONS } from '@/api/alpaca/types'
 
 // Mock the global fetch
 const mockFetch = (global.fetch = vi.fn())
@@ -641,7 +642,32 @@ describe('AlpacaClient', () => {
   })
 
   describe('getDeviceState method', () => {
-    it('should fetch and parse device state (array of objects)', async () => {
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+    let originalDefaultRetries: number | undefined
+    let originalDefaultRetryDelay: number | undefined
+    let originalDefaultTimeout: number | undefined
+
+    beforeEach(() => {
+      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      // Store and override DEFAULT_OPTIONS for speed (Pattern #11)
+      originalDefaultRetries = DEFAULT_OPTIONS.retries
+      originalDefaultRetryDelay = DEFAULT_OPTIONS.retryDelay
+      originalDefaultTimeout = DEFAULT_OPTIONS.timeout
+
+      DEFAULT_OPTIONS.retries = 0 // No retries for these specific tests
+      DEFAULT_OPTIONS.retryDelay = 1 // ms
+      DEFAULT_OPTIONS.timeout = 10 // ms
+    })
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore()
+      // Restore DEFAULT_OPTIONS
+      DEFAULT_OPTIONS.retries = originalDefaultRetries
+      DEFAULT_OPTIONS.retryDelay = originalDefaultRetryDelay
+      DEFAULT_OPTIONS.timeout = originalDefaultTimeout
+    })
+
+    it('should return device state for a connected device', async () => {
       const mockStateResponse = [
         { Name: 'TimeSinceLastUpdate', Value: '0.1' },
         { Name: 'Slewing', Value: false }
@@ -700,33 +726,15 @@ describe('AlpacaClient', () => {
     })
 
     it('should return null on error fetching device state and log a warning', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      // This mock should cause getProperty('devicestate') to fail
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({}), // No ErrorNumber, so it becomes an HTTP error
-        status: 500,
-        statusText: 'Device State Fetch Error' // More specific message
-      })
+      // consoleWarnSpy is already initialized in the describe block's beforeEach
+      // const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      // We expect getDeviceState to call getProperty.
-      // If getProperty uses default retries, we might need more mocks or to adjust client options.
-      // For now, let's assume the single mockResolvedValueOnce with retries:0 (default in executeRequest for non-retryable errors) is enough.
-      // The AlpacaClient's getProperty will be called by getDeviceState.
-      // The `executeRequest` will use `retries:0` if the error is not a server error or timeout.
-      // A 500 error *is* a server error and *is* retryable by default. So getProperty will retry.
-      // To make this test simpler and ensure the getProperty inside getDeviceState fails reliably on the first try for THIS TEST:
-      // We need to make sure the error is not retryable for the purpose of this test or that all retries fail.
-      // The simplest is to make the mock cover all retries if they happen.
-      // Default retries are 2, so 3 attempts total.
-      mockFetch.mockReset() // Reset any previous mocks just in case
+      mockFetch.mockReset() // Reset any previous mocks
       const errorJson = async () => {
         throw new Error('Simulated JSON parse failure for devicestate HTTP error')
       }
-      mockFetch
-        .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'DS Error 1', json: errorJson })
-        .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'DS Error 2', json: errorJson })
-        .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'DS Error 3', json: errorJson })
+      // With DEFAULT_OPTIONS.retries = 0, only one attempt will be made by getProperty
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'DS Error 1', json: errorJson })
 
       const state = await client.getDeviceState()
       expect(state).toBeNull()
@@ -734,12 +742,12 @@ describe('AlpacaClient', () => {
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         `Error fetching device state for ${deviceType} ${deviceNumber}:`,
         expect.objectContaining({
-          message: 'HTTP error 500: DS Error 3', // Should be the message from the last attempt
+          message: 'HTTP error 500: DS Error 1', // Expecting the error from the first and only attempt
           type: ErrorType.SERVER,
           statusCode: 500
         })
       )
-      consoleWarnSpy.mockRestore()
+      // consoleWarnSpy.mockRestore() // This is handled by the describe block's afterEach
     })
   })
 
