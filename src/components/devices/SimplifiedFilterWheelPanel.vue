@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 
 const props = defineProps({
@@ -80,6 +80,7 @@ const store = useUnifiedStore()
 
 const currentDevice = computed(() => {
   const device = store.getDeviceById(props.deviceId);
+  // console.log('SF<x_bin_273>currentDevice computed:', device ? { name: device.name, id: device.id, fw_currentPosition: device.fw_currentPosition } : null);
   return device;
 })
 
@@ -162,37 +163,40 @@ const updateFilterName = async (filterIndex: number) => {
   }
 }
 
-// Lifecycle hooks for store-based polling/setup trigger if needed
-onMounted(() => {
-  if (props.deviceId && props.isConnected) {
-    // Initial fetch if not already handled by connect logic in store
-    // The store's handleFilterWheelConnected should ideally cover this.
-    // store.fetchFilterWheelDetails(props.deviceId);
-    // store.startFilterWheelPolling(props.deviceId); // Polling now managed by store on connect
-  }
-});
-
-// Watch for connection status changes to trigger store actions if necessary
-// This logic might be redundant if coreActions already calls handleFilterWheelConnected/Disconnected
-watch(() => props.isConnected, (newIsConnected) => {
-  if (props.deviceId) {
-    if (newIsConnected) {
-      // store.handleFilterWheelConnected(props.deviceId); // Should be called by core store logic
-      // Ensure data is fresh upon reconnect if polling didn't catch up or for initial load
-      store.fetchFilterWheelDetails(props.deviceId);
-    } else {
-      // store.handleFilterWheelDisconnected(props.deviceId); // Should be called by core store logic
+// New combined watcher for deviceId and isConnected to manage polling and data fetching
+watch(
+  [() => props.deviceId, () => props.isConnected],
+  ([newDeviceId, newIsConnected], [oldDeviceId, oldIsConnected]) => {
+    // Stop polling for the old device if it changed and was connected
+    if (oldDeviceId && oldDeviceId !== newDeviceId && oldIsConnected) {
+      store.stopFilterWheelPolling(oldDeviceId);
     }
+
+    if (newDeviceId) {
+      if (newIsConnected) {
+        // Device is present and connected
+        store.fetchFilterWheelDetails(newDeviceId);
+        store.startFilterWheelPolling(newDeviceId);
+      } else {
+        // Device is present but not connected
+        // Stop polling if it was previously connected (oldIsConnected would be true)
+        if (oldIsConnected) {
+           store.stopFilterWheelPolling(newDeviceId);
+        }
+      }
+    } else if (oldDeviceId && oldIsConnected) {
+      // No new deviceId, but there was an old one that was connected
+      store.stopFilterWheelPolling(oldDeviceId);
+    }
+  },
+  { immediate: true, deep: true } // deep: true might not be necessary here but immediate is key
+);
+
+onBeforeUnmount(() => {
+  if (props.deviceId && props.isConnected) {
+    store.stopFilterWheelPolling(props.deviceId);
   }
 });
-
-watch(() => props.deviceId, (newDeviceId) => {
-  if (newDeviceId && props.isConnected) {
-      // store.handleFilterWheelConnected(newDeviceId); // Called by core store logic
-      // Fetch details for the new device
-      store.fetchFilterWheelDetails(newDeviceId);
-  }
-}, { immediate: true });
 
 // onUnmounted: Polling is managed by the store, so less cleanup here unless specific listeners were added.
 
