@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue';
+import { computed, watch, onMounted, onUnmounted } from 'vue';
 import { useUnifiedStore } from '@/stores/UnifiedStore';
 import type { SafetyMonitorDevice } from '@/types/device.types';
 
@@ -61,28 +61,41 @@ const safetyStatusClass = computed(() => {
 });
 
 onMounted(() => {
-  if (props.isConnected && props.deviceId) {
-    // store.fetchSafetyMonitorDeviceStatus(props.deviceId);
+  if (props.deviceId && props.isConnected) {
+    store.handleSafetyMonitorConnected(props.deviceId);
   }
 });
 
 watch(
   () => props.isConnected,
   (newIsConnected) => {
-    if (newIsConnected && props.deviceId) {
-      // store.fetchSafetyMonitorDeviceStatus(props.deviceId);
-    } 
+    if (props.deviceId) {
+      if (newIsConnected) {
+        store.handleSafetyMonitorConnected(props.deviceId);
+      } else {
+        store.handleSafetyMonitorDisconnected(props.deviceId);
+      }
+    }
   }
 );
 
 watch(
   () => props.deviceId,
-  (newDeviceId) => {
+  (newDeviceId, oldDeviceId) => {
+    if (oldDeviceId) {
+      store.handleSafetyMonitorDisconnected(oldDeviceId);
+    }
     if (newDeviceId && props.isConnected) {
-      // store.fetchSafetyMonitorDeviceStatus(newDeviceId);
+      store.handleSafetyMonitorConnected(newDeviceId);
     }
   }
 );
+
+onUnmounted(() => {
+  if (props.deviceId) {
+    store.handleSafetyMonitorDisconnected(props.deviceId);
+  }
+});
 </script>
 
 <style scoped>
