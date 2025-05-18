@@ -293,7 +293,17 @@ export class TelescopeClient extends AlpacaClient {
       'tracking',
       'trackingrate',
       'trackingrates',
-      'utcdate'
+      'utcdate',
+      'aperturearea',
+      'aperturediameter',
+      'guideratedeclination',
+      'guideraterightascension',
+      'ispulseguiding',
+      'slewsettletime',
+      'cansetdeclinationrate',
+      'cansetguiderates',
+      'cansetpierside',
+      'cansetrightascensionrate'
     ]
 
     return this.getProperties(properties)

@@ -8,6 +8,8 @@ export interface CoverCalibratorState {
   calibratorState: number | null // 0=Unknown, 1=Off, 2=NotReady, 3=Ready, 4=Error
   currentBrightness: number | null
   maxBrightness: number | null
+  calibratorChanging?: boolean | null // V2+
+  coverMoving?: boolean | null // V2+
 }
 
 // Overall state structure for the CoverCalibrator module
@@ -42,7 +44,9 @@ export function createCoverCalibratorActions(): {
           coverState: null,
           calibratorState: null,
           currentBrightness: null,
-          maxBrightness: null
+          maxBrightness: null,
+          calibratorChanging: null,
+          coverMoving: null
         })
       }
     },
@@ -53,14 +57,16 @@ export function createCoverCalibratorActions(): {
           coverState: null,
           calibratorState: null,
           currentBrightness: null,
-          maxBrightness: null // Capabilities like maxBrightness might be better to persist or re-fetch on connect
+          maxBrightness: null, // Capabilities like maxBrightness might be better to persist or re-fetch on connect
+          calibratorChanging: null,
+          coverMoving: null
         })
       }
     },
 
     async fetchCoverCalibratorStatus(this: UnifiedStoreType, deviceId: string) {
       this.initializeCoverCalibratorState(deviceId)
-      const client = this.getDeviceClient(deviceId)
+      const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/covercalibrator-client').CoverCalibratorClient | null
       if (!client) {
         const errorMsg = `[CoverCalibratorActions] No client for device ${deviceId}`
         console.error(errorMsg)
@@ -77,21 +83,16 @@ export function createCoverCalibratorActions(): {
       if (!device || !device.isConnected) return
 
       try {
-        // Fetch multiple properties. Alpaca standard names are lowercase.
-        const coverstate = (await client.get('coverstate')) as number
-        const calibratorstate = (await client.get('calibratorstate')) as number
-        const maxbrightness = (await client.get('maxbrightness')) as number
-        let brightness: number | null = null
-        if (maxbrightness > 0) {
-          // Only fetch brightness if calibrator can be lit
-          brightness = (await client.get('brightness')) as number
-        }
+        // Fetch all properties using the client's helper method
+        const status = await client.getCoverCalibratorState()
 
         const newStatus: CoverCalibratorState = {
-          coverState: typeof coverstate === 'number' ? coverstate : null,
-          calibratorState: typeof calibratorstate === 'number' ? calibratorstate : null,
-          maxBrightness: typeof maxbrightness === 'number' ? maxbrightness : null,
-          currentBrightness: typeof brightness === 'number' ? brightness : null
+          coverState: typeof status.coverstate === 'number' ? (status.coverstate as number) : null,
+          calibratorState: typeof status.calibratorstate === 'number' ? (status.calibratorstate as number) : null,
+          maxBrightness: typeof status.maxbrightness === 'number' ? (status.maxbrightness as number) : null,
+          currentBrightness: typeof status.brightness === 'number' ? (status.brightness as number) : null,
+          calibratorChanging: typeof status.calibratorchanging === 'boolean' ? (status.calibratorchanging as boolean) : null,
+          coverMoving: typeof status.covermoving === 'boolean' ? (status.covermoving as boolean) : null
         }
 
         this.$patch((state) => {

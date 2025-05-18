@@ -17,6 +17,7 @@ export interface DomeDeviceProperties {
   dome_atPark?: boolean | null
   dome_shutterStatus?: number | null // 0=Open, 1=Closed, 2=Opening, 3=Closing, 4=Error
   dome_slewing?: boolean | null
+  dome_slaved?: boolean | null
   [key: string]: unknown // Index signature for UnifiedDevice compatibility
 }
 
@@ -40,6 +41,11 @@ interface DomeActionsSignatures {
   parkDomeDevice: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   findDomeHome: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   abortDomeSlew: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  setDomeParkPosition: (this: UnifiedStoreType, deviceId: string) => Promise<void>
+  slewDomeToAltitude: (this: UnifiedStoreType, deviceId: string, altitude: number) => Promise<void>
+  slewDomeToAzimuth: (this: UnifiedStoreType, deviceId: string, azimuth: number) => Promise<void>
+  syncDomeToAzimuth: (this: UnifiedStoreType, deviceId: string, azimuth: number) => Promise<void>
+  setDomeSlavedState: (this: UnifiedStoreType, deviceId: string, slaved: boolean) => Promise<void>
   startDomePolling: (this: UnifiedStoreType, deviceId: string) => void
   stopDomePolling: (this: UnifiedStoreType, deviceId: string) => void
   _pollDomeStatus: (this: UnifiedStoreType, deviceId: string) => Promise<void>
@@ -88,7 +94,8 @@ export function createDomeActions(): {
             dome_atHome: (status.athome as boolean) ?? null,
             dome_atPark: (status.atpark as boolean) ?? null,
             dome_shutterStatus: (status.shutterstatus as number) ?? null,
-            dome_slewing: (status.slewing as boolean) ?? null
+            dome_slewing: (status.slewing as boolean) ?? null,
+            dome_slaved: (status.slaved as boolean) ?? null
           }
           this.updateDevice(deviceId, updates)
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'domeStatus', value: updates } as DeviceEvent)
@@ -130,6 +137,104 @@ export function createDomeActions(): {
       },
       abortDomeSlew(this: UnifiedStoreType, deviceId: string): Promise<void> {
         return this._executeDomeAction(deviceId, 'abortSlewDome')
+      },
+
+      async setDomeParkPosition(this: UnifiedStoreType, deviceId: string): Promise<void> {
+        const client = this._getDomeClient(deviceId)
+        if (!client) return
+        try {
+          await client.setPark()
+          // setPark usually doesn't change readable state immediately, but a fetch might be desired by some.
+          // For now, we'll assume no immediate state change that needs re-fetching.
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setPark', args: [], result: 'success' } as DeviceEvent)
+        } catch (error) {
+          console.error(`[DomeStore] Error setting park position for ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set park position: ${error}` } as DeviceEvent)
+        }
+      },
+
+      async slewDomeToAltitude(this: UnifiedStoreType, deviceId: string, altitude: number): Promise<void> {
+        const client = this._getDomeClient(deviceId)
+        if (!client) return
+        try {
+          await client.slewToAltitude(altitude)
+          await this.fetchDomeStatus(deviceId) // Refresh status after action
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'slewToAltitude',
+            args: [altitude],
+            result: 'success'
+          } as DeviceEvent)
+        } catch (error) {
+          console.error(`[DomeStore] Error slewing dome to altitude for ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to slew to altitude: ${error}` } as DeviceEvent)
+          await this.fetchDomeStatus(deviceId) // Refresh status even on error
+        }
+      },
+
+      async slewDomeToAzimuth(this: UnifiedStoreType, deviceId: string, azimuth: number): Promise<void> {
+        const client = this._getDomeClient(deviceId)
+        if (!client) return
+        try {
+          await client.slewToAzimuth(azimuth)
+          await this.fetchDomeStatus(deviceId) // Refresh status after action
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'slewToAzimuth',
+            args: [azimuth],
+            result: 'success'
+          } as DeviceEvent)
+        } catch (error) {
+          console.error(`[DomeStore] Error slewing dome to azimuth for ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to slew to azimuth: ${error}` } as DeviceEvent)
+          await this.fetchDomeStatus(deviceId) // Refresh status even on error
+        }
+      },
+
+      async syncDomeToAzimuth(this: UnifiedStoreType, deviceId: string, azimuth: number): Promise<void> {
+        const client = this._getDomeClient(deviceId)
+        if (!client) return
+        try {
+          await client.syncToAzimuth(azimuth)
+          await this.fetchDomeStatus(deviceId) // Refresh status after action
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'syncToAzimuth',
+            args: [azimuth],
+            result: 'success'
+          } as DeviceEvent)
+        } catch (error) {
+          console.error(`[DomeStore] Error syncing dome to azimuth for ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to sync to azimuth: ${error}` } as DeviceEvent)
+          await this.fetchDomeStatus(deviceId) // Refresh status even on error
+        }
+      },
+
+      async setDomeSlavedState(this: UnifiedStoreType, deviceId: string, slaved: boolean): Promise<void> {
+        const client = this._getDomeClient(deviceId)
+        if (!client) return
+        try {
+          await client.setSlaved(slaved)
+          // Update the specific property in the store
+          this.updateDevice(deviceId, { dome_slaved: slaved }) // Assuming dome_slaved is added to DomeDeviceProperties
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'setSlaved',
+            args: [slaved],
+            result: 'success'
+          } as DeviceEvent)
+          // Optionally, full fetchDomeStatus if other related properties might change
+          // await this.fetchDomeStatus(deviceId);
+        } catch (error) {
+          console.error(`[DomeStore] Error setting dome slaved state for ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set slaved state: ${error}` } as DeviceEvent)
+          // Refresh full status on error to ensure consistency
+          await this.fetchDomeStatus(deviceId)
+        }
       },
 
       async _pollDomeStatus(this: UnifiedStoreType, deviceId: string): Promise<void> {
@@ -180,7 +285,8 @@ export function createDomeActions(): {
           dome_atHome: null,
           dome_atPark: null,
           dome_shutterStatus: null,
-          dome_slewing: null
+          dome_slewing: null,
+          dome_slaved: null
         }
         this.updateDevice(deviceId, clearedProps)
       }

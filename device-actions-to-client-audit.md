@@ -39,11 +39,10 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 
 - **Exposed & Used Client Functionalities:**
   - Core GET properties: `CoverCalibratorClient.getBrightness()`, `getCalibratorState()`, `getCoverState()`, `getMaxBrightness()` are covered by the `fetchCoverCalibratorStatus` store action.
+  - The V2+ properties `CoverCalibratorClient.getCalibratorChanging()` and `CoverCalibratorClient.getCoverMoving()` are now also fetched by `fetchCoverCalibratorStatus` (via the client's `getCoverCalibratorState()` helper).
   - All PUT methods: `CoverCalibratorClient.calibratorOff()`, `calibratorOn()`, `closeCover()`, `haltCover()`, `openCover()` are exposed as store actions.
 - **Client Functionalities NOT Exposed/Used by Store Actions:**
-  - `CoverCalibratorClient.getCalibratorChanging()` (Alpaca V2+ property).
-  - `CoverCalibratorClient.getCoverMoving()` (Alpaca V2+ property).
-  - The `fetchCoverCalibratorStatus` action does not currently include these V2 properties, although the client's `getCoverCalibratorState()` helper method does retrieve them.
+  - None remaining. The `fetchCoverCalibratorStatus` action now includes the V2 properties by leveraging the client's `getCoverCalibratorState()` helper.
 
 ### 3. Dome
 
@@ -53,15 +52,17 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 **Findings:**
 
 - **Exposed & Used Client Functionalities:**
-  - All GET properties from `DomeClient` (e.g., `altitude`, `azimuth`, `atHome`, `shutterStatus`, `slewing`, all `can...` capabilities) are effectively exposed via the `fetchDomeStatus` store action, which uses `DomeClient.getDomeState()`.
+  - All GET properties from `DomeClient` (e.g., `altitude`, `azimuth`, `atHome`, `shutterStatus`, `slewing`, `slaved`, all `can...` capabilities) are effectively exposed via the `fetchDomeStatus` store action, which uses `DomeClient.getDomeState()`.
   - Shutter control: `DomeClient.openShutter()`, `DomeClient.closeShutter()`.
   - Basic movement/state commands: `DomeClient.parkDome()`, `DomeClient.findHomeDome()`, `DomeClient.abortSlewDome()`.
+- **Client Functionalities NOW Exposed by Store Actions:**
+  - `DomeClient.setPark()` (exposed via `setDomeParkPosition` action).
+  - `DomeClient.slewToAltitude(...)` (exposed via `slewDomeToAltitude` action).
+  - `DomeClient.slewToAzimuth(...)` (exposed via `slewDomeToAzimuth` action).
+  - `DomeClient.syncToAzimuth(...)` (exposed via `syncDomeToAzimuth` action).
+  - `DomeClient.setSlaved(...)` (exposed via `setDomeSlavedState` action).
 - **Client Functionalities NOT Exposed/Used by Store Actions:**
-  - `DomeClient.setPark()`
-  - `DomeClient.slewToAltitude(...)`
-  - `DomeClient.slewToAzimuth(...)`
-  - `DomeClient.syncToAzimuth(...)`
-  - `DomeClient.setSlaved(...)`
+  - None remaining.
 
 ### 4. FilterWheel
 
@@ -98,10 +99,10 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 - **Exposed & Used Client Functionalities:**
   - All sensor reading GET methods from `ObservingConditionsClient` (e.g., `getCloudCover`, `getDewPoint`, `getPressure`) are covered by the `fetchObservingConditions` store action, which uses `ObservingConditionsClient.getAllConditions()`.
   - `ObservingConditionsClient.setAveragePeriod()`.
+  - `ObservingConditionsClient.refresh()` (exposed via `refreshObservingConditionsReadings` action).
 - **Client Functionalities NOT Exposed/Used by Store Actions:**
   - `ObservingConditionsClient.getSensorDescription(...)`
   - `ObservingConditionsClient.getTimeSinceLastUpdate(...)`
-  - `ObservingConditionsClient.refresh()` (This method was recently added to the client for spec compliance).
 
 ### 7. Rotator
 
@@ -134,14 +135,14 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 
 **Findings:**
 
-- **Exposed & Used Client Functionalities:** Core public methods of the `SwitchClient` (e.g., `maxSwitch`, `getSwitchName`, `getSwitchValue`, `setSwitchName`, `setSwitchValue`, `setSwitch`) are utilized by the store actions. Reads are often consolidated via `client.getAllSwitchDetails()` within the `fetchSwitchDetails` action.
+- **Exposed & Used Client Functionalities:** Core public methods of the `SwitchClient` (e.g., `maxSwitch`, `getSwitchName`, `getSwitchValue`, `setSwitchName`, `setSwitchValue`, `setSwitch`) are utilized by the store actions. Reads are often consolidated via `client.getAllSwitchDetails()` within the `fetchSwitchDetails` action. The `canAsync` and `canWrite` capabilities for each switch are now also included in the details fetched by `fetchSwitchDetails`.
+- **Client Functionalities NOW Exposed by Store Actions:**
+  - `SwitchClient.setAsyncSwitch(id, state)` (exposed via `setAsyncSwitchStateStoreAction` action).
+  - `SwitchClient.setAsyncSwitchValue(id, value)` (exposed via `setAsyncSwitchValueStoreAction` action).
+  - `SwitchClient.isStateChangeComplete(id, transactionID)` (exposed via `getSwitchStateChangeCompleteStoreAction` action).
 - **Client Functionalities NOT Exposed/Used by Store Actions:**
-  - `SwitchClient.canAsync(id)`
-  - `SwitchClient.canWrite(id)`
-  - `SwitchClient.setAsyncSwitch(id, state)`
-  - `SwitchClient.setAsyncSwitchValue(id, value)`
-  - `SwitchClient.isStateChangeComplete(id, transactionID)`
-- **Conclusion:** The `switchActions.ts` appears to fully expose the synchronous functionalities offered by `SwitchClient.ts`. The client now implements asynchronous operations and capability checks as per the Alpaca Switch specification, which are not yet utilized by the store actions.
+  - None remaining from the previously listed items. (Note: The store actions for async operations currently assume `Promise<void>` and don't explicitly handle `TransactionID` returns from the client, which might be a future enhancement if client methods are updated to return them.)
+- **Conclusion:** The `switchActions.ts` now exposes both synchronous and asynchronous functionalities offered by `SwitchClient.ts`. The client implements asynchronous operations and capability checks as per the Alpaca Switch specification, and these are now accessible via store actions or included in fetched switch details.
 
 ### 10. Telescope
 
@@ -150,10 +151,14 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 
     **Findings:**
     - **Exposed & Used Client Functionalities:**
-        - A broad range of GET properties for capabilities and state are read via `fetchTelescopeProperties` and polling (which uses `client.getProperty()` and `client.getDeviceState()`).
+        - A broad range of GET properties for capabilities and state are read via `fetchTelescopeProperties` and polling. With the `TelescopeClient.getTelescopeState()` method updated to include more properties (like `aperturearea`, `aperturediameter`, `guideratedeclination`, `guideraterightascension`, `ispulseguiding`, `slewsettletime`, `cansetdeclinationrate`, `cansetguiderates`, `cansetpierside`, `cansetrightascensionrate`), these are now assumed to be fetched and available in the device's store state.
         - Core movement commands: `TelescopeClient.park()`, `unpark()`, `slewToCoordinates()` (and async), `slewToAltAz()` (and async), `abortSlew()`.
-        - Setting tracking state and rate: `TelescopeClient.setTracking()`, `setTrackingRate()`.
-        - Setting target RA/Dec: `TelescopeClient.setTargetRightAscension()`, `setTargetDeclination()`.
+        - Setting tracking state and rate: `TelescopeClient.setTracking()`, `setTrackingRate()` (actual store action for setting rate might use `callDeviceMethod` if not `client.setTrackingRate()`).
+        - Setting target RA/Dec: `TelescopeClient.setTargetRightAscension()`, `TelescopeClient.setTargetDeclination()`.
+    - **Client Functionalities NOW Exposed by Store Actions:**
+        - `TelescopeClient.setGuideRateDeclination(...)` (exposed via `setTelescopeGuideRateDeclination` action).
+        - `TelescopeClient.setGuideRateRightAscension(...)` (exposed via `setTelescopeGuideRateRightAscension` action).
+        - `TelescopeClient.setSlewSettleTime(...)` (exposed via `setTelescopeSlewSettleTime` action).
     - **Partially Exposed or Mismatched Usage by Store Actions:**
         - The `slewToAltAz` store action attempts to set `targetaltitude` and `targetazimuth` properties via `callDeviceMethod` before slewing. The `TelescopeClient`'s `slewToAltAz` methods accept altitude/azimuth as direct parameters, and the client doesn't have specific `setTargetAltitude`/`setTargetAzimuth` public methods. This represents a potential mismatch in how the action tries to interact with the client for Alt/Az slews.
     - **Client Functionalities NOT Exposed/Used by Store Actions:**
@@ -166,22 +171,9 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
         - `TelescopeClient.moveAxis(...)` (The `canMoveAxis` capability is read, but no store action calls `moveAxis`.)
         - `TelescopeClient.pulseGuide(...)` (The `canPulseGuide` capability is read, but no store action calls `pulseGuide`.)
         - `TelescopeClient.setUTCDate(...)` (The `utcdate` property is read via polling, but no store action to explicitly set it.)
-        - `TelescopeClient.getApertureArea()`
-        - `TelescopeClient.getApertureDiameter()`
-        - `TelescopeClient.getGuideRateDeclination()`
-        - `TelescopeClient.setGuideRateDeclination(...)`
-        - `TelescopeClient.getGuideRateRightAscension()`
-        - `TelescopeClient.setGuideRateRightAscension(...)`
-        - `TelescopeClient.isPulseGuiding()` (The `canPulseGuide` capability is read from `TelescopeClient.canPulseGuide()`, but `TelescopeClient.isPulseGuiding()` which returns the current pulse guiding state is not explicitly used by store actions).
-        - `TelescopeClient.getSlewSettleTime()`
-        - `TelescopeClient.setSlewSettleTime(...)`
-        - `TelescopeClient.canSetDeclinationRate()`
-        - `TelescopeClient.canSetGuideRates()`
-        - `TelescopeClient.canSetPierSide()`
-        - `TelescopeClient.canSetRightAscensionRate()`
-        - `TelescopeClient.getAxisRates(...)`
-        - `TelescopeClient.getDestinationSideOfPier(...)`
-        - Several other specific GET methods for advanced capabilities or detailed properties now present in the client might not be directly exposed through dedicated store actions, though some values might be part of the data fetched by `getTelescopeState()`.
+        - `TelescopeClient.getAxisRates(...)` (This client method requires a parameter and is not part of `getTelescopeState()`; no dedicated store action calls it.)
+        - `TelescopeClient.getDestinationSideOfPier(...)` (This client method requires parameters and is not part of `getTelescopeState()`; no dedicated store action calls it.)
+        - Note: While many informational properties are now included in `getTelescopeState()`, dedicated store getters for each individual property (e.g., `getApertureAreaAction`) are not typically created; the data is accessed from the device's state object populated by `fetchTelescopeProperties` or polling.
 
 ---
 

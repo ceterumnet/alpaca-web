@@ -34,6 +34,7 @@ interface IObservingConditionsActions {
   _getOCClient: (this: UnifiedStoreType, deviceId: string) => ObservingConditionsClient | null
   fetchObservingConditions: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   setObservingConditionsAveragePeriod: (this: UnifiedStoreType, deviceId: string, period: number) => Promise<void>
+  refreshObservingConditionsReadings: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   startObservingConditionsPolling: (this: UnifiedStoreType, deviceId: string) => void
   stopObservingConditionsPolling: (this: UnifiedStoreType, deviceId: string) => void
   _pollObservingConditions: (this: UnifiedStoreType, deviceId: string) => Promise<void>
@@ -99,6 +100,23 @@ export function createObservingConditionsActions(): {
           console.error(`[OCStore] Error setting average period for ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set average period: ${error}` })
           await this.fetchObservingConditions(deviceId) // Ensure consistency
+        }
+      },
+
+      async refreshObservingConditionsReadings(this: UnifiedStoreType, deviceId: string): Promise<void> {
+        const client = this._getOCClient(deviceId)
+        if (!client) return
+        try {
+          await client.refresh()
+          // After refreshing, fetch the updated conditions
+          await this.fetchObservingConditions(deviceId)
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'refreshObservingConditions', args: [], result: 'success' })
+        } catch (error) {
+          console.error(`[OCStore] Error refreshing observing conditions for ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to refresh observing conditions: ${error}` })
+          // Optionally re-fetch even on error to ensure UI consistency if needed,
+          // though a refresh failure likely means data hasn't changed or is unavailable.
+          // await this.fetchObservingConditions(deviceId)
         }
       },
 

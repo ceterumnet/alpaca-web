@@ -8,6 +8,8 @@ export interface ISwitchDetail {
   min?: number
   max?: number
   step?: number
+  canAsync?: boolean
+  canWrite?: boolean
 }
 
 export class SwitchClient extends AlpacaClient {
@@ -85,6 +87,9 @@ export class SwitchClient extends AlpacaClient {
     const name = await this.getSwitchName(id)
     const value = await this.getSwitchValue(id)
     const description = await this.getSwitchDescription(id)
+    const canAsyncStatus = await this.canAsync(id) // Fetch canAsync
+    const canWriteStatus = await this.canWrite(id) // Fetch canWrite
+
     // For value-based switches, get min/max/step
     // This is a simplification; a device might not support all of these or might be boolean-only.
     // A more robust implementation would check CanWrite for value/name and device capabilities.
@@ -116,7 +121,9 @@ export class SwitchClient extends AlpacaClient {
       description,
       min,
       max,
-      step
+      step,
+      canAsync: canAsyncStatus,
+      canWrite: canWriteStatus
     }
   }
 

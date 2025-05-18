@@ -29,6 +29,14 @@ interface SwitchActionsSignatures {
   fetchSwitchDetails: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   setDeviceSwitchValue: (this: UnifiedStoreType, deviceId: string, switchId: number, value: number | boolean) => Promise<void>
   setDeviceSwitchName: (this: UnifiedStoreType, deviceId: string, switchId: number, name: string) => Promise<void>
+  setAsyncSwitchStateStoreAction: (this: UnifiedStoreType, deviceId: string, switchId: number, state: boolean) => Promise<void>
+  setAsyncSwitchValueStoreAction: (this: UnifiedStoreType, deviceId: string, switchId: number, value: number) => Promise<void>
+  getSwitchStateChangeCompleteStoreAction: (
+    this: UnifiedStoreType,
+    deviceId: string,
+    switchId: number,
+    transactionId: number
+  ) => Promise<boolean | null>
   startSwitchPolling: (this: UnifiedStoreType, deviceId: string) => void
   stopSwitchPolling: (this: UnifiedStoreType, deviceId: string) => void
   _pollSwitchStatus: (this: UnifiedStoreType, deviceId: string) => Promise<void>
@@ -134,6 +142,71 @@ export function createSwitchActions(): {
           console.error(`[SwitchStore] Error setting name for switch ${switchId} on ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set switch name: ${error}` } as DeviceEvent)
           await this.fetchSwitchDetails(deviceId)
+        }
+      },
+
+      async setAsyncSwitchStateStoreAction(this: UnifiedStoreType, deviceId: string, switchId: number, state: boolean): Promise<void> {
+        const client = this._getSwitchClient(deviceId)
+        if (!client) return
+        try {
+          await client.setAsyncSwitch(switchId, state)
+          // Typically, an async set won't update state immediately.
+          // The UI would use isStateChangeComplete with a transaction ID (if returned by client) to poll.
+          // For now, we don't have transaction ID handling here.
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'setAsyncSwitchState',
+            args: [switchId, state],
+            result: 'success'
+          } as DeviceEvent)
+        } catch (error) {
+          console.error(`[SwitchStore] Error setting async state for switch ${switchId} on ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set async switch state: ${error}` } as DeviceEvent)
+        }
+      },
+
+      async setAsyncSwitchValueStoreAction(this: UnifiedStoreType, deviceId: string, switchId: number, value: number): Promise<void> {
+        const client = this._getSwitchClient(deviceId)
+        if (!client) return
+        try {
+          await client.setAsyncSwitchValue(switchId, value)
+          // Similar to setAsyncSwitchState, immediate state update is not typical.
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'setAsyncSwitchValue',
+            args: [switchId, value],
+            result: 'success'
+          } as DeviceEvent)
+        } catch (error) {
+          console.error(`[SwitchStore] Error setting async value for switch ${switchId} on ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set async switch value: ${error}` } as DeviceEvent)
+        }
+      },
+
+      async getSwitchStateChangeCompleteStoreAction(
+        this: UnifiedStoreType,
+        deviceId: string,
+        switchId: number,
+        transactionId: number
+      ): Promise<boolean | null> {
+        const client = this._getSwitchClient(deviceId)
+        if (!client) return null
+        try {
+          const isComplete = await client.isStateChangeComplete(switchId, transactionId)
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'isStateChangeComplete',
+            args: [switchId, transactionId],
+            result: isComplete
+          } as DeviceEvent)
+          return isComplete
+        } catch (error) {
+          console.error(`[SwitchStore] Error checking state change completion for switch ${switchId} on ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to check state change completion: ${error}` } as DeviceEvent)
+          return null
         }
       },
 

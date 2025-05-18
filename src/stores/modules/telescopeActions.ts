@@ -582,54 +582,136 @@ export function createTelescopeActions() {
         enabled: boolean,
         trackingRate?: number
       ): Promise<boolean> {
-        console.log(`Setting telescope ${deviceId} tracking:`, {
-          enabled,
-          trackingRate
-        })
-
+        console.log(`Setting tracking for telescope ${deviceId} to ${enabled}, rate: ${trackingRate}`)
         const device = this.getDeviceById(deviceId)
         if (!device) {
           throw new Error(`Device not found: ${deviceId}`)
         }
 
-        if (device.type !== 'telescope') {
-          throw new Error(`Device ${deviceId} is not a telescope`)
-        }
-
         try {
-          // Set tracking state using standard property name
-          // URL should be lowercase, but parameter name properly capitalized
-          await this.callDeviceMethod(deviceId, 'tracking', [{ Tracking: enabled }])
+          // Set tracking state
+          await this.callDeviceMethod(deviceId, 'settracking', [enabled])
+          this.updateDeviceProperties(deviceId, { tracking: enabled })
 
-          // Update tracking rate if specified
+          // Set tracking rate if provided
           if (trackingRate !== undefined) {
-            // URL should be lowercase, but parameter name properly capitalized
-            await this.callDeviceMethod(deviceId, 'trackingrate', [{ TrackingRate: trackingRate }])
+            await this.callDeviceMethod(deviceId, 'trackingrate', [trackingRate]) // This should be 'settrackingrate' or similar based on client
+            this.updateDeviceProperties(deviceId, { trackingrate: trackingRate })
           }
 
-          // Update device properties
-          const updates: Record<string, unknown> = {
-            tracking: enabled
-          }
-
-          if (trackingRate !== undefined) {
-            updates.trackingrate = trackingRate
-          }
-
-          this.updateDeviceProperties(deviceId, updates)
-
-          // Emit tracking changed event
           this._emitEvent({
-            type: 'telescopeTrackingChanged',
+            type: 'devicePropertyChanged',
             deviceId,
-            enabled,
-            rate: trackingRate
-          })
-
+            property: 'tracking',
+            value: { enabled, trackingRate }
+          } as DeviceEvent)
           return true
         } catch (error) {
-          console.error(`Error setting telescope ${deviceId} tracking:`, error)
-          throw error
+          console.error(`Error setting tracking for telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set tracking: ${error}` } as DeviceEvent)
+          return false
+        }
+      },
+
+      async setTelescopeGuideRateDeclination(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null // Should be TelescopeClient
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          fetchTelescopeProperties: (deviceId: string) => Promise<boolean> // or a more specific refresh
+        },
+        deviceId: string,
+        rate: number
+      ): Promise<boolean> {
+        console.log(`Setting guide rate declination for telescope ${deviceId} to ${rate}`)
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
+        if (!client) {
+          throw new Error(`No Telescope client available for device ${deviceId}`)
+        }
+        try {
+          await client.setGuideRateDeclination(rate)
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'setGuideRateDeclination',
+            args: [rate],
+            result: 'success'
+          } as DeviceEvent)
+          await this.fetchTelescopeProperties(deviceId) // Re-fetch to update state
+          return true
+        } catch (error) {
+          console.error(`Error setting guide rate declination for telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set guide rate declination: ${error}` } as DeviceEvent)
+          return false
+        }
+      },
+
+      async setTelescopeGuideRateRightAscension(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null // Should be TelescopeClient
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          fetchTelescopeProperties: (deviceId: string) => Promise<boolean>
+        },
+        deviceId: string,
+        rate: number
+      ): Promise<boolean> {
+        console.log(`Setting guide rate right ascension for telescope ${deviceId} to ${rate}`)
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
+        if (!client) {
+          throw new Error(`No Telescope client available for device ${deviceId}`)
+        }
+        try {
+          await client.setGuideRateRightAscension(rate)
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'setGuideRateRightAscension',
+            args: [rate],
+            result: 'success'
+          } as DeviceEvent)
+          await this.fetchTelescopeProperties(deviceId) // Re-fetch to update state
+          return true
+        } catch (error) {
+          console.error(`Error setting guide rate right ascension for telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set guide rate RA: ${error}` } as DeviceEvent)
+          return false
+        }
+      },
+
+      async setTelescopeSlewSettleTime(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null // Should be TelescopeClient
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          fetchTelescopeProperties: (deviceId: string) => Promise<boolean>
+        },
+        deviceId: string,
+        time: number
+      ): Promise<boolean> {
+        console.log(`Setting slew settle time for telescope ${deviceId} to ${time}`)
+        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
+        if (!client) {
+          throw new Error(`No Telescope client available for device ${deviceId}`)
+        }
+        try {
+          await client.setSlewSettleTime(time)
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'setSlewSettleTime',
+            args: [time],
+            result: 'success'
+          } as DeviceEvent)
+          await this.fetchTelescopeProperties(deviceId) // Re-fetch to update state
+          return true
+        } catch (error) {
+          console.error(`Error setting slew settle time for telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set slew settle time: ${error}` } as DeviceEvent)
+          return false
         }
       },
 
