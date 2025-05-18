@@ -160,11 +160,20 @@ export class AlpacaClient {
             response.status >= 500 // Only retry server errors
           )
         }
+        // If errorData.ErrorNumber is undefined, but response.ok is false,
+        // we should still throw a generic error. This happens in the catch block below
+        // if response.json() succeeded but didn't yield an AlpacaError,
+        // or if response.json() itself failed.
+        // To ensure a generic error is thrown if this path is reached (ok:false, json valid, no ErrorNumber):
+        throw new Error('Internal logic error: Should have been caught by outer catch for non-Alpaca JSON body on error')
       } catch (error) {
-        // If we can't parse the error as JSON, use the response status
+        // If we can't parse the error as JSON, or if the explicit throw above occurred.
         if (error instanceof AlpacaError) {
           throw error
         }
+        // This will catch SyntaxError from response.json() if body is not JSON,
+        // or the "Internal logic error" if JSON was valid but not an Alpaca error.
+        // In either of those cases for a !response.ok, we throw a generic HTTP error.
         throw new AlpacaError(
           `HTTP error ${response.status}: ${response.statusText}`,
           errorType,
@@ -176,7 +185,7 @@ export class AlpacaClient {
       }
     }
 
-    // Parse successful response as JSON
+    // Parse successful response as JSON (response.ok was true)
     try {
       const data = await response.json()
 
@@ -193,6 +202,18 @@ export class AlpacaClient {
           },
           false // Don't retry device errors
         )
+      } else if (
+        data.ErrorMessage &&
+        typeof data.ErrorMessage === 'string' &&
+        data.ErrorMessage.trim().length > 0 &&
+        (!Object.prototype.hasOwnProperty.call(data, 'ErrorNumber') || data.ErrorNumber === 0)
+      ) {
+        // Added: Warn if ErrorMessage is present but ErrorNumber indicates success or is missing
+        console.warn(
+          `AlpacaClient: Device at ${url} sent an ErrorMessage "${data.ErrorMessage}" ` +
+            `but ErrorNumber was ${data.ErrorNumber === undefined ? 'missing' : data.ErrorNumber}. ` +
+            `Proceeding as success.`
+        )
       }
 
       // Transform the value from ASCOM format to TypeScript format
@@ -202,7 +223,14 @@ export class AlpacaClient {
       if (error instanceof AlpacaError) {
         throw error
       }
-      throw new AlpacaError('Failed to parse response as JSON', ErrorType.UNKNOWN, url, response.status)
+      // This catch is for if response.json() fails on a response.ok=true,
+      // or if fromAscomValue throws, etc.
+      throw new AlpacaError(
+        `Failed to parse successful response or transform value from ${url}. Original error: ${(error as Error).message}`,
+        ErrorType.UNKNOWN,
+        url,
+        response.status
+      )
     }
   }
 
