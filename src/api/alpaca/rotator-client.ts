@@ -59,7 +59,7 @@ export class RotatorClient extends AlpacaClient {
   }
 
   async setReverse(reverseState: boolean): Promise<void> {
-    await this.put('reverse', { Reverse: reverseState }) // Alpaca spec uses PUT for 'reverse' property
+    await this.setProperty('reverse', reverseState) // Use setProperty for correct value formatting
   }
 
   // Helper to get all relevant rotator properties
