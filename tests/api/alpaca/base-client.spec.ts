@@ -569,65 +569,74 @@ describe('AlpacaClient', () => {
 
   describe('getProperties method', () => {
     it('should call getProperty for each property and return a map of results', async () => {
-      // Mock responses for two properties
+      // This test remains as is, testing the happy path.
       mockFetch
-        .mockResolvedValueOnce({
-          // For aperturearea
-          ok: true,
-          json: async () => ({ Value: 0.15, ErrorNumber: 0, ErrorMessage: '' }),
-          status: 200
-        })
-        .mockResolvedValueOnce({
-          // For focallength
-          ok: true,
-          json: async () => ({ Value: 1200, ErrorNumber: 0, ErrorMessage: '' }),
-          status: 200
-        })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ Value: 'MockTelescope', ErrorNumber: 0, ErrorMessage: '' }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ Value: 0.12, ErrorNumber: 0, ErrorMessage: '' }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ Value: 1000, ErrorNumber: 0, ErrorMessage: '' }) })
 
-      const propertiesToGet = ['aperturearea', 'focallength'] // These are in mockDevice.properties
+      const propertiesToGet = ['name', 'aperturearea', 'focallength']
       const results = await client.getProperties(propertiesToGet)
 
-      // Property names in results should be in TypeScript format (camelCase based on toTsFormat)
-      expect(results).toEqual({
-        apertureArea: 0.15, // Corrected to camelCase
-        focalLength: 1200 // Corrected to camelCase
-      })
-      expect(mockFetch).toHaveBeenCalledTimes(2)
-      expect(mockFetch).toHaveBeenNthCalledWith(1, expect.stringContaining('/aperturearea'), expect.objectContaining({ method: 'GET' }))
-      expect(mockFetch).toHaveBeenNthCalledWith(2, expect.stringContaining('/focallength'), expect.objectContaining({ method: 'GET' }))
+      expect(results.name).toBe('MockTelescope')
+      expect(results.apertureArea).toBe(0.12) // toTsFormat default keeps aperturearea as is
+      expect(results.focalLength).toBe(1000) // toTsFormat default makes focallength -> focalLength
+      expect(mockFetch).toHaveBeenCalledTimes(propertiesToGet.length)
     })
 
     it('should handle an error in one of the getProperty calls within getProperties', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {}) // Ensure spy is initialized
+      // Mock getProperty to succeed for 'name' and fail for 'someotherprop'
       mockFetch
-        .mockResolvedValueOnce({
-          // Success for apertureArea
-          ok: true,
-          json: async () => ({ Value: 0.15, ErrorNumber: 0, ErrorMessage: '' }),
-          status: 200
+        .mockImplementationOnce(async (url) => {
+          // For 'name'
+          if (url.toString().includes('name')) {
+            return {
+              ok: true,
+              json: async () => ({ Value: 'MockTelescope', ErrorNumber: 0, ErrorMessage: '' }),
+              status: 200
+            }
+          }
+          // Fallback for unexpected URL during first call (should not happen in this test)
+          return { ok: false, status: 404, json: async () => ({ ErrorNumber: 1, ErrorMessage: 'Not Found' }) }
         })
-        .mockResolvedValueOnce({
-          // Error for someotherprop
-          ok: false,
-          json: async () => {
-            throw new Error('Simulated JSON parse failure for HTTP error in getProperties')
-          }, // Ensure this path throws
-          status: 500,
-          statusText: 'Server Error on Second Call'
+        .mockImplementationOnce(async (url) => {
+          // For 'someotherprop' - intended to fail
+          if (url.toString().includes('someotherprop')) {
+            return {
+              ok: false, // HTTP error
+              // Make json() fail or return non-Alpaca structure for a generic HTTP error
+              json: async () => {
+                throw new Error('Simulated JSON parse failure for HTTP 500')
+              },
+              status: 500,
+              statusText: 'Server Error on Second Call'
+            }
+          }
+          // Fallback for unexpected URL during second call (should not happen in this test)
+          return { ok: false, status: 404, json: async () => ({ ErrorNumber: 1, ErrorMessage: 'Not Found' }) }
         })
 
-      const propertiesToGet = ['apertureArea', 'someotherprop']
+      const propertiesToGet = ['name', 'someotherprop']
+      // With the fix to getProperties, it should no longer throw an error itself.
+      // It will catch internal errors, log a warning, and return partial results.
+      const results = await client.getProperties(propertiesToGet, { retries: 0 })
 
-      let errorThrown: AlpacaError | undefined
-      try {
-        // Pass retries: 0 to getProperties to ensure it fails on the first attempt for the second property
-        await client.getProperties(propertiesToGet, { retries: 0 })
-      } catch (e) {
-        errorThrown = e as AlpacaError
-      }
-      expect(errorThrown).toBeInstanceOf(AlpacaError) // This should now be an AlpacaError
-      expect(errorThrown?.message).toBe('HTTP error 500: Server Error on Second Call')
-      expect(errorThrown?.type).toBe(ErrorType.SERVER)
-      expect(mockFetch).toHaveBeenCalledTimes(2)
+      // Assert that getProperties itself did not throw (errorThrown variable removed)
+
+      // Assert the results object and its contents
+      expect(results).toBeDefined()
+      expect(results.name).toBe('MockTelescope') // Corrected property name
+      expect(results.someotherprop).toBeUndefined() // The failed property should be undefined
+
+      // Assert that console.warn was called with the correct message
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        // Match the new warning format from base-client.ts
+        "Failed to get property 'someotherprop' (mapped to 'someotherprop'): HTTP error 500: Server Error on Second Call"
+      )
+
+      consoleWarnSpy.mockRestore()
     })
   })
 

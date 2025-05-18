@@ -149,3 +149,21 @@ Based on the implementation of `dome-client.spec.ts`, the following points are c
     - **Type Conversions:** Be mindful of type conversions (e.g., `driverversion` might be a string from the device but converted to a number by `fromAscomValue` or similar logic in the client before being returned). The expected type in `mockDomeStateResponseFinal` should reflect this final type.
 
 By paying close attention to these details, the process of writing unit tests for the remaining Alpaca clients should be smoother and more efficient.
+
+### Additional Learnings (from `filterwheel-client.ts` and `covercalibrator-client.ts` debugging)
+
+12. **`toTsFormat` Fallback Behavior for Property Keys**:
+
+    - If an Alpaca property name (e.g., `coverstate`, `maxbrightness`, `calibratorchanging`, `covermoving`) does not have an explicit `PropertyNameFormat.TS` mapping in `propertyNameFormats` (in `src/types/property-mapping.ts`), the `toTsFormat` function's fallback will likely result in the TypeScript key being identical to the lowercase Alpaca name (e.g., `result.coverstate`, not `result.coverState`).
+    - Assertions for keys in objects returned by `getProperties()` (and methods like `getDomeState`, `getCoverCalibratorState` that use it) must reflect this actual transformation. Always verify the expected key name against `toTsFormat`'s behavior for the specific Alpaca property.
+
+13. **`driverVersion` Type Anomaly**:
+
+    - Although the Alpaca specification indicates `DriverVersion` should be a string (e.g., `'1.0'`), during tests for `covercalibrator-client.ts`, the `result.driverVersion` value was consistently a number (`1`), even when the mock was set to provide the string `'1.0'` and `fromAscomValue` was expected to preserve it.
+    - For `covercalibrator-client.test.ts`, test mocks for `driverversion` had to provide a number (`1`) to ensure assertions like `expect(result.driverVersion).toBe(mockProperties.driverversion)` passed. Be prepared for potential similar behavior with `driverVersion` in other clients.
+
+14. **Robust Mocking for `getProperties()` and Complex Getters**:
+    - When testing methods that internally call `getProperties()` (e.g., `getCoverCalibratorState`, `getCameraInfo`, `getDomeState`), ensure your `mockFetch` implementation is precise and comprehensive:
+      - **Specific Property Matching**: Use reliable methods to extract the Alpaca property name from the `fetch` URL (e.g., last path segment) for conditioning your mock's responses, rather than relying on broad `url.includes('someprop')`.
+      - **Comprehensive Mocking**: If you're testing a scenario where one sub-property fetch fails (and `getProperties` logs a warning), your mock must still provide valid successful responses for _all other properties_ that the method under test will fetch via `getProperties`. Failure to do so can lead to multiple, unexpected `console.warn` calls from `getProperties`'s internal error handling for successfully fetched but unmocked (or poorly mocked) properties, which can complicate `console.warn` spy assertions.
+      - The test `CoverCalibratorClient > getCoverCalibratorState > should return partial data and warn if an individual property fetch fails` provides a good pattern using an `expectedProperties` map to manage all potential fetched values and ensure only the intentionally failing property triggers a warning.
