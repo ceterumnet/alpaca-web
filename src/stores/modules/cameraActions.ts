@@ -468,7 +468,9 @@ export function createCameraActions() {
                   this.updateDeviceProperties(deviceId, {
                     imageData,
                     hasImage: true,
-                    isExposing: false // Ensure exposure state is set to false when image is downloaded
+                    isExposing: false, // Ensure exposure state is set to false when image is downloaded
+                    cameraState: 0, // CameraStates.Idle
+                    imageReady: false // Explicitly set imageReady to false after download
                   })
 
                   // Emit exposure complete event with image data

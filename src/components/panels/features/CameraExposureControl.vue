@@ -71,7 +71,6 @@ const exposureDuration = ref(1.0)
 const isLight = ref(true)
 const exposureInProgress = ref(false)
 const percentComplete = ref(0)
-const imageReady = ref(false)
 const error = ref('')
 const pollingIntervals = ref<number[]>([])
 
@@ -175,7 +174,6 @@ const startExposure = async () => {
     error.value = ''
     exposureInProgress.value = true
     percentComplete.value = 0
-    imageReady.value = false
 
     if (isCameraClient) {
       // Always use callDeviceMethod for startexposure
@@ -215,7 +213,7 @@ const setupPolling = () => {
 
       // Check if the exposure is complete
       if (percentComplete.value >= 100) {
-        exposureInProgress.value = false
+        exposureInProgress.value = false // Exposure phase is done
         emit('exposureComplete')
         // Clear this interval since exposure is complete
         clearInterval(progressInterval)
@@ -224,12 +222,10 @@ const setupPolling = () => {
         pollingIntervals.value = pollingIntervals.value.filter((id) => id !== progressInterval)
 
         console.log(
-          '%c✅ CameraExposureControl: Exposure complete, starting image ready polling',
+          '%c✅ CameraExposureControl: Exposure reported 100% complete. Store will handle image download.',
           'color: #4caf50'
         )
-
-        // Start image ready polling only after exposure is complete
-        startImageReadyPolling()
+        // Removed: startImageReadyPolling() - Store handles image readiness and download
       }
     } catch (err) {
       console.error('Error polling exposure progress:', err)
@@ -240,128 +236,10 @@ const setupPolling = () => {
   pollingIntervals.value.push(progressInterval)
 }
 
-// Separate function to start image ready polling
-const startImageReadyPolling = () => {
-  // Poll for image ready (every 1 second)
-  const readyInterval = window.setInterval(async () => {
-    try {
-      console.log('%c🔍 CameraExposureControl: Polling imageready', 'color: orange')
-      const ready = await unifiedStore.getDeviceProperty(props.deviceId, 'imageready')
-      imageReady.value = Boolean(ready)
-
-      // If image is ready, download it
-      if (imageReady.value) {
-        console.log(
-          '%c📷 CameraExposureControl: Image ready detected, stopping polling',
-          'color: #4caf50'
-        )
-        // Stop polling for image ready
-        clearInterval(readyInterval)
-
-        // Remove from our tracking array
-        pollingIntervals.value = pollingIntervals.value.filter((id) => id !== readyInterval)
-
-        // Download the image
-        await downloadImage()
-      }
-    } catch (err) {
-      console.error('Error polling image ready status:', err)
-    }
-  }, 1000)
-
-  // Add interval to our tracking array
-  pollingIntervals.value.push(readyInterval)
-}
-
 // Clear all polling intervals
 const clearPollingIntervals = () => {
   pollingIntervals.value.forEach((id) => clearInterval(id))
   pollingIntervals.value = []
-}
-
-// Download the image from the camera using the correct ASCOM Alpaca ImageBytes format
-const downloadImage = async () => {
-  try {
-    console.log('Downloading image...')
-    debugClientStatus(unifiedStore, props.deviceId)
-
-    try {
-      // Get device information
-      const device = unifiedStore.getDeviceById(props.deviceId)
-      if (!device) {
-        throw new Error(`Device ${props.deviceId} not found`)
-      }
-      
-      // Always use direct GET request for imagearray as per Alpaca spec
-      const imageData: ArrayBuffer | null = null
-      if (device?.apiBaseUrl) {
-        try {
-          // Create a URL for direct image download
-          const apiBaseUrl = device.apiBaseUrl
-          const endpoint = `${apiBaseUrl}/${props.downloadMethod}`
-          console.log(`Attempting direct image download with GET from: ${endpoint}`)
-          // Use fetch API with proper headers for Alpaca ImageBytes format
-          const response = await fetch(endpoint, {
-            method: 'GET',
-            headers: {
-              Accept: 'application/imagebytes,application/json',
-              'User-Agent': 'AlpacaWeb'
-            }
-          })
-          if (!response.ok) {
-            throw new Error(`HTTP error: ${response.status} ${response.statusText}`)
-          }
-          // Get binary data as ArrayBuffer
-          const fetchedData = await response.arrayBuffer()
-          console.log(`Successfully received image data via direct GET, size: ${fetchedData.byteLength} bytes`)
-          emit('imageDownloaded', fetchedData)
-          return
-        } catch (fetchError) {
-          console.warn(`Direct fetch failed: ${fetchError}`)
-          // Continue to next approach
-        }
-      }
-      
-      // Last resort: Try JSON array format (this is highly inefficient but might work with older devices)
-      if (!imageData) {
-        try {
-          console.warn('Falling back to JSON array format (this will be slow)')
-          // Need to use a direct fetch with GET for imagearray
-          const jsonEndpoint = `${device?.apiBaseUrl}/imagearray`
-          const jsonResponse = await fetch(jsonEndpoint, {
-            method: 'GET',
-            headers: {
-              Accept: 'application/json',
-              'User-Agent': 'AlpacaWeb'
-            }
-          })
-          
-          if (jsonResponse.ok) {
-            const jsonData = await jsonResponse.json()
-            if (jsonData && jsonData.Value && Array.isArray(jsonData.Value)) {
-              // Convert JSON array to typed array
-              const typedArray = new Uint8Array(jsonData.Value)
-              const jsonImageData = typedArray.buffer
-              console.log(`Successfully received image data via JSON, size: ${jsonImageData.byteLength} bytes`)
-              emit('imageDownloaded', jsonImageData)
-              return
-            }
-          }
-        } catch (jsonError) {
-          console.warn(`JSON fallback failed: ${jsonError}`)
-        }
-      }
-      
-      throw new Error('All image download attempts failed')
-    } catch (err) {
-      console.error(`Image download error:`, err)
-      error.value = `Failed to download image: ${err}`
-      emit('error', error.value)
-    }
-  } catch (error) {
-    console.error('Connection error:', error)
-    console.log(`=== CONNECTION DEBUG END ===`)
-  }
 }
 
 // Add a watcher for deviceId changes to force refresh
@@ -371,7 +249,6 @@ watch(() => props.deviceId, (newId, oldId) => {
     clearPollingIntervals()
     exposureInProgress.value = false
     percentComplete.value = 0
-    imageReady.value = false
     error.value = ''
     
     // Update component state tracking
@@ -394,6 +271,19 @@ watch(() => props.deviceId, (newId, oldId) => {
     })
   }
 }, { immediate: true })
+
+// Watch for imageData from the store to emit imageDownloaded event
+watch(() => unifiedStore.getDeviceById(props.deviceId)?.properties?.imageData, (newImageData, oldImageData) => {
+  if (newImageData && newImageData instanceof ArrayBuffer && newImageData.byteLength > 0) {
+    // Check if it's actually new data. This comparison might need refinement
+    // if oldImageData could be the same ArrayBuffer instance but modified,
+    // however, Pinia typically creates new state objects/values.
+    if (newImageData !== oldImageData) {
+      console.log('%c📷 CameraExposureControl: Detected new image data from store', 'color: #4caf50');
+      emit('imageDownloaded', newImageData);
+    }
+  }
+}, { deep: true });
 
 // Add explicit update for isConnected value
 const forceUpdateDisplay = () => {
