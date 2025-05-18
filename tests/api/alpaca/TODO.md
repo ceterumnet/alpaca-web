@@ -7,7 +7,7 @@ This document tracks the progress of creating unit tests for the Alpaca client f
 - [x] `camera-client.ts`
 - [x] `covercalibrator-client.ts`
 - [x] `dome-client.ts`
-- [ ] `filterwheel-client.ts`
+- [x] `filterwheel-client.ts`
 - [ ] `focuser-client.ts`
 - [ ] `observingconditions-client.ts`
 - [ ] `rotator-client.ts`
