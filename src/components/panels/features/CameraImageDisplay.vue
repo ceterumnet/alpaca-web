@@ -11,7 +11,7 @@ import {
   generateDisplayImage,
   calculateHistogram as calculateLibHistogram
 } from '@/lib/ASCOMImageBytes'
-import type { ProcessedImageData } from '@/lib/ASCOMImageBytes'
+import type { ProcessedImageData, BayerPattern } from '@/lib/ASCOMImageBytes'
 import Icon from '@/components/ui/Icon.vue' // Import the Icon component
 
 const props = defineProps({
@@ -43,6 +43,11 @@ const autoStretch = ref(true)
 const useRobustStretch = ref(true)
 const robustPercentile = ref(98) // Exclude top 2% of pixels as outliers
 
+// Debayering state
+const enableDebayer = ref(false)
+const selectedBayerPattern = ref<BayerPattern>('RGGB')
+const bayerPatternOptions = ref<BayerPattern[]>(['RGGB', 'GRBG', 'GBRG', 'BGGR'])
+
 // Full-screen state
 const isFullScreen = ref(false)
 const fullScreenImageSrc = ref('')
@@ -68,9 +73,21 @@ const drawImage = async () => {
     return
   }
 
-  // Process the image if not already done
+  // Process the image if not already done, or if debayer settings changed
+  // The processedImage will be null if props.imageData changes (see watch below)
+  // or if we need to re-process due to bayer settings.
   if (!processedImage.value) {
-    processedImage.value = processImageBytes(props.imageData, props.width, props.height)
+    processedImage.value = processImageBytes(
+        props.imageData,
+        props.width,
+        props.height,
+        enableDebayer.value ? selectedBayerPattern.value : undefined
+      )
+  }
+  
+  if (!processedImage.value) { // Check again in case processing failed
+      console.error("Image processing failed in drawImage");
+      return;
   }
 
   const canvas = canvasRef.value
@@ -95,11 +112,24 @@ const drawImage = async () => {
 
   // Apply robust stretch if enabled
   if (autoStretch.value && useRobustStretch.value && processedImage.value.pixelData.length > 100) {
+    let dataForRobustCalc: Uint8Array | Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array | Float64Array | number[] = processedImage.value.pixelData;
+    const robustWidth = imageWidth;
+    const robustHeight = imageHeight;
+    let orderForRobust: 'column-major' | 'row-major' = processedImage.value.isDebayered ? 'row-major' : 'column-major';
+
+    if (processedImage.value.isDebayered && processedImage.value.originalPixelData) {
+        // Convert to number[] to simplify type compatibility for calculateRobustPercentiles
+        dataForRobustCalc = Array.from(processedImage.value.originalPixelData);
+        orderForRobust = 'column-major'; 
+    }
+
     const robustValues = calculateRobustPercentiles(
-      processedImage.value.pixelData,
-      processedImage.value.width,
-      processedImage.value.height,
-      robustPercentile.value
+      dataForRobustCalc, // Use potentially original data
+      robustWidth,
+      robustHeight,
+      robustPercentile.value,
+      orderForRobust, // Pass data order
+      processedImage.value.isDebayered ? 3 : 1 // Pass channels
     )
 
     if (robustValues.max > robustValues.min) {
@@ -121,7 +151,8 @@ const drawImage = async () => {
     processedImage.value.pixelData,
     imageWidth,
     imageHeight,
-    lut
+    lut,
+    processedImage.value.channels // Pass channels
   )
 
   // Create ImageData object for canvas
@@ -141,31 +172,56 @@ const drawImage = async () => {
 
 // Calculate robust percentiles for stretch
 const calculateRobustPercentiles = (
-  data: Uint8Array | Uint16Array | Uint32Array | number[],
+  data: Uint8Array | Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array | Float64Array | number[],
   width: number,
   height: number,
-  upperPercentile: number = 98
+  upperPercentile: number = 98,
+  order: 'column-major' | 'row-major' = 'column-major', // New parameter for data order
+  channels: 1 | 3 = 1 // New parameter for channels
 ) => {
   // Sample values for percentile calculation
   const validValues = []
   const pixelCount = width * height
-  const sampleStep = Math.max(1, Math.floor(Math.sqrt(pixelCount / 10)))
+  const sampleStep = Math.max(1, Math.floor(Math.sqrt(pixelCount / 10))) // Reduced sample size for perf
 
-  // Sample using column-major order (ASCOM format)
-  for (let y = 0; y < height; y += sampleStep) {
-    for (let x = 0; x < width; x += sampleStep) {
-      const idx = x * height + y
-      if (idx < data.length) {
-        const pixel = Number(data[idx])
-        if (isFinite(pixel) && !isNaN(pixel)) {
-          validValues.push(pixel)
+  if (channels === 1) {
+    // Monochrome data processing
+    for (let y = 0; y < height; y += sampleStep) {
+      for (let x = 0; x < width; x += sampleStep) {
+        const idx = order === 'column-major' ? x * height + y : y * width + x;
+        if (idx < data.length) {
+          const pixel = Number(data[idx])
+          if (isFinite(pixel) && !isNaN(pixel)) {
+            validValues.push(pixel)
+          }
         }
       }
     }
+  } else { // RGB data, calculate based on luminance
+      for (let y = 0; y < height; y += sampleStep) {
+        for (let x = 0; x < width; x += sampleStep) {
+            // Assuming RGB data is row-major [R,G,B,R,G,B...] if channels === 3
+            const baseIdx = (y * width + x) * 3; 
+            if (baseIdx + 2 < data.length) {
+                const r = Number(data[baseIdx]);
+                const g = Number(data[baseIdx + 1]);
+                const b = Number(data[baseIdx + 2]);
+                if (isFinite(r) && !isNaN(r) && isFinite(g) && !isNaN(g) && isFinite(b) && !isNaN(b)) {
+                    const luminance = (r + g + b) / 3; // Simple average luminance
+                    validValues.push(luminance);
+                }
+            }
+        }
+    }
   }
 
+
   if (validValues.length === 0) {
-    return { min: 0, max: 65535 }
+    // Try to get a sensible default max based on typical data type ranges
+    let defaultMax = 65535; // Default for 16-bit
+    if (data instanceof Uint8Array) defaultMax = 255;
+    else if (data instanceof Uint32Array) defaultMax = Math.pow(2,32)-1;
+    return { min: 0, max: defaultMax }
   }
 
   // Sort values for percentile calculation
@@ -180,16 +236,19 @@ const calculateRobustPercentiles = (
     Math.floor(validValues.length * (upperPercentile / 100))
   )
 
-  // Get the values at these percentiles
+  const robustMin = validValues[lowerIndex];
+  const robustMax = validValues[upperIndex];
+
+  // Ensure min is not greater than max, can happen with very flat data or small samples
   return {
-    min: validValues[lowerIndex],
-    max: validValues[upperIndex]
+    min: Math.min(robustMin, robustMax),
+    max: robustMax
   }
 }
 
 // Calculate histogram from the image data
 const calculateHistogram = () => {
-  if (props.imageData.byteLength === 0) {
+  if (props.imageData.byteLength === 0 || !processedImage.value) {
     histogram.value = []; // Clear histogram data
     // If canvas exists, clear it
     if (histogramCanvas.value) {
@@ -202,10 +261,22 @@ const calculateHistogram = () => {
     return [];
   }
 
-  // Process the image if not already done
+  // If processedImage.value is not available, it implies it needs reprocessing.
+  // This is typically handled by the watcher for props.imageData or bayer settings.
+  // However, if called directly and processedImage is null, we should try to process.
   if (!processedImage.value) {
-    processedImage.value = processImageBytes(props.imageData, props.width, props.height);
+     processedImage.value = processImageBytes(
+        props.imageData,
+        props.width,
+        props.height,
+        enableDebayer.value ? selectedBayerPattern.value : undefined
+      )
+      if (!processedImage.value) {
+          console.error("Image processing failed in calculateHistogram");
+          return [];
+      }
   }
+
 
   // Verify we have valid data
   if (!processedImage.value || processedImage.value.pixelData.length === 0) {
@@ -225,38 +296,30 @@ const calculateHistogram = () => {
   const imageHeight = processedImage.value.height;
 
   // Calculate range for histogram
-  let min = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value;
-  let max = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value;
+  const min = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value;
+  const max = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value;
 
-  // Apply robust stretch if enabled
-  if (autoStretch.value && useRobustStretch.value) {
-    const robustValues = calculateRobustPercentiles(
-      processedImage.value.pixelData,
-      imageWidth,
-      imageHeight,
-      robustPercentile.value
-    );
+  // Apply robust stretch if enabled (using already calculated min/max from drawImage if autoStretch is on)
+  // The min/maxPixelValue on processedImage are ALREADY robustly calculated if autoStretch was on.
+  // So, for histogram, we use these values directly if autoStretch is on.
+  // Manual stretch values (minPixelValue.value, maxPixelValue.value) are set by user or by auto-stretch application.
 
-    if (robustValues.max > robustValues.min) {
-      min = robustValues.min;
-      max = robustValues.max;
-    }
-  }
-
-  // Store min/max for stretching and UI
+  // Store min/max for stretching and UI (already done in drawImage, this is for consistency if called separately)
   if (autoStretch.value) {
-    minPixelValue.value = min;
-    maxPixelValue.value = max;
+    minPixelValue.value = min; // min comes from processedImage.minPixelValue
+    maxPixelValue.value = max; // max comes from processedImage.maxPixelValue
   }
-
+  
   // Use library function to calculate histogram efficiently
   const hist = calculateLibHistogram(
     processedImage.value.pixelData,
     imageWidth,
     imageHeight,
-    min,
-    max,
-    256
+    min, // Use the min (possibly robustly calculated)
+    max, // Use the max (possibly robustly calculated)
+    256,
+    processedImage.value.channels, // Pass channels
+    processedImage.value.isDebayered ? 'row-major' : 'column-major' // Pass order
   );
 
   histogram.value = hist; 
@@ -361,9 +424,24 @@ watch(
   (newValue) => {
     if (newValue.byteLength > 0) {
       // Clear cached data and reprocess
-      processedImage.value = null
-      calculateHistogram()
-      drawImage()
+      processedImage.value = null 
+      // applyStretch will be called by the other watcher if settings change, 
+      // or call it directly here if only image data changes without other settings.
+      // For simplicity, let the multi-param watcher handle it.
+      // However, to ensure immediate update on image change, we need to call it.
+      applyStretch(); 
+    } else {
+        // Clear image and histogram if no image data
+        processedImage.value = null;
+        histogram.value = [];
+        if (canvasRef.value) {
+            const ctx = canvasRef.value.getContext('2d');
+            if (ctx) ctx.clearRect(0,0, canvasRef.value.width, canvasRef.value.height);
+        }
+        if (histogramCanvas.value) {
+            const ctxHist = histogramCanvas.value.getContext('2d');
+            if (ctxHist) ctxHist.clearRect(0,0, histogramCanvas.value.width, histogramCanvas.value.height);
+        }
     }
   }
 )
@@ -372,17 +450,24 @@ watch(
 watch(
   () => [
     stretchMethod.value,
-    minPixelValue.value,
-    maxPixelValue.value,
+    minPixelValue.value, // Manual min
+    maxPixelValue.value, // Manual max
     autoStretch.value,
     useRobustStretch.value,
     robustPercentile.value,
-    currentThemeRef.value
+    currentThemeRef.value,
+    enableDebayer.value, // Add debayer enable
+    selectedBayerPattern.value // Add selected bayer pattern
   ],
   () => {
+    // When these settings change, we need to re-process the image from raw data
+    // because bayer pattern or robust stretch source data might change.
+    if (props.imageData.byteLength > 0) {
+        processedImage.value = null; // Force re-processing in applyStretch
+    }
     applyStretch();
   },
-  { immediate: false }
+  { immediate: false } // Set to false, applyStretch will be called onMount if needed
 )
 
 // Initialize on mount
@@ -449,6 +534,22 @@ onBeforeUnmount(() => {
         <label for="robust-percentile">Percentile:</label>
         <input id="robust-percentile" v-model.number="robustPercentile" type="number" min="80" max="100" @change="applyStretch">
       </div>
+      
+      <!-- Debayer Controls -->
+      <div class="control-group">
+        <label for="enable-debayer">Debayer Image:</label>
+        <input id="enable-debayer" v-model="enableDebayer" type="checkbox" @change="applyStretch">
+      </div>
+      <div v-if="enableDebayer" class="control-group">
+        <label for="bayer-pattern">Bayer Pattern:</label>
+        <select id="bayer-pattern" v-model="selectedBayerPattern" @change="applyStretch">
+          <option v-for="pattern in bayerPatternOptions" :key="pattern" :value="pattern">
+            {{ pattern }}
+          </option>
+        </select>
+      </div>
+      <!-- End Debayer Controls -->
+
     </div>
     <div v-if="props.imageData.byteLength > 0 && histogram.length > 0" class="histogram-container">
       <canvas ref="histogramCanvas" class="histogram-canvas"></canvas>
