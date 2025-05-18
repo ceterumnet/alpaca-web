@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { CameraClient } from '@/api/alpaca/camera-client'
 import { AlpacaError, ErrorType } from '@/api/alpaca/errors'
 import type { Device, UnifiedDevice } from '@/types/device.types' // Using UnifiedDevice for a more complete mock
+import { DEFAULT_OPTIONS } from '@/api/alpaca/types' // Import for DEFAULT_OPTIONS
 
 // Mock the global fetch
 const mockFetch = (global.fetch = vi.fn())
@@ -1015,8 +1016,7 @@ describe('CameraClient', () => {
 
     it('should fetch most common properties successfully in a happy path scenario', async () => {
       const mockProperties: Record<string, unknown> = {
-        // Stage 1: Fundamental capabilities and mode discriminators
-        sensortype: 1, // Example: Color
+        sensortype: 1,
         cangetcoolerpower: true,
         cansetccdtemperature: true,
         canfastreadout: true,
@@ -1026,10 +1026,9 @@ describe('CameraClient', () => {
         canstopexposure: true,
         gains: ['High', 'Low'],
         offsets: [10, 20],
-        // Stage 2: Truly common, non-conditional properties
         binx: 1,
         biny: 1,
-        camerastate: 0, // Idle
+        camerastate: 0,
         cameraxsize: 2048,
         cameraysize: 1536,
         electronsperadu: 1.5,
@@ -1053,7 +1052,6 @@ describe('CameraClient', () => {
         startx: 0,
         starty: 0,
         subexposureduration: 0,
-        // Stage 3: Conditional & State-dependent (mocking some as available)
         ispulseguiding: false,
         lastexposureduration: -1,
         lastexposurestarttime: 'N/A',
@@ -1068,7 +1066,6 @@ describe('CameraClient', () => {
         setccdtemperature: -10.0,
         fastreadout: false
       }
-
       mockFetch.mockImplementation(async (url: string | URL | Request) => {
         const urlString = typeof url === 'string' ? url : url.toString()
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
@@ -1087,9 +1084,7 @@ describe('CameraClient', () => {
           json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: 'Not implemented/Not applicable' })
         })
       })
-
       const cameraInfo = await client.getCameraInfo()
-
       expect(cameraInfo['sensortype']).toBe(mockProperties.sensortype)
       expect(cameraInfo['cangetcoolerpower']).toBe(mockProperties.cangetcoolerpower)
       expect(cameraInfo['gains']).toEqual(mockProperties.gains)
@@ -1099,7 +1094,6 @@ describe('CameraClient', () => {
       expect(cameraInfo['ccdtemperature']).toBe(mockProperties.ccdtemperature)
       expect(cameraInfo['fastreadout']).toBe(mockProperties.fastreadout)
       expect(cameraInfo['lastexposureduration']).toBe(mockProperties.lastexposureduration)
-
       for (const key in mockProperties) {
         if (key === 'gainmin' || key === 'gainmax' || key === 'offsetmin' || key === 'offsetmax') {
           continue
@@ -1107,7 +1101,6 @@ describe('CameraClient', () => {
         expect(cameraInfo).toHaveProperty(key)
         expect(cameraInfo[key]).toEqual(mockProperties[key])
       }
-
       const totalPropertiesAttempted = Object.keys(mockProperties).length + 3
       expect(consoleWarnSpy.mock.calls.length).toBeLessThan(totalPropertiesAttempted / 2)
       consoleWarnSpy.mock.calls.forEach((call) => {
@@ -1118,22 +1111,18 @@ describe('CameraClient', () => {
 
     it('should not fetch Bayer properties if sensortype indicates monochrome', async () => {
       const mockMonochromeProperties: Record<string, unknown> = {
-        sensortype: 0, // Monochrome
-        cangetcoolerpower: false, // Keep other capabilities minimal for focus
+        sensortype: 0,
+        cangetcoolerpower: false,
         cansetccdtemperature: false,
         canfastreadout: false,
-        gains: [], // No gain list
-        offsets: [], // No offset list
-        cameraxsize: 100 // Minimal other properties
-        // IMPORTANT: bayeroffsetx and bayeroffsety are intentionally omitted
+        gains: [],
+        offsets: [],
+        cameraxsize: 100
       }
-
       mockFetch.mockImplementation(async (url: string | URL | Request) => {
         const urlString = typeof url === 'string' ? url : url.toString()
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
-
         if (propertyName === 'bayeroffsetx' || propertyName === 'bayeroffsety') {
-          // If these are called, it's a test failure, but we can mock a response to see if client handles it
           return Promise.resolve({
             ok: false,
             status: 400,
@@ -1147,32 +1136,26 @@ describe('CameraClient', () => {
             json: async () => ({ Value: mockMonochromeProperties[propertyName], ErrorNumber: 0, ErrorMessage: '' })
           })
         }
-        // Default for other unmocked properties
         return Promise.resolve({
           ok: false,
           status: 400,
           json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: 'Not implemented' })
         })
       })
-
       const cameraInfo = await client.getCameraInfo()
-
-      // Assertions
       expect(cameraInfo['sensortype']).toBe(0)
       expect(cameraInfo).not.toHaveProperty('bayeroffsetx')
       expect(cameraInfo).not.toHaveProperty('bayeroffsety')
-
-      // Verify fetch was not called for Bayer properties
       let bayerFetchCalled = false
       mockFetch.mock.calls.forEach((call) => {
         const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
-        if (urlString.includes('bayeroffsetx') || urlString.includes('bayeroffsety')) {
+        const pathSegments = new URL(urlString).pathname.split('/')
+        const actualFetchedProperty = pathSegments[pathSegments.length - 1]
+        if (actualFetchedProperty === 'bayeroffsetx' || actualFetchedProperty === 'bayeroffsety') {
           bayerFetchCalled = true
         }
       })
       expect(bayerFetchCalled).toBe(false)
-
-      // Verify no warnings specifically for Bayer properties
       consoleWarnSpy.mock.calls.forEach((call) => {
         expect(call[0]).not.toContain('bayeroffsetx')
         expect(call[0]).not.toContain('bayeroffsety')
@@ -1181,23 +1164,18 @@ describe('CameraClient', () => {
 
     it('should not fetch cooler properties if cooler capabilities are false', async () => {
       const mockNoCoolerProperties: Record<string, unknown> = {
-        sensortype: 0, // Monochrome, to simplify interactions
+        sensortype: 0,
         cangetcoolerpower: false,
         cansetccdtemperature: false,
         canfastreadout: false,
         gains: [],
         offsets: [],
         cameraxsize: 100
-        // Cooler related properties are intentionally omitted:
-        // coolerpower, heatsinktemperature, ccdtemperature, cooleron, setccdtemperature
       }
-
       const coolerPropertyNames = ['coolerpower', 'heatsinktemperature', 'ccdtemperature', 'cooleron', 'setccdtemperature']
-
       mockFetch.mockImplementation(async (url: string | URL | Request) => {
         const urlString = typeof url === 'string' ? url : url.toString()
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
-
         if (coolerPropertyNames.includes(propertyName)) {
           return Promise.resolve({
             ok: false,
@@ -1218,28 +1196,20 @@ describe('CameraClient', () => {
           json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: 'Not implemented' })
         })
       })
-
       const cameraInfo = await client.getCameraInfo()
-
-      // Assertions
       expect(cameraInfo['cangetcoolerpower']).toBe(false)
       expect(cameraInfo['cansetccdtemperature']).toBe(false)
       coolerPropertyNames.forEach((propName) => {
         expect(cameraInfo).not.toHaveProperty(propName)
       })
-
-      // Verify fetch was not called for cooler properties
       let coolerFetchCalled = false
-      let offendingUrl = '' // To store the URL that triggers the flag
+      let offendingUrl = ''
       mockFetch.mock.calls.forEach((call) => {
         const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
-        // More precise check: extract the actual Alpaca property/method name from the URL path
         const pathSegments = new URL(urlString).pathname.split('/')
         const actualFetchedProperty = pathSegments[pathSegments.length - 1]
-
         if (coolerPropertyNames.includes(actualFetchedProperty)) {
           if (!coolerFetchCalled) {
-            // Log only the first offending URL
             offendingUrl = urlString
           }
           coolerFetchCalled = true
@@ -1249,8 +1219,6 @@ describe('CameraClient', () => {
         console.log('[Test Debug] Offending URL that set coolerFetchCalled to true (data property was fetched):', offendingUrl)
       }
       expect(coolerFetchCalled).toBe(false)
-
-      // Verify no warnings specifically for cooler properties
       consoleWarnSpy.mock.calls.forEach((call) => {
         coolerPropertyNames.forEach((propName) => {
           expect(call[0]).not.toContain(propName)
@@ -1260,24 +1228,19 @@ describe('CameraClient', () => {
 
     it('should not fetch fastreadout data property if canfastreadout capability is false', async () => {
       const mockNoFastReadoutProperties: Record<string, unknown> = {
-        sensortype: 0, // Minimal other properties
+        sensortype: 0,
         cangetcoolerpower: false,
         cansetccdtemperature: false,
-        canfastreadout: false, // Key capability for this test
+        canfastreadout: false,
         gains: [],
         offsets: [],
         cameraxsize: 100
-        // fastreadout property is intentionally omitted
       }
-
       const fastReadoutDataPropertyName = 'fastreadout'
-
       mockFetch.mockImplementation(async (url: string | URL | Request) => {
         const urlString = typeof url === 'string' ? url : url.toString()
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
-
         if (propertyName === fastReadoutDataPropertyName) {
-          // This should not be called if canfastreadout is false
           return Promise.resolve({
             ok: false,
             status: 400,
@@ -1301,18 +1264,12 @@ describe('CameraClient', () => {
           json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: 'Not implemented' })
         })
       })
-
       const cameraInfo = await client.getCameraInfo()
-
-      // Assertions
       expect(cameraInfo['canfastreadout']).toBe(false)
       expect(cameraInfo).not.toHaveProperty(fastReadoutDataPropertyName)
-
-      // Verify fetch was not called for the fastreadout data property
       let fastReadoutDataPropertyFetched = false
       mockFetch.mock.calls.forEach((call) => {
         const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
-        // No try-catch needed here if malformed URL should fail the test
         const pathSegments = new URL(urlString).pathname.split('/')
         const actualFetchedProperty = pathSegments[pathSegments.length - 1]
         if (actualFetchedProperty === fastReadoutDataPropertyName) {
@@ -1320,10 +1277,7 @@ describe('CameraClient', () => {
         }
       })
       expect(fastReadoutDataPropertyFetched).toBe(false)
-
-      // Verify no warnings specifically for fastreadout data property if canfastreadout is false
       consoleWarnSpy.mock.calls.forEach((call) => {
-        // Check if the warning message contains the data property name and the condition
         const warningMessage = call[0] as string
         expect(warningMessage.includes(`Failed to fetch ${fastReadoutDataPropertyName}`) && warningMessage.includes('CanFastReadout is true')).toBe(
           false
@@ -1333,26 +1287,22 @@ describe('CameraClient', () => {
 
     it('should fetch gain (index) and not gainmin/gainmax if gains list is present and non-empty', async () => {
       const mockGainsList = ['High', 'Medium', 'Low']
-      const mockGainIndex = 1 // Corresponding to 'Medium'
+      const mockGainIndex = 1
       const mockPropertiesWithGainsList: Record<string, unknown> = {
         sensortype: 0,
         cangetcoolerpower: false,
         cansetccdtemperature: false,
         canfastreadout: false,
-        gains: mockGainsList, // Key property for this test
-        gain: mockGainIndex, // Expected to be fetched as index
-        offsets: [], // Keep other mode-switching properties minimal
+        gains: mockGainsList,
+        gain: mockGainIndex,
+        offsets: [],
         cameraxsize: 100
-        // gainmin and gainmax are intentionally omitted
       }
-
       mockFetch.mockImplementation(async (url: string | URL | Request) => {
         const urlString = typeof url === 'string' ? url : url.toString()
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
-
         if (propertyName === 'gainmin' || propertyName === 'gainmax') {
           return Promise.resolve({
-            // Should not be called
             ok: false,
             status: 400,
             json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: `Should not call ${propertyName} in Gains List Mode` })
@@ -1367,15 +1317,11 @@ describe('CameraClient', () => {
         }
         return Promise.resolve({ ok: false, status: 400, json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: 'Not implemented' }) })
       })
-
       const cameraInfo = await client.getCameraInfo()
-
-      // Assertions
       expect(cameraInfo['gains']).toEqual(mockGainsList)
       expect(cameraInfo['gain']).toBe(mockGainIndex)
       expect(cameraInfo).not.toHaveProperty('gainmin')
       expect(cameraInfo).not.toHaveProperty('gainmax')
-
       let gainMinFetched = false
       let gainMaxFetched = false
       mockFetch.mock.calls.forEach((call) => {
@@ -1398,10 +1344,10 @@ describe('CameraClient', () => {
         cangetcoolerpower: false,
         cansetccdtemperature: false,
         canfastreadout: false,
-        gains: mockEmptyGainsList, // Key: empty list
-        gain: mockGainValue, // Expected to be fetched as value
-        gainmin: mockGainMin, // Expected to be fetched
-        gainmax: mockGainMax, // Expected to be fetched
+        gains: mockEmptyGainsList,
+        gain: mockGainValue,
+        gainmin: mockGainMin,
+        gainmax: mockGainMax,
         offsets: [],
         cameraxsize: 100
       }
@@ -1417,10 +1363,8 @@ describe('CameraClient', () => {
             json: async () => ({ Value: mockPropertiesWithEmptyGainsList[propertyName], ErrorNumber: 0, ErrorMessage: '' })
           })
         }
-        // Allow calls to other non-critical properties for getCameraInfo to complete
         const nonCriticalCommonProps = ['cameraxsize', 'sensortype', 'cangetcoolerpower', 'cansetccdtemperature', 'canfastreadout', 'offsets']
         if (nonCriticalCommonProps.includes(propertyName) || propertyName.startsWith('can') || propertyName.includes('offset')) {
-          // Simplified catch-all for this test focus
           return Promise.resolve({ ok: true, status: 200, json: async () => ({ Value: null, ErrorNumber: 0, ErrorMessage: 'Generic Mock' }) })
         }
         return Promise.resolve({
@@ -1432,7 +1376,6 @@ describe('CameraClient', () => {
 
       const cameraInfo = await client.getCameraInfo()
 
-      // Assertions
       expect(cameraInfo['gains']).toEqual(mockEmptyGainsList)
       expect(cameraInfo['gain']).toBe(mockGainValue)
       expect(cameraInfo['gainmin']).toBe(mockGainMin)
@@ -1454,19 +1397,25 @@ describe('CameraClient', () => {
     })
 
     it('should fetch gain (value), gainmin, and gainmax if fetching gains list fails', async () => {
+      const originalRetries = DEFAULT_OPTIONS.retries
+      const originalRetryDelay = DEFAULT_OPTIONS.retryDelay
+      const originalTimeout = DEFAULT_OPTIONS.timeout
+
+      DEFAULT_OPTIONS.retries = 1
+      DEFAULT_OPTIONS.retryDelay = 1
+      DEFAULT_OPTIONS.timeout = 100
+
       const mockGainValue = 150
       const mockGainMin = 0
       const mockGainMax = 300
-      // For this test, 'gains' is NOT in mockPropertiesUndefinedGainsList, so fetching it will use the fallback error.
       const mockPropertiesUndefinedGainsList: Record<string, unknown> = {
         sensortype: 0,
         cangetcoolerpower: false,
         cansetccdtemperature: false,
         canfastreadout: false,
-        // 'gains' is intentionally omitted to simulate fetch failure
-        gain: mockGainValue, // Expected to be fetched as value
-        gainmin: mockGainMin, // Expected to be fetched
-        gainmax: mockGainMax, // Expected to be fetched
+        gain: mockGainValue,
+        gainmin: mockGainMin,
+        gainmax: mockGainMax,
         offsets: [],
         cameraxsize: 100
       }
@@ -1476,7 +1425,6 @@ describe('CameraClient', () => {
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
 
         if (propertyName === 'gains') {
-          // Simulate failure for 'gains'
           return Promise.resolve({
             ok: false,
             status: 500,
@@ -1501,59 +1449,64 @@ describe('CameraClient', () => {
         })
       })
 
-      consoleWarnSpy.mockClear() // Clear any previous warnings before this specific test
-      const cameraInfo = await client.getCameraInfo()
+      try {
+        consoleWarnSpy.mockClear()
+        const cameraInfo = await client.getCameraInfo()
 
-      // Assertions
-      expect(cameraInfo).not.toHaveProperty('gains')
-      expect(cameraInfo['gain']).toBe(mockGainValue)
-      expect(cameraInfo['gainmin']).toBe(mockGainMin)
-      expect(cameraInfo['gainmax']).toBe(mockGainMax)
+        expect(cameraInfo).not.toHaveProperty('gains')
+        expect(cameraInfo['gain']).toBe(mockGainValue)
+        expect(cameraInfo['gainmin']).toBe(mockGainMin)
+        expect(cameraInfo['gainmax']).toBe(mockGainMax)
 
-      let gainsFetchAttempted = false
-      let gainFetched = false
-      let gainMinFetched = false
-      let gainMaxFetched = false
-      mockFetch.mock.calls.forEach((call) => {
-        const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
-        const actualFetchedProperty = new URL(urlString).pathname.split('/').pop() || ''
-        if (actualFetchedProperty === 'gains') gainsFetchAttempted = true
-        if (actualFetchedProperty === 'gain') gainFetched = true
-        if (actualFetchedProperty === 'gainmin') gainMinFetched = true
-        if (actualFetchedProperty === 'gainmax') gainMaxFetched = true
-      })
-      expect(gainsFetchAttempted).toBe(true) // Ensure we attempted to fetch gains
-      expect(gainFetched).toBe(true)
-      expect(gainMinFetched).toBe(true)
-      expect(gainMaxFetched).toBe(true)
+        let gainsFetchAttempted = false
+        let gainFetched = false
+        let gainMinFetched = false
+        let gainMaxFetched = false
+        mockFetch.mock.calls.forEach((call) => {
+          const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
+          const actualFetchedProperty = new URL(urlString).pathname.split('/').pop() || ''
+          if (actualFetchedProperty === 'gains') gainsFetchAttempted = true
+          if (actualFetchedProperty === 'gain') gainFetched = true
+          if (actualFetchedProperty === 'gainmin') gainMinFetched = true
+          if (actualFetchedProperty === 'gainmax') gainMaxFetched = true
+        })
+        expect(gainsFetchAttempted).toBe(true)
+        expect(gainFetched).toBe(true)
+        expect(gainMinFetched).toBe(true)
+        expect(gainMaxFetched).toBe(true)
 
-      // Verify console.warn was called for failing to fetch 'gains'
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Could not fetch 'gains' list."), expect.any(Error))
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Could not fetch 'gains' list."), expect.any(Error))
+
+        const gainsCalls = mockFetch.mock.calls.filter((call) => {
+          const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
+          return (new URL(urlString).pathname.split('/').pop() || '') === 'gains'
+        })
+        expect(gainsCalls.length).toBe(1 + 1)
+      } finally {
+        DEFAULT_OPTIONS.retries = originalRetries
+        DEFAULT_OPTIONS.retryDelay = originalRetryDelay
+        DEFAULT_OPTIONS.timeout = originalTimeout
+      }
     })
 
-    // Tests for Offsets (analogous to Gains)
     it('should fetch offset (index) and not offsetmin/offsetmax if offsets list is present and non-empty', async () => {
       const mockOffsetsList = [10, 20, 30]
-      const mockOffsetIndex = 0 // Corresponding to 10
+      const mockOffsetIndex = 0
       const mockPropertiesWithOffsetsList: Record<string, unknown> = {
         sensortype: 0,
         cangetcoolerpower: false,
         cansetccdtemperature: false,
         canfastreadout: false,
-        gains: [], // Keep other mode-switching properties minimal
-        offsets: mockOffsetsList, // Key property for this test
-        offset: mockOffsetIndex, // Expected to be fetched as index
+        gains: [],
+        offsets: mockOffsetsList,
+        offset: mockOffsetIndex,
         cameraxsize: 100
-        // offsetmin and offsetmax are intentionally omitted
       }
-
       mockFetch.mockImplementation(async (url: string | URL | Request) => {
         const urlString = typeof url === 'string' ? url : url.toString()
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
-
         if (propertyName === 'offsetmin' || propertyName === 'offsetmax') {
           return Promise.resolve({
-            // Should not be called
             ok: false,
             status: 400,
             json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: `Should not call ${propertyName} in Offsets List Mode` })
@@ -1566,22 +1519,17 @@ describe('CameraClient', () => {
             json: async () => ({ Value: mockPropertiesWithOffsetsList[propertyName], ErrorNumber: 0, ErrorMessage: '' })
           })
         }
-        // Allow minimal other calls for getCameraInfo structure
         const nonCriticalCommonProps = ['cameraxsize', 'sensortype', 'cangetcoolerpower', 'cansetccdtemperature', 'canfastreadout', 'gains']
         if (nonCriticalCommonProps.includes(propertyName) || propertyName.startsWith('can') || propertyName.includes('gain')) {
           return Promise.resolve({ ok: true, status: 200, json: async () => ({ Value: null, ErrorNumber: 0, ErrorMessage: 'Generic Mock' }) })
         }
         return Promise.resolve({ ok: false, status: 400, json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: 'Not implemented' }) })
       })
-
       const cameraInfo = await client.getCameraInfo()
-
-      // Assertions
       expect(cameraInfo['offsets']).toEqual(mockOffsetsList)
       expect(cameraInfo['offset']).toBe(mockOffsetIndex)
       expect(cameraInfo).not.toHaveProperty('offsetmin')
       expect(cameraInfo).not.toHaveProperty('offsetmax')
-
       let offsetMinFetched = false
       let offsetMaxFetched = false
       mockFetch.mock.calls.forEach((call) => {
@@ -1605,17 +1553,15 @@ describe('CameraClient', () => {
         cansetccdtemperature: false,
         canfastreadout: false,
         gains: [],
-        offsets: mockEmptyOffsetsList, // Key: empty list
-        offset: mockOffsetValue, // Expected to be fetched as value
-        offsetmin: mockOffsetMin, // Expected to be fetched
-        offsetmax: mockOffsetMax, // Expected to be fetched
+        offsets: mockEmptyOffsetsList,
+        offset: mockOffsetValue,
+        offsetmin: mockOffsetMin,
+        offsetmax: mockOffsetMax,
         cameraxsize: 100
       }
-
       mockFetch.mockImplementation(async (url: string | URL | Request) => {
         const urlString = typeof url === 'string' ? url : url.toString()
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
-
         if (Object.prototype.hasOwnProperty.call(mockPropertiesWithEmptyOffsetsList, propertyName)) {
           return Promise.resolve({
             ok: true,
@@ -1633,15 +1579,11 @@ describe('CameraClient', () => {
           json: async () => ({ Value: null, ErrorNumber: 0x401, ErrorMessage: `Not implemented or unexpected call to ${propertyName}` })
         })
       })
-
       const cameraInfo = await client.getCameraInfo()
-
-      // Assertions
       expect(cameraInfo['offsets']).toEqual(mockEmptyOffsetsList)
       expect(cameraInfo['offset']).toBe(mockOffsetValue)
       expect(cameraInfo['offsetmin']).toBe(mockOffsetMin)
       expect(cameraInfo['offsetmax']).toBe(mockOffsetMax)
-
       let offsetFetched = false
       let offsetMinFetched = false
       let offsetMaxFetched = false
@@ -1658,6 +1600,14 @@ describe('CameraClient', () => {
     })
 
     it('should fetch offset (value), offsetmin, and offsetmax if fetching offsets list fails', async () => {
+      const originalRetries = DEFAULT_OPTIONS.retries
+      const originalRetryDelay = DEFAULT_OPTIONS.retryDelay
+      const originalTimeout = DEFAULT_OPTIONS.timeout
+
+      DEFAULT_OPTIONS.retries = 1
+      DEFAULT_OPTIONS.retryDelay = 1
+      DEFAULT_OPTIONS.timeout = 100
+
       const mockOffsetValue = 50
       const mockOffsetMin = 0
       const mockOffsetMax = 100
@@ -1667,10 +1617,9 @@ describe('CameraClient', () => {
         cansetccdtemperature: false,
         canfastreadout: false,
         gains: [],
-        // 'offsets' is intentionally omitted to simulate fetch failure
-        offset: mockOffsetValue, // Expected to be fetched as value
-        offsetmin: mockOffsetMin, // Expected to be fetched
-        offsetmax: mockOffsetMax, // Expected to be fetched
+        offset: mockOffsetValue,
+        offsetmin: mockOffsetMin,
+        offsetmax: mockOffsetMax,
         cameraxsize: 100
       }
 
@@ -1679,7 +1628,6 @@ describe('CameraClient', () => {
         const propertyName = new URL(urlString).pathname.split('/').pop() || ''
 
         if (propertyName === 'offsets') {
-          // Simulate failure for 'offsets'
           return Promise.resolve({
             ok: false,
             status: 500,
@@ -1704,34 +1652,44 @@ describe('CameraClient', () => {
         })
       })
 
-      consoleWarnSpy.mockClear() // Clear any previous warnings
-      const cameraInfo = await client.getCameraInfo()
+      try {
+        consoleWarnSpy.mockClear()
+        const cameraInfo = await client.getCameraInfo()
 
-      // Assertions
-      expect(cameraInfo).not.toHaveProperty('offsets')
-      expect(cameraInfo['offset']).toBe(mockOffsetValue)
-      expect(cameraInfo['offsetmin']).toBe(mockOffsetMin)
-      expect(cameraInfo['offsetmax']).toBe(mockOffsetMax)
+        expect(cameraInfo).not.toHaveProperty('offsets')
+        expect(cameraInfo['offset']).toBe(mockOffsetValue)
+        expect(cameraInfo['offsetmin']).toBe(mockOffsetMin)
+        expect(cameraInfo['offsetmax']).toBe(mockOffsetMax)
 
-      let offsetsFetchAttempted = false
-      let offsetFetched = false
-      let offsetMinFetched = false
-      let offsetMaxFetched = false
-      mockFetch.mock.calls.forEach((call) => {
-        const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
-        const actualFetchedProperty = new URL(urlString).pathname.split('/').pop() || ''
-        if (actualFetchedProperty === 'offsets') offsetsFetchAttempted = true
-        if (actualFetchedProperty === 'offset') offsetFetched = true
-        if (actualFetchedProperty === 'offsetmin') offsetMinFetched = true
-        if (actualFetchedProperty === 'offsetmax') offsetMaxFetched = true
-      })
-      expect(offsetsFetchAttempted).toBe(true) // Ensure we attempted to fetch offsets
-      expect(offsetFetched).toBe(true)
-      expect(offsetMinFetched).toBe(true)
-      expect(offsetMaxFetched).toBe(true)
+        let offsetsFetchAttempted = false
+        let offsetFetched = false
+        let offsetMinFetched = false
+        let offsetMaxFetched = false
+        mockFetch.mock.calls.forEach((call) => {
+          const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
+          const actualFetchedProperty = new URL(urlString).pathname.split('/').pop() || ''
+          if (actualFetchedProperty === 'offsets') offsetsFetchAttempted = true
+          if (actualFetchedProperty === 'offset') offsetFetched = true
+          if (actualFetchedProperty === 'offsetmin') offsetMinFetched = true
+          if (actualFetchedProperty === 'offsetmax') offsetMaxFetched = true
+        })
+        expect(offsetsFetchAttempted).toBe(true)
+        expect(offsetFetched).toBe(true)
+        expect(offsetMinFetched).toBe(true)
+        expect(offsetMaxFetched).toBe(true)
 
-      // Verify console.warn was called for failing to fetch 'offsets'
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Could not fetch 'offsets' list."), expect.any(Error))
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Could not fetch 'offsets' list."), expect.any(Error))
+
+        const offsetsCalls = mockFetch.mock.calls.filter((call) => {
+          const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
+          return (new URL(urlString).pathname.split('/').pop() || '') === 'offsets'
+        })
+        expect(offsetsCalls.length).toBe(1 + 1)
+      } finally {
+        DEFAULT_OPTIONS.retries = originalRetries
+        DEFAULT_OPTIONS.retryDelay = originalRetryDelay
+        DEFAULT_OPTIONS.timeout = originalTimeout
+      }
     })
   })
 })

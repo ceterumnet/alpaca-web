@@ -5,7 +5,7 @@ This document tracks the progress of creating unit tests for the Alpaca client f
 ## Client Test Status
 
 - [x] `camera-client.ts`
-- [ ] `covercalibrator-client.ts`
+- [x] `covercalibrator-client.ts`
 - [ ] `dome-client.ts`
 - [ ] `filterwheel-client.ts`
 - [ ] `focuser-client.ts`
@@ -83,5 +83,30 @@ This document tracks the progress of creating unit tests for the Alpaca client f
 9.  **Error Handling**: For methods that can throw `AlpacaError`, test these paths by mocking `fetch` to return error statuses (e.g., `ok: false, status: 500`) or Alpaca error objects in the JSON response.
 
 10. **Alpaca Endpoints & Parameter Casing**: Pay close attention to the expected Alpaca endpoint names (lowercase, e.g., `canabortexposure`, `startexposure`) and the casing of parameters within the request body (often PascalCase for `PUT` requests, e.g., `Duration`, `Light`, `Cooleron`).
+
+11. **Speeding Up Error/Retry Tests**: For tests that verify error handling with retries (which can be slow due to default retry delays), temporarily modify `DEFAULT_OPTIONS` from `@/api/alpaca/types` at the beginning of the specific test. Set `retries`, `retryDelay`, and `timeout` to very small values (e.g., 1, 1, 100 respectively). Adjust mock fetch call counts and assertions accordingly. CRITICALLY, ensure these global `DEFAULT_OPTIONS` are restored to their original values in a `finally` block to prevent test interference.
+
+    ```typescript
+    it('some error test that should be fast', async () => {
+      const originalRetries = DEFAULT_OPTIONS.retries
+      const originalRetryDelay = DEFAULT_OPTIONS.retryDelay
+      const originalTimeout = DEFAULT_OPTIONS.timeout
+
+      DEFAULT_OPTIONS.retries = 1
+      DEFAULT_OPTIONS.retryDelay = 1
+      DEFAULT_OPTIONS.timeout = 100
+
+      try {
+        // ... test logic mocking fetch for 1 retry (2 total calls)
+        // expect(mockFetch).toHaveBeenCalledTimes(1 + 1);
+      } catch (error) {
+        // ... expect error
+      } finally {
+        DEFAULT_OPTIONS.retries = originalRetries
+        DEFAULT_OPTIONS.retryDelay = originalRetryDelay
+        DEFAULT_OPTIONS.timeout = originalTimeout
+      }
+    })
+    ```
 
 This detailed list should serve as a good guide for the remaining client tests.
