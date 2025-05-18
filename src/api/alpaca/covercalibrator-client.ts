@@ -25,6 +25,16 @@ export class CoverCalibratorClient extends AlpacaClient {
     return this.getProperty('maxbrightness') as Promise<number>
   }
 
+  async getCalibratorChanging(): Promise<boolean> {
+    // ICoverCalibratorV2+
+    return this.getProperty('calibratorchanging') as Promise<boolean>
+  }
+
+  async getCoverMoving(): Promise<boolean> {
+    // ICoverCalibratorV2+
+    return this.getProperty('covermoving') as Promise<boolean>
+  }
+
   // PUT Methods
   async calibratorOff(): Promise<void> {
     await this.put('calibratoroff')
@@ -53,10 +63,16 @@ export class CoverCalibratorClient extends AlpacaClient {
       'calibratorstate',
       'coverstate',
       'maxbrightness',
+      'calibratorchanging', // V2
+      'covermoving', // V2
       // Standard properties
       'connected',
       'name',
-      'description'
+      'description',
+      'driverinfo',
+      'driverversion',
+      'interfaceversion',
+      'supportedactions'
     ]
     return this.getProperties(properties)
   }
