@@ -6,7 +6,7 @@ This document tracks the progress of creating unit tests for the Alpaca client f
 
 - [x] `camera-client.ts`
 - [x] `covercalibrator-client.ts`
-- [ ] `dome-client.ts`
+- [x] `dome-client.ts`
 - [ ] `filterwheel-client.ts`
 - [ ] `focuser-client.ts`
 - [ ] `observingconditions-client.ts`
@@ -110,3 +110,42 @@ This document tracks the progress of creating unit tests for the Alpaca client f
     ```
 
 This detailed list should serve as a good guide for the remaining client tests.
+
+### Lessons Learned / Common Pitfalls from `dome-client.ts`
+
+Based on the implementation of `dome-client.spec.ts`, the following points are crucial to remember for subsequent client tests to avoid repeated errors:
+
+1.  **Module Path Aliases (`@/`):**
+
+    - Ensure that Vitest configuration (`vitest.config.ts` or `vite.config.ts`) correctly resolves path aliases (e.g., `@/api/alpaca/errors`, `@/stores/types/device-store.types`).
+    - Linter errors might initially flag these if not perfectly configured, but they should resolve correctly during the test run if Vitest is set up properly.
+
+2.  **Enum Assumptions:**
+
+    - Do not assume the existence of enums (e.g., `DomeState.Open`) unless they are explicitly defined and imported. Alpaca often uses simple numeric or string literals for states. Verify with the Alpaca specification or client implementation.
+
+3.  **`DEFAULT_OPTIONS` for Retries/Timeouts (Pattern #11 Reminder):**
+
+    - Strictly apply Pattern #11 by modifying `DEFAULT_OPTIONS.retries`, `DEFAULT_OPTIONS.retryDelay`, and `DEFAULT_OPTIONS.timeout` for error/retry tests to significantly speed them up. Always restore original values in a `finally` block.
+
+4.  **Detailed Assertions for `fetch` Mocks:**
+
+    - **`deviceType` Casing:** The `deviceType` property in the client (e.g., `client.deviceType`) is typically lowercase (e.g., 'dome'), even if the device's `DeviceType` property in `mockXxxDevice` is PascalCase ('Dome'). Ensure assertions match the client's property.
+    - **`ClientID` Parameter:** For GET requests, `ClientID` is added as a URL parameter (`?ClientID=xxx`). For PUT requests, `ClientID` is typically added to the `URLSearchParams` body. Ensure `client.clientId` is used for dynamic matching, not hardcoded values.
+    - **`ClientTransactionID` Parameter:** This is generally _not_ added by the base client for GET request URLs. For PUT request bodies, it's also generally _not_ automatically added by the base client unless explicitly part of the method's parameters. Double-check if the specific client method or base client logic adds it.
+    - **Headers & Signal:** Always expect `headers: { Accept: 'application/json' }` (and `'Content-Type': 'application/x-www-form-urlencoded'` for PUTs) and `signal: expect.any(AbortSignal)` in `toHaveBeenCalledWith` for fetch mocks, as the base client adds these.
+    - **PUT Body:** Ensure the PUT body is correctly stringified if using `URLSearchParams` (e.g., `expectedBody.toString()`).
+
+5.  **`AlpacaError` Property Access:**
+
+    - When testing for `AlpacaError`, the device-specific error number is typically at `error.deviceError.errorNumber` or, more safely, `error.deviceError?.errorNumber` to avoid issues if `deviceError` is undefined.
+
+6.  \*\*Complex Getters (e.g., `getDomeState`, `getCameraInfo`):
+    - **Property Name Casing (`toTsFormat`):** These methods often use `getProperties()` which internally calls `toTsFormat` (from `src/types/property-mapping.ts`) to convert Alpaca property names (lowercase) to TypeScript format (often camelCase or as per `propertyNameFormats` map).
+      - The keys in the _final expected result object_ must match the output of `toTsFormat`.
+      - Check `propertyNameFormats` in `property-mapping.ts`. If a property is listed, its `PropertyNameFormat.TS` value is used.
+      - If a property is _not_ in `propertyNameFormats`, `toTsFormat` applies a fallback (e.g., `p.charAt(0).toLowerCase() + p.slice(1)`), which often leaves already-lowercase Alpaca names as is.
+      - The mock data provided to `mockFetch.mockImplementation` for individual `getProperty` calls should use the _original lowercase Alpaca property names_ as keys.
+    - **Type Conversions:** Be mindful of type conversions (e.g., `driverversion` might be a string from the device but converted to a number by `fromAscomValue` or similar logic in the client before being returned). The expected type in `mockDomeStateResponseFinal` should reflect this final type.
+
+By paying close attention to these details, the process of writing unit tests for the remaining Alpaca clients should be smoother and more efficient.
