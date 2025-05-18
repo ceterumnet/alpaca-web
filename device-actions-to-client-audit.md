@@ -76,12 +76,18 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 
 ### 5. Focuser
 
-- **Store Module:** No dedicated `focuserActions.ts` module was found in the provided file list for this audit.
+- **Store Module:** `src/stores/modules/focuserActions.ts`
 - **Alpaca Client:** `src/api/alpaca/focuser-client.ts`
 
 **Findings:**
 
-- **Client Functionalities NOT Exposed/Used by Store Actions:** Due to the absence of a specific store module for Focuser, none of the functionalities of `FocuserClient` (e.g., `getPosition`, `isMoving`, `move`, `halt`, `setTempComp`, `getTemperature`) are currently exposed through dedicated store actions.
+- **Exposed & Used Client Functionalities:**
+  - All GET properties from `FocuserClient` (`getPosition`, `isMoving`, `getTemperature`, `getStepSize`, `getMaxStep`, `getMaxIncrement`, `getTempComp`) are effectively exposed and read via the `fetchFocuserDetails` and `fetchFocuserStatus` store actions.
+  - All PUT/command methods (`move`, `halt`, `setTempComp`) are exposed as dedicated store actions.
+  - Polling and connection/disconnection events are handled, triggering appropriate data fetching and status updates.
+- **Client Functionalities NOT Exposed/Used by Store Actions (or only indirectly):**
+  - `FocuserClient.isTempCompAvailable()`: The client implements this method to check if temperature compensation is available. The store actions (`fetchFocuserStatus`) fetch the `tempComp` state directly, and its presence (or null value) implies availability. The `tempcompavailable` boolean property itself is not explicitly fetched and stored as a distinct capability in `FocuserDeviceProperties`.
+- **Conclusion:** The `focuserActions.ts` module comprehensively exposes and utilizes the functionalities provided by `FocuserClient.ts`. The approach for `tempcompavailable` is implicit but functional.
 
 ### 6. ObservingConditions
 
