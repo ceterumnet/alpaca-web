@@ -66,7 +66,7 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 **Findings:**
 
 - **Exposed & Used Client Functionalities:**
-  - All GET properties from `DomeClient` (e.g., `altitude`, `azimuth`, `atHome`, `shutterStatus`, `slewing`, `slaved`, all `can...` capabilities) are effectively exposed via the `fetchDomeStatus` store action, which uses `DomeClient.getDomeState()`.
+  - State-related GET properties from `DomeClient` (e.g., `altitude`, `azimuth`, `atHome`, `atPark`, `shutterStatus`, `slewing`, `slaved`) are exposed and updated in the store via the `fetchDomeStatus` store action, which utilizes `DomeClient.getDomeState()`. The `DomeClient.getDomeState()` helper method also fetches all `can...` capability properties (e.g., `canfindhome`, `canpark`), making them available within the action, though they are not individually mapped to distinct boolean properties in the `DomeDeviceProperties` of the store state.
   - Shutter control: `DomeClient.openShutter()`, `DomeClient.closeShutter()`.
   - Basic movement/state commands: `DomeClient.parkDome()`, `DomeClient.findHomeDome()`, `DomeClient.abortSlewDome()`.
 - **Client Functionalities NOW Exposed by Store Actions:**
@@ -76,7 +76,7 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
   - `DomeClient.syncToAzimuth(...)` (exposed via `syncDomeToAzimuth` action).
   - `DomeClient.setSlaved(...)` (exposed via `setDomeSlavedState` action).
 - **Client Functionalities NOT Exposed/Used by Store Actions:**
-  - None remaining.
+  - Individual `can...` capability properties (e.g., `canfindhome`, `canpark`), while fetched by the `DomeClient.getDomeState()` helper method within `fetchDomeStatus`, are not explicitly mapped to or stored as individual boolean flags within the `DomeDeviceProperties` in the device's store state. Their values are accessible within the `fetchDomeStatus` action via the result of `getDomeState()` but are not persisted as distinct reactive properties.
 
 ### 4. FilterWheel
 
@@ -85,7 +85,7 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 
 **Findings:**
 
-- **Exposed & Used Client Functionalities:** Public methods from `FilterWheelClient` such as `getFocusOffsets`, `getFilterNames`, `getPosition`, and `setPosition` are utilized by the store actions. The client's `getFilterWheelState()` helper is not directly called, but the `fetchFilterWheelDetails` action achieves similar data retrieval. The `setFilterName` method was removed from the client as it was non-standard.
+- **Exposed & Used Client Functionalities:** Public methods from `FilterWheelClient` such as `getFocusOffsets`, `getFilterNames`, `getPosition`, and `setPosition` are utilized by the store actions. The client's `getFilterWheelState()` helper is not directly called, but the `fetchFilterWheelDetails` action achieves similar data retrieval. The `setFilterName` method, noted in the client as a common custom extension rather than a standard Alpaca call, is present in `FilterWheelClient` and is utilized by the `setFilterWheelName` store action.
 - **Conclusion:** The `filterWheelActions.ts` fully exposes the functionalities currently offered by `FilterWheelClient.ts`.
 
 ### 5. Focuser
@@ -96,12 +96,15 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 **Findings:**
 
 - **Exposed & Used Client Functionalities:**
+
   - All GET properties from `FocuserClient` (`getPosition`, `isMoving`, `getTemperature`, `getStepSize`, `getMaxStep`, `getMaxIncrement`, `getTempComp`) are effectively exposed and read via the `fetchFocuserDetails` and `fetchFocuserStatus` store actions.
   - All PUT/command methods (`move`, `halt`, `setTempComp`) are exposed as dedicated store actions.
   - Polling and connection/disconnection events are handled, triggering appropriate data fetching and status updates.
+
 - **Client Functionalities NOT Exposed/Used by Store Actions (or only indirectly):**
-  - `FocuserClient.isTempCompAvailable()`: The client implements this method to check if temperature compensation is available. The store actions (`fetchFocuserStatus`) fetch the `tempComp` state directly, and its presence (or null value) implies availability. The `tempcompavailable` boolean property itself is not explicitly fetched and stored as a distinct capability in `FocuserDeviceProperties`.
-- **Conclusion:** The `focuserActions.ts` module comprehensively exposes and utilizes the functionalities provided by `FocuserClient.ts`. The approach for `tempcompavailable` is implicit but functional.
+  - `FocuserClient.isTempCompAvailable()`: The client implements this method to check if temperature compensation is available. The store actions (`fetchFocuserStatus`) fetch the `tempComp` state directly, and its presence (or null value) can imply availability. However, the `tempcompavailable` boolean property itself is not explicitly fetched by store actions and stored as a distinct capability in `FocuserDeviceProperties`.
+  - `FocuserClient.getAbsolute()`: The client has a method to read the `absolute` property (whether the focuser is absolute positioning). This property is not currently fetched by store actions or stored in `FocuserDeviceProperties`.
+- **Conclusion:** The `focuserActions.ts` module exposes and utilizes most functionalities provided by `FocuserClient.ts`. The approach for determining temperature compensation availability is implicit. The `absolute` property and the explicit `tempcompavailable` capability are not currently integrated into the store's state.
 
 ### 6. ObservingConditions
 
@@ -165,16 +168,17 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
 
     **Findings:**
     - **Exposed & Used Client Functionalities:**
-        - A broad range of GET properties for capabilities and state are read via `fetchTelescopeProperties` and polling. With the `TelescopeClient.getTelescopeState()` method updated to include more properties (like `aperturearea`, `aperturediameter`, `guideratedeclination`, `guideraterightascension`, `ispulseguiding`, `slewsettletime`, `cansetdeclinationrate`, `cansetguiderates`, `cansetpierside`, `cansetrightascensionrate`), these are now assumed to be fetched and available in the device's store state.
+        - Capability and static properties such as `canfindhome`, `canpark`, `cansetpark`, `canpulseguide`, `cansettracking`, `canslew`, `canslewaltaz`, `cansync`, `cansyncaltaz`, `alignmentmode`, `equatorialsystem`, `focallength`, `doesrefraction`, `siteelevation`, `sitelatitude`, `sitelongitude`, and `trackingrates` are read by the `fetchTelescopeProperties` store action using individual `client.getProperty()` calls.
+        - Dynamic state properties including `rightascension`, `declination`, `altitude`, `azimuth`, `siderealtime`, `slewing`, `tracking`, `trackingrate`, `atpark`, `athome`, `utcdate`, and `sideofpier` are read via polling actions (using `fetchDeviceState` or direct `client.getProperty()` calls).
         - Core movement commands: `TelescopeClient.park()`, `unpark()`, `slewToCoordinates()` (and async), `slewToAltAz()` (and async), `abortSlew()`.
-        - Setting tracking state and rate: `TelescopeClient.setTracking()`, `setTrackingRate()` (actual store action for setting rate might use `callDeviceMethod` if not `client.setTrackingRate()`).
-        - Setting target RA/Dec: `TelescopeClient.setTargetRightAscension()`, `TelescopeClient.setTargetDeclination()`.
+        - Setting tracking state and rate: `TelescopeClient.setTracking()` is used. The `setTelescopeTracking` action also supports setting `TrackingRate` via the same `callDeviceMethod('settracking', ...)` call, as allowed by the Alpaca specification for the `/tracking` endpoint. The client also has a direct `TelescopeClient.setTrackingRate()` method which is not separately called by a dedicated store action.
+        - Setting target RA/Dec: `TelescopeClient.setTargetRightAscension()` and `TelescopeClient.setTargetDeclination()` are utilized by the `slewToCoordinates` store action.
     - **Client Functionalities NOW Exposed by Store Actions:**
         - `TelescopeClient.setGuideRateDeclination(...)` (exposed via `setTelescopeGuideRateDeclination` action).
         - `TelescopeClient.setGuideRateRightAscension(...)` (exposed via `setTelescopeGuideRateRightAscension` action).
         - `TelescopeClient.setSlewSettleTime(...)` (exposed via `setTelescopeSlewSettleTime` action).
     - **Partially Exposed or Mismatched Usage by Store Actions:**
-        - The `slewToAltAz` store action attempts to set `targetaltitude` and `targetazimuth` properties via `callDeviceMethod` before slewing. The `TelescopeClient`'s `slewToAltAz` methods accept altitude/azimuth as direct parameters, and the client doesn't have specific `setTargetAltitude`/`setTargetAzimuth` public methods. This represents a potential mismatch in how the action tries to interact with the client for Alt/Az slews.
+        - The `slewToAltAz` store action attempts to set `targetaltitude` and `targetazimuth` properties via `callDeviceMethod` before slewing. The `TelescopeClient`'s `slewToAltAz` methods accept altitude/azimuth as direct parameters, and the client (and Alpaca specification) doesn't have specific writable `setTargetAltitude`/`setTargetAzimuth` public methods or properties. This represents a mismatch.
     - **Client Functionalities NOT Exposed/Used by Store Actions:**
         - `TelescopeClient.setpark()`
         - `TelescopeClient.slewToTarget()` / `slewToTargetAsync()`
@@ -182,12 +186,15 @@ This document outlines an audit comparing the Pinia store modules (`src/stores/m
         - `TelescopeClient.syncToCoordinates(...)`
         - `TelescopeClient.syncToTarget()`
         - `TelescopeClient.findHome()`
-        - `TelescopeClient.moveAxis(...)` (The `canMoveAxis` capability is read, but no store action calls `moveAxis`.)
-        - `TelescopeClient.pulseGuide(...)` (The `canPulseGuide` capability is read, but no store action calls `pulseGuide`.)
         - `TelescopeClient.setUTCDate(...)` (The `utcdate` property is read via polling, but no store action to explicitly set it.)
-        - `TelescopeClient.getAxisRates(...)` (This client method requires a parameter and is not part of `getTelescopeState()`; no dedicated store action calls it.)
-        - `TelescopeClient.getDestinationSideOfPier(...)` (This client method requires parameters and is not part of `getTelescopeState()`; no dedicated store action calls it.)
-        - Note: While many informational properties are now included in `getTelescopeState()`, dedicated store getters for each individual property (e.g., `getApertureAreaAction`) are not typically created; the data is accessed from the device's state object populated by `fetchTelescopeProperties` or polling.
+        - `TelescopeClient.getAxisRates(...)`
+        - `TelescopeClient.getDestinationSideOfPier(...)`
+        - `TelescopeClient.getTelescopeState()`: This client helper method, which fetches a comprehensive list of telescope properties, is not currently utilized by any store action.
+        - Reading static properties: `aperturearea` (via `client.getApertureArea()`), `aperturediameter` (via `client.getApertureDiameter()`), `ispulseguiding` (via `client.isPulseGuiding()`) are not called by store actions.
+        - Reading guide rates and slew settle time: While these can be *set* via actions, their current values (Alpaca properties: `guideratedeclination`, `guideraterightascension`, `slewsettletime`; Client methods: `client.getGuideRateDeclination()`, `client.getGuideRateRightAscension()`, `client.getSlewSettleTime()`) are not explicitly fetched by `fetchTelescopeProperties` or polling.
+        - `TelescopeClient.moveAxis(...)`: The `canMoveAxis` capability (via `client.canMoveAxis(axis)`) is not currently read by `fetchTelescopeProperties`, and no store action calls `client.moveAxis(...)`.
+        - Additional capabilities not read by `fetchTelescopeProperties` (though available in `TelescopeClient`): `canunpark` (via `client.canUnpark()`), `canslewasync` (via `client.canSlewAsync()`), `canslewaltazasync` (via `client.canSlewAltAzAsync()`).
+        - Note: Because `TelescopeClient.getTelescopeState()` is not used, many informational properties potentially available from a device (as listed in the client's `getTelescopeState` helper) are not automatically fetched or made available in the store unless explicitly read by `fetchTelescopeProperties` or polling actions. Dedicated store getters for each individual property are not typically created; data is accessed from the device's state object.
 
 ---
 

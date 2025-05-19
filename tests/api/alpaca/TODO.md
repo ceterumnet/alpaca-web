@@ -13,7 +13,7 @@ This document tracks the progress of creating unit tests for the Alpaca client f
 - [x] `rotator-client.ts`
 - [x] `safetymonitor-client.ts`
 - [x] `switch-client.ts`
-- [ ] `telescope-client.ts`
+- [x] `telescope-client.ts`
 
 ## Notes & Patterns
 
