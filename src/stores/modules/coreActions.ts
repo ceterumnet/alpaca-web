@@ -95,6 +95,26 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
     },
 
     _normalizeDevice(this: UnifiedStoreType, device: Device): Device {
+      let apiBaseUrl = device.apiBaseUrl || (device.properties?.apiBaseUrl as string | undefined)
+
+      if (!apiBaseUrl && device.id && device.id.includes(':')) {
+        try {
+          const parts = device.id.split(':')
+          if (parts.length >= 4) {
+            const ip = parts[0]
+            const port = parts[1]
+            const type = parts[2].toLowerCase()
+            const deviceNum = parseInt(parts[3], 10)
+            if (!isNaN(deviceNum)) {
+              apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`
+            }
+          }
+        } catch (error) {
+          // If parsing fails, apiBaseUrl remains undefined, which is handled later
+          console.warn(`Could not parse apiBaseUrl from device ID ${device.id}:`, error)
+        }
+      }
+
       const normalized = {
         id: device.id,
         name: device.name,
@@ -104,7 +124,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         isDisconnecting: device.isDisconnecting || false,
         properties: device.properties || {},
         status: device.status || 'idle',
-        apiBaseUrl: device.apiBaseUrl || (device.properties?.apiBaseUrl as string | undefined),
+        apiBaseUrl, // Use the potentially parsed apiBaseUrl
         ipAddress: device.ipAddress,
         port: device.port,
         displayName: device.displayName,
@@ -199,6 +219,10 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           isConnected: true,
           isConnecting: false,
           status: 'connected',
+          properties: {
+            ...(device.properties || {}),
+            connected: true
+          },
           stateHistory: [...(device.stateHistory || []), { from: 'connecting', to: 'connected', timestamp: Date.now() }]
         })
         this._emitEvent({ type: 'deviceConnected', deviceId })
@@ -239,15 +263,16 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         console.error(`Error connecting to device ${deviceId}:`, error)
         this.updateDevice(deviceId, {
           isConnecting: false,
+          isConnected: false,
           status: 'error',
-          stateHistory: [...(device.stateHistory || []), { from: 'connecting', to: 'error', timestamp: Date.now() }]
+          properties: {
+            ...(this.getDeviceById(deviceId)?.properties || {}),
+            connected: false,
+            isConnecting: false
+          }
         })
-        this._emitEvent({
-          type: 'deviceConnectionError',
-          deviceId,
-          error: String(error)
-        })
-        throw error
+        this._emitEvent({ type: 'deviceConnectionError', deviceId, error: error instanceof Error ? error.message : String(error) })
+        return false
       }
     },
 
@@ -347,6 +372,12 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         console.error('Device ID and Type are required to add a device')
         return false
       }
+
+      if (this.devices.has(device.id)) {
+        console.warn(`[UnifiedStore/coreActions] Attempted to add duplicate device with ID: ${device.id}. Add operation skipped.`)
+        return false // Fail if device already exists
+      }
+
       const normalizedDevice = this._normalizeDevice(device as Device)
       console.log('[UnifiedStore/coreActions] Normalized device:', JSON.parse(JSON.stringify(normalizedDevice)))
       this.devices.set(normalizedDevice.id, normalizedDevice)
