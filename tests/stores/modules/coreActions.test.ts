@@ -44,7 +44,7 @@ const mockAlpacaClientInstance = {
 
 // Now, mock the module. The factory creates the mock function.
 vi.mock('@/api/AlpacaClient', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createAlpacaClient: vi.fn((..._args: any[]) => mockAlpacaClientInstance as unknown as AlpacaClient)
 }))
 
@@ -64,7 +64,7 @@ describe('coreActions', () => {
     // Reset implementation for the mocked createAlpacaClient
 
     mockedCreateAlpacaClient.mockImplementation(
-      (..._args: any[]) =>
+      (..._args: unknown[]) =>
         ({
           ...mockAlpacaClientInstance,
           // Ensure fresh mocks for methods that might be called multiple times if state matters
@@ -221,7 +221,7 @@ describe('coreActions', () => {
         deviceNum: 0,
         apiBaseUrl: 'http://127.0.0.1:11111/api/v1/camera/0'
       }
-      mockedCreateAlpacaClient.mockImplementationOnce((..._args: any[]) => {
+      mockedCreateAlpacaClient.mockImplementationOnce((..._args: unknown[]) => {
         throw new Error('Simulated client creation failure')
       })
 

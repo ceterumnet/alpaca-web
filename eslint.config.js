@@ -7,11 +7,7 @@ import typescriptEslint from 'typescript-eslint'
 export default typescriptEslint.config(
   { ignores: ['*.d.ts', '**/coverage', '**/dist'] },
   {
-    extends: [
-      eslint.configs.recommended,
-      ...typescriptEslint.configs.recommended,
-      ...eslintPluginVue.configs['flat/recommended']
-    ],
+    extends: [eslint.configs.recommended, ...typescriptEslint.configs.recommended, ...eslintPluginVue.configs['flat/recommended']],
     files: ['**/*.{ts,vue}'],
     languageOptions: {
       ecmaVersion: 'latest',
@@ -22,7 +18,14 @@ export default typescriptEslint.config(
       }
     },
     rules: {
-      // your rules
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_', // Ignore arguments starting with _
+          varsIgnorePattern: '^_', // Ignore variables starting with _
+          caughtErrorsIgnorePattern: '^_' // Ignore caught errors starting with _
+        }
+      ]
     }
   },
   eslintConfigPrettier

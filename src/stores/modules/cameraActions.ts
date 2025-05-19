@@ -71,6 +71,7 @@ export function createCameraActions() {
       async startCameraExposure(
         this: CameraState & {
           getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
           updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
           _emitEvent: (event: DeviceEvent) => void
           callDeviceMethod: (id: string, method: string, args: unknown[]) => Promise<unknown>
@@ -80,56 +81,67 @@ export function createCameraActions() {
         exposureTime: number,
         isLight: boolean = true
       ): Promise<boolean> {
-        console.log(`Starting exposure on camera ${deviceId}:`, {
+        const device = this.getDeviceById(deviceId)
+        if (!device) {
+          console.error(`[UnifiedStore/cameraActions] Device ${deviceId} not found for startCameraExposure`)
+          return false
+        }
+
+        if (device.type !== 'camera') {
+          console.error(`[UnifiedStore/cameraActions] Device ${deviceId} is not a camera for startCameraExposure`)
+          // This case should ideally not happen if called correctly, but good to have a guard.
+          return false
+        }
+
+        const client = this.getDeviceClient(deviceId) // Explicitly get client to check before callDeviceMethod
+        if (!client) {
+          console.error(`[UnifiedStore/cameraActions] No client available for device ${deviceId} for startCameraExposure`)
+          return false
+        }
+
+        console.log(`[UnifiedStore/cameraActions] Starting exposure on camera ${deviceId}:`, {
           exposureTime,
           isLight
         })
 
-        const device = this.getDeviceById(deviceId)
-        if (!device) {
-          throw new Error(`Device not found: ${deviceId}`)
-        }
-
-        if (device.type !== 'camera') {
-          throw new Error(`Device ${deviceId} is not a camera`)
-        }
-
-        // Update device properties to show exposure in progress
-        console.log(`Updating device properties to show exposure in progress`)
-        this.updateDeviceProperties(deviceId, {
-          isExposing: true,
-          exposureProgress: 0,
-          exposureTime: exposureTime,
-          cameraState: 2 // CameraStates.Exposing
-        })
-
-        // Emit exposure started event
-        console.log(`Emitting cameraExposureStarted event`)
-        this._emitEvent({
-          type: 'cameraExposureStarted',
-          deviceId,
-          duration: exposureTime,
-          isLight
-        })
-
         try {
-          console.log(`Attempting to call startexposure via API`)
-          // Per Alpaca spec, startexposure takes named parameters not an array
-          // Send as single object parameter to trigger the PUT with named parameters
-          await this.callDeviceMethod(deviceId, 'startexposure', [
-            {
-              Duration: exposureTime,
-              Light: isLight
-            }
-          ])
+          // Update device properties to show exposure in progress
+          console.log(`[UnifiedStore/cameraActions] Updating device properties to show exposure in progress`)
+          this.updateDeviceProperties(deviceId, {
+            isExposing: true,
+            exposureProgress: 0,
+            exposureStartTime: Date.now(), // Set exposureStartTime
+            // exposureTime: exposureTime, // exposureTime is already a property from capabilities/settings
+            cameraState: 2 // CameraStates.Exposing
+          })
+
+          console.log(`[UnifiedStore/cameraActions] Attempting to call startexposure via API`)
+
+          const params = {
+            Duration: exposureTime,
+            Light: isLight,
+            ClientID: -1,
+            ClientTransactionID: -1
+          }
+
+          await client.put('startexposure', params)
+
+          // Emit exposure started event AFTER successful API call
+          console.log(`[UnifiedStore/cameraActions] Emitting cameraExposureStarted event`)
+          this._emitEvent({
+            type: 'cameraExposureStarted',
+            deviceId,
+            duration: exposureTime,
+            isLight: isLight
+          })
 
           // Start a progress tracking timer
-          console.log(`Starting exposure progress tracking`)
+          console.log(`[UnifiedStore/cameraActions] Starting exposure progress tracking`)
           this.trackExposureProgress(deviceId, exposureTime)
 
           return true
         } catch (error) {
-          console.error(`Error starting exposure on camera ${deviceId}:`, error)
+          console.error(`[UnifiedStore/cameraActions] Error starting exposure on camera ${deviceId}:`, error)
 
           // Update device state to show error
           this.updateDeviceProperties(deviceId, {
@@ -137,14 +149,14 @@ export function createCameraActions() {
             exposureProgress: 0,
             cameraState: 0 // CameraStates.Idle
           })
-
-          // Re-throw the error to be handled by the caller
-          throw error
+          // Do NOT re-throw the error, return false as per expected behavior for tests
+          return false
         }
       },
 
       trackExposureProgress(
         this: CameraState & {
+          getDeviceById: (id: string) => Device | null
           getDeviceClient: (id: string) => AlpacaClient | null
           updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
           _emitEvent: (event: DeviceEvent) => void
@@ -153,9 +165,25 @@ export function createCameraActions() {
         deviceId: string,
         exposureTime: number
       ): void {
-        console.log(`Starting to track exposure progress for device ${deviceId} with exposure time ${exposureTime}s`)
-        const startTime = Date.now()
-        const duration = exposureTime * 1000 // convert to milliseconds
+        // console.log(`[TRACK_DEBUG] trackExposureProgress called for ${deviceId}, exposureTime: ${exposureTime}s`);
+        const device = this.getDeviceById(deviceId)
+        if (!device) {
+          // console.error(`[TRACK_DEBUG] Device ${deviceId} NOT FOUND for trackExposureProgress`);
+          console.error(`[UnifiedStore/cameraActions] Device ${deviceId} not found for trackExposureProgress`) // Restored original log
+          return
+        }
+        // console.log(`[TRACK_DEBUG] Device ${deviceId} found. Properties:`, JSON.stringify(device.properties));
+
+        const initialStartTime = device.properties.exposureStartTime as number | undefined
+        if (typeof initialStartTime !== 'number') {
+          // console.error(`[TRACK_DEBUG] exposureStartTime NOT A NUMBER for ${deviceId}. Value: ${initialStartTime}, Type: ${typeof initialStartTime}`);
+          console.error(
+            // Restored original log
+            `[UnifiedStore/cameraActions] exposureStartTime not found or invalid for device ${deviceId}. Cannot track progress accurately.`
+          )
+          return
+        }
+        // console.log(`[TRACK_DEBUG] exposureStartTime for ${deviceId} is ${initialStartTime}`);
 
         // Ensure the isExposing property is set when tracking starts
         this.updateDeviceProperties(deviceId, {
@@ -167,15 +195,26 @@ export function createCameraActions() {
         const MAX_WAIT_TIME = 300000 // 5 minutes max wait for image
         const POLLING_INTERVAL = 500 // Check every 500ms
 
-        // Track if we're in the post-exposure polling phase
+        // Track if we're in the post-exposure phase
         let isPollingForImage = false
         let lastKnownProgress = 0
+        // Use initialStartTime from device properties
+        const startTimeForCalculations = initialStartTime
+        const durationMs = exposureTime * 1000 // Convert exposureTime (seconds) to milliseconds
 
         const progressTimer = setInterval(async () => {
+          const device = this.getDeviceById(deviceId) // Re-fetch device in each interval
+          if (!device) {
+            // console.log('[TRACK_DEBUG] Device not found inside interval, should warn and clear.') // Removed diagnostic log
+            console.warn(`[UnifiedStore/cameraActions] Device ${deviceId} not found during exposure tracking interval. Clearing timer.`)
+            clearInterval(progressTimer)
+            return
+          }
+
           try {
             const client = this.getDeviceClient(deviceId)
             const now = Date.now()
-            const elapsedTime = now - startTime
+            const elapsedTime = now - startTimeForCalculations // Use the fetched startTime
 
             // Check if we've exceeded the maximum wait time
             if (elapsedTime > MAX_WAIT_TIME) {
@@ -197,7 +236,8 @@ export function createCameraActions() {
             if (client) {
               // First, check the camera state to get accurate status
               try {
-                const cameraState = (await client.getProperty('camerastate')) as number
+                // Assuming AlpacaClient.getProperty throws on error and returns direct value on success
+                const cameraState = (await client.getProperty('camerastate')) as number | undefined
                 console.log(`Camera ${deviceId} state: ${cameraState}`)
 
                 // Update the camera state in our store
@@ -219,7 +259,7 @@ export function createCameraActions() {
                   // Camera is idle
                   if (isPollingForImage) {
                     // We were polling for an image and now camera is idle - final check for imageready
-                    const imageReady = (await client.getProperty('imageready')) as boolean
+                    const imageReady = (await client.getProperty('imageready')) as boolean | undefined
                     if (imageReady) {
                       console.log(`Camera ${deviceId} is idle and image is ready`)
                       clearInterval(progressTimer)
@@ -229,7 +269,7 @@ export function createCameraActions() {
                       console.warn(`Camera ${deviceId} is idle but image not ready, possible error`)
                       // Continue polling a bit longer, might be transitional state
                     }
-                  } else if (elapsedTime > duration) {
+                  } else if (elapsedTime > durationMs) {
                     // Camera is idle and exposure time has passed, start polling for image
                     isPollingForImage = true
                     console.log(`Exposure time complete, starting to poll for image ready`)
@@ -237,8 +277,10 @@ export function createCameraActions() {
                 } else if (cameraState === 2) {
                   // Camera is exposing
                   // Calculate progress based on exposure time
-                  const progress = Math.min(100, Math.round((elapsedTime / duration) * 100))
+                  const progress = Math.min(100, Math.round((elapsedTime / durationMs) * 100)) // Use durationMs
                   lastKnownProgress = progress
+
+                  // console.log(`[TRACK_DEBUG] Calculated progress for ${deviceId}: ${progress}, elapsedTime: ${elapsedTime}, durationMs: ${durationMs}`);
 
                   // Update properties with current progress
                   this.updateDeviceProperties(deviceId, {
@@ -264,8 +306,8 @@ export function createCameraActions() {
                   })
 
                   // Check if image is ready
-                  const imageReady = (await client.getProperty('imageready')) as boolean
-                  if (imageReady) {
+                  const imageReadyAfterRead = (await client.getProperty('imageready')) as boolean | undefined
+                  if (imageReadyAfterRead) {
                     console.log(`Camera ${deviceId} reports image is ready while in state ${cameraState}`)
                     clearInterval(progressTimer)
                     await this.handleExposureComplete(deviceId)
@@ -290,9 +332,9 @@ export function createCameraActions() {
 
                 // If we're now polling for image, always check imageready
                 if (isPollingForImage) {
-                  const imageReady = (await client.getProperty('imageready')) as boolean
-                  console.log(`Image ready polling check: ${imageReady}`)
-                  if (imageReady) {
+                  const imageReadyPolling = (await client.getProperty('imageready')) as boolean | undefined
+                  console.log(`Image ready polling check: ${imageReadyPolling}`)
+                  if (imageReadyPolling) {
                     console.log(`Camera ${deviceId} reports image is ready during polling`)
                     clearInterval(progressTimer)
                     await this.handleExposureComplete(deviceId)
@@ -302,11 +344,11 @@ export function createCameraActions() {
               } catch (error) {
                 console.warn(`Error checking camera state for ${deviceId}:`, error)
                 // Fall back to time-based tracking
-                fallbackToTimeBasedTracking(elapsedTime, duration)
+                fallbackToTimeBasedTracking(elapsedTime, durationMs)
               }
             } else {
               console.warn(`No client available for device ${deviceId}, using time-based tracking only`)
-              fallbackToTimeBasedTracking(elapsedTime, duration)
+              fallbackToTimeBasedTracking(elapsedTime, durationMs)
             }
           } catch (error) {
             console.error(`Error tracking exposure progress for camera ${deviceId}:`, error)
@@ -689,25 +731,19 @@ export function createCameraActions() {
         }
 
         try {
-          // Fetch all read-only properties
-          // The camera-client's getCameraInfo() fetches many of these.
-          // We should ensure all necessary static and dynamic properties are covered.
-          // Let's assume client.getCameraInfo() gets most static props.
-          // We'll explicitly fetch dynamic or potentially missing ones.
-
-          const cameraInfo = await (client as import('@/api/alpaca/camera-client').CameraClient).getCameraInfo()
-          const properties: Record<string, unknown> = { ...cameraInfo }
+          // Fetch all read-only properties.
+          // client.getCameraInfo() returns an object with lowercase alpaca property names as keys.
+          const propertiesFromClient = await (client as import('@/api/alpaca/camera-client').CameraClient).getCameraInfo()
 
           // Ensure specific properties for gain/offset modes are present
-          // These might come from getCameraInfo or need separate getProperty calls if not.
-          // For this example, let's assume they are part of cameraInfo or fetched if not.
-          const gains = (properties.gains as string[] | undefined) ?? []
-          const gainmin = properties.gainmin as number | undefined
-          const gainmax = properties.gainmax as number | undefined
-          const offsets = (properties.offsets as string[] | undefined) ?? []
-          const offsetmin = properties.offsetmin as number | undefined
-          const offsetmax = properties.offsetmax as number | undefined
-          const subexposureduration = properties.subexposureduration as number | undefined // Ensure this is fetched
+          // Access with lowercase alpaca property names as returned by client.getCameraInfo()
+          const gains = (propertiesFromClient.gains as string[] | undefined) ?? []
+          const gainmin = propertiesFromClient.gainmin as number | undefined
+          const gainmax = propertiesFromClient.gainmax as number | undefined
+          const offsets = (propertiesFromClient.offsets as string[] | undefined) ?? []
+          const offsetmin = propertiesFromClient.offsetmin as number | undefined
+          const offsetmax = propertiesFromClient.offsetmax as number | undefined
+          // const subexposureduration = propertiesFromClient.subexposureduration as number | undefined; // Redundant
 
           // Determine cam_gainMode
           let gainMode: 'list' | 'value' | 'unknown' = 'unknown'
@@ -716,7 +752,8 @@ export function createCameraActions() {
           } else if (typeof gainmin === 'number' && typeof gainmax === 'number') {
             gainMode = 'value'
           }
-          properties.cam_gainMode = gainMode
+          // Store internal mode representation (can be on propertiesFromClient or a separate var)
+          const internalGainMode = gainMode
 
           // Determine cam_offsetMode
           let offsetMode: 'list' | 'value' | 'unknown' = 'unknown'
@@ -725,49 +762,53 @@ export function createCameraActions() {
           } else if (typeof offsetmin === 'number' && typeof offsetmax === 'number') {
             offsetMode = 'value'
           }
-          properties.cam_offsetMode = offsetMode
+          const internalOffsetMode = offsetMode
 
-          // Ensure subexposureduration is in the properties if fetched
-          if (typeof subexposureduration === 'number') {
-            properties.subexposureduration = subexposureduration
-          }
-
-          // Map properties to friendlier names
+          // Map properties to friendlier names (typically camelCase for internal store use)
           const friendlyProperties: Record<string, unknown> = {}
 
-          // Map basic capabilities
-          if (properties.cansetccdtemperature !== undefined) {
-            friendlyProperties.canCool = properties.cansetccdtemperature
+          // Map basic capabilities - use lowercase alpaca property names for access from 'propertiesFromClient' object
+          if (propertiesFromClient.cansetccdtemperature !== undefined) {
+            friendlyProperties.canCool = propertiesFromClient.cansetccdtemperature
           }
 
-          if (properties.cangetcoolerpower !== undefined) {
-            friendlyProperties.canGetCoolerPower = properties.cangetcoolerpower
+          if (propertiesFromClient.cangetcoolerpower !== undefined) {
+            friendlyProperties.canGetCoolerPower = propertiesFromClient.cangetcoolerpower
           }
 
-          if (properties.cameraxsize !== undefined) {
-            friendlyProperties.imageWidth = properties.cameraxsize
+          if (propertiesFromClient.cameraxsize !== undefined) {
+            friendlyProperties.imageWidth = propertiesFromClient.cameraxsize
           }
 
-          if (properties.cameraysize !== undefined) {
-            friendlyProperties.imageHeight = properties.cameraysize
+          if (propertiesFromClient.cameraysize !== undefined) {
+            friendlyProperties.imageHeight = propertiesFromClient.cameraysize
           }
 
-          // Check for gain/offset support
-          const hasGain = properties.gainmin !== undefined && properties.gainmax !== undefined
-          const hasOffset = properties.offsetmin !== undefined && properties.offsetmax !== undefined
+          if (propertiesFromClient.sensorname !== undefined) {
+            friendlyProperties.sensorName = propertiesFromClient.sensorname
+          }
+
+          // This block must remain to map subExposureDuration
+          if (propertiesFromClient.subexposureduration !== undefined) {
+            friendlyProperties.subExposureDuration = propertiesFromClient.subexposureduration
+          }
+
+          // Check for gain/offset support using lowercase alpaca property names
+          const hasGain = propertiesFromClient.gainmin !== undefined && propertiesFromClient.gainmax !== undefined
+          const hasOffset = propertiesFromClient.offsetmin !== undefined && propertiesFromClient.offsetmax !== undefined
 
           friendlyProperties.hasGain = hasGain
           friendlyProperties.hasOffset = hasOffset
 
           // Add gain/offset mode information from our detection
           if (hasGain) {
-            friendlyProperties.gainMode = gainMode
-            if (gains) friendlyProperties.gainOptions = gains
+            friendlyProperties.gainMode = internalGainMode
+            if (gains && gains.length > 0) friendlyProperties.gains = gains
           }
 
           if (hasOffset) {
-            friendlyProperties.offsetMode = offsetMode
-            if (offsets) friendlyProperties.offsetOptions = offsets
+            friendlyProperties.offsetMode = internalOffsetMode
+            if (offsets && offsets.length > 0) friendlyProperties.offsets = offsets
           }
 
           // Add any non-undefined properties to the device

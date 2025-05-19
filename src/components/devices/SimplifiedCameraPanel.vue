@@ -31,6 +31,19 @@ const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
 
+// Computed properties for image dimensions with logging
+const computedImageWidth = computed(() => {
+  const width = Number(currentDevice.value?.properties?.imageWidth);
+  console.log(`SimplifiedCameraPanel (${props.deviceId}): computedImageWidth is ${width}, raw value was: ${currentDevice.value?.properties?.imageWidth}`);
+  return isNaN(width) ? 0 : width; // Default to 0 if not a number
+});
+
+const computedImageHeight = computed(() => {
+  const height = Number(currentDevice.value?.properties?.imageHeight);
+  console.log(`SimplifiedCameraPanel (${props.deviceId}): computedImageHeight is ${height}, raw value was: ${currentDevice.value?.properties?.imageHeight}`);
+  return isNaN(height) ? 0 : height; // Default to 0 if not a number
+});
+
 // Get exposure range for the camera
 const exposureMin = ref(0.001)
 const exposureMax = ref(3600)
@@ -63,6 +76,23 @@ const settingsError = ref<string | null>(null)
 
 // Image data for CameraImageDisplay
 const imageData = ref<ArrayBuffer>(new ArrayBuffer(0))
+
+// Watch for imageData changes from the store (device properties)
+watch(
+  () => currentDevice.value?.properties?.imageData,
+  (newImageData) => {
+    if (newImageData instanceof ArrayBuffer && newImageData.byteLength > 0) {
+      console.log(`SimplifiedCameraPanel: imageData updated from store for device ${props.deviceId}, size: ${newImageData.byteLength}`);
+      imageData.value = newImageData;
+    } else if (newImageData === null || (newImageData instanceof ArrayBuffer && newImageData.byteLength === 0)) {
+      // Handle case where image data is explicitly cleared in the store or props reset
+      if (imageData.value.byteLength > 0) { // Only update if it actually changed to empty
+        console.log(`SimplifiedCameraPanel: imageData cleared (from store/props) for device ${props.deviceId}`);
+        imageData.value = new ArrayBuffer(0);
+      }
+    }
+  }
+);
 
 // Function to clear settings error
 const clearSettingsError = () => {
@@ -151,11 +181,16 @@ const handleExposureStarted = (params: { duration: number; isLight: boolean }) =
 const handleExposureComplete = () => {
   console.log('SimplifiedCameraPanel: Exposure complete')
   // Handle post-exposure actions if any specific to this panel
+  // Note: Image data is now handled by the watcher on currentDevice.value.properties.imageData
 }
 
-const handleImageDownloaded = (data: ArrayBuffer) => {
-  imageData.value = data
-  console.log(`SimplifiedCameraPanel: Image downloaded: ${data.byteLength} bytes`)
+// This handler is likely no longer called by CameraExposureControl with data,
+// as image download responsibility moved to store actions.
+// Keeping it for now in case of other uses, but the watcher above is the primary mechanism.
+const handleImageDownloaded = () => {
+  console.warn('SimplifiedCameraPanel: handleImageDownloaded called. This might be from a legacy path or an event without data. Image data should primarily come from store watcher.');
+  // imageData.value = data // Commenting out to prefer store-driven updates
+  // console.log(`SimplifiedCameraPanel: Image downloaded (via event): ${data.byteLength} bytes`)
 }
 
 const handleExposureError = (error: string) => {
@@ -403,6 +438,8 @@ onUnmounted(() => {
             <!-- CameraImageDisplay is already styled as a panel, so no extra .panel-section needed -->
             <CameraImageDisplay 
               :image-data="imageData"
+              :width="computedImageWidth"
+              :height="computedImageHeight"
               :sensor-type="cameraSensorType === null ? undefined : cameraSensorType" 
               :detected-bayer-pattern="detectedBayerPatternFromSensorType"
               @histogram-generated="handleHistogramGenerated"

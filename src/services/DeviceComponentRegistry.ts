@@ -101,6 +101,9 @@ class DeviceComponentRegistry {
     const component = this.componentMap[normalizedType]
 
     if (!component) {
+      console.error(
+        `[DeviceComponentRegistry] registerDevice FAILED: No component found in componentMap for normalizedType "${normalizedType}" (original deviceType: "${deviceType}", deviceId: "${deviceId}"). Available mapped types: ${Object.keys(this.componentMap).join(', ')}`
+      )
       throw new Error(`No component registered for device type "${normalizedType}"`)
     }
 
@@ -140,22 +143,37 @@ class DeviceComponentRegistry {
    * @returns The component or null if not found
    */
   getComponent(deviceId: string, deviceType: string): Component | null {
-    const normalizedType = deviceType.toLowerCase()
+    const originalDeviceType = deviceType // Keep original for logging
+    const normalizedType = deviceType ? deviceType.toLowerCase() : ''
+
+    if (!normalizedType) {
+      console.warn(
+        `[DeviceComponentRegistry] getComponent received invalid deviceType: original="${originalDeviceType}" normalized="${normalizedType}" for deviceId: "${deviceId}". Returning null.`
+      )
+      return null
+    }
     const key = `${normalizedType}-${deviceId}`
 
     // Return component if it exists
     if (this.registry.value[key]) {
       // Update last active time
       this.registry.value[key].lastActive = Date.now()
+      // console.log(`[DeviceComponentRegistry] getComponent: Returning existing component for key "${key}"`);
       return this.registry.value[key].component
     }
 
-    // Try to register if it doesn't exist
+    // console.log(`[DeviceComponentRegistry] getComponent: Component for key "${key}" not in registry. Attempting to register.`);
     try {
-      const ref = this.registerDevice(deviceId, normalizedType)
+      const ref = this.registerDevice(deviceId, normalizedType) // Pass normalizedType
+      // console.log(`[DeviceComponentRegistry] getComponent: Successfully registered and returning new component for key "${key}"`);
       return ref.component
     } catch (error) {
-      console.error(`[DeviceComponentRegistry] Error getting component: ${error}`)
+      // This catch is crucial. It happens if registerDevice throws (e.g., type not in componentMap after all checks).
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(
+        `[DeviceComponentRegistry] getComponent FAILED for key "${key}". Error during internal registerDevice call. Original deviceType: "${originalDeviceType}", Normalized: "${normalizedType}". Error:`,
+        errorMessage
+      )
       return null
     }
   }

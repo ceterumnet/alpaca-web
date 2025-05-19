@@ -205,7 +205,7 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 
 #### 3.6.1. `cameraActions.ts`
 
-- `startCameraExposure`: Test PUT with named parameters.
+- ✅ `startCameraExposure`: Test PUT with named parameters.
 - `trackExposureProgress`: Complex logic with `setInterval`, `camerastate` checking, `imageready` polling, fallback logic. Mock client heavily.
 - `handleExposureComplete`: Image download logic (mock `fetch`, `response.arrayBuffer`), preferred format, fallback to JSON.
 - `abortCameraExposure`.
@@ -291,85 +291,27 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 
 ## 4. Mocking Strategy Details (Revised)
 
-- **Alpaca Clients (`createAlpacaClient` from `@/api/AlpacaClient`):**
+- **Mocking External Modules (e.g., `AlpacaClient`):**
 
-  - **Module Mocking:**
-
-    1.  Mock the module at the top of the test file:
-
+  - **Pattern for Factory Functions (e.g., `createAlpacaClient` from `@/api/AlpacaClient`):**
+    1.  Import the actual factory function at the top of your test file: `import { createAlpacaClient } from '@/api/AlpacaClient';`
+    2.  Define a `const mockAlpacaClientInstance = { /* ... mock methods ... */ };` that will serve as the base for client instances returned by the mocked factory.
+    3.  Mock the module path using `vi.mock()`. The factory function inside the mock definition should return your `mockAlpacaClientInstance` (or a variation of it).
         ```typescript
-        // tests/stores/modules/coreActions.test.ts (example)
-        import { vi, type MockInstance } from 'vitest'
-        import type { AlpacaClient } from '@/api/alpaca/base-client'
-        import type { UnifiedDevice } from '@/stores/types/device-store.types'
-
-        // Define the structure of your mock client instance's methods
-        const mockAlpacaClientInstance = {
-          getProperty: vi.fn(),
-          setProperty: vi.fn(),
-          callMethod: vi.fn(),
-          put: vi.fn(),
-          get: vi.fn(),
-          connected: vi.fn().mockResolvedValue(false),
-          setConnected: vi.fn().mockResolvedValue(undefined),
-          getDeviceState: vi.fn().mockResolvedValue({})
-          // Add other methods used by the actions under test
-        }
-
-        // Mock the module, factory returns the mock function for createAlpacaClient
         vi.mock('@/api/AlpacaClient', () => ({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
           createAlpacaClient: vi.fn((..._args: any[]) => mockAlpacaClientInstance as unknown as AlpacaClient)
         }))
-
-        // Import the function *after* vi.mock
-        import { createAlpacaClient } from '@/api/AlpacaClient'
         ```
-
-  - **Typed Mock Reference in Test Scope:**
-
-    ```typescript
-    // Inside describe block or at the top level of the test file
-    let mockedCreateAlpacaClient: MockInstance<
-      (baseUrl: string, deviceType: string, deviceNumber: number | undefined, device: UnifiedDevice) => AlpacaClient
-    >
-    // OR if the above causes issues with multi-arg generics in your TS/ESLint setup:
-    // let mockedCreateAlpacaClient: MockInstance<[string, string, number | undefined, UnifiedDevice], AlpacaClient>;
-
-    beforeEach(() => {
-      // Assign the casted mock
-      mockedCreateAlpacaClient = createAlpacaClient as unknown as typeof mockedCreateAlpacaClient // Adjust cast as needed based on chosen MockInstance signature
-
-      vi.clearAllMocks() // Clears call history etc. for all mocks
-
-      // Reset/re-apply base implementation for createAlpacaClient for consistent test starts
-      mockedCreateAlpacaClient.mockImplementation(
-        (
-          ..._args: any[] // eslint-disable-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-        ) =>
-          ({
-            ...mockAlpacaClientInstance,
-            // Provide fresh vi.fn() for methods if their state/call count needs to be isolated per test
-            setProperty: vi.fn().mockResolvedValue(undefined),
-            getProperty: vi.fn().mockResolvedValue(null)
-          }) as unknown as AlpacaClient
-      )
-      // ... other setup like setActivePinia ...
-    })
-    ```
-
-  - **Device-Specific Client Mocks (e.g., `CameraClient`):** If a module directly imports and instantiates a specific client (e.g., `new CameraClient(...)`), that specific client class should be mocked similarly:
-    ```typescript
-    // Example for CameraClient if directly used
-    // vi.mock('@/api/alpaca/camera-client', () => ({
-    //   CameraClient: vi.fn().mockImplementation(() => ({
-    //     ...mockAlpacaClientInstance, // Base methods
-    //     getCameraInfo: vi.fn(),      // Camera-specific methods
-    //     // ... other camera client methods
-    //   }))
-    // }));
-    ```
-    Then, `import { CameraClient } from '@/api/alpaca/camera-client';` and use `CameraClient as MockInstance<...>` for typing.
+    4.  Declare a `const` for your mocked factory function. Cast the _imported_ factory function (from step 1) to `MockInstance` typed with the **original function's full signature**.
+        ```typescript
+        const mockedCreateAlpacaClient = createAlpacaClient as unknown as MockInstance<
+          (baseUrl: string, deviceType: string, deviceNumber: number | undefined, device: UnifiedDevice) => AlpacaClient
+        >
+        ```
+    5.  In `beforeEach`, you can call `mockedCreateAlpacaClient.mockImplementation(...)` if you need to customize the client instance returned for specific tests or ensure fresh `vi.fn()` instances for methods on the client instance. `vi.clearAllMocks()` will reset call counts for `mockedCreateAlpacaClient` (the factory mock itself).
+  - **Gotcha:** `vi.mock` is hoisted. Ensure the factory function (`() => ({...})`) does not reference variables that are not yet initialized if they are declared outside its scope and not part of the module's top-level. For `mockAlpacaClientInstance` defined globally in the test file, this is usually fine.
+  - **`MockInstance` Typing:** The functional signature `MockInstance<(arg1: T1, ...) => TReturn>` is preferred for clarity and to avoid potential linter errors with `MockInstance<T, U, ...>` or `MockInstance<[T1, T2], TReturn>` when the number of type arguments for `MockInstance` itself is restricted (e.g., to 0 or 1 by some TypeScript configurations or linter rules).
 
 - **`coreActions` dependencies for module tests (and other internal store dependencies):**
 
@@ -441,12 +383,25 @@ The implementation of tests for `coreActions.ts` highlighted several important p
 
 - **Mocking External Modules (e.g., `AlpacaClient`):**
 
-  - **Pattern:**
-    1.  Immediately mock the target module: `vi.mock('@/api/AlpacaClient', () => ({ createAlpacaClient: vi.fn() }));`
-    2.  Import the function _after_ the mock definition: `import { createAlpacaClient } from '@/api/AlpacaClient';`
-    3.  Cast the imported function to a `MockInstance` with the correct signature: `const mockedCreateAlpacaClient = createAlpacaClient as MockInstance<[arg1Type, ...], ReturnType>;` Alternatively, and often more reliably for complex signatures or to avoid linter issues with multi-argument generics: `const mockedCreateAlpacaClient = createAlpacaClient as MockInstance<(arg1: arg1Type, ...) => ReturnType>;`
-  - **Gotcha:** `vi.mock` is hoisted. Ensure the factory function (`() => ({...})`) does not reference variables that are not yet initialized.
-  - **`MockInstance` Typing:** The functional signature `MockInstance<(arg1: T1, ...) => TReturn>` is preferred for clarity and to avoid potential linter errors with `MockInstance<T, U, ...>`.
+  - **Pattern for Factory Functions (e.g., `createAlpacaClient` from `@/api/AlpacaClient`):**
+    1.  Import the actual factory function at the top of your test file: `import { createAlpacaClient } from '@/api/AlpacaClient';`
+    2.  Define a `const mockAlpacaClientInstance = { /* ... mock methods ... */ };` that will serve as the base for client instances returned by the mocked factory.
+    3.  Mock the module path using `vi.mock()`. The factory function inside the mock definition should return your `mockAlpacaClientInstance` (or a variation of it).
+        ```typescript
+        vi.mock('@/api/AlpacaClient', () => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+          createAlpacaClient: vi.fn((..._args: any[]) => mockAlpacaClientInstance as unknown as AlpacaClient)
+        }))
+        ```
+    4.  Declare a `const` for your mocked factory function. Cast the _imported_ factory function (from step 1) to `MockInstance` typed with the **original function's full signature**.
+        ```typescript
+        const mockedCreateAlpacaClient = createAlpacaClient as unknown as MockInstance<
+          (baseUrl: string, deviceType: string, deviceNumber: number | undefined, device: UnifiedDevice) => AlpacaClient
+        >
+        ```
+    5.  In `beforeEach`, you can call `mockedCreateAlpacaClient.mockImplementation(...)` if you need to customize the client instance returned for specific tests or ensure fresh `vi.fn()` instances for methods on the client instance. `vi.clearAllMocks()` will reset call counts for `mockedCreateAlpacaClient` (the factory mock itself).
+  - **Gotcha:** `vi.mock` is hoisted. Ensure the factory function (`() => ({...})`) does not reference variables that are not yet initialized if they are declared outside its scope and not part of the module's top-level. For `mockAlpacaClientInstance` defined globally in the test file, this is usually fine.
+  - **`MockInstance` Typing:** The functional signature `MockInstance<(arg1: T1, ...) => TReturn>` is preferred for clarity and to avoid potential linter errors with `MockInstance<T, U, ...>` or `MockInstance<[T1, T2], TReturn>` when the number of type arguments for `MockInstance` itself is restricted (e.g., to 0 or 1 by some TypeScript configurations or linter rules).
 
 - **Mocking Alpaca Client Instance Methods:**
 
@@ -458,7 +413,8 @@ The implementation of tests for `coreActions.ts` highlighted several important p
       (..._args: any[]) =>
         ({
           ...mockAlpacaClientInstance,
-          setProperty: vi.fn().mockResolvedValue(undefined) // Fresh mock for stateful testing
+          setProperty: vi.fn().mockResolvedValue(undefined),
+          getProperty: vi.fn().mockResolvedValue(null)
         }) as unknown as AlpacaClient
     )
     ```

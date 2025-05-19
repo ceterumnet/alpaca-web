@@ -86,8 +86,28 @@ let themeObserver: MutationObserver | null = null
 
 // Draw the image on canvas
 const drawImage = async () => {
+  // Add detailed logging for received props at the beginning of drawImage
+  console.log(
+    `CameraImageDisplay: drawImage called. Props: ` +
+    `imageData byteLength: ${props.imageData?.byteLength}, ` +
+    `width: ${props.width}, height: ${props.height}, sensorType: ${props.sensorType}`
+  );
+
   if (!canvasRef.value || props.imageData.byteLength === 0) {
+    console.warn('CameraImageDisplay: drawImage aborted - no canvas or no image data.');
     return
+  }
+
+  if (!props.width || !props.height) {
+    console.error('CameraImageDisplay: drawImage aborted - width or height is zero or invalid.');
+    // Optionally, clear the canvas or show a message
+    const canvas = canvasRef.value;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // ctx.fillText("Invalid image dimensions", 10, 50);
+    }
+    return;
   }
 
   if (!processedImage.value) {
@@ -125,8 +145,8 @@ const drawImage = async () => {
   canvas.height = imageHeight
 
   // Create a lookup table for efficient conversion
-  let min = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value
-  let max = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value
+  let minToUse = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value
+  let maxToUse = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value
 
   // Apply robust stretch if enabled
   if (autoStretch.value && useRobustStretch.value && processedImage.value.pixelData.length > 100) {
@@ -151,18 +171,23 @@ const drawImage = async () => {
     )
 
     if (robustValues.max > robustValues.min) {
-      min = robustValues.min
-      max = robustValues.max
-      console.log(`Applied robust stretch: min=${min}, max=${max}`)
+      minToUse = robustValues.min // Use for current rendering
+      maxToUse = robustValues.max // Use for current rendering
+      console.log(`Applied robust stretch: min=${minToUse}, max=${maxToUse}`)
+      // DO NOT update minPixelValue.value and maxPixelValue.value here if autoStretch is true, as it causes a loop.
+      // These refs are for manual control or for reflecting the auto values once, not continuously.
     }
   }
 
-  // Store min/max for user interface
-  minPixelValue.value = min
-  maxPixelValue.value = max
+  // Store min/max for user interface only if autoStretch is OFF or if we want to reflect the initial auto-values.
+  // To prevent loops, don't update these if autoStretch is on and they are part of a watcher dependency.
+  if (!autoStretch.value) {
+    minPixelValue.value = minToUse;
+    maxPixelValue.value = maxToUse;
+  } // Else, they are used directly from processedImage or robust calc for rendering this pass.
 
   // Create an efficient lookup table for the stretch method
-  const lut = createStretchLUT(min, max, stretchMethod.value, processedImage.value.bitsPerPixel)
+  const lut = createStretchLUT(minToUse, maxToUse, stretchMethod.value, processedImage.value.bitsPerPixel)
 
   // Generate display image data efficiently
   const imageData = generateDisplayImage(
@@ -327,9 +352,17 @@ const calculateHistogram = () => {
   // Manual stretch values (minPixelValue.value, maxPixelValue.value) are set by user or by auto-stretch application.
 
   // Store min/max for stretching and UI (already done in drawImage, this is for consistency if called separately)
+  // This was also a source of the loop. Only update if autoStretch is false.
   if (autoStretch.value) {
-    minPixelValue.value = min; // min comes from processedImage.minPixelValue
-    maxPixelValue.value = max; // max comes from processedImage.maxPixelValue
+    // If auto-stretching, minPixelValue and maxPixelValue should ideally reflect the *result* of auto-stretch
+    // but not be set during the reactive calculation that *uses* them as a dependency.
+    // The actual min/max for the histogram should come from processedImage.value or robust calculation directly.
+    // minPixelValue.value = min; // OLD: Cause of loop
+    // maxPixelValue.value = max; // OLD: Cause of loop
+  } else {
+    // If manual stretch is on, then min/maxPixelValue are the source of truth.
+    minPixelValue.value = min;
+    maxPixelValue.value = max;
   }
   
   // Use library function to calculate histogram efficiently
@@ -337,8 +370,8 @@ const calculateHistogram = () => {
     processedImage.value.pixelData,
     imageWidth,
     imageHeight,
-    min, // Use the min (possibly robustly calculated)
-    max, // Use the max (possibly robustly calculated)
+    min, // Use the min (possibly robustly calculated from processedImage or actual minPixelValue.value if manual)
+    max, // Use the max (similarly)
     256,
     processedImage.value.channels, // Pass channels
     processedImage.value.isDebayered ? 'row-major' : 'column-major' // Pass order
