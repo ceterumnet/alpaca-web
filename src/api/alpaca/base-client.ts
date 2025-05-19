@@ -452,17 +452,15 @@ export class AlpacaClient {
     const results: Record<string, unknown> = {}
     // Assign the array of promises to a variable first
     const propertyPromises = propertyNames.map(async (name) => {
-      const tsName = toTsFormat(name) // Get the TypeScript-formatted name for the results object key
+      const nameFromFetchList = name
+      const tsName = toTsFormat(nameFromFetchList)
       try {
-        const value = await this.getProperty(name, options)
+        const value = await this.getProperty(nameFromFetchList, options)
         results[tsName] = value
       } catch (error) {
-        // Log warning and continue with other properties; this promise will resolve as undefined.
         console.warn(`Failed to get property '${name}' (mapped to '${tsName}'): ${(error as Error).message}`)
-        // results[tsName] will not be set, so it will be undefined in the final object, which is correct.
       }
     })
-    // Wait for all promises to settle (either resolve or be handled by the catch)
     await Promise.all(propertyPromises)
     return results
   }

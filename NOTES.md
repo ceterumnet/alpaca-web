@@ -17,9 +17,17 @@ FUTURE:
 
   TODO:
 
-- [ ] Ensure all docs are up to date, deleted, or created
+- [ ] Write unit tests for clients
+- [ ] Write unit tests for stores
+- [ ] Notifications are weird. The CSS styles aren't quite right they don't always honor dark mode
+- [ ] Toasts should only show up for errors
+- [ ] Opening notifications doesn't need to generate a notification :)
+- [ ] Generate Audit for Simplified Panels against what is available in the stores
+- [ ] Create build instruction with specific examples of how the 2 critical environment variables work: `VITE_APP_BASE_PATH=/html/ VITE_APP_DISCOVERY_MODE=direct npm run build`
+- [ ] Update README.md to include a project overview with links to the different documents available
+- [ ] Create logging system
+- [ ] Wire settings up
 - [x] Add all alpaca device types
-- [ ] Need to cleanup the notification system...it's annoying and doesn't adhere to dark v light mode
 - [x] Test standalone operation without a node server running
 - [x] Revise device management system to:
   - [x] Automatically add all of the devices discovered to the device store
@@ -27,8 +35,6 @@ FUTURE:
     - [N] Probably a good idea to have customizable names
     - [x] Need to figure out canonical name scheme so that even between sessions we can keep the same settings / data associated with said device
   - [x] Disable autoconnect when adding a device from discovery
-- [ ] Figure out logging system
-- [ ] Wire settings up
 - [x] New visual layouts for the panels
 - [x] Integrate layout edit button more nicely - it's a giant bar right now...doesn't need to be
 - [x] The buttons on the top right of the panels aren't wired up

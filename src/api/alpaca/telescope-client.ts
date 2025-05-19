@@ -11,6 +11,8 @@
 
 import type { Device } from '@/stores/types/device-store.types'
 import { AlpacaClient } from './base-client'
+import type { RequestOptions } from '@/api/alpaca/types'
+import type { TelescopeDevice } from '@/types/device.types'
 
 // Telescope-specific client with telescope-specific methods
 export class TelescopeClient extends AlpacaClient {
@@ -262,8 +264,8 @@ export class TelescopeClient extends AlpacaClient {
   }
 
   // Comprehensive state - uses GET to retrieve multiple properties
-  async getTelescopeState(): Promise<Record<string, unknown>> {
-    const properties = [
+  async getTelescopeState(options: RequestOptions = {}): Promise<Partial<TelescopeDevice>> {
+    const propertiesToFetch = [
       'alignmentmode',
       'altitude',
       'azimuth',
@@ -294,6 +296,7 @@ export class TelescopeClient extends AlpacaClient {
       'trackingrate',
       'trackingrates',
       'utcdate',
+      // Added from discussion about missing properties
       'aperturearea',
       'aperturediameter',
       'guideratedeclination',
@@ -306,6 +309,13 @@ export class TelescopeClient extends AlpacaClient {
       'cansetrightascensionrate'
     ]
 
-    return this.getProperties(properties)
+    try {
+      const fetchedProperties = await this.getProperties(propertiesToFetch, options)
+
+      return fetchedProperties as Partial<TelescopeDevice>
+    } catch (error) {
+      console.error('TelescopeClient.getTelescopeState: Catastrophic failure in getProperties or subsequent logging:', error)
+      return {} // Return empty object on catastrophic failure
+    }
   }
 }

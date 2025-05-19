@@ -163,6 +163,11 @@ export const propertyNameFormats: Record<string, Record<PropertyNameFormat, stri
     [PropertyNameFormat.PARAM]: 'CanSetGuideRate',
     [PropertyNameFormat.TS]: 'canSetGuideRate'
   },
+  cansetguiderates: {
+    [PropertyNameFormat.URL]: 'cansetguiderates',
+    [PropertyNameFormat.PARAM]: 'CanSetGuideRates',
+    [PropertyNameFormat.TS]: 'canSetGuideRates'
+  },
   cansetpark: {
     [PropertyNameFormat.URL]: 'cansetpark',
     [PropertyNameFormat.PARAM]: 'CanSetPark',
@@ -228,6 +233,11 @@ export const propertyNameFormats: Record<string, Record<PropertyNameFormat, stri
     [PropertyNameFormat.PARAM]: 'DeclinationRate',
     [PropertyNameFormat.TS]: 'declinationRate'
   },
+  declination_rate: {
+    [PropertyNameFormat.URL]: 'declinationrate',
+    [PropertyNameFormat.PARAM]: 'DeclinationRate',
+    [PropertyNameFormat.TS]: 'declinationRate'
+  },
   destinationsideofpier: {
     [PropertyNameFormat.URL]: 'destinationsideofpier',
     [PropertyNameFormat.PARAM]: 'DestinationSideOfPier',
@@ -269,6 +279,11 @@ export const propertyNameFormats: Record<string, Record<PropertyNameFormat, stri
     [PropertyNameFormat.TS]: 'rightAscension'
   },
   rightascensionrate: {
+    [PropertyNameFormat.URL]: 'rightascensionrate',
+    [PropertyNameFormat.PARAM]: 'RightAscensionRate',
+    [PropertyNameFormat.TS]: 'rightAscensionRate'
+  },
+  rightascension_rate: {
     [PropertyNameFormat.URL]: 'rightascensionrate',
     [PropertyNameFormat.PARAM]: 'RightAscensionRate',
     [PropertyNameFormat.TS]: 'rightAscensionRate'
@@ -335,7 +350,7 @@ export const propertyNameFormats: Record<string, Record<PropertyNameFormat, stri
   },
   utcdate: {
     [PropertyNameFormat.URL]: 'utcdate',
-    [PropertyNameFormat.PARAM]: 'UtcDate',
+    [PropertyNameFormat.PARAM]: 'UTCDate',
     [PropertyNameFormat.TS]: 'utcDate'
   },
 
@@ -659,33 +674,12 @@ export function toParamFormat(propertyName: string): string {
  * Converts a property name to TypeScript format (camelCase)
  */
 export function toTsFormat(propertyName: string): string {
-  return formatPropertyName(propertyName, PropertyNameFormat.TS)
-}
-
-/**
- * Validates a property value against its validation rules
- */
-export function validateProperty(
-  propertyName: string,
-  value: unknown,
-  validation?: PropertyValidation
-): boolean {
-  if (!validation) return true
-
-  if (validation.required && value === undefined) return false
-
-  if (typeof value === 'number') {
-    if (validation.min !== undefined && value < validation.min) return false
-    if (validation.max !== undefined && value > validation.max) return false
+  const lowercasePropName = propertyName.toLowerCase()
+  if (propertyNameFormats[lowercasePropName] && propertyNameFormats[lowercasePropName][PropertyNameFormat.TS]) {
+    return propertyNameFormats[lowercasePropName][PropertyNameFormat.TS]
   }
 
-  if (typeof value === 'string' && validation.pattern) {
-    if (!new RegExp(validation.pattern).test(value)) return false
-  }
-
-  if (validation.enum && !validation.enum.includes(value)) return false
-
-  if (validation.custom && !validation.custom(value)) return false
-
-  return true
+  // Fallback logic
+  const result = propertyName.replace(/[^a-zA-Z0-9]+(.)/g, (match, chr) => chr.toUpperCase()).replace(/^(.)/, (match) => match.toLowerCase())
+  return result
 }
