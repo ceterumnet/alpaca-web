@@ -1,5 +1,6 @@
 import type { Device } from '@/stores/types/device-store.types'
 import { AlpacaClient } from './base-client'
+import { toAscomValue } from '@/types/value-transforms'
 
 export interface ISwitchDetail {
   name: string
@@ -65,12 +66,12 @@ export class SwitchClient extends AlpacaClient {
   }
 
   async setSwitch(id: number, state: boolean): Promise<void> {
-    await this.put('setswitch', { Id: id, State: state })
+    await this.put('setswitch', { Id: id, State: toAscomValue(state) as string })
   }
 
   // Asynchronous PUT Methods
   async setAsyncSwitch(id: number, state: boolean): Promise<void> {
-    await this.put('setasync', { Id: id, State: state })
+    await this.put('setasync', { Id: id, State: toAscomValue(state) as string })
   }
 
   async setAsyncSwitchValue(id: number, value: number): Promise<void> {
@@ -93,26 +94,34 @@ export class SwitchClient extends AlpacaClient {
     // For value-based switches, get min/max/step
     // This is a simplification; a device might not support all of these or might be boolean-only.
     // A more robust implementation would check CanWrite for value/name and device capabilities.
+    let sMin, sMax, sStep
     let min, max, step
-    try {
-      // Check if it's a boolean like switch (value 0 or 1, step 1, min 0, max 1)
-      const sMin = await this.minSwitchValue(id)
-      const sMax = await this.maxSwitchValue(id)
-      const sStep = await this.switchStep(id)
 
-      // Heuristic: if min=0, max=1, step=1, it's likely a boolean toggle presented as a number by some devices
-      // Or, if the actual value is clearly boolean (true/false), treat as such.
-      // The Alpaca spec for getswitchvalue returns a double, setswitch takes boolean.
-      // setswitchvalue takes a double. This part can be tricky.
-      // For now, we assume if min/max/step are available, it's a value switch.
-      if (typeof sMin === 'number' && typeof sMax === 'number' && typeof sStep === 'number') {
-        min = sMin
-        max = sMax
-        step = sStep
-      }
+    try {
+      sMin = await this.minSwitchValue(id)
     } catch (e) {
-      // Min/max/step might not be available for all switches (especially simple on/off ones)
-      console.warn(`Could not get min/max/step for switch ${id}`, e)
+      console.warn(`Could not get minSwitchValue for switch ${id}`, e)
+    }
+    try {
+      sMax = await this.maxSwitchValue(id)
+    } catch (e) {
+      console.warn(`Could not get maxSwitchValue for switch ${id}`, e)
+    }
+    try {
+      sStep = await this.switchStep(id)
+    } catch (e) {
+      console.warn(`Could not get switchStep for switch ${id}`, e)
+    }
+
+    // Heuristic: if min=0, max=1, step=1, it's likely a boolean toggle presented as a number by some devices
+    // Or, if the actual value is clearly boolean (true/false), treat as such.
+    // The Alpaca spec for getswitchvalue returns a double, setswitch takes boolean.
+    // setswitchvalue takes a double. This part can be tricky.
+    // For now, we assume if min/max/step are available, it's a value switch.
+    if (typeof sMin === 'number' && typeof sMax === 'number' && typeof sStep === 'number') {
+      min = sMin
+      max = sMax
+      step = sStep
     }
 
     return {
