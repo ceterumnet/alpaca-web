@@ -118,6 +118,7 @@ Testing will focus on:
 - **File:** `tests/stores/modules/discoveryActions.test.ts`
 - **Focus:** Test discovery process initiation and termination.
 - **Key Tests:**
+
   - **State:** Verify initial `DiscoveryState`.
   - **`startDiscovery`:**
     - Set `isDiscovering` to true.
@@ -129,8 +130,6 @@ Testing will focus on:
     - Clear `discoveryTimeout`.
     - Emit `discoveryStopped` event.
     - Prevent stopping if not discovering.
-
-### 3.5. `simulationActions.ts`
 
 - **File:** `tests/stores/modules/simulationActions.test.ts`
 - **Focus:** Test management of simulation settings and simulated device behaviors.

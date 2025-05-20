@@ -20,7 +20,6 @@ import type { Device } from './types/device-store.types'
 // Import module creators
 import { createCoreActions } from './modules/coreActions'
 import { createEventSystem } from './modules/eventSystem'
-import { createSimulationActions } from './modules/simulationActions'
 import { createDiscoveryActions } from './modules/discoveryActions'
 import { createCameraActions } from './modules/cameraActions'
 import { createTelescopeActions } from './modules/telescopeActions'
@@ -43,7 +42,6 @@ export const useUnifiedStore = defineStore('unifiedStore', {
     return {
       ...createCoreActions().state(),
       ...createEventSystem().state(),
-      ...createSimulationActions().state(),
       ...createDiscoveryActions().state(),
       ...createCameraActions().state(),
       ...createTelescopeActions().state(),
@@ -69,7 +67,6 @@ export const useUnifiedStore = defineStore('unifiedStore', {
     // Import all actions from modules
     ...createCoreActions().actions,
     ...createEventSystem().actions,
-    ...createSimulationActions().actions,
     ...createDiscoveryActions().actions,
     ...createCameraActions().actions,
     ...createTelescopeActions().actions,
