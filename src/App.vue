@@ -13,6 +13,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useUIPreferencesStore } from '@/stores/useUIPreferencesStore'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import { useEnhancedDiscoveryStore } from '@/stores/useEnhancedDiscoveryStore'
+import { useLogger } from 'vue-logger-plugin' // Import useLogger
 // import '@/assets/colors.css' // Import the CSS
 import NavigationBar from '@/components/layout/NavigationBar.vue'
 import NotificationCenter from '@/components/ui/NotificationCenter.vue'
@@ -23,6 +24,7 @@ import Icon from '@/components/ui/Icon.vue' // Import Icon component
 const uiStore = useUIPreferencesStore()
 const notificationStore = useNotificationStore()
 const discoveryStore = useEnhancedDiscoveryStore()
+const log = useLogger() // Get logger instance
 
 // Show/hide notification manager
 const showNotificationManager = ref(false)
@@ -54,15 +56,15 @@ function runInitialDiscovery() {
   setTimeout(async () => {
     try {
       await discoveryStore.discoverDevices({ timeout: 3000 })
-      console.log('Initial device discovery completed')
+      log.info('Initial device discovery completed') // Use log instead of this.$log
     } catch (error) {
-      console.log('Initial device discovery failed:', error)
+      log.error('Initial device discovery failed:', error) // Use log instead of this.$log
     }
   }, 2000) // Wait 2 seconds after app load before starting discovery
 }
 
 onMounted(() => {
-  console.log('App mounted')
+  log.info('App mounted') // Use log instead of this.$log
 
   // Check for stored preference
   const storedPref = localStorage.getItem('dark-theme-preference')
@@ -77,8 +79,8 @@ onMounted(() => {
     document.documentElement.classList.remove('dark-theme')
   }
 
-  console.log('Initial dark mode:', uiStore.isDarkMode)
-  console.log('Has dark-theme class:', document.documentElement.classList.contains('dark-theme'))
+  log.debug('Initial dark mode:', uiStore.isDarkMode) // Use log instead of this.$log
+  log.debug('Has dark-theme class:', document.documentElement.classList.contains('dark-theme')) // Use log instead of this.$log
 
   // Create a welcome notification
   setTimeout(() => {

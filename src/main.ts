@@ -11,6 +11,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import logger from './plugins/logger'
 
 // Import panel components
 import panelComponents from './components/panels'
@@ -25,6 +26,7 @@ const pinia = createPinia()
 // Add Pinia to the app
 app.use(pinia)
 app.use(router)
+app.use(logger)
 
 // Register panel and feature components
 app.use(panelComponents)
