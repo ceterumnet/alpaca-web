@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { setAlpacaProperty, callAlpacaMethod } from '@/utils/alpacaPropertyAccess'
+import { formatRaNumber, formatDecNumber } from '@/utils/astroCoordinates'
 
 const props = defineProps({
   deviceId: {
@@ -101,22 +102,12 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
 
 // Format right ascension as HH:MM:SS
 const formattedRA = computed<string>(() => {
-  const value = rightAscension.value;
-  const hours = Math.floor(value);
-  const minutes = Math.floor((value - hours) * 60);
-  const seconds = Math.round(((value - hours) * 60 - minutes) * 60); // Use round for seconds for better display
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return formatRaNumber(rightAscension.value);
 })
 
 // Format declination as +/-DD:MM:SS
 const formattedDec = computed<string>(() => {
-  const value = declination.value;
-  const sign = value >= 0 ? '+' : '-';
-  const absDec = Math.abs(value);
-  const degrees = Math.floor(absDec);
-  const minutes = Math.floor((absDec - degrees) * 60);
-  const seconds = Math.round(((absDec - degrees) * 60 - minutes) * 60); // Use round for seconds
-  return `${sign}${String(degrees).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return formatDecNumber(declination.value);
 })
 
 // Simple slew to coordinates

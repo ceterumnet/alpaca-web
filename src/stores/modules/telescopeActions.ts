@@ -15,6 +15,7 @@
 import type { Device } from '@/types/device.types'
 import type { DeviceEvent } from '../types/device-store.types'
 import type { AlpacaClient } from '@/api/AlpacaClient'
+import { formatSiderealTime, parseRaString, parseDecString } from '@/utils/astroCoordinates'
 
 // Define telescope state interface with property polling intervals
 export interface TelescopeState {
@@ -933,24 +934,77 @@ export function createTelescopeActions() {
           console.error(`Error aborting slew for telescope ${deviceId}:`, error)
           throw error
         }
+      },
+
+      /**
+       * Slew the telescope to specified coordinates using string inputs for RA and Dec.
+       */
+      async slewToCoordinatesString(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+          slewToCoordinates: (deviceId: string, rightAscension: number, declination: number, useAsync?: boolean) => Promise<boolean>
+        },
+        deviceId: string,
+        raString: string,
+        decString: string,
+        useAsync: boolean = true
+      ): Promise<boolean> {
+        console.log(`Slewing telescope ${deviceId} to RA/Dec strings:`, {
+          raString,
+          decString,
+          useAsync
+        })
+
+        const device = this.getDeviceById(deviceId)
+        if (!device) {
+          const errorMsg = `Device not found: ${deviceId} (input RA: "${raString}", Dec: "${decString}")`
+          console.error(`slewToCoordinatesString: ${errorMsg}`)
+          this._emitEvent({
+            type: 'telescopeSlewError',
+            deviceId,
+            error: errorMsg,
+            coordinates: {} // Pass empty object if coordinates are not applicable
+          })
+          return false
+        }
+
+        if (device.type !== 'telescope') {
+          const errorMsg = `Device ${deviceId} is not a telescope (input RA: "${raString}", Dec: "${decString}")`
+          console.error(`slewToCoordinatesString: ${errorMsg}`)
+          this._emitEvent({
+            type: 'telescopeSlewError',
+            deviceId,
+            error: errorMsg,
+            coordinates: {} // Pass empty object if coordinates are not applicable
+          })
+          return false
+        }
+
+        try {
+          const rightAscension = parseRaString(raString)
+          const declination = parseDecString(decString)
+
+          return await this.slewToCoordinates(deviceId, rightAscension, declination, useAsync)
+        } catch (error: unknown) {
+          let errorMessage = 'Unknown error during slew to string coordinates'
+          if (error instanceof Error) {
+            errorMessage = `Error parsing RA/Dec strings or slewing: ${error.message} (input RA: "${raString}", Dec: "${decString}")`
+          } else {
+            errorMessage = `Unknown error parsing RA/Dec strings or slewing (input RA: "${raString}", Dec: "${decString}")`
+          }
+          console.error(`slewToCoordinatesString for telescope ${deviceId}:`, errorMessage, error)
+          this._emitEvent({
+            type: 'telescopeSlewError',
+            deviceId,
+            error: errorMessage,
+            coordinates: {} // Pass empty object if coordinates are not applicable
+          })
+          return false
+        }
       }
     }
   }
-}
-
-/**
- * Helper function to format sidereal time to HH:MM:SS format
- */
-function formatSiderealTime(sidTime: number): string {
-  if (sidTime === undefined || sidTime === null) return '00:00:00'
-
-  // Ensure value is in range 0-24
-  sidTime = sidTime % 24
-  if (sidTime < 0) sidTime += 24
-
-  const hours = Math.floor(sidTime)
-  const minutes = Math.floor((sidTime - hours) * 60)
-  const seconds = Math.floor(((sidTime - hours) * 60 - minutes) * 60)
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 }

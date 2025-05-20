@@ -230,6 +230,21 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 - `setTelescopeTracking`.
 - `setTelescopeGuideRateDeclination`, `setTelescopeGuideRateRightAscension`, `setTelescopeSlewSettleTime`.
 - `slewToCoordinates`, `slewToAltAz`: Target setting, async/sync calls, event emissions.
+- **`slewToCoordinatesString` (NEW):**
+  - Test successful slew with valid RA/Dec strings (various formats).
+  - Mock `parseRaString`, `parseDecString` from `@/utils/astroCoordinates`:
+    - Verify they are called with `raString` and `decString` respectively.
+    - Simulate successful parsing returning decimal values.
+    - Simulate parsing failure (e.g., `parseRaString` throws an error).
+  - Verify the original `slewToCoordinates` (numerical input) action is called with correctly parsed decimal values when parsing succeeds.
+  - Verify that `slewToCoordinates` is NOT called if parsing fails.
+  - Test error handling and `telescopeSlewError` event emission if:
+    - Device not found.
+    - Device is not a telescope.
+    - `parseRaString` or `parseDecString` throws an error (check error message propagation to event).
+    - The underlying `slewToCoordinates` (numerical) action fails (mock its failure).
+  - Test successful event emissions (`telescopeSlewStarted`, `telescopeSlewComplete` via the underlying numerical slew action).
+  - Test `useAsync` parameter propagation to the underlying `slewToCoordinates` call.
 - `abortSlew`.
 
 #### 3.6.3. `filterWheelActions.ts`
@@ -383,6 +398,37 @@ This plan provides a comprehensive approach to testing the UnifiedStore and its 
 4.  Remaining device-specific modules.
 5.  `UnifiedStore.ts` (integration aspects).
 6.  `discoveryActions.ts` and `simulationActions.ts`.
+7.  Utility Modules
+
+### 3.7.1. `astroCoordinates.ts`
+
+- **File:** `tests/utils/astroCoordinates.test.ts`
+- **Focus:** Test utility functions for astronomical coordinate parsing and formatting.
+- **Key Functions & Tests:**
+  - **`formatSiderealTime(sidTime: number): string`**:
+    - ✅ (Moved from `telescopeActions.ts`)
+    - Verify correct formatting for various valid inputs (0, 12, 23.999, fractional values).
+    - Verify handling of undefined/null inputs.
+    - Verify handling of out-of-range inputs (e.g., < 0, >= 24) and modulo behavior.
+  - **`formatRaNumber(raDecimalHours: number): string`** (NEW - Extracted from `SimplifiedTelescopePanel.vue`):
+    - Test valid RA decimal inputs (e.g., 0, 12.5, 23.999).
+    - Verify correct "HH:MM:SS" output, including padding.
+    - Test rounding behavior for seconds, including carry-over to minutes/hours.
+    - Test handling of NaN, undefined, null inputs.
+  - **`formatDecNumber(decDecimalDegrees: number): string`** (NEW - Extracted from `SimplifiedTelescopePanel.vue`):
+    - Test valid Dec decimal inputs (e.g., 0, 45.75, -20.25, 90, -90).
+    - Verify correct "+/-DD:MM:SS" output, including sign and padding.
+    - Test rounding behavior for seconds, including carry-over to minutes/degrees (respecting +/-90 degree clamp).
+    - Test edge cases like 0, +90, -90 (e.g., +89:59:59.9 should round to +90:00:00).
+    - Test handling of NaN, undefined, null inputs.
+  - **`parseRaString(raString: string): number`** (NEW):
+    - Test valid "HH:MM:SS.ss", "HH MM SS.ss" formats.
+    - Test handling of missing seconds, fractional seconds.
+    - Test error throwing for invalid formats, out-of-range values.
+  - **`parseDecString(decString: string): number`** (NEW):
+    - Test valid "DD:MM:SS.ss", "DD MM SS.ss" formats (with +/- signs).
+    - Test handling of missing minutes, seconds, fractional seconds.
+    - Test error throwing for invalid formats, out-of-range values.
 
 ## 7. Key Learnings and Patterns from `coreActions.test.ts` and `eventSystem.test.ts` Implementation
 
@@ -430,95 +476,4 @@ The implementation of tests for `coreActions.ts` highlighted several important p
 
   - **Pattern:** `mockEmitEvent = vi.spyOn(store as any, '_emitEvent');`
     - The `as any` is sometimes necessary if the method is not part of the public type definition but is internally accessible.
-  - **Typing the Spy:** `let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>;` (Adjust args and return type as needed).
-
-- **Testing Event Emission (`_emitEvent`):**
-
-  - If `_emitEvent` is called with a single event object (e.g., `this._emitEvent({ type: '''deviceAdded''', ... })`):
-    ```typescript
-    expect(mockEmitEvent).toHaveBeenCalledTimes(1)
-    const emittedEvent = mockEmitEvent.mock.calls[0][0] // Event object is the first arg of the first call
-    expect(emittedEvent.type).toBe('''deviceAdded''')
-    if (emittedEvent.type === '''deviceAdded''') {
-      // Type guard for type-specific properties
-      expect(emittedEvent.device).toHaveProperty('''id''', '''expectedId''')
-    }
-    ```
-  - **Silent Options:** For tests checking that an event is _not_ emitted (e.g., `options.silent === true`), filter the calls to be specific:
-    ```typescript
-    const deviceAddedCalls = mockEmitEvent.mock.calls.filter((call) => {
-      const event = call[0]
-      return event.type === '''deviceAdded'''
-    })
-    expect(deviceAddedCalls.length).toBe(0)
-    ```
-  - **Discriminated Unions (e.g., `DeviceEvent`):** When asserting specific event payloads from a discriminated union type, remember to use type guards to narrow down the event type before accessing type-specific properties. For example:
-    ```typescript
-    const deviceConnectedEventCall = mockEmitEvent.mock.calls.find(
-      (call) => call[0].type === '''deviceConnected'''
-    )
-    expect(deviceConnectedEventCall).toBeDefined()
-    if (deviceConnectedEventCall) {
-      const eventPayload = deviceConnectedEventCall[0] // as DeviceEvent
-      if (eventPayload.type === '''deviceConnected''') { // Type guard
-        expect(eventPayload.deviceId).toBe(deviceId)
-      } else {
-        throw new Error('Expected deviceConnected event') // Or fail test
-      }
-    }
-    ```
-
-- **Lifecycle and Cleanup:**
-
-  - Use `vi.clearAllMocks()` in `beforeEach` to reset call counts and mock implementations between tests.
-  - For specific mocks (like `mockedCreateAlpacaClient`), also re-apply a base `mockImplementation` in `beforeEach` if its behavior needs to be consistent at the start of each test, especially if some tests use `mockImplementationOnce`.
-
-- **Linter Workarounds:**
-
-  - For generic mock function signatures like `(..._args: any[])`, linters might complain about `_args` being unused or `any` type. Using `eslint-disable-next-line @typescript-eslint/no-unused-vars` and `@typescript-eslint/no-explicit-any` locally for these specific lines is acceptable if the overall mock typing is sound.
-
-- **Debugging Tips:**
-
-  - Liberal use of `console.log` within the store actions being tested can be very helpful to trace execution flow and inspect state during test runs.
-  - Carefully analyze the `Expected` vs. `Received` sections in Vitest error outputs.
-
-- **Error Handling in Asynchronous Actions:**
-
-  - When an `async` store action (e.g., `connectDevice`) internally calls a mocked client method that is designed to `throw` an error for a failure test case, the `catch` block in the store action must `return` a value (e.g., `false`) rather than re-throwing the error if the test expects the action's promise to _resolve_ (e.g., to `false`). If the `catch` block re-throws, the action's promise will _reject_, leading to test failures like "promise rejected instead of resolving".
-
-    ```typescript
-    // In store action:
-    // async connectDevice(deviceId: string): Promise<boolean> {
-    //   try {
-    //     await client.setProperty('''connected''', true); // This might throw in a test
-    //     // ... success logic ...
-    //     return true;
-    //   } catch (error) {
-    //     // ... error handling logic ...
-    //     return false; // Crucial: ensures promise resolves to false
-    //   }
-    // }
-
-    // In test:
-    // await expect(store.connectDevice(deviceId)).resolves.toBe(false);
-    ```
-
-- **Vitest Asynchronous Assertions:**
-
-  - For `async` actions that are expected to resolve (even if to a "failure" value like `false`), `await expect(actionPromise).resolves.toBe(expectedValue)` provides clearer intent and error messages than `const result = await actionPromise; expect(result).toBe(expectedValue)`. This is especially true if the promise might unexpectedly reject.
-
-- **Correct Type/Enum Usage:**
-  - Always ensure that status strings or other values set in actions (e.g., `device.status = 'error'`) match the exact values defined in their respective types (e.g., `DeviceState`). Mismatches (like `'connectionError'` vs. `'error'`) can lead to subtle bugs and test failures. Refer to type definition files (`*.types.ts`) when in doubt.
-
-Key Learnings from `eventSystem.ts` testing:
-
-- **`addEventListener` Signature:** Confirmed that `addEventListener` in the current system takes a single argument: a listener function `(event: DeviceEvent) => void`. Listeners are generic and must filter events by `event.type` internally.
-- **Initial State of `eventHandlers`:** The `eventHandlers` property (for the legacy string-based event system) initializes as an empty object `{}` rather than a `Map`. Tests should expect this.
-- **Testing Guarded Code Paths:** To test code paths that are behind conditional guards (e.g., the debug log in `emit` which only runs if `eventHandlers[event]` exists), ensure the test setup satisfies these guard conditions (e.g., by adding a dummy handler).
-- **Vitest Mock Typing:** For complex function signatures or when Vitest's inference is tricky, explicitly typing mocks using the full function signature can be more robust (e.g., `vi.fn<(event: DeviceEvent) => void>()` or `import('vitest').Mock<(event: DeviceEvent) => void>`).
-- **`DeviceEvent` Payloads:** When creating `DeviceEvent` objects for tests, ensure they include all properties required by their specific `type` (e.g., a `device` object for `deviceAdded` events). Refer to `device-store.types.ts`.
-- **`console.error` Spying:** Use `vi.spyOn(console, 'error').mockImplementation(() => {})` for tests involving `console.error` and remember to call `mockRestore()` in `afterEach`.
-
-By following these patterns, future tests should be more straightforward to implement and less prone to the tricky mocking and typing issues encountered initially.
-
-This plan provides a comprehensive approach to testing the UnifiedStore and its modules, ensuring reliability and maintainability.
+  - **Typing the Spy:** `
