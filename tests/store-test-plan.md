@@ -298,13 +298,16 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 - ✅ `moveFocuser`, ✅ `haltFocuser`, ✅ `setFocuserTempComp`.
 - ✅ Polling and connection handlers.
 
-#### 3.6.6. `rotatorActions.ts`
+#### 3.6.6. `rotatorActions.ts` (All tests passing ✅)
 
-- `initializeRotatorState`, `clearRotatorState`.
-- `fetchRotatorCapabilities` (`canreverse`).
-- `fetchRotatorStatus`.
-- `moveAbsolute`, `moveRelative`, `haltRotator`, `syncToPosition`, `setRotatorReverse`.
-- Ensure `this.$patch` is handled correctly with Pinia testing utilities or spied upon.
+- ✅ `initializeRotatorState`, `clearRotatorState`.
+- ✅ `_getRotatorClient`.
+- ✅ `fetchRotatorCapabilities` (`canreverse`).
+- ✅ `fetchRotatorStatus`.
+- ✅ `moveAbsolute`, `moveRelative`, `haltRotator`, `syncToPosition`, `setRotatorReverse`.
+- ✅ Polling actions (`startRotatorPolling`, `stopRotatorPolling`, `_pollRotatorStatus`).
+- ✅ Connection handlers (`handleRotatorConnected`).
+- ✅ Ensure `this.$patch` (Pinia state updates) is handled correctly (verified by checking store state and `updateDeviceProperties` calls).
 
 #### 3.6.7. `switchActions.ts`
 

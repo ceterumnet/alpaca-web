@@ -44,8 +44,6 @@ const mockAlpacaClientInstance = {
   _getBaseUrl: vi.fn().mockReturnValue('http://mock.alpaca.api'),
   _getDeviceNum: vi.fn().mockReturnValue(0),
   _getDeviceType: vi.fn().mockReturnValue('mockdevice'),
-  _isSimulated: vi.fn().mockReturnValue(false),
-  isDeviceSimulated: vi.fn().mockReturnValue(false),
   getRawDevice: vi.fn().mockReturnValue(null),
   sleep: vi.fn().mockResolvedValue(undefined),
   handleResponse: vi.fn().mockImplementation((response) => response.Value), // Basic mock
