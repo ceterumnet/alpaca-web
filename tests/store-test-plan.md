@@ -334,11 +334,14 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 - `refreshObservingConditionsReadings`.
 - Polling and connection handlers.
 
-#### 3.6.10. `safetyMonitorActions.ts`
+#### 3.6.10. `safetyMonitorActions.ts` (All tests passing ✅)
 
-- `_getSafetyMonitorClient`.
-- `fetchSafetyMonitorDeviceStatus`: `fetchStatus` (for `IsSafe`).
-- Polling and connection handlers.
+- ✅ `_getSafetyMonitorClient`.
+- ✅ `fetchSafetyMonitorDeviceStatus`: `fetchStatus` (for `IsSafe`).
+- ✅ Polling and connection handlers.
+  - Includes `startSafetyMonitorPolling`, `stopSafetyMonitorPolling`, `_pollSafetyMonitorDeviceStatus`.
+  - Includes `handleSafetyMonitorConnected`, `handleSafetyMonitorDisconnected`.
+- (No device-specific control actions like `setSafe` identified in the module).
 
 ## 4. Mocking Strategy Details (Revised)
 
