@@ -244,24 +244,26 @@ export function createDomeActions(): {
           this.stopDomePolling(deviceId)
           return
         }
-        // Re-fetch all details as relevant properties might change
         await this.fetchDomeStatus(deviceId)
       },
 
       startDomePolling(this: UnifiedStoreType, deviceId: string): void {
+        if (!deviceId) return // Guard against invalid deviceId
         const device = this.getDeviceById(deviceId)
         if (!device || !isDome(device) || !device.isConnected) return
         if (this._dome_pollingTimers.has(deviceId)) {
           this.stopDomePolling(deviceId)
         }
-        const pollInterval = (device.properties?.propertyPollIntervalMs as number) || 2000
+        const pollInterval = (device.properties?.propertyPollIntervalMs as number) || this._propertyPollingIntervals.get('domeStatus') || 5000
         this._dome_isPolling.set(deviceId, true)
         const timerId = window.setInterval(() => this._pollDomeStatus(deviceId), pollInterval)
         this._dome_pollingTimers.set(deviceId, timerId)
+        this._pollDomeStatus(deviceId) // Immediate call after starting
         console.log(`[DomeStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       stopDomePolling(this: UnifiedStoreType, deviceId: string): void {
+        if (!deviceId) return // Guard against invalid deviceId
         this._dome_isPolling.set(deviceId, false)
         if (this._dome_pollingTimers.has(deviceId)) {
           clearInterval(this._dome_pollingTimers.get(deviceId)!)
@@ -271,12 +273,14 @@ export function createDomeActions(): {
       },
 
       handleDomeConnected(this: UnifiedStoreType, deviceId: string): void {
+        if (!deviceId) return // Guard against invalid deviceId
         console.log(`[DomeStore] Dome ${deviceId} connected. Fetching status and starting poll.`)
         this.fetchDomeStatus(deviceId)
         this.startDomePolling(deviceId)
       },
 
       handleDomeDisconnected(this: UnifiedStoreType, deviceId: string): void {
+        if (!deviceId) return // Guard against invalid deviceId
         console.log(`[DomeStore] Dome ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopDomePolling(deviceId)
         const clearedProps: DomeDeviceProperties = {

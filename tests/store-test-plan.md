@@ -282,14 +282,15 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 - **Global Type Definitions:** Moving module-specific property interfaces (like `FilterWheelDeviceProperties`) to the global `device.types.ts` improves consistency and discoverability. Ensure that if these interfaces are used in `Partial<UnifiedDevice>` contexts (like in `store.updateDevice`), they retain necessary index signatures (`[key: string]: unknown;`) for compatibility.
 - **Vitest Globals:** Functions like `afterEach` need to be explicitly imported from `vitest` (`import { ..., afterEach } from 'vitest'`) if not automatically available.
 
-#### 3.6.4. `domeActions.ts`
+#### 3.6.4. `domeActions.ts` (All tests passing ✅)
 
 - ✅ `_getDomeClient`: Test client creation, including null returns for non-dome devices, missing devices, or incomplete address details. (All 8 tests passing)
 - ✅ `fetchDomeStatus`: Test `getDomeState` calls, device property updates, event emissions, handling of nullish API responses, and client/API error scenarios. (All 4 tests passing)
-- ✅ `_executeDomeAction` helper function: Test successful action calls, client error handling, and scenarios where no client is available. (All 4 tests passing, covering `openShutter`, `closeShutter`, `parkDome`)
-- Specific actions: `openDomeShutter`, `closeDomeShutter`, etc. (TODO)
-- `setDomeParkPosition`, `slewDomeToAltitude`, `slewDomeToAzimuth`, `syncDomeToAzimuth`, `setDomeSlavedState`. (TODO)
-- Polling and connection handlers. (TODO)
+- ✅ `_executeDomeAction` helper function: Test successful action calls, client error handling, and scenarios where no client is available. (All 4 tests passing, covering `openShutter`, `closeShutter`, `parkDome`, `findHomeDome`, `abortSlewDome`)
+- ✅ Specific actions: `openDomeShutter`, `closeDomeShutter`, `parkDomeDevice`, `findDomeHome`, `abortDomeSlew`. (All tests passing)
+- ✅ `setDomeParkPosition`, `slewDomeToAltitude`, `slewDomeToAzimuth`, `syncDomeToAzimuth`, `setDomeSlavedState`. (All tests passing)
+- ✅ Polling actions (`startDomePolling`, `stopDomePolling`, `_pollDomeStatus`). (All tests passing)
+- ✅ Connection handlers (`handleDomeConnected`, `handleDomeDisconnected`). (All tests passing)
 
 **Learnings from `domeActions.ts`:**
 
@@ -308,14 +309,16 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
   - When testing functions that should return such a shared mock instance, assert identity using `expect(client).toBe(mockSharedInstance)` rather than `expect(client).toBeInstanceOf(ActualClientClass)`. The latter fails because the `ActualClientClass` in the test scope is the mocked constructor (a `vi.fn()` spy), not the original class.
 - **Controlling Mocked Methods on Shared Instances (`vi.mocked()`):**
   - When a shared mock instance has its methods defined as `vi.fn()`, TypeScript might not automatically recognize these as full `Mock` objects. This can lead to errors with `.mockReset()`, `.mockResolvedValue()`, etc.
-  - Wrap method access with `vi.mocked()`:
-    ```typescript
-    vi.mocked(mockDomeClientInstance.getDomeState).mockResolvedValue(...);
-    ```
-- **Casting Mock Instances for Type Compatibility:**
-  - Casting the shared mock instance `as unknown as ActualClientClass` (e.g., `mockDomeClientInstance as unknown as DomeClient`) helps satisfy type requirements for functions typed to return `ActualClientClass | null`.
-- **`MockInstance` Typing for Constructors:**
-  - The type `MockInstance<(args...) => ReturnType>` (a single functional type argument) appears to be the most stable way to type mocked constructors (e.g., `const MockedConstructor = OriginalClass as unknown as MockInstance<...>;`) in this project's Vitest/TypeScript setup.
+  - Wrap method access with `vi.mocked()`: `vi.mocked(mockDomeClientInstance.getDomeState).mockResolvedValue(...);`
+- **`MockInstance` Typing for Spies and Constructors:**
+  - Consistently using `MockInstance<(args...) => ReturnType>` (a single functional type argument) is effective for typing mocked constructors and `vi.spyOn` results, especially for internal store methods or client methods. This helps avoid `as any` casts and satisfies linter rules. Example: `const executeSpy = vi.spyOn(store, '_executeDomeAction') as MockInstance<(...args...) => ...>;`
+- **Polling Logic Implementation Details:**
+  - **Immediate Poll on Start:** `startDomePolling` should call the internal polling function (e.g., `_pollDomeStatus`) immediately after setting up the interval to ensure fresh data is fetched upon initiation.
+  - **Interval Management:** Polling intervals should be managed robustly, for example, using `store._propertyPollingIntervals.get('domeStatus')` for configurable intervals with a sensible default.
+  - **Timer Management in Tests:** Using `vi.useFakeTimers()` and ensuring `global.setInterval` (or `window.setInterval`) is used in the SUT, while spies and `clearInterval` correctly target these timers. `beforeEach` setup for polling tests should ensure the mocked device is connected and valid.
+- **Input Validation for Actions:**
+  - Actions, especially those dealing with `deviceId`, should include guard clauses (e.g., `if (!deviceId) return;`) at the beginning of handlers like `startDomePolling`, `stopDomePolling`, `handleDomeConnected`, and `handleDomeDisconnected` to prevent errors with invalid inputs.
+- **Correct Action Naming:** Ensure test code correctly calls the exposed action names on the store (e.g., `store.parkDomeDevice(...)` not `store.parkDome(...)` if the latter is an internal helper or a different action).
 
 #### 3.6.5. `focuserActions.ts`
 
@@ -512,20 +515,4 @@ The implementation of tests for `coreActions.ts` highlighted several important p
 
   - Create a base `mockAlpacaClientInstance` object where each method is a `vi.fn()` (e.g., `getProperty: vi.fn()`).
   - The `vi.mock` factory for `createAlpacaClient` should return this `mockAlpacaClientInstance` (or a fresh one using spread syntax `...mockAlpacaClientInstance, methodToOverride: vi.fn()` if specific methods need fresh mocks per call within a single test).
-  - In `beforeEach`, reset the implementation for `mockedCreateAlpacaClient` to ensure it returns the base mock structure, potentially with fresh `vi.fn()` instances for methods that track calls/state per test:
-    ```typescript
-    mockedCreateAlpacaClient.mockImplementation(
-      (..._args: any[]) =>
-        ({
-          ...mockAlpacaClientInstance,
-          setProperty: vi.fn().mockResolvedValue(undefined),
-          getProperty: vi.fn().mockResolvedValue(null)
-        }) as unknown as AlpacaClient
-    )
-    ```
-
-- **Spying on Store Actions (e.g., `_emitEvent`):**
-
-  - **Pattern:** `mockEmitEvent = vi.spyOn(store as any, '_emitEvent');`
-    - The `as any` is sometimes necessary if the method is not part of the public type definition but is internally accessible.
-  - **Typing the Spy:** `
+  - In `beforeEach`, reset the implementation for `mockedCreateAlpacaClient`

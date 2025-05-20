@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type MockInstance, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { Device, UnifiedDevice, DeviceEvent } from '@/stores/types/device-store.types'
@@ -519,4 +519,695 @@ describe('domeActions', () => {
       )
     })
   })
-})
+
+  // TODO: Add tests for specific action wrappers (openDomeShutter, etc.) that call _executeDomeAction
+  // These tests will be simpler, primarily checking if _executeDomeAction is spied on and called correctly.
+
+  describe('openDomeShutter', () => {
+    it('should call _executeDomeAction with "openShutter"', async () => {
+      const deviceId = 'dome1'
+      const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', apiBaseUrl: 'http://localhost:11111' })
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+      const executeSpy = vi.spyOn(store, '_executeDomeAction') as MockInstance<
+        (
+          deviceId: string,
+          action: keyof Pick<DomeClient, 'openShutter' | 'closeShutter' | 'parkDome' | 'findHomeDome' | 'abortSlewDome'>
+        ) => Promise<void>
+      >
+      executeSpy.mockResolvedValue(undefined)
+
+      await store.openDomeShutter(deviceId)
+
+      expect(executeSpy).toHaveBeenCalledWith(deviceId, 'openShutter')
+    })
+  })
+
+  describe('closeDomeShutter', () => {
+    it('should call _executeDomeAction with "closeShutter"', async () => {
+      const deviceId = 'dome1'
+      const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', apiBaseUrl: 'http://localhost:11111' })
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+      const executeSpy = vi.spyOn(store, '_executeDomeAction') as MockInstance<
+        (
+          deviceId: string,
+          action: keyof Pick<DomeClient, 'openShutter' | 'closeShutter' | 'parkDome' | 'findHomeDome' | 'abortSlewDome'>
+        ) => Promise<void>
+      >
+      executeSpy.mockResolvedValue(undefined)
+
+      await store.closeDomeShutter(deviceId)
+
+      expect(executeSpy).toHaveBeenCalledWith(deviceId, 'closeShutter')
+    })
+  })
+
+  describe('parkDomeDevice', () => {
+    it('should call _executeDomeAction with "parkDome"', async () => {
+      const deviceId = 'dome1'
+      const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', apiBaseUrl: 'http://localhost:11111' })
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+      const executeSpy = vi.spyOn(store, '_executeDomeAction') as MockInstance<
+        (
+          deviceId: string,
+          action: keyof Pick<DomeClient, 'openShutter' | 'closeShutter' | 'parkDome' | 'findHomeDome' | 'abortSlewDome'>
+        ) => Promise<void>
+      >
+      executeSpy.mockResolvedValue(undefined)
+
+      await store.parkDomeDevice(deviceId)
+
+      expect(executeSpy).toHaveBeenCalledWith(deviceId, 'parkDome')
+    })
+  })
+
+  describe('findDomeHome', () => {
+    it('should call _executeDomeAction with "findHomeDome"', async () => {
+      const deviceId = 'dome1'
+      const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', apiBaseUrl: 'http://localhost:11111' })
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+      const executeSpy = vi.spyOn(store, '_executeDomeAction') as MockInstance<
+        (
+          deviceId: string,
+          action: keyof Pick<DomeClient, 'openShutter' | 'closeShutter' | 'parkDome' | 'findHomeDome' | 'abortSlewDome'>
+        ) => Promise<void>
+      >
+      executeSpy.mockResolvedValue(undefined)
+
+      await store.findDomeHome(deviceId)
+
+      expect(executeSpy).toHaveBeenCalledWith(deviceId, 'findHomeDome')
+    })
+  })
+
+  describe('abortDomeSlew', () => {
+    it('should call _executeDomeAction with "abortSlewDome"', async () => {
+      const deviceId = 'dome1'
+      const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', apiBaseUrl: 'http://localhost:11111' })
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+      const executeSpy = vi.spyOn(store, '_executeDomeAction') as MockInstance<
+        (
+          deviceId: string,
+          action: keyof Pick<DomeClient, 'openShutter' | 'closeShutter' | 'parkDome' | 'findHomeDome' | 'abortSlewDome'>
+        ) => Promise<void>
+      >
+      executeSpy.mockResolvedValue(undefined)
+
+      await store.abortDomeSlew(deviceId)
+
+      expect(executeSpy).toHaveBeenCalledWith(deviceId, 'abortSlewDome')
+    })
+  })
+
+  describe('setDomeParkPosition', () => {
+    const deviceId = 'dome-park-test'
+    let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>
+    let mockGetDomeClient: MockInstance<(deviceId: string) => DomeClient | null>
+
+    beforeEach(() => {
+      mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
+      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      vi.mocked(mockDomeClientInstance.setPark).mockReset()
+    })
+
+    it('should call client.setPark and emit deviceMethodCalled on success', async () => {
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.setPark).mockResolvedValue(undefined)
+
+      await store.setDomeParkPosition(deviceId)
+
+      expect(mockGetDomeClient).toHaveBeenCalledWith(deviceId)
+      expect(mockDomeClientInstance.setPark).toHaveBeenCalledTimes(1)
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setPark',
+          args: [],
+          result: 'success'
+        } as DeviceEvent)
+      )
+    })
+
+    it('should emit deviceApiError if client.setPark fails', async () => {
+      const errorMessage = 'Failed to set park position'
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.setPark).mockRejectedValue(new Error(errorMessage))
+
+      await store.setDomeParkPosition(deviceId)
+
+      expect(mockDomeClientInstance.setPark).toHaveBeenCalledTimes(1)
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceApiError',
+          deviceId,
+          error: `Failed to set park position: Error: ${errorMessage}`
+        } as DeviceEvent)
+      )
+    })
+
+    it('should not call client.setPark or emit events if _getDomeClient returns null', async () => {
+      mockGetDomeClient.mockReturnValue(null)
+
+      await store.setDomeParkPosition(deviceId)
+
+      expect(mockDomeClientInstance.setPark).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('slewDomeToAltitude', () => {
+    const deviceId = 'dome-slew-alt-test'
+    const testAltitude = 45
+    let mockGetDomeClient: MockInstance<(deviceId: string) => DomeClient | null>
+    let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>
+    let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
+
+    beforeEach(() => {
+      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
+      // Assuming fetchDomeStatus is a public action on the store
+      mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
+      mockFetchDomeStatus.mockResolvedValue(undefined) // Default mock for success
+
+      vi.mocked(mockDomeClientInstance.slewToAltitude).mockReset()
+    })
+
+    it('should call client.slewToAltitude, fetch status, and emit event on success', async () => {
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.slewToAltitude).mockResolvedValue(undefined)
+
+      await store.slewDomeToAltitude(deviceId, testAltitude)
+
+      expect(mockGetDomeClient).toHaveBeenCalledWith(deviceId)
+      expect(mockDomeClientInstance.slewToAltitude).toHaveBeenCalledWith(testAltitude)
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId)
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'slewToAltitude',
+          args: [testAltitude],
+          result: 'success'
+        } as DeviceEvent)
+      )
+    })
+
+    it('should call client.slewToAltitude, fetch status, and emit error on client failure', async () => {
+      const errorMessage = 'Slew failed'
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.slewToAltitude).mockRejectedValue(new Error(errorMessage))
+
+      await store.slewDomeToAltitude(deviceId, testAltitude)
+
+      expect(mockDomeClientInstance.slewToAltitude).toHaveBeenCalledWith(testAltitude)
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId) // Should still fetch status
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceApiError',
+          deviceId,
+          error: `Failed to slew to altitude: Error: ${errorMessage}`
+        } as DeviceEvent)
+      )
+    })
+
+    it('should not call client or fetch status if _getDomeClient returns null', async () => {
+      mockGetDomeClient.mockReturnValue(null)
+
+      await store.slewDomeToAltitude(deviceId, testAltitude)
+
+      expect(mockDomeClientInstance.slewToAltitude).not.toHaveBeenCalled()
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('slewDomeToAzimuth', () => {
+    const deviceId = 'dome-slew-az-test'
+    const testAzimuth = 180
+    let mockGetDomeClient: MockInstance<(deviceId: string) => DomeClient | null>
+    let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>
+    let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
+
+    beforeEach(() => {
+      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
+      mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
+      mockFetchDomeStatus.mockResolvedValue(undefined)
+
+      vi.mocked(mockDomeClientInstance.slewToAzimuth).mockReset()
+    })
+
+    it('should call client.slewToAzimuth, fetch status, and emit event on success', async () => {
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.slewToAzimuth).mockResolvedValue(undefined)
+
+      await store.slewDomeToAzimuth(deviceId, testAzimuth)
+
+      expect(mockGetDomeClient).toHaveBeenCalledWith(deviceId)
+      expect(mockDomeClientInstance.slewToAzimuth).toHaveBeenCalledWith(testAzimuth)
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId)
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'slewToAzimuth',
+          args: [testAzimuth],
+          result: 'success'
+        } as DeviceEvent)
+      )
+    })
+
+    it('should call client.slewToAzimuth, fetch status, and emit error on client failure', async () => {
+      const errorMessage = 'Slew failed'
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.slewToAzimuth).mockRejectedValue(new Error(errorMessage))
+
+      await store.slewDomeToAzimuth(deviceId, testAzimuth)
+
+      expect(mockDomeClientInstance.slewToAzimuth).toHaveBeenCalledWith(testAzimuth)
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId)
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceApiError',
+          deviceId,
+          error: `Failed to slew to azimuth: Error: ${errorMessage}`
+        } as DeviceEvent)
+      )
+    })
+
+    it('should not call client or fetch status if _getDomeClient returns null', async () => {
+      mockGetDomeClient.mockReturnValue(null)
+
+      await store.slewDomeToAzimuth(deviceId, testAzimuth)
+
+      expect(mockDomeClientInstance.slewToAzimuth).not.toHaveBeenCalled()
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('syncDomeToAzimuth', () => {
+    const deviceId = 'dome-sync-az-test'
+    const testAzimuth = 270
+    let mockGetDomeClient: MockInstance<(deviceId: string) => DomeClient | null>
+    let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>
+    let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
+
+    beforeEach(() => {
+      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
+      mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
+      mockFetchDomeStatus.mockResolvedValue(undefined)
+
+      vi.mocked(mockDomeClientInstance.syncToAzimuth).mockReset()
+    })
+
+    it('should call client.syncToAzimuth, fetch status, and emit event on success', async () => {
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.syncToAzimuth).mockResolvedValue(undefined)
+
+      await store.syncDomeToAzimuth(deviceId, testAzimuth)
+
+      expect(mockGetDomeClient).toHaveBeenCalledWith(deviceId)
+      expect(mockDomeClientInstance.syncToAzimuth).toHaveBeenCalledWith(testAzimuth)
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId)
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'syncToAzimuth',
+          args: [testAzimuth],
+          result: 'success'
+        } as DeviceEvent)
+      )
+    })
+
+    it('should call client.syncToAzimuth, fetch status, and emit error on client failure', async () => {
+      const errorMessage = 'Sync failed'
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.syncToAzimuth).mockRejectedValue(new Error(errorMessage))
+
+      await store.syncDomeToAzimuth(deviceId, testAzimuth)
+
+      expect(mockDomeClientInstance.syncToAzimuth).toHaveBeenCalledWith(testAzimuth)
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId)
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceApiError',
+          deviceId,
+          error: `Failed to sync to azimuth: Error: ${errorMessage}` // Message from domeActions.ts
+        } as DeviceEvent)
+      )
+    })
+
+    it('should not call client or fetch status if _getDomeClient returns null', async () => {
+      mockGetDomeClient.mockReturnValue(null)
+
+      await store.syncDomeToAzimuth(deviceId, testAzimuth)
+
+      expect(mockDomeClientInstance.syncToAzimuth).not.toHaveBeenCalled()
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('setDomeSlavedState', () => {
+    const deviceId = 'dome-slave-test'
+    let mockGetDomeClient: MockInstance<(deviceId: string) => DomeClient | null>
+    let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>
+    let mockUpdateDevice: MockInstance<UnifiedStoreType['updateDevice']>
+    let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
+
+    beforeEach(() => {
+      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
+      mockUpdateDevice = vi.spyOn(store, 'updateDevice') as MockInstance<UnifiedStoreType['updateDevice']>
+      mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
+      mockFetchDomeStatus.mockResolvedValue(undefined) // For error case
+
+      vi.mocked(mockDomeClientInstance.setSlaved).mockReset()
+    })
+
+    it('should call client.setSlaved, update device, and emit event on success for true', async () => {
+      const slavedState = true
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.setSlaved).mockResolvedValue(undefined)
+
+      await store.setDomeSlavedState(deviceId, slavedState)
+
+      expect(mockGetDomeClient).toHaveBeenCalledWith(deviceId)
+      expect(mockDomeClientInstance.setSlaved).toHaveBeenCalledWith(slavedState)
+      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { dome_slaved: slavedState })
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setSlaved',
+          args: [slavedState],
+          result: 'success'
+        } as DeviceEvent)
+      )
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled() // Should not be called on success
+    })
+
+    it('should call client.setSlaved, update device, and emit event on success for false', async () => {
+      const slavedState = false
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.setSlaved).mockResolvedValue(undefined)
+
+      await store.setDomeSlavedState(deviceId, slavedState)
+
+      expect(mockDomeClientInstance.setSlaved).toHaveBeenCalledWith(slavedState)
+      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { dome_slaved: slavedState })
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setSlaved',
+          args: [slavedState],
+          result: 'success'
+        } as DeviceEvent)
+      )
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled()
+    })
+
+    it('should emit error and fetch status if client.setSlaved fails', async () => {
+      const slavedState = true
+      const errorMessage = 'Set slaved failed'
+      mockGetDomeClient.mockReturnValue(mockDomeClientInstance as unknown as DomeClient)
+      vi.mocked(mockDomeClientInstance.setSlaved).mockRejectedValue(new Error(errorMessage))
+
+      await store.setDomeSlavedState(deviceId, slavedState)
+
+      expect(mockDomeClientInstance.setSlaved).toHaveBeenCalledWith(slavedState)
+      expect(mockUpdateDevice).not.toHaveBeenCalled()
+      expect(mockEmitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceApiError',
+          deviceId,
+          error: `Failed to set slaved state: Error: ${errorMessage}`
+        } as DeviceEvent)
+      )
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId) // Called on error
+    })
+
+    it('should not call client, update, or emit if _getDomeClient returns null', async () => {
+      const slavedState = true
+      mockGetDomeClient.mockReturnValue(null)
+
+      await store.setDomeSlavedState(deviceId, slavedState)
+
+      expect(mockDomeClientInstance.setSlaved).not.toHaveBeenCalled()
+      expect(mockUpdateDevice).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('_pollDomeStatus', () => {
+    const deviceId = 'dome-poll-test'
+    let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
+    let mockStopDomePolling: MockInstance<(deviceId: string) => void>
+
+    beforeEach(() => {
+      mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
+      mockFetchDomeStatus.mockResolvedValue(undefined)
+      mockStopDomePolling = vi.spyOn(store, 'stopDomePolling') as MockInstance<(deviceId: string) => void>
+
+      store._dome_isPolling.set(deviceId, true)
+      const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', isConnected: true, apiBaseUrl: 'http://localhost:11111' })
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+    })
+
+    afterEach(() => {
+      store._dome_isPolling.delete(deviceId)
+    })
+
+    it('should call fetchDomeStatus if polling is active and device is connected', async () => {
+      await store._pollDomeStatus(deviceId)
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId)
+      expect(mockStopDomePolling).not.toHaveBeenCalled()
+    })
+
+    it('should not call fetchDomeStatus if polling is not active for the device', async () => {
+      store._dome_isPolling.set(deviceId, false)
+      await store._pollDomeStatus(deviceId)
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled()
+      expect(mockStopDomePolling).not.toHaveBeenCalled()
+    })
+
+    it('should call stopDomePolling and not fetchDomeStatus if device is not found', async () => {
+      mockGetDeviceById.mockReturnValue(null)
+      await store._pollDomeStatus(deviceId)
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled()
+      expect(mockStopDomePolling).toHaveBeenCalledWith(deviceId)
+    })
+
+    it('should call stopDomePolling and not fetchDomeStatus if device is not connected', async () => {
+      const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', isConnected: false, apiBaseUrl: 'http://localhost:11111' })
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+      await store._pollDomeStatus(deviceId)
+      expect(mockFetchDomeStatus).not.toHaveBeenCalled()
+      expect(mockStopDomePolling).toHaveBeenCalledWith(deviceId)
+    })
+  })
+
+  describe('startDomePolling', () => {
+    const deviceId = 'dome-start-poll'
+    let mockPollDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      mockPollDomeStatus = vi.spyOn(store, '_pollDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
+      mockPollDomeStatus.mockResolvedValue(undefined)
+      store._dome_isPolling.set(deviceId, false)
+      store._dome_pollingTimers.delete(deviceId)
+      // Ensure getDeviceById returns a valid, connected dome device for these tests
+      const mockDevice = createMockDevice({
+        id: deviceId,
+        deviceType: 'dome',
+        isConnected: true,
+        apiBaseUrl: 'http://localhost:12345' // Or any valid URL
+      })
+      // mockGetDeviceById is from the parent describe block
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+    })
+
+    afterEach(() => {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+      store._dome_isPolling.delete(deviceId)
+      store._dome_pollingTimers.delete(deviceId)
+      store._propertyPollingIntervals.set('domeStatus', 5000)
+    })
+
+    it('should start polling, set state, and call _pollDomeStatus immediately', () => {
+      store.startDomePolling(deviceId)
+
+      expect(store._dome_isPolling.get(deviceId)).toBe(true)
+      expect(store._dome_pollingTimers.has(deviceId)).toBe(true)
+      expect(mockPollDomeStatus).toHaveBeenCalledWith(deviceId)
+      expect(mockPollDomeStatus).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call _pollDomeStatus repeatedly at the default interval', () => {
+      store.startDomePolling(deviceId)
+      expect(mockPollDomeStatus).toHaveBeenCalledTimes(1)
+
+      const interval = store._propertyPollingIntervals.get('domeStatus') || 5000
+      vi.advanceTimersByTime(interval)
+      expect(mockPollDomeStatus).toHaveBeenCalledTimes(2)
+
+      vi.advanceTimersByTime(interval)
+      expect(mockPollDomeStatus).toHaveBeenCalledTimes(3)
+    })
+
+    it('should clear existing timer if polling is restarted for the same device', () => {
+      store.startDomePolling(deviceId)
+      const firstTimerId = store._dome_pollingTimers.get(deviceId)
+      expect(firstTimerId).toBeDefined()
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
+
+      store.startDomePolling(deviceId)
+      const secondTimerId = store._dome_pollingTimers.get(deviceId)
+
+      expect(clearIntervalSpy).toHaveBeenCalledWith(firstTimerId)
+      expect(secondTimerId).toBeDefined()
+      expect(secondTimerId).not.toBe(firstTimerId)
+      expect(store._dome_isPolling.get(deviceId)).toBe(true)
+    })
+
+    it('should not start polling if deviceId is invalid (e.g., empty string)', () => {
+      store.startDomePolling('')
+      expect(store._dome_isPolling.get('')).toBeUndefined()
+      expect(store._dome_pollingTimers.has('')).toBe(false)
+      expect(mockPollDomeStatus).not.toHaveBeenCalled()
+    })
+
+    it('should use custom polling interval if provided and set in store', () => {
+      const customInterval = 1000
+      store._propertyPollingIntervals.set('domeStatus', customInterval)
+      store.startDomePolling(deviceId)
+      expect(mockPollDomeStatus).toHaveBeenCalledTimes(1)
+
+      vi.advanceTimersByTime(customInterval)
+      expect(mockPollDomeStatus).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('stopDomePolling', () => {
+    const deviceId = 'dome-stop-poll'
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      store._dome_isPolling.set(deviceId, true)
+      const timerId = global.setInterval(() => {}, 1000) as unknown as number
+      store._dome_pollingTimers.set(deviceId, timerId)
+    })
+
+    afterEach(() => {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+      store._dome_isPolling.delete(deviceId)
+      store._dome_pollingTimers.delete(deviceId)
+    })
+
+    it('should stop polling, clear state, and clear the timer', () => {
+      const timerId = store._dome_pollingTimers.get(deviceId)
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
+
+      store.stopDomePolling(deviceId)
+
+      expect(store._dome_isPolling.get(deviceId)).toBe(false)
+      expect(store._dome_pollingTimers.has(deviceId)).toBe(false)
+      expect(clearIntervalSpy).toHaveBeenCalledWith(timerId)
+    })
+
+    it('should do nothing if polling is not active for the device', () => {
+      store._dome_isPolling.set(deviceId, false)
+      const originalTimerId = store._dome_pollingTimers.get(deviceId)
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
+
+      store.stopDomePolling(deviceId)
+
+      expect(store._dome_isPolling.get(deviceId)).toBe(false)
+      if (originalTimerId) {
+        expect(clearIntervalSpy).toHaveBeenCalledWith(originalTimerId)
+        expect(store._dome_pollingTimers.has(deviceId)).toBe(false)
+      } else {
+        expect(clearIntervalSpy).not.toHaveBeenCalled()
+      }
+    })
+
+    it('should handle non-existent deviceId gracefully', () => {
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
+      store.stopDomePolling('nonexistent-device')
+      expect(clearIntervalSpy).not.toHaveBeenCalled()
+      expect(store._dome_isPolling.get('nonexistent-device')).toBe(false)
+    })
+  })
+
+  describe('handleDomeConnected', () => {
+    const deviceId = 'dome-connect-handler'
+    let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
+    let mockStartDomePolling: MockInstance<(deviceId: string) => void>
+
+    beforeEach(() => {
+      mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus').mockResolvedValue(undefined)
+      mockStartDomePolling = vi.spyOn(store, 'startDomePolling').mockReturnValue(undefined) // Assuming it returns void
+    })
+
+    it('should call fetchDomeStatus and startDomePolling for the device', () => {
+      store.handleDomeConnected(deviceId)
+
+      expect(mockFetchDomeStatus).toHaveBeenCalledWith(deviceId)
+      expect(mockStartDomePolling).toHaveBeenCalledWith(deviceId)
+    })
+
+    it('should not throw if deviceId is invalid (e.g., empty string)', () => {
+      // Depending on implementation, it might log an error or do nothing.
+      // The key is that it doesn't crash the store.
+      expect(() => store.handleDomeConnected('')).not.toThrow()
+      // Optionally check that spies were not called with empty string if that's the expected behavior
+      expect(mockFetchDomeStatus).not.toHaveBeenCalledWith('')
+      expect(mockStartDomePolling).not.toHaveBeenCalledWith('')
+    })
+  })
+
+  describe('handleDomeDisconnected', () => {
+    const deviceId = 'dome-disconnect-handler'
+    let mockStopDomePolling: MockInstance<(deviceId: string) => void>
+    let mockUpdateDevice: MockInstance<UnifiedStoreType['updateDevice']>
+
+    beforeEach(() => {
+      mockStopDomePolling = vi.spyOn(store, 'stopDomePolling').mockReturnValue(undefined)
+      mockUpdateDevice = vi.spyOn(store, 'updateDevice').mockReturnValue(true) // Assuming it returns boolean
+    })
+
+    it('should call stopDomePolling and updateDevice with cleared properties', () => {
+      // Ensure the device exists for updateDevice to be meaningful, though not strictly necessary for this handler test
+      const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', apiBaseUrl: 'http://localhost:11111' })
+      mockGetDeviceById.mockReturnValue(mockDevice as Device)
+
+      store.handleDomeDisconnected(deviceId)
+
+      expect(mockStopDomePolling).toHaveBeenCalledWith(deviceId)
+      const expectedClearedProperties: DomeDeviceProperties = {
+        dome_altitude: null,
+        dome_azimuth: null,
+        dome_atHome: null,
+        dome_atPark: null,
+        dome_shutterStatus: null,
+        dome_slewing: null,
+        dome_slaved: null
+      }
+      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, expectedClearedProperties)
+    })
+
+    it('should not throw if deviceId is invalid (e.g., empty string)', () => {
+      expect(() => store.handleDomeDisconnected('')).not.toThrow()
+      expect(mockStopDomePolling).not.toHaveBeenCalledWith('')
+      expect(mockUpdateDevice).not.toHaveBeenCalledWith('', expect.anything())
+    })
+  })
+}) // End of main describe('domeActions')
