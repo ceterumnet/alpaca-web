@@ -318,13 +318,24 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 - ✅ Async actions: `setAsyncSwitchStateStoreAction`, `setAsyncSwitchValueStoreAction`, `getSwitchStateChangeCompleteStoreAction`.
 - ✅ Polling and connection handlers.
 
-#### 3.6.8. `coverCalibratorActions.ts`
+#### 3.6.8. `coverCalibratorActions.ts` (All tests passing ✅)
 
-- `initializeCoverCalibratorState`, `clearCoverCalibratorState`.
-- `fetchCoverCalibratorStatus`: `getCoverCalibratorState`.
-- `openCover`, `closeCover`, `haltCover`.
-- `calibratorOn`, `calibratorOff`.
-- Ensure `this.$patch` is handled correctly.
+- ✅ `initializeCoverCalibratorState`: Test initialization and non-overwrite.
+- ✅ `clearCoverCalibratorState`: Test state reset and handling of non-existent devices.
+- ✅ `fetchCoverCalibratorStatus`:
+  - ✅ Success: Client call, state update (`$patch`), event emission (`devicePropertyChanged`).
+  - ✅ Handling of nullish/undefined values from API correctly converted to null in state.
+  - ✅ Client `getCoverCalibratorState` API call failure (`deviceApiError` emission).
+  - ✅ No client found scenario (`deviceApiError` emission).
+  - ✅ Device not connected scenario (no API call).
+  - ✅ Ensures `initializeCoverCalibratorState` is called.
+- ✅ Control Actions (`openCover`, `closeCover`, `haltCover`, `calibratorOn`, `calibratorOff`):
+  - For each control action:
+    - ✅ Success: Client `put` called with correct command/params, `deviceMethodCalled` event, `fetchCoverCalibratorStatus` called.
+    - ✅ Client `put` failure: `deviceApiError` emission, status not refreshed.
+    - ✅ No client found: `deviceApiError` emission, `put` not called, status not refreshed.
+    - ✅ `calibratorOn` specific: Correct `Brightness` parameter in `put`, params included in `deviceApiError` event.
+- ✅ Ensure `this.$patch` is handled correctly (verified by spying on `$patch` and checking subsequent state in `fetchCoverCalibratorStatus`).
 
 #### 3.6.9. `observingConditionsActions.ts` (All tests passing ✅)
 
