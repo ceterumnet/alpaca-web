@@ -255,6 +255,18 @@ export interface FocuserDevice extends UnifiedDevice {
 }
 
 /**
+ * Properties specific to FilterWheel devices managed by filterWheelActions.ts.
+ * These are typically stored within the UnifiedDevice.properties object.
+ */
+export interface FilterWheelDeviceProperties {
+  fw_currentPosition?: number | null
+  fw_filterNames?: string[] | null
+  fw_focusOffsets?: number[] | null
+  fw_isMoving?: boolean | null // If the filter wheel supports reporting this
+  [key: string]: unknown // Added index signature back for compatibility with UnifiedDevice updates
+}
+
+/**
  * FilterWheel-specific device interface
  */
 export interface FilterWheelDevice extends UnifiedDevice {

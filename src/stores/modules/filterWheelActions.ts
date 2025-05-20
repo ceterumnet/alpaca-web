@@ -5,18 +5,9 @@
  */
 
 import { FilterWheelClient } from '@/api/alpaca/filterwheel-client'
-import { isFilterWheel } from '@/types/device.types' // Type guard
+import { isFilterWheel, type FilterWheelDeviceProperties } from '@/types/device.types' // Type guard
 import type { UnifiedStoreType } from '../UnifiedStore'
 import type { DeviceEvent } from '../types/device-store.types'
-
-// Properties that this module will manage on the Device object in the store
-export interface FilterWheelDeviceProperties {
-  fw_currentPosition?: number | null
-  fw_filterNames?: string[] | null
-  fw_focusOffsets?: number[] | null
-  fw_isMoving?: boolean | null // If the filter wheel supports reporting this
-  [key: string]: unknown // Added index signature for compatibility with UnifiedDevice
-}
 
 // Internal state for the FilterWheel module itself (e.g., polling timers)
 export interface FilterWheelModuleState {
@@ -131,8 +122,8 @@ export function createFilterWheelActions(): {
 
         const device = this.getDeviceById(deviceId)
         let oldName = 'unknown'
-        if (device && Array.isArray(device.fw_filterNames)) {
-          oldName = device.fw_filterNames[filterIndex] ?? 'unknown'
+        if (device && device.properties && Array.isArray(device.properties.fw_filterNames)) {
+          oldName = device.properties.fw_filterNames[filterIndex] ?? 'unknown'
         }
 
         try {
