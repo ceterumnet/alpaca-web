@@ -221,28 +221,33 @@ export function createSwitchActions(): {
         if (!client) return
 
         const oldSwitches = device.sw_switches as ISwitchDetail[] | undefined
-        if (!oldSwitches) {
-          await this.fetchSwitchDetails(deviceId) // Fetch all if not available
+        if (!oldSwitches || oldSwitches.length === 0) {
+          // Also check if oldSwitches is empty
+          // Consider if fetching all details is appropriate or if it should just skip this poll cycle
+          console.warn(`[SwitchStore] No switch details available for ${deviceId} during poll, attempting to fetch.`)
+          await this.fetchSwitchDetails(deviceId)
           return
         }
 
-        try {
-          const newSwitches = [...oldSwitches]
-          let changed = false
-          for (let i = 0; i < newSwitches.length; i++) {
+        const newSwitches = [...oldSwitches.map((sw) => ({ ...sw }))] // Deep copy to avoid mutating original store objects directly before updateDevice
+        let changedOverall = false
+
+        for (let i = 0; i < newSwitches.length; i++) {
+          try {
             const newValue = await client.getSwitchValue(i)
             if (newSwitches[i].value !== newValue) {
-              newSwitches[i] = { ...newSwitches[i], value: newValue }
-              changed = true
+              newSwitches[i].value = newValue // Update the copied switch detail
+              changedOverall = true
               this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: `switchValue_${i}`, value: newValue } as DeviceEvent)
             }
+          } catch (error) {
+            console.warn(`[SwitchStore] Error polling value for switch ${i} on ${deviceId}:`, error)
+            // Continue to the next switch in the loop
           }
-          if (changed) {
-            this.updateDevice(deviceId, { sw_switches: newSwitches })
-          }
-        } catch (error) {
-          console.warn(`[SwitchStore] Error polling switch values for ${deviceId}:`, error)
-          // Potentially fetch all on error to resync, or just log and continue
+        }
+
+        if (changedOverall) {
+          this.updateDevice(deviceId, { sw_switches: newSwitches })
         }
       },
 

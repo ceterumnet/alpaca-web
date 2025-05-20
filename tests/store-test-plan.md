@@ -93,7 +93,7 @@ Testing will focus on:
     - Test successful calls, error handling, and fallback logic (if applicable for `callDeviceMethodWithFallback`).
     - Verify correct parameters are passed to client methods.
     - Event emission for `setDeviceProperty` and `callDeviceMethod`.
-  - **`getDevicePropertyOptimized`**: Test devicestate fallback logic.
+  - ✅ `getDevicePropertyOptimized`: Test devicestate fallback logic.
 
 ### 3.3. `eventSystem.ts`
 
@@ -311,12 +311,12 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 
 #### 3.6.7. `switchActions.ts`
 
-- `_getSwitchClient`.
-- `fetchSwitchDetails`: `maxSwitch`, `getAllSwitchDetails`.
-- `setDeviceSwitchValue` (boolean and number values).
-- `setDeviceSwitchName`.
-- Async actions: `setAsyncSwitchStateStoreAction`, `setAsyncSwitchValueStoreAction`, `getSwitchStateChangeCompleteStoreAction`.
-- Polling and connection handlers.
+- ✅ `_getSwitchClient`.
+- ✅ `fetchSwitchDetails`: `maxSwitch`, `getAllSwitchDetails`.
+- ✅ `setDeviceSwitchValue` (boolean and number values).
+- ✅ `setDeviceSwitchName`.
+- ✅ Async actions: `setAsyncSwitchStateStoreAction`, `setAsyncSwitchValueStoreAction`, `getSwitchStateChangeCompleteStoreAction`.
+- ✅ Polling and connection handlers.
 
 #### 3.6.8. `coverCalibratorActions.ts`
 

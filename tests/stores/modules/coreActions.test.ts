@@ -706,5 +706,101 @@ describe('coreActions', () => {
     })
   })
 
-  // Next: describe('disconnectDevice', () => { ... })
+  describe('getDevicePropertyOptimized', () => {
+    const deviceId = 'test-device-id'
+    const propertyName = 'CoolerPower'
+    const propertyValueFromState = 0.75
+    const propertyValueFromDirectGet = 0.8
+
+    let mockFetchDeviceState: MockInstance<
+      (deviceId: string, options?: { cacheTtlMs?: number; forceRefresh?: boolean }) => Promise<Record<string, unknown> | null>
+    >
+    let mockGetDeviceProperty: MockInstance<(deviceId: string, property: string) => Promise<unknown>>
+
+    beforeEach(() => {
+      // Ensure the device exists for most tests
+      vi.spyOn(store, 'getDeviceById').mockImplementation((id: string) => {
+        if (id === deviceId) {
+          return {
+            id: deviceId,
+            name: 'Test Device',
+            type: 'camera',
+            isConnected: true,
+            apiBaseUrl: 'http://localhost:11111/api/v1/camera/0'
+            // Add other necessary properties if your SUT uses them
+          } as Device
+        }
+        return null
+      })
+
+      // Spy on fetchDeviceState and getDeviceProperty for these tests
+      mockFetchDeviceState = vi.spyOn(store, 'fetchDeviceState')
+      mockGetDeviceProperty = vi.spyOn(store, 'getDeviceProperty')
+    })
+
+    it('should return property from fetchDeviceState if available', async () => {
+      mockFetchDeviceState.mockResolvedValue({ [propertyName.toLowerCase()]: propertyValueFromState })
+      mockGetDeviceProperty.mockResolvedValue(propertyValueFromDirectGet) // Should not be called
+
+      const result = await store.getDevicePropertyOptimized(deviceId, propertyName)
+
+      expect(result).toBe(propertyValueFromState)
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { cacheTtlMs: 500, forceRefresh: false })
+      expect(mockGetDeviceProperty).not.toHaveBeenCalled()
+    })
+
+    it('should fall back to getDeviceProperty if property not in fetchDeviceState response', async () => {
+      mockFetchDeviceState.mockResolvedValue({ otherProperty: 'someValue' }) // propertyName not present
+      mockGetDeviceProperty.mockResolvedValue(propertyValueFromDirectGet)
+
+      const result = await store.getDevicePropertyOptimized(deviceId, propertyName)
+
+      expect(result).toBe(propertyValueFromDirectGet)
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { cacheTtlMs: 500, forceRefresh: false })
+      expect(mockGetDeviceProperty).toHaveBeenCalledWith(deviceId, propertyName)
+    })
+
+    it('should fall back to getDeviceProperty if fetchDeviceState returns null', async () => {
+      mockFetchDeviceState.mockResolvedValue(null)
+      mockGetDeviceProperty.mockResolvedValue(propertyValueFromDirectGet)
+
+      const result = await store.getDevicePropertyOptimized(deviceId, propertyName)
+
+      expect(result).toBe(propertyValueFromDirectGet)
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { cacheTtlMs: 500, forceRefresh: false })
+      expect(mockGetDeviceProperty).toHaveBeenCalledWith(deviceId, propertyName)
+    })
+
+    it('should fall back to getDeviceProperty if fetchDeviceState throws an error', async () => {
+      const fetchError = new Error('Simulated fetchDeviceState error')
+      mockFetchDeviceState.mockRejectedValue(fetchError)
+      mockGetDeviceProperty.mockResolvedValue(propertyValueFromDirectGet)
+
+      const result = await store.getDevicePropertyOptimized(deviceId, propertyName)
+
+      expect(result).toBe(propertyValueFromDirectGet)
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { cacheTtlMs: 500, forceRefresh: false })
+      expect(mockGetDeviceProperty).toHaveBeenCalledWith(deviceId, propertyName)
+    })
+
+    it('should throw an error if the device is not found', async () => {
+      vi.spyOn(store, 'getDeviceById').mockReturnValue(null) // Override for this test
+
+      await expect(store.getDevicePropertyOptimized('non-existent-device', propertyName)).rejects.toThrow('Device not found: non-existent-device')
+
+      expect(mockFetchDeviceState).not.toHaveBeenCalled()
+      expect(mockGetDeviceProperty).not.toHaveBeenCalled()
+    })
+
+    it('should handle property name case insensitivity for devicestate check', async () => {
+      mockFetchDeviceState.mockResolvedValue({ [propertyName.toLowerCase()]: propertyValueFromState })
+      mockGetDeviceProperty.mockResolvedValue(propertyValueFromDirectGet) // Should not be called
+
+      const result = await store.getDevicePropertyOptimized(deviceId, 'coolerpower') // Using lowercase
+
+      expect(result).toBe(propertyValueFromState)
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { cacheTtlMs: 500, forceRefresh: false })
+      expect(mockGetDeviceProperty).not.toHaveBeenCalled()
+    })
+  })
 })

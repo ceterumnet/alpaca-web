@@ -141,6 +141,34 @@ export interface FocuserDeviceProperties {
   [key: string]: unknown // Index signature for compatibility
 }
 
+// Define SwitchDeviceProperties here
+/**
+ * Properties specific to Switch devices managed by switchActions.ts.
+ * These are typically stored within the UnifiedDevice.properties object.
+ */
+export interface SwitchDeviceProperties {
+  // General properties for the switch device itself
+  max_switch?: number // Number of individual switch elements
+
+  // Properties for individual switch elements (often managed in arrays or maps by ID)
+  // These might be represented as an array of objects or a map if there are multiple switches.
+  // For a single switch or if properties are fetched per-switch-element:
+  switch_value?: boolean | number | null // Current value/state (true/false for on/off, or a number)
+  switch_name?: string | null // Name of the switch element
+  switch_description?: string | null // Description of the switch element
+  switch_min_value?: number | null // Minimum value for a numeric switch
+  switch_max_value?: number | null // Maximum value for a numeric switch
+  switch_step?: number | null // Step value for a numeric switch
+  can_write?: boolean | null // Whether the switch value can be changed
+
+  // It might be better to store individual switch states in a structured way if max_switch > 1
+  // For example, an array: individual_switches?: Array<{ id: number, name: string, value: any, ... }>
+  // Or a map: individual_switches_map?: Map<number, { name: string, value: any, ... }>
+  // For now, keeping it simple, assuming properties might be dynamically added for switch_0_value, switch_1_name etc.
+
+  [key: string]: unknown // Index signature for compatibility with dynamic properties
+}
+
 export interface BaseDeviceEvent {
   deviceId: string
 }
