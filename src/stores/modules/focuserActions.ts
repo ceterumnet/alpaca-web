@@ -1,19 +1,19 @@
 import type { UnifiedStoreType } from '../UnifiedStore'
-import type { Device, DeviceEvent } from '../types/device-store.types'
+import type { Device, DeviceEvent, FocuserDeviceProperties } from '../types/device-store.types'
 import { FocuserClient } from '@/api/alpaca/focuser-client' // Assuming this will be created
 import { isFocuser } from '@/types/device.types' // Assuming this type guard exists or will be created
 
 // Properties managed by this module
-export interface FocuserDeviceProperties {
-  focuser_position?: number | null
-  focuser_isMoving?: boolean | null
-  focuser_temperature?: number | null
-  focuser_stepSize?: number | null
-  focuser_maxStep?: number | null
-  focuser_maxIncrement?: number | null
-  focuser_tempComp?: boolean | null
-  [key: string]: unknown
-}
+// export interface FocuserDeviceProperties {
+//   focuser_position?: number | null
+//   focuser_isMoving?: boolean | null
+//   focuser_temperature?: number | null
+//   focuser_stepSize?: number | null
+//   focuser_maxStep?: number | null
+//   focuser_maxIncrement?: number | null
+//   focuser_tempComp?: boolean | null
+//   [key: string]: unknown
+// }
 
 // Internal state for the Focuser module
 export interface FocuserModuleState {
@@ -74,7 +74,12 @@ export function createFocuserActions(): {
         }
         if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
         const deviceNumber = typeof device.deviceNum === 'number' ? device.deviceNum : 0
-        return new FocuserClient(baseUrl, deviceNumber, device)
+        try {
+          return new FocuserClient(baseUrl, deviceNumber, device)
+        } catch (error) {
+          console.error(`[FocuserStore] Failed to create FocuserClient for ${deviceId}:`, error)
+          return null
+        }
       },
 
       async fetchFocuserDetails(this: UnifiedStoreType, deviceId: string): Promise<void> {

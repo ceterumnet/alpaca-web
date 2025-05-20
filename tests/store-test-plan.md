@@ -293,10 +293,10 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 
 #### 3.6.5. `focuserActions.ts`
 
-- `_getFocuserClient`.
-- `fetchFocuserDetails` (capabilities) and `fetchFocuserStatus` (dynamic state).
-- `moveFocuser`, `haltFocuser`, `setFocuserTempComp`.
-- Polling and connection handlers.
+- ✅ `_getFocuserClient`.
+- ✅ `fetchFocuserDetails` (capabilities) and `fetchFocuserStatus` (dynamic state).
+- ✅ `moveFocuser`, ✅ `haltFocuser`, ✅ `setFocuserTempComp`.
+- ✅ Polling and connection handlers.
 
 #### 3.6.6. `rotatorActions.ts`
 

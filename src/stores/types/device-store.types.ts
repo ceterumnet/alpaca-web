@@ -125,6 +125,22 @@ export interface BatchedEvents {
 export type Device = CoreDevice
 export type UnifiedDevice = CoreUnifiedDevice
 
+// ADD FocuserDeviceProperties HERE
+/**
+ * Properties specific to Focuser devices managed by focuserActions.ts.
+ * These are typically stored within the UnifiedDevice.properties object.
+ */
+export interface FocuserDeviceProperties {
+  focuser_position?: number | null
+  focuser_isMoving?: boolean | null
+  focuser_temperature?: number | null
+  focuser_stepSize?: number | null
+  focuser_maxStep?: number | null
+  focuser_maxIncrement?: number | null
+  focuser_tempComp?: boolean | null
+  [key: string]: unknown // Index signature for compatibility
+}
+
 export interface BaseDeviceEvent {
   deviceId: string
 }
