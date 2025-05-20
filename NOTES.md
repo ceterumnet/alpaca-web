@@ -17,6 +17,11 @@ FUTURE:
 
 # TODO
 
+## Github stuff
+
+- [ ] Figure out better dependabot configuration
+- [ ] Automate distribution builds with standalone and proxy version
+
 ## Testing
 
 - [x] Write unit tests for clients

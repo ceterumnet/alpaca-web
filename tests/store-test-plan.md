@@ -284,12 +284,38 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 
 #### 3.6.4. `domeActions.ts`
 
-- `_getDomeClient`.
-- `fetchDomeStatus`: `getDomeState`.
-- `_executeDomeAction` helper function.
-- Specific actions: `openDomeShutter`, `closeDomeShutter`, etc.
-- `setDomeParkPosition`, `slewDomeToAltitude`, `slewDomeToAzimuth`, `syncDomeToAzimuth`, `setDomeSlavedState`.
-- Polling and connection handlers.
+- ✅ `_getDomeClient`: Test client creation, including null returns for non-dome devices, missing devices, or incomplete address details. (All 8 tests passing)
+- ✅ `fetchDomeStatus`: Test `getDomeState` calls, device property updates, event emissions, handling of nullish API responses, and client/API error scenarios. (All 4 tests passing)
+- ✅ `_executeDomeAction` helper function: Test successful action calls, client error handling, and scenarios where no client is available. (All 4 tests passing, covering `openShutter`, `closeShutter`, `parkDome`)
+- Specific actions: `openDomeShutter`, `closeDomeShutter`, etc. (TODO)
+- `setDomeParkPosition`, `slewDomeToAltitude`, `slewDomeToAzimuth`, `syncDomeToAzimuth`, `setDomeSlavedState`. (TODO)
+- Polling and connection handlers. (TODO)
+
+**Learnings from `domeActions.ts`:**
+
+- **Mocking Client Constructors for Shared Instances:**
+  - When tests expect a specific, shared instance of a client to be returned by its constructor (or a factory function like `_getDomeClient`), the `vi.mock` factory for the client module should be set up to return that shared instance directly.
+    ```typescript
+    // Example:
+    const mockDomeClientInstance = {
+      /* ... methods as vi.fn() ... */
+    } as unknown as DomeClient
+    vi.mock('@/api/alpaca/dome-client', () => ({
+      DomeClient: vi.fn(() => mockDomeClientInstance)
+    }))
+    ```
+- **Asserting Shared Instance Return:**
+  - When testing functions that should return such a shared mock instance, assert identity using `expect(client).toBe(mockSharedInstance)` rather than `expect(client).toBeInstanceOf(ActualClientClass)`. The latter fails because the `ActualClientClass` in the test scope is the mocked constructor (a `vi.fn()` spy), not the original class.
+- **Controlling Mocked Methods on Shared Instances (`vi.mocked()`):**
+  - When a shared mock instance has its methods defined as `vi.fn()`, TypeScript might not automatically recognize these as full `Mock` objects. This can lead to errors with `.mockReset()`, `.mockResolvedValue()`, etc.
+  - Wrap method access with `vi.mocked()`:
+    ```typescript
+    vi.mocked(mockDomeClientInstance.getDomeState).mockResolvedValue(...);
+    ```
+- **Casting Mock Instances for Type Compatibility:**
+  - Casting the shared mock instance `as unknown as ActualClientClass` (e.g., `mockDomeClientInstance as unknown as DomeClient`) helps satisfy type requirements for functions typed to return `ActualClientClass | null`.
+- **`MockInstance` Typing for Constructors:**
+  - The type `MockInstance<(args...) => ReturnType>` (a single functional type argument) appears to be the most stable way to type mocked constructors (e.g., `const MockedConstructor = OriginalClass as unknown as MockInstance<...>;`) in this project's Vitest/TypeScript setup.
 
 #### 3.6.5. `focuserActions.ts`
 
