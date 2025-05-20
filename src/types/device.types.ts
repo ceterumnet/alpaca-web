@@ -383,6 +383,22 @@ export interface RotatorDevice extends UnifiedDevice {
   mechanicalMaxPosition?: number
 }
 
+export interface RotatorDeviceProperties {
+  // Alpaca Rotator Interface Properties
+  canreverse?: boolean
+  ismoving?: boolean
+  mechanicalposition?: number
+  position?: number
+  reverse?: boolean
+  stepsize?: number
+  targetposition?: number
+
+  // Custom/internal properties for UI or extended state
+  _rt_isPollingStatus?: boolean // Tracks if status polling is active
+  // Add any other rotator-specific properties managed by the store here
+  [key: string]: unknown // Index signature for compatibility
+}
+
 /**
  * SafetyMonitor-specific device interface
  */

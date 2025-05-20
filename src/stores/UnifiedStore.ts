@@ -4,7 +4,6 @@
 // - Provides a clean, maintainable architecture
 // - Integrates with the event system
 // - Manages device state and actions
-// - Supports both real and simulated devices
 
 /**
  * Unified Store
@@ -38,7 +37,6 @@ export type { Device }
 // Define store using Pinia
 export const useUnifiedStore = defineStore('unifiedStore', {
   state: () => {
-    // Combine state from all modules
     return {
       ...createCoreActions().state(),
       ...createEventSystem().state(),
@@ -53,7 +51,6 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createCoverCalibratorActions().state(),
       ...createSafetyMonitorActions().state(),
       ...createFocuserActions().state()
-      // SafetyMonitor state is managed within coreState's deviceSpecificStates
     }
   },
 

@@ -24,7 +24,6 @@ export interface CoreState {
   devicesArray: Device[]
   selectedDeviceId: string | null
   deviceClients: Map<string, AlpacaClient>
-  allowSimulations: boolean
   theme: 'light' | 'dark'
   isSidebarVisible: boolean
   deviceStateCache: Map<string, { timestamp: number; data: Record<string, unknown> }>
@@ -55,7 +54,6 @@ interface ICoreActions {
   getDevicesByType(this: UnifiedStoreType, deviceType: string): Device[]
   hasDevice(this: UnifiedStoreType, deviceId: string): boolean
   clearDevices(this: UnifiedStoreType, options?: StoreOptions): boolean
-  createSimulatedDevice(this: UnifiedStoreType, deviceType: string, name: string, properties?: Record<string, unknown>): string
   updateDeviceCapabilities(this: UnifiedStoreType, deviceId: string): boolean
   deviceSupports(this: UnifiedStoreType, deviceId: string, capability: string): boolean
   deviceHas(this: UnifiedStoreType, deviceId: string, attribute: string): boolean
@@ -480,13 +478,19 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       }
       for (const key in properties) {
         if (Object.prototype.hasOwnProperty.call(properties, key)) {
-          if (device.properties[key] !== properties[key]) {
-            device.properties[key] = properties[key]
+          const oldValue = device.properties[key]
+          const newValue = properties[key]
+
+          // Always set the property
+          device.properties[key] = newValue
+
+          // Only emit event if value changed or property is new
+          if (!Object.prototype.hasOwnProperty.call(device.properties, key) || oldValue !== newValue) {
             this._emitEvent({
               type: 'devicePropertyChanged',
               deviceId,
               property: key,
-              value: properties[key]
+              value: newValue
             })
           }
         }
@@ -500,9 +504,6 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       if (currentProps.biny !== undefined) currentProps.binningY = currentProps.biny
       if (currentProps.cooleron !== undefined) currentProps.coolerEnabled = currentProps.cooleron
       if (currentProps.ccdtemperature !== undefined) currentProps.currentTemperature = currentProps.ccdtemperature
-      if (currentProps.exposureTime === undefined) {
-        currentProps.exposureTime = 1.0
-      }
       return true
     },
 
@@ -571,25 +572,6 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         })
       }
       return true
-    },
-
-    createSimulatedDevice(this: UnifiedStoreType, deviceType: string, name: string, properties: Record<string, unknown> = {}): string {
-      const device: Device = {
-        id: `sim-${deviceType}-${Date.now()}`,
-        type: deviceType,
-        name: name,
-        isConnected: false,
-        isConnecting: false,
-        isDisconnecting: false,
-        status: 'idle',
-        properties: {
-          isSimulation: true,
-          ...properties
-        }
-      }
-      this.addDevice(device)
-      console.log(`Created simulated ${deviceType} device: ${name}`)
-      return device.id
     },
 
     updateDeviceCapabilities(this: UnifiedStoreType, deviceId: string): boolean {
@@ -779,10 +761,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           return await client.callMethod(method, args)
         },
         async () => {
-          if (this.shouldFallbackToSimulation(deviceId, method)) {
-            return await this.simulateDeviceMethod(deviceId, method, args)
-          }
-          throw new Error(`No API client available for device ${deviceId} and no simulation available`)
+          throw new Error(`No API client available for device ${deviceId}`)
         }
       )
     },
@@ -887,7 +866,6 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       devicesArray: [],
       selectedDeviceId: null,
       deviceClients: new Map<string, AlpacaClient>(),
-      allowSimulations: false,
       theme: 'light',
       isSidebarVisible: true,
       deviceStateCache: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),

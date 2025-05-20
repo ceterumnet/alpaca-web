@@ -46,11 +46,6 @@ export function createDiscoveryActions() {
           this._emitEvent({ type: 'discoveryStarted' })
         }
 
-        // Try to use the Alpaca discovery protocol
-        // For now, we'll simulate finding devices
-        // In real implementation, this would use network discovery protocols
-        // this.simulateDeviceDiscovery()
-
         return true
       },
 
