@@ -15,43 +15,47 @@ FUTURE:
 
         The return result is a list of values that can then be used in the "action" API endpoint with a PUT per the spec.
 
-  TODO:
+# TODO
+
+## Testing
 
 - [x] Write unit tests for clients
 - [ ] Write unit tests for stores:
+- [ ] Write unit tests for panels
+- [ ] Write e2e tests...
+- [ ] Open question: I have a buggy behavior in the cover calibrator. I would like to reveal this through a test that attempts to open the cover and demonstrate that it isn't working correctly.
+
+## Features
+
+- [ ] Telescope Panel is missing a lot of indicators of status such as "At Home" / "Parked" / Slewing / Tracking. Some of these are combined with the inputs, but it isn't a great UX
+- [ ] Wire settings up
+- [ ] Create logging system for user
+- [ ] Filterwheel Panel should have concept of moving while switching filters
+
+## Bugs
+
 - [ ] We need to add some better handling of repeated failures to alpaca. They need to get marked as not supported after 3 calls or something like that
+- [ ] ClientID needs to be initialized once and reused across the project
+- [ ] ClientTransactionID needs to be initialized once and then incremented globally across the project
+- [ ] Discovery errors need to be fixed
+- [ ] Buttons on switch panel don't have the right colors
+- [ ] Dome doesn't seem to be showing the status and has no polling. Also needs love
+- [ ] Cover Calibrator has some sort of sequencing issue and doesn't seem to reflect the correct statuses
+
+## UX Issues
+
 - [ ] Notifications are weird. The CSS styles aren't quite right they don't always honor dark mode
 - [ ] Toasts should only show up for errors
 - [ ] Opening notifications doesn't need to generate a notification :)
+
+## Documentation
+
 - [ ] Generate Audit for Simplified Panels against what is available in the stores
 - [ ] Create build instruction with specific examples of how the 2 critical environment variables work: `VITE_APP_BASE_PATH=/html/ VITE_APP_DISCOVERY_MODE=direct npm run build`
 - [ ] Update README.md to include a project overview with links to the different documents available
-- [ ] Create logging system
-- [ ] Wire settings up
-- [x] Add all alpaca device types
-- [x] Test standalone operation without a node server running
-- [x] Revise device management system to:
-  - [x] Automatically add all of the devices discovered to the device store
-  - [x] Have better names for the devices, for example Camera 0 is ambiguous
-    - [N] Probably a good idea to have customizable names
-    - [x] Need to figure out canonical name scheme so that even between sessions we can keep the same settings / data associated with said device
-  - [x] Disable autoconnect when adding a device from discovery
-- [x] New visual layouts for the panels
-- [x] Integrate layout edit button more nicely - it's a giant bar right now...doesn't need to be
-- [x] The buttons on the top right of the panels aren't wired up
 
-- [x] Layout Management:
+## General System
 
-  - [x] Need to have a settings option to nuke layout store (and potentially any of the other stores that have persistence)
-  - [x] No way to delete layouts
-  - [x] No option to set a layout as default
-
-  Preview Functionality:
-
-  - [x] The preview mode doesn't allow switching between desktop/tablet/mobile viewports
-  - [x] No responsive preview to test how layouts behave at different screen sizes
-
-  Panel Configuration:
-
-  - [x] Limited controls for device-specific panel configuration
-  - [x] No drag-and-drop reordering of panels (only manual position editing)
+- [ ] Need to implement the devicestate notes that were made
+- [ ] Do systemwide audit of logging patterns
+- [ ] Based on audit result, define consistent logging methodology

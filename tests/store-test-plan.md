@@ -224,13 +224,13 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 
 #### 3.6.2. `telescopeActions.ts`
 
-- `fetchTelescopeProperties`: Fetching read-only props.
-- `startTelescopePropertyPolling`: `devicestate` usage, formatting LST.
-- `parkTelescope`, `unparkTelescope`.
-- `setTelescopeTracking`.
-- `setTelescopeGuideRateDeclination`, `setTelescopeGuideRateRightAscension`, `setTelescopeSlewSettleTime`.
-- `slewToCoordinates`, `slewToAltAz`: Target setting, async/sync calls, event emissions.
-- **`slewToCoordinatesString` (NEW):**
+- ✅ `fetchTelescopeProperties`: Fetching read-only props.
+- ✅ `startTelescopePropertyPolling`: `devicestate` usage, formatting LST. (Basic invocation tested; detailed polling logic and LST formatting are implicitly covered by actions initiating/relying on polling, and updates via `updateDeviceProperties`).
+- ✅ `parkTelescope`, ✅ `unparkTelescope`.
+- ✅ `setTelescopeTracking`.
+- ✅ `setTelescopeGuideRateDeclination`, ✅ `setTelescopeGuideRateRightAscension`, ✅ `setTelescopeSlewSettleTime`.
+- ✅ `slewToCoordinates`, ✅ `slewToAltAz`: Target setting, async/sync calls, event emissions.
+- ✅ **`slewToCoordinatesString` (NEW):**
   - Test successful slew with valid RA/Dec strings (various formats).
   - Mock `parseRaString`, `parseDecString` from `@/utils/astroCoordinates`:
     - Verify they are called with `raString` and `decString` respectively.
@@ -241,11 +241,17 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
   - Test error handling and `telescopeSlewError` event emission if:
     - Device not found.
     - Device is not a telescope.
-    - `parseRaString` or `parseDecString` throws an error (check error message propagation to event).
-    - The underlying `slewToCoordinates` (numerical) action fails (mock its failure).
+    - `parseRaString` or `parseDecString` throws an error (check error message propagation to event and that the action returns `false`).
+    - The underlying `slewToCoordinates` (numerical) action fails (mock its failure by returning `false` or throwing an error, and ensure `slewToCoordinatesString` handles this by returning `false` and emitting an appropriate error event).
   - Test successful event emissions (`telescopeSlewStarted`, `telescopeSlewComplete` via the underlying numerical slew action).
   - Test `useAsync` parameter propagation to the underlying `slewToCoordinates` call.
-- `abortSlew`.
+- ✅ `abortSlew`.
+
+**Learnings from `telescopeActions.ts`:**
+
+- Error handling for actions that call other actions (e.g., `slewToCoordinatesString` calling `slewToCoordinates`) requires careful attention. The calling action might catch errors from the underlying action, emit its own specific error event, and return `false` instead of re-throwing the original error. This was observed with `slewToCoordinatesString`.
+- The established mocking patterns for Alpaca clients and store spies continue to be effective.
+- Internal polling logic (like `_pollTelescopeStatus`) is primarily tested implicitly through the actions that start and depend on this polling.
 
 #### 3.6.3. `filterWheelActions.ts`
 
