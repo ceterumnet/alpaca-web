@@ -120,8 +120,8 @@ export function createCameraActions() {
           const params = {
             Duration: exposureTime,
             Light: isLight,
-            ClientID: -1,
-            ClientTransactionID: -1
+            ClientID: 1,
+            ClientTransactionID: Math.floor(Math.random() * 9000000) + 1000000
           }
 
           await client.put('startexposure', params)

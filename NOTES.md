@@ -19,6 +19,7 @@ FUTURE:
 
 - [x] Write unit tests for clients
 - [ ] Write unit tests for stores:
+- [ ] We need to add some better handling of repeated failures to alpaca. They need to get marked as not supported after 3 calls or something like that
 - [ ] Notifications are weird. The CSS styles aren't quite right they don't always honor dark mode
 - [ ] Toasts should only show up for errors
 - [ ] Opening notifications doesn't need to generate a notification :)
