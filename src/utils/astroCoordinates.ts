@@ -150,7 +150,6 @@ export function formatDecNumber(decDecimalDegrees: number): string {
 
   // Handle case where rounding seconds might make it 60
   if (seconds === 60) {
-    const tempDate = new Date(0)
     // For Dec, if degrees is 90 (or -90), adding a minute isn't quite right, it should stay 90:00:00.
     // However, the original logic didn't have this specific edge case correction for 90 deg + rounding.
     // For simplicity and matching original, if seconds round to 60, increment minute and reset seconds.

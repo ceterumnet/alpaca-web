@@ -80,7 +80,6 @@ describe('cameraActions', () => {
     ) => void
   >
   let mockTrackExposureProgress: MockInstance<(deviceId: string, expectedDuration: number) => void>
-  let mockHandleExposureComplete: MockInstance<(deviceId: string) => Promise<void>>
 
   beforeEach(() => {
     setActivePinia(createPinia())
