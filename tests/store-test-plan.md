@@ -118,45 +118,17 @@ Testing will focus on:
 - **File:** `tests/stores/modules/discoveryActions.test.ts`
 - **Focus:** Test discovery process initiation and termination.
 - **Key Tests:**
-
-  - **State:** Verify initial `DiscoveryState`.
-  - **`startDiscovery`:**
-    - Set `isDiscovering` to true.
-    - Clear existing `discoveryTimeout`.
-    - Emit `discoveryStarted` event.
-    - Prevent starting if already discovering.
-  - **`stopDiscovery`:**
-    - Set `isDiscovering` to false.
-    - Clear `discoveryTimeout`.
-    - Emit `discoveryStopped` event.
-    - Prevent stopping if not discovering.
-
-- **File:** `tests/stores/modules/simulationActions.test.ts`
-- **Focus:** Test management of simulation settings and simulated device behaviors.
-- **Key Tests:**
-  - **State:** Verify initial `SimulationState`.
-  - **`setAllowSimulations`:**
-    - Toggle `allowSimulations` state.
-  - **`getSimulatedDevices`:**
-    - Filter and return devices with `properties.isSimulation === true`.
-  - **`simulateCameraExposure`:**
-    - Mock `updateDeviceProperties` and `_emitEvent`.
-    - Verify state changes (`isExposing`, `exposureProgress`, `cameraState`, `imageReady`).
-    - Verify `cameraExposureStarted`, `cameraExposureChanged`, `cameraExposureComplete` events are emitted with correct payloads.
-    - Test timer logic (mock `setInterval`, `clearInterval`).
-  - **`simulateTelescopeSlew`:**
-    - Mock `updateDeviceProperties` and `_emitEvent`.
-    - Verify state changes (`isSlewing`, `rightAscension`, `declination`).
-    - Verify `telescopeSlewStarted`, `telescopeSlewCompleted` events.
-    - Test with simulated device only.
-  - **`shouldFallbackToSimulation`:**
-    - Test with `allowSimulations` true/false.
-    - Test with simulated and non-simulated devices.
-  - **`simulateDeviceMethod`:**
-    - Test dispatch to specific simulation methods (e.g., `simulateCameraExposure`).
-    - Test generic fallback for unhandled methods.
-    - Test behavior when called for non-simulation device or when simulations are disabled.
-    - Verify event emission.
+  - ✅ **State:** Verify initial `DiscoveryState`.
+  - ✅ **`startDiscovery`:**
+    - ✅ Set `isDiscovering` to true.
+    - ✅ Clear existing `discoveryTimeout`.
+    - ✅ Emit `discoveryStarted` event.
+    - ✅ Prevent starting if already discovering.
+  - ✅ **`stopDiscovery`:**
+    - ✅ Set `isDiscovering` to false.
+    - ✅ Clear `discoveryTimeout`.
+    - ✅ Emit `discoveryStopped` event.
+    - ✅ Prevent stopping if not discovering.
 
 ### 3.6. Device-Specific Action Modules (Camera, Telescope, etc.)
 
