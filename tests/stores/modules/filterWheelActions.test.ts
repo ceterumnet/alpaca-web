@@ -4,7 +4,7 @@ import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { createAlpacaClient } from '@/api/AlpacaClient' // Actual import
 import type { AlpacaClient } from '@/api/AlpacaClient'
 import { FilterWheelClient } from '@/api/alpaca/filterwheel-client' // Import for vi.mock name and instanceof
-import type { FilterWheelDevice } from '@/types/device.types'
+import type { FilterWheelDevice, FilterWheelDeviceProperties } from '@/types/device.types'
 import type { UnifiedDevice } from '@/types/device.types'
 
 // Mock the AlpacaClient module
@@ -575,6 +575,67 @@ describe('filterWheelActions', () => {
           expect.any(Error)
         )
         consoleWarnSpy.mockRestore()
+      })
+    })
+  })
+
+  describe('Connection Handlers', () => {
+    let fetchFilterWheelDetailsSpy: MockInstance<(deviceId: string) => Promise<void>>
+    let startFilterWheelPollingSpy: MockInstance<(deviceId: string) => void>
+
+    beforeEach(() => {
+      // Spy on the actions that handleFilterWheelConnected is supposed to call
+      fetchFilterWheelDetailsSpy = vi.spyOn(store, 'fetchFilterWheelDetails').mockResolvedValue(undefined) // Mock to prevent actual execution
+      startFilterWheelPollingSpy = vi.spyOn(store, 'startFilterWheelPolling').mockImplementation(() => {}) // Mock to prevent actual execution
+
+      // Ensure getDeviceById returns a valid filterwheel device, as the connected handlers might be called
+      // after core logic has already confirmed the device and its type.
+      vi.spyOn(store, 'getDeviceById').mockReturnValue(mockDevice as UnifiedDevice)
+    })
+
+    describe('handleFilterWheelConnected', () => {
+      it('should call fetchFilterWheelDetails with the deviceId', () => {
+        store.handleFilterWheelConnected(deviceId)
+        expect(fetchFilterWheelDetailsSpy).toHaveBeenCalledTimes(1)
+        expect(fetchFilterWheelDetailsSpy).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should call startFilterWheelPolling with the deviceId', () => {
+        store.handleFilterWheelConnected(deviceId)
+        expect(startFilterWheelPollingSpy).toHaveBeenCalledTimes(1)
+        expect(startFilterWheelPollingSpy).toHaveBeenCalledWith(deviceId)
+      })
+    })
+
+    describe('handleFilterWheelDisconnected', () => {
+      let stopFilterWheelPollingSpy: MockInstance<(deviceId: string) => void>
+      let updateDeviceSpy: MockInstance<
+        (deviceId: string, updates: Partial<UnifiedDevice> | FilterWheelDeviceProperties, options?: unknown) => boolean
+      >
+
+      beforeEach(() => {
+        stopFilterWheelPollingSpy = vi.spyOn(store, 'stopFilterWheelPolling').mockImplementation(() => {})
+        updateDeviceSpy = vi.spyOn(store, 'updateDevice').mockImplementation(() => true)
+      })
+
+      it('should call stopFilterWheelPolling with the deviceId', () => {
+        store.handleFilterWheelDisconnected(deviceId)
+        expect(stopFilterWheelPollingSpy).toHaveBeenCalledTimes(1)
+        expect(stopFilterWheelPollingSpy).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should call updateDevice with the deviceId and cleared properties', () => {
+        store.handleFilterWheelDisconnected(deviceId)
+
+        const expectedClearedProps: FilterWheelDeviceProperties = {
+          fw_currentPosition: null,
+          fw_filterNames: null,
+          fw_focusOffsets: null,
+          fw_isMoving: null
+        }
+
+        expect(updateDeviceSpy).toHaveBeenCalledTimes(1)
+        expect(updateDeviceSpy).toHaveBeenCalledWith(deviceId, expectedClearedProps)
       })
     })
   })

@@ -255,12 +255,32 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 
 #### 3.6.3. `filterWheelActions.ts`
 
-- `_getFilterWheelClient`: Test client creation.
-- `fetchFilterWheelDetails`: `getPosition`, `getFilterNames`, `getFocusOffsets`.
-- `setFilterWheelPosition`.
-- `setFilterWheelName`.
-- Polling actions.
-- Connection handlers.
+- ✅ `_getFilterWheelClient`: Test client creation, including null returns for non-filterwheel devices or missing devices. (All tests passing)
+- ✅ `fetchFilterWheelDetails`: Test fetching `getPosition`, `getFilterNames`, `getFocusOffsets`; updating device properties; handling client errors and default values. (All tests passing)
+- ✅ `setFilterWheelPosition`: Test client `setPosition` and `getPosition` calls, property updates, and error handling. (All tests passing)
+- ✅ `setFilterWheelName`: Test client `setFilterName` call, `fetchFilterWheelDetails` invocation, event emission, old name determination logic (including "unknown" fallback), and error handling. (All tests passing)
+- ✅ Polling actions (`startFilterWheelPolling`, `stopFilterWheelPolling`, `_pollFilterWheelStatus`):
+  - ✅ Test starting/stopping polling, `setInterval`/`clearInterval` calls, and internal polling state (`_fw_isPolling`, `_fw_pollingTimers`).
+  - ✅ Test `_pollFilterWheelStatus` for position changes, no changes, client errors, device disconnects, and client not obtainable scenarios.
+  - ✅ Correct usage of `vi.useFakeTimers()` and `vi.advanceTimersByTime()`.
+  - (All tests passing)
+- ✅ Connection handlers (`handleFilterWheelConnected`, `handleFilterWheelDisconnected`):
+  - ✅ `handleFilterWheelConnected`: Verify calls to `fetchFilterWheelDetails` and `startFilterWheelPolling`.
+  - ✅ `handleFilterWheelDisconnected`: Verify calls to `stopFilterWheelPolling` and `updateDevice` with cleared properties.
+  - (All tests passing)
+
+**Learnings from `filterWheelActions.ts`:**
+
+- **Mocking Specific Client Constructors:** When an action internally creates a specific client (e.g., `new FilterWheelClient(...)`), directly mocking that client's constructor using `vi.mock('@/api/alpaca/filterwheel-client', ...)` is more effective than trying to mock a generic `createAlpacaClient` factory for tests of that internal helper (`_getFilterWheelClient`). The mock should return a shared mock instance of the client.
+- **Spying on Chained/Internal Calls:** When testing actions that make multiple internal calls to other store methods (like `getDeviceById`), be mindful of `mockReturnValueOnce`. Each call consumes one "once" mock. If multiple distinct behaviors are needed for sequential calls within the same action flow, provide multiple `mockReturnValueOnce` in order or use `mockImplementation` for more complex logic. For instance, `setFilterWheelName` calling `_getFilterWheelClient` (which calls `getDeviceById`) and then `getDeviceById` directly.
+- **Typed Spies (`MockInstance`):**
+  - Using the functional signature `MockInstance<(args...) => ReturnType>` is generally preferred and helps satisfy linter rules regarding the number of type arguments for `MockInstance`.
+  - For methods on the `store` that might not be perfectly inferred by `vi.spyOn` (especially if accessed via string name or after `mockRestore`), explicitly casting the result of `vi.spyOn` to the desired `MockInstance` type can resolve type assignment errors: `vi.spyOn(store, 'methodName') as MockInstance<...>;`.
+- **`as any` Workarounds:** Most `as any` casts can be eliminated by:
+  - Ensuring mock return values align with the spied function's actual return type (e.g., `null` instead of `undefined` if `undefined` is not permissible).
+  - Correctly typing properties being accessed or assigned (e.g., ensuring `mockDevice.properties` allows assignment to optional fields defined in its interface like `FilterWheelDeviceProperties`).
+- **Global Type Definitions:** Moving module-specific property interfaces (like `FilterWheelDeviceProperties`) to the global `device.types.ts` improves consistency and discoverability. Ensure that if these interfaces are used in `Partial<UnifiedDevice>` contexts (like in `store.updateDevice`), they retain necessary index signatures (`[key: string]: unknown;`) for compatibility.
+- **Vitest Globals:** Functions like `afterEach` need to be explicitly imported from `vitest` (`import { ..., afterEach } from 'vitest'`) if not automatically available.
 
 #### 3.6.4. `domeActions.ts`
 
