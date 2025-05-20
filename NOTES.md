@@ -27,7 +27,7 @@ FUTURE:
 ## Testing
 
 - [x] Write unit tests for clients
-- [ ] Write unit tests for stores:
+- [x] Write unit tests for stores:
 - [ ] Write unit tests for panels
 - [ ] Write e2e tests...
 - [ ] Open question: I have a buggy behavior in the cover calibrator. I would like to reveal this through a test that attempts to open the cover and demonstrate that it isn't working correctly.
