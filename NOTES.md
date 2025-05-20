@@ -1,8 +1,9 @@
 # These are Dave's personal notes about the system
 
-- Need to understand how the different architecture layers should work
-- Breadrumb and navigation state have been removed by me because I'm not sure they will be needed
--
+## NOTES
+
+- I've seen some weird inconsistencies in the store implementations and how variables / states are named and accessed
+- I need to run an audit to ensure the stores use a consistent polling architecture. Perhaps that can be part of the devicestate revamp
 
 FUTURE:
 

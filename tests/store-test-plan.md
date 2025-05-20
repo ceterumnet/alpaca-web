@@ -326,13 +326,13 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 - `calibratorOn`, `calibratorOff`.
 - Ensure `this.$patch` is handled correctly.
 
-#### 3.6.9. `observingConditionsActions.ts`
+#### 3.6.9. `observingConditionsActions.ts` (All tests passing ✅)
 
-- `_getOCClient`.
-- `fetchObservingConditions`: `getAllConditions`.
-- `setObservingConditionsAveragePeriod`.
-- `refreshObservingConditionsReadings`.
-- Polling and connection handlers.
+- ✅ `_getOCClient`.
+- ✅ `fetchObservingConditions`: `getAllConditions`.
+- ✅ `setObservingConditionsAveragePeriod`.
+- ✅ `refreshObservingConditionsReadings`.
+- ✅ Polling and connection handlers.
 
 #### 3.6.10. `safetyMonitorActions.ts` (All tests passing ✅)
 
