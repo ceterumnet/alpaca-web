@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useUnifiedStore, type UnifiedStoreType } from '@/stores/UnifiedStore'
 import type { SwitchDeviceProperties, Device, UnifiedDevice, DeviceEvent, StoreOptions } from '@/stores/types/device-store.types'
 import { SwitchClient, type ISwitchDetail } from '@/api/alpaca/switch-client'
-import { isSwitch, type SwitchDevice as CoreSwitchDevice } from '@/types/device.types'
+import { type SwitchDevice as CoreSwitchDevice } from '@/types/device.types'
 
 // Define a type for the mocked SwitchClient methods
 type MockedSwitchClientMethods = {
@@ -69,7 +69,7 @@ describe('switchActions', () => {
   let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
 
   // Declare pollStatusSpy here
-  let pollStatusSpy: MockInstance<(this: UnifiedStoreType, deviceId: string) => Promise<void>>
+  //   let pollStatusSpy: MockInstance<(this: UnifiedStoreType, deviceId: string) => Promise<void>>
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -87,7 +87,7 @@ describe('switchActions', () => {
     mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
     mockGetSwitchClient = vi.spyOn(store, '_getSwitchClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
 
-    let mockedIsSwitchFn: MockInstance<(device: UnifiedDevice) => device is CoreSwitchDevice>
+    // let mockedIsSwitchFn: MockInstance<(device: UnifiedDevice) => device is CoreSwitchDevice>
     // pollStatusSpy is NOT assigned here, but in the Polling Actions beforeEach
   })
 

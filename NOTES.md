@@ -4,6 +4,7 @@
 
 - I've seen some weird inconsistencies in the store implementations and how variables / states are named and accessed
 - I need to run an audit to ensure the stores use a consistent polling architecture. Perhaps that can be part of the devicestate revamp
+- Need to review the \*DeviceProperties vs the states of the stores
 
 FUTURE:
 

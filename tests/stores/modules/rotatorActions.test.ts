@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useUnifiedStore, type UnifiedStoreType } from '@/stores/UnifiedStore'
 import type { MockInstance } from 'vitest'
-import type { RotatorDeviceProperties, UnifiedDevice, Device, DeviceState } from '@/types/device.types'
-import type { DeviceEvent } from '@/stores/types/device-store.types'
+import type { UnifiedDevice } from '@/types/device.types'
 import type { AlpacaClient } from '@/api/AlpacaClient'
 import { createAlpacaClient } from '@/api/AlpacaClient'
 import type { RotatorClient } from '@/api/alpaca/rotator-client'
@@ -121,7 +120,7 @@ describe('stores/modules/rotatorActions.ts', () => {
       const device = store.devices.get(testRotatorId)
       expect(device?.properties).toEqual(
         expect.objectContaining({
-          canreverse: undefined,
+          canReverse: undefined,
           ismoving: undefined,
           mechanicalposition: undefined,
           position: undefined,

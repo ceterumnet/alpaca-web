@@ -1,8 +1,8 @@
-import type { UnifiedDevice, RotatorDeviceProperties } from '@/types/device.types'
+import type { RotatorDeviceProperties } from '@/types/device.types'
 import type { UnifiedStoreType } from '../UnifiedStore' // Needed for `this` context in actions
 import { RotatorClient } from '@/api/alpaca/rotator-client'
 import { markRaw } from 'vue'
-import type { DeviceEvent } from '@/stores/types/device-store.types' // For _emitEvent typing
+// import type { DeviceEvent } from '@/stores/types/device-store.types' // For _emitEvent typing
 import type { AlpacaClient } from '@/api/AlpacaClient' // For deviceClients map typing
 // Removed: import type { UnifiedStoreType } from '../UnifiedStore'
 // No longer directly using Store from pinia here, UnifiedStore will handle integration.
@@ -120,7 +120,7 @@ export function createRotatorActions(): {
       }
 
       const initialProps: Partial<RotatorDeviceProperties> = {
-        canreverse: undefined,
+        canReverse: undefined,
         ismoving: undefined,
         mechanicalposition: undefined,
         position: undefined,

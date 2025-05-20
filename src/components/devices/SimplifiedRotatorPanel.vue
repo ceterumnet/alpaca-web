@@ -66,6 +66,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
+import type { RotatorDeviceProperties } from '@/types/device.types.ts'
 // Removed: import { callAlpacaMethod, getAlpacaProperties, checkDeviceCapability } from '@/utils/alpacaPropertyAccess'
 
 const props = defineProps({
@@ -85,9 +86,9 @@ const currentDevice = computed(() => {
   return store.getDeviceById(props.deviceId)
 })
 
-// Computed property to get rotator state from the store
+// Computed property to get rotator state from the store, now correctly typed
 const rotatorState = computed(() => {
-  return store.rotatorData.get(props.deviceId)
+  return currentDevice.value?.properties as RotatorDeviceProperties | undefined
 })
 
 // Input refs - these remain local to the component for form handling
