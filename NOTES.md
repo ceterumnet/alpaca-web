@@ -19,11 +19,6 @@ FUTURE:
 
 - [x] Write unit tests for clients
 - [ ] Write unit tests for stores:
-
-  - I'm interested in your opinion on writing a unit test suite for our @UnifiedStore.ts and the associated @modules.
-  - I'd like to create a plan in a markdown file to review and decide how we should proceed. Can you please assist me with this?
-  - Please access ANY files you need in order to gain a full understanding of this
-
 - [ ] Notifications are weird. The CSS styles aren't quite right they don't always honor dark mode
 - [ ] Toasts should only show up for errors
 - [ ] Opening notifications doesn't need to generate a notification :)

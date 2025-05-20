@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance, type MockedFunction } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { AlpacaClient } from '@/api/AlpacaClient' // Main client type
@@ -35,7 +35,22 @@ const mockAlpacaClientInstance = {
   connected: vi.fn().mockResolvedValue(false),
   setConnected: vi.fn().mockResolvedValue(undefined),
   getDeviceState: vi.fn().mockResolvedValue({}),
-  getCameraInfo: vi.fn().mockResolvedValue({})
+  getCameraInfo: vi.fn().mockResolvedValue({}),
+  getDeviceUrl: vi.fn(), // Simpler definition
+  getImageData: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+  buildUrl: vi.fn(), // Simpler definition
+  logRequest: vi.fn(),
+  logResponse: vi.fn(),
+  _getBaseUrl: vi.fn().mockReturnValue('http://mock.alpaca.api'),
+  _getDeviceNum: vi.fn().mockReturnValue(0),
+  _getDeviceType: vi.fn().mockReturnValue('mockdevice'),
+  _isSimulated: vi.fn().mockReturnValue(false),
+  isDeviceSimulated: vi.fn().mockReturnValue(false),
+  getRawDevice: vi.fn().mockReturnValue(null),
+  sleep: vi.fn().mockResolvedValue(undefined),
+  handleResponse: vi.fn().mockImplementation((response) => response.Value), // Basic mock
+  executeRequest: vi.fn().mockResolvedValue(null), // Generic mock
+  getProperties: vi.fn().mockResolvedValue({}) // Mock for getProperties
 }
 
 vi.mock('@/api/AlpacaClient', () => ({
@@ -804,38 +819,259 @@ describe('cameraActions', () => {
     })
   })
 
-  describe('trackExposureProgress', () => {
-    const deviceId = 'test-cam-track'
-    const exposureTime = 3 // seconds
+  describe('handleExposureComplete', () => {
+    const deviceId = 'test-cam-exposure-complete'
     let mockExposureDevice: UnifiedDevice
-    let specificMockGetProperty: MockInstance<(propName: string) => Promise<unknown>>
-    let mockHandleExposureCompleteSpy: MockInstance<(deviceId: string) => Promise<void>>
-    let clearIntervalSpy: MockInstance<(id?: number) => void>
+    let fetchMock: MockInstance // Using general vi.MockInstance for fetch spy
+    let mockGetDeviceUrlSpy: MockedFunction<(endpoint: string, addClientIDParams?: boolean) => string>
+
+    let testSpecificClient: Partial<AlpacaClient> & {
+      getProperty: MockedFunction<(propName: string) => Promise<unknown>>
+      get: MockedFunction<(endpoint: string, params?: unknown) => Promise<AlpacaResponse<unknown>>>
+      getDeviceUrl: MockedFunction<(endpoint: string) => string | undefined>
+      clientId?: number
+      deviceType?: string
+      deviceNumber?: number
+      baseUrl?: string
+      device?: UnifiedDevice
+    }
 
     beforeEach(() => {
-      vi.useFakeTimers()
-      const setupTime = Date.now()
-
-      if (mockTrackExposureProgress && typeof mockTrackExposureProgress.mockRestore === 'function') {
-        mockTrackExposureProgress.mockRestore()
-      }
-
-      specificMockGetProperty = vi.fn().mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') return CameraStates.Idle
-        if (propName === 'imageready') return false
-        return null
-      })
-
-      const clientForTrackProgressTests = {
-        ...mockAlpacaClientInstance,
-        getProperty: specificMockGetProperty // Ensure this specific mock is used
-      }
-
-      mockGetDeviceClient.mockImplementation((id: string) => (id === deviceId ? (clientForTrackProgressTests as unknown as AlpacaClient) : null))
+      mockGetDeviceUrlSpy = vi.fn()
 
       mockExposureDevice = {
         id: deviceId,
-        name: 'Test Tracking Camera',
+        name: 'Test Exposure Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected',
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true,
+          isConnecting: false,
+          isDisconnecting: false,
+          cameraState: CameraStates.Exposing,
+          imageReady: false, // This is the internal store property state
+          exposureProgress: 50,
+          exposureTime: 10,
+          exposureStartTime: Date.now() - 5000,
+          imageBytesSupported: true,
+          prefersJsonImage: false,
+          imageWidth: 100,
+          imageHeight: 80,
+          imageElementType: 2
+        },
+        capabilities: { canAbortExposure: true }
+      }
+      store.devices.set(deviceId, { ...mockExposureDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      mockGetDeviceById.mockImplementation((id) => (id === deviceId ? store.devices.get(id) || null : null))
+
+      const baseGetPropertyMock = vi.fn(async (propName: string): Promise<unknown> => {
+        if (propName.toLowerCase() === 'imageready') {
+          return true // Default to true (direct boolean value)
+        }
+        if (propName.toLowerCase() === 'camerastate') {
+          return CameraStates.Idle // Default to Idle (direct number value)
+        }
+        return null // Default for other properties
+      })
+
+      testSpecificClient = {
+        ...mockAlpacaClientInstance,
+        getProperty: baseGetPropertyMock,
+        get: vi.fn().mockRejectedValue(new Error('testSpecificClient.get not configured for this test (beforeEach)')),
+        getDeviceUrl: mockGetDeviceUrlSpy.mockReturnValue('default/mock/url (beforeEach)'),
+        clientId: 111,
+        deviceType: 'camera',
+        deviceNumber: 0,
+        baseUrl: mockExposureDevice.apiBaseUrl ?? '',
+        device: mockExposureDevice
+      }
+
+      mockGetDeviceClient.mockImplementation((_dId: string) => {
+        if (_dId === deviceId) {
+          return testSpecificClient as unknown as AlpacaClient
+        }
+        return null
+      })
+
+      mockUpdateDeviceProperties.mockClear()
+      mockEmitEvent.mockClear()
+      mockConsoleError.mockClear()
+      fetchMock = vi.spyOn(global, 'fetch')
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks() // This should cover fetchMock and consoleError if spied via vi.spyOn
+    })
+
+    it('should download BINARY image, update properties, and emit event on success', async () => {
+      // testSpecificClient.getProperty will default to returning true for imageready
+
+      testSpecificClient.getDeviceUrl = vi.fn().mockReturnValue(`http://localhost:3000/api/v1/camera/0/imagearray`)
+      // Ensure testSpecificClient.get is not called for binary success path
+      testSpecificClient.get = vi.fn().mockRejectedValue(new Error('JSON get fallback should not be called in binary success test'))
+      testSpecificClient.clientId = 123
+
+      const currentDeviceState = store.devices.get(deviceId)!
+      currentDeviceState.properties.imageBytesSupported = true
+      currentDeviceState.properties.prefersJsonImage = false
+      currentDeviceState.properties.imageWidth = 640
+      currentDeviceState.properties.imageHeight = 480
+      currentDeviceState.properties.imageElementType = 3 // e.g. Alpaca Int32
+
+      const mockArrayBuffer = new ArrayBuffer(1024)
+      fetchMock.mockResolvedValueOnce(new Response(mockArrayBuffer, { status: 200, headers: { 'Content-Type': 'application/imagebytes' } }))
+
+      const expectedFetchUrl = `http://localhost:3000/api/v1/camera/0/imagearray?ClientID=${testSpecificClient.clientId}`
+
+      await store.handleExposureComplete(deviceId)
+
+      expect(testSpecificClient.getProperty).toHaveBeenCalledWith('imageready')
+      expect(testSpecificClient.getDeviceUrl).toHaveBeenCalledTimes(1)
+      expect(testSpecificClient.getDeviceUrl).toHaveBeenCalledWith('imagearray')
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledWith(expectedFetchUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/imagebytes', 'User-Agent': 'AlpacaWeb' }
+      })
+      expect(testSpecificClient.get).not.toHaveBeenCalled()
+
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledTimes(2)
+      expect(mockUpdateDeviceProperties).toHaveBeenNthCalledWith(1, deviceId, {
+        cameraState: CameraStates.Idle,
+        isExposing: false,
+        exposureProgress: 100,
+        imageReady: true
+      })
+      expect(mockUpdateDeviceProperties).toHaveBeenNthCalledWith(2, deviceId, {
+        imageData: mockArrayBuffer,
+        hasImage: true,
+        isExposing: false,
+        imageReady: false,
+        cameraState: CameraStates.Idle
+      })
+      const imageReadyEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraImageReady')
+      expect(imageReadyEvent).toBeDefined()
+      expect(imageReadyEvent?.[0]).toEqual({
+        type: 'cameraImageReady',
+        deviceId,
+        imageData: mockArrayBuffer
+      })
+    })
+
+    it('should log an error and not emit image if imageready check fails', async () => {
+      const currentDeviceState = store.devices.get(deviceId)!
+      currentDeviceState.properties.imageBytesSupported = true
+      currentDeviceState.properties.prefersJsonImage = false
+
+      // Specific mock for this test: imageready returns false
+      testSpecificClient.getProperty.mockImplementationOnce(async (propName: string) => {
+        if (propName.toLowerCase() === 'imageready') {
+          return false
+        }
+        // Fallback for other properties if any were to be checked in this path
+        if (propName.toLowerCase() === 'camerastate') return CameraStates.Idle
+        return null
+      })
+
+      // Ensure getDeviceUrl and get are not called if imageready is false
+      testSpecificClient.getDeviceUrl = vi.fn().mockReturnValue('should.not.be.called.url')
+      testSpecificClient.get = vi.fn().mockRejectedValue(new Error('should.not.be.called.error'))
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      await store.handleExposureComplete(deviceId)
+
+      expect(testSpecificClient.getProperty).toHaveBeenCalledWith('imageready')
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Camera reports image is not ready, skipping image download')
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(testSpecificClient.getDeviceUrl).not.toHaveBeenCalled()
+      expect(testSpecificClient.get).not.toHaveBeenCalled()
+
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledTimes(1)
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        cameraState: CameraStates.Idle,
+        isExposing: false,
+        exposureProgress: 100,
+        imageReady: true // This is from the initial optimistic update in SUT
+      })
+
+      // Check for the specific 'cameraExposureComplete' event
+      const exposureCompleteEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraExposureComplete')
+      expect(exposureCompleteEvent).toBeDefined()
+      expect(exposureCompleteEvent?.[0]).toEqual({
+        type: 'cameraExposureComplete',
+        deviceId
+        // No imageData or imageUrl
+      })
+
+      // Ensure 'cameraImageReady' was NOT emitted in this path
+      const imageReadyEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraImageReady')
+      expect(imageReadyEvent).toBeUndefined()
+
+      expect(mockConsoleError).not.toHaveBeenCalled() // No actual errors should be logged by console.error
+
+      consoleWarnSpy.mockRestore() // Restore spy
+    })
+
+    it('should log an error and not proceed if device is not found', async () => {
+      const stagedGetDeviceByIdMockFn = vi.fn().mockImplementationOnce((id: string) => {
+        console.log(`DIAGNOSTIC: mockGetDeviceById (STAGED FN - 1st call TARGETING SUT L487) for id: ${id}, returning null`)
+        return null // This call should make the device undefined at SUT L487
+      })
+      // No second mockImplementationOnce needed if the first error path is taken.
+
+      mockGetDeviceById.mockImplementation(stagedGetDeviceByIdMockFn)
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await store.handleExposureComplete(deviceId)
+
+      const consoleErrorCalls = consoleErrorSpy.mock.calls
+      const expectedErrorMessage = `Device ${deviceId} not found after imageready check`
+      const specificErrorLogged = consoleErrorCalls.some((call) => call[0] === expectedErrorMessage)
+      expect(specificErrorLogged, 'The specific error message about device not found after imageready was not logged.').toBe(true)
+
+      expect(stagedGetDeviceByIdMockFn, 'stagedGetDeviceByIdMockFn was not called exactly once').toHaveBeenCalledTimes(1)
+      expect(testSpecificClient.getProperty, 'getProperty("imageready") was not called').toHaveBeenCalledWith('imageready')
+
+      const completeEventCall = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraExposureComplete')
+      expect(completeEventCall, 'cameraExposureComplete event was not emitted').toBeDefined()
+      if (completeEventCall) {
+        const completeEvent = completeEventCall[0] as import('@/stores/types/device-store.types').CameraExposureCompleteEvent // TYPE CAST
+        expect(completeEvent.deviceId).toBe(deviceId)
+        expect(completeEvent.imageData, 'event.imageData should be undefined').toBeUndefined()
+        expect(completeEvent.imageUrl, 'event.imageUrl should be undefined').toBeUndefined()
+        // Check that error property is a string and matches
+        expect(typeof completeEvent.error).toBe('string')
+        expect(completeEvent.error).toBe(expectedErrorMessage)
+      }
+
+      // Restore spies
+      consoleErrorSpy.mockRestore()
+    })
+  })
+
+  describe('abortCameraExposure', () => {
+    const deviceId = 'test-cam-abort'
+    let mockCallDeviceMethod: MockInstance<
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (deviceId: string, method: string, args?: any) => Promise<any>
+    >
+
+    beforeEach(() => {
+      // Ensure the device is in the store, potentially in an exposing state
+      const mockAbortingDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test Abort Camera',
         type: 'camera',
         uniqueId: `mock-camera-${deviceId}`,
         deviceNum: 0,
@@ -847,293 +1083,1191 @@ describe('cameraActions', () => {
         properties: {
           connected: true,
           isConnecting: false,
-          isExposing: false,
-          exposureProgress: 0,
-          exposureStartTime: setupTime,
-          cameraState: CameraStates.Idle,
-          imageready: false,
-          propertyPollIntervalMs: 1000
+          isExposing: true, // Start in exposing state
+          cameraState: CameraStates.Exposing,
+          exposureProgress: 50
         }
       }
-      store.devices.set(deviceId, { ...mockExposureDevice })
+      store.devices.set(deviceId, { ...mockAbortingDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      // mockGetDeviceById is spied in the main beforeEach, but let's ensure it returns the device for this suite
+      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
+      mockCallDeviceMethod = vi.spyOn(store, 'callDeviceMethod').mockResolvedValue({}) // Default success
+
+      mockUpdateDeviceProperties.mockClear()
+      mockEmitEvent.mockClear()
+      mockConsoleError.mockClear()
+    })
+
+    it('should call client.callDeviceMethod with abortexposure, update properties, and emit event on success', async () => {
+      const result = await store.abortCameraExposure(deviceId)
+
+      expect(result).toBe(true)
+      // expect(mockGetDeviceById).toHaveBeenCalledWith(deviceId) // Not a direct call from abortCameraExposure
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
+      expect(mockCallDeviceMethod).toHaveBeenCalledWith(deviceId, 'abortexposure', [])
+
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        isExposing: false,
+        exposureProgress: 0,
+        imageReady: false,
+        cameraState: CameraStates.Idle
+      })
+
+      const abortEventCall = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraExposureAborted')
+      expect(abortEventCall).toBeDefined()
+      expect(abortEventCall?.[0]).toEqual<DeviceEvent>({
+        type: 'cameraExposureAborted',
+        deviceId
+      })
+    })
+
+    it('should re-throw error, log error, and update properties on client.callDeviceMethod failure', async () => {
+      const abortError = new Error('Alpaca abortexposure error')
+      mockCallDeviceMethod.mockRejectedValueOnce(abortError)
+
+      await expect(store.abortCameraExposure(deviceId)).rejects.toThrow(abortError)
+
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
+      expect(mockCallDeviceMethod).toHaveBeenCalledWith(deviceId, 'abortexposure', [])
+
+      expect(mockConsoleError).toHaveBeenCalledWith(`Error aborting exposure on camera ${deviceId}:`, abortError)
+
+      // Check that properties are reset even on error, as per the implementation's catch block
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        isExposing: false,
+        exposureProgress: 0,
+        cameraState: CameraStates.Idle // As per the catch block in SUT
+      })
+
+      // Ensure cameraExposureAborted event is NOT emitted on failure
+      const abortEventCall = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraExposureAborted')
+      expect(abortEventCall).toBeUndefined()
+    })
+
+    it('should re-throw error and log error if device is not found (via callDeviceMethod guard)', async () => {
+      const deviceNotFoundError = new Error(`Device ${deviceId} not found`)
+      mockCallDeviceMethod.mockRejectedValueOnce(deviceNotFoundError)
+
+      await expect(store.abortCameraExposure(deviceId)).rejects.toThrow(deviceNotFoundError)
+
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
+      expect(mockConsoleError).toHaveBeenCalledWith(`Error aborting exposure on camera ${deviceId}:`, deviceNotFoundError)
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        isExposing: false,
+        exposureProgress: 0,
+        cameraState: CameraStates.Idle // As per the catch block in SUT
+      })
+    })
+
+    // Note: A test for "client not found" would be similar to "device not found"
+    // as callDeviceMethod handles that. If callDeviceMethod resolves/rejects differently,
+    // specific tests could be added. Given the current structure of abortCameraExposure
+    // relying on callDeviceMethod's outcome, these specific guard tests within abort are less critical
+    // if callDeviceMethod is robustly tested elsewhere.
+  })
+
+  describe('setCameraCooler', () => {
+    const deviceId = 'test-cam-cooler'
+    let mockCallDeviceMethod: MockInstance<
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (deviceId: string, method: string, args?: any) => Promise<any>
+    >
+
+    beforeEach(() => {
+      const mockCoolerDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test Cooler Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected' as DeviceState,
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true,
+          canCool: true, // Assume it can cool for these tests
+          coolerEnabled: false,
+          targetTemperature: 0
+        }
+      }
+      store.devices.set(deviceId, { ...mockCoolerDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
+      mockCallDeviceMethod = vi.spyOn(store, 'callDeviceMethod').mockResolvedValue({}) // Default success
+
+      mockUpdateDeviceProperties.mockClear()
+      mockEmitEvent.mockClear()
+      mockConsoleError.mockClear()
+    })
+
+    it('should set cooler on, update properties, and emit event', async () => {
+      const enabled = true
+      const result = await store.setCameraCooler(deviceId, enabled)
+
+      expect(result).toBe(true)
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
+      expect(mockCallDeviceMethod).toHaveBeenCalledWith(deviceId, 'cooleron', [{ CoolerOn: enabled }])
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        coolerEnabled: enabled
+      })
+      const coolerEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraCoolerChanged')
+      expect(coolerEvent).toBeDefined()
+      expect(coolerEvent?.[0]).toEqual<DeviceEvent>({
+        type: 'cameraCoolerChanged',
+        deviceId,
+        enabled,
+        temperature: undefined // No target temp provided
+      })
+    })
+
+    it('should set cooler on with target temperature, update properties, and emit event', async () => {
+      const enabled = true
+      const targetTemperature = -10
+      const result = await store.setCameraCooler(deviceId, enabled, targetTemperature)
+
+      expect(result).toBe(true)
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(2)
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, deviceId, 'cooleron', [{ CoolerOn: enabled }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, deviceId, 'setccdtemperature', [{ SetCCDTemperature: targetTemperature }])
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        coolerEnabled: enabled,
+        targetTemperature: targetTemperature
+      })
+      const coolerEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraCoolerChanged')
+      expect(coolerEvent).toBeDefined()
+      expect(coolerEvent?.[0]).toEqual<DeviceEvent>({
+        type: 'cameraCoolerChanged',
+        deviceId,
+        enabled,
+        temperature: targetTemperature
+      })
+    })
+
+    it('should set cooler off, update properties, and emit event', async () => {
+      // First set it on to simulate a change
+      store.devices.get(deviceId)!.properties!.coolerEnabled = true
+      store.devices.get(deviceId)!.properties!.targetTemperature = -5
+
+      const enabled = false
+      const targetTemperature = 5 // Alpaca spec allows setting target temp even if cooler is being turned off
+      const result = await store.setCameraCooler(deviceId, enabled, targetTemperature)
+
+      expect(result).toBe(true)
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(2)
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, deviceId, 'cooleron', [{ CoolerOn: enabled }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, deviceId, 'setccdtemperature', [{ SetCCDTemperature: targetTemperature }])
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        coolerEnabled: enabled,
+        targetTemperature: targetTemperature
+      })
+      const coolerEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraCoolerChanged')
+      expect(coolerEvent).toBeDefined()
+      expect(coolerEvent?.[0]).toEqual<DeviceEvent>({
+        type: 'cameraCoolerChanged',
+        deviceId,
+        enabled,
+        temperature: targetTemperature
+      })
+    })
+
+    it('should throw error if callDeviceMethod for cooleron fails', async () => {
+      const coolerOnError = new Error('Failed to set cooleron')
+      mockCallDeviceMethod.mockImplementation(async (dId, method) => {
+        if (method === 'cooleron') throw coolerOnError
+        return {}
+      })
+
+      await expect(store.setCameraCooler(deviceId, true)).rejects.toThrow(coolerOnError)
+
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
+      expect(mockCallDeviceMethod).toHaveBeenCalledWith(deviceId, 'cooleron', [{ CoolerOn: true }])
+      expect(mockConsoleError).toHaveBeenCalledWith(`Error setting camera ${deviceId} cooler:`, coolerOnError)
+      expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+    })
+
+    it('should throw error if callDeviceMethod for setccdtemperature fails', async () => {
+      const setTempError = new Error('Failed to set ccdtemperature')
+      mockCallDeviceMethod.mockImplementation(async (dId, method) => {
+        if (method === 'setccdtemperature') throw setTempError
+        return {}
+      })
+
+      const targetTemperature = -15
+      await expect(store.setCameraCooler(deviceId, true, targetTemperature)).rejects.toThrow(setTempError)
+
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(2)
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, deviceId, 'cooleron', [{ CoolerOn: true }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, deviceId, 'setccdtemperature', [{ SetCCDTemperature: targetTemperature }])
+      expect(mockConsoleError).toHaveBeenCalledWith(`Error setting camera ${deviceId} cooler:`, setTempError)
+      // updateDeviceProperties and emitEvent should not be called if the second call fails
+      expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('setCameraBinning', () => {
+    const deviceId = 'test-cam-binning'
+    let mockCallDeviceMethod: MockInstance<
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (deviceId: string, method: string, args?: any) => Promise<any>
+    >
+
+    beforeEach(() => {
+      const mockBinningDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test Binning Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected' as DeviceState,
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true,
+          canSetBinning: true, // Assume it can set binning
+          binX: 1,
+          binY: 1,
+          binningX: 1, // Friendly property
+          binningY: 1 // Friendly property
+        }
+      }
+      store.devices.set(deviceId, { ...mockBinningDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
+      mockCallDeviceMethod = vi.spyOn(store, 'callDeviceMethod').mockResolvedValue({}) // Default success
+
+      mockUpdateDeviceProperties.mockClear()
+      mockEmitEvent.mockClear()
+      mockConsoleError.mockClear()
+    })
+
+    it('should set binning, update properties, and emit event', async () => {
+      const binX = 2
+      const binY = 2
+      const result = await store.setCameraBinning(deviceId, binX, binY)
+
+      expect(result).toBe(true)
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(2)
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, deviceId, 'binx', [{ BinX: binX }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, deviceId, 'biny', [{ BinY: binY }])
+
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        binningX: binX,
+        binningY: binY
+      })
+
+      const binningEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraBinningChanged')
+      expect(binningEvent).toBeDefined()
+      expect(binningEvent?.[0]).toEqual<DeviceEvent>({
+        type: 'cameraBinningChanged',
+        deviceId,
+        binX,
+        binY
+      })
+    })
+
+    it('should throw error if callDeviceMethod for binx fails', async () => {
+      const binxError = new Error('Failed to set binx')
+      mockCallDeviceMethod.mockImplementation(async (dId, method) => {
+        if (method === 'binx') throw binxError
+        return {}
+      })
+
+      await expect(store.setCameraBinning(deviceId, 2, 2)).rejects.toThrow(binxError)
+
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
+      expect(mockCallDeviceMethod).toHaveBeenCalledWith(deviceId, 'binx', [{ BinX: 2 }])
+      expect(mockConsoleError).toHaveBeenCalledWith(`Error setting camera ${deviceId} binning:`, binxError)
+      expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+    })
+
+    it('should throw error if callDeviceMethod for biny fails', async () => {
+      const binyError = new Error('Failed to set biny')
+      mockCallDeviceMethod.mockImplementation(async (dId, method) => {
+        if (method === 'biny') throw binyError
+        // Allow binx to succeed
+        if (method === 'binx') return {}
+        return {}
+      })
+
+      await expect(store.setCameraBinning(deviceId, 2, 2)).rejects.toThrow(binyError)
+
+      expect(mockCallDeviceMethod).toHaveBeenCalledTimes(2) // binx and biny called
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, deviceId, 'binx', [{ BinX: 2 }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, deviceId, 'biny', [{ BinY: 2 }])
+      expect(mockConsoleError).toHaveBeenCalledWith(`Error setting camera ${deviceId} binning:`, binyError)
+      // updateDeviceProperties and emitEvent should not be called if the second call fails
+      expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
+      expect(mockEmitEvent).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('setCameraGain', () => {
+    const deviceId = 'test-cam-gain'
+    let mockCameraClientSetGain: MockInstance<(value: number) => Promise<void>>
+    let mockFetchCameraProperties: MockInstance<(deviceId: string) => Promise<boolean>>
+
+    beforeEach(() => {
+      // Default device setup, can be overridden in specific tests
+      const mockGainDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test Gain Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected' as DeviceState,
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true,
+          cam_gainMode: 'unknown', // Default to unknown, tests will specify
+          gains: [],
+          gainmin: 0,
+          gainmax: 100
+        }
+      }
+      store.devices.set(deviceId, { ...mockGainDevice })
       store.devicesArray = Array.from(store.devices.values())
 
       mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
 
-      // Spy on handleExposureComplete for this describe block
-      mockHandleExposureCompleteSpy = vi.spyOn(store, 'handleExposureComplete').mockResolvedValue(undefined)
-      clearIntervalSpy = vi.spyOn(global, 'clearInterval')
+      mockCameraClientSetGain = vi.fn().mockResolvedValue(undefined)
+      // Ensure getDeviceClient returns a client with the mocked setGain
+      mockGetDeviceClient.mockImplementation((id: string) => {
+        if (id === deviceId) {
+          return {
+            ...mockAlpacaClientInstance, // Spread other common mocks if needed
+            setGain: mockCameraClientSetGain
+          } as unknown as AlpacaClient // Cast to AlpacaClient, then SUT casts to CameraClient
+        }
+        return null
+      })
+
+      mockFetchCameraProperties = vi.spyOn(store, 'fetchCameraProperties').mockResolvedValue(true)
+
+      mockUpdateDeviceProperties.mockClear() // Though setCameraGain doesn't call it directly
+      mockEmitEvent.mockClear()
+      mockConsoleError.mockClear() // Though setCameraGain doesn't call it directly
+    })
+
+    describe('List Mode', () => {
+      const gainsList = ['Low', 'Medium', 'High']
+      beforeEach(() => {
+        const device = store.getDeviceById(deviceId)
+        if (device && device.properties) {
+          device.properties.cam_gainMode = 'list'
+          device.properties.gains = gainsList
+        }
+      })
+
+      it('should set gain by name, call client.setGain with index, emit event, and fetch props', async () => {
+        const desiredGainName = 'Medium'
+        const expectedIndex = 1
+
+        await store.setCameraGain(deviceId, desiredGainName)
+
+        expect(mockCameraClientSetGain).toHaveBeenCalledWith(expectedIndex)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setGain',
+          args: [expectedIndex],
+          result: 'success'
+        })
+        expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should set gain by index, call client.setGain with index, emit event, and fetch props', async () => {
+        const desiredGainIndex = 2
+
+        await store.setCameraGain(deviceId, desiredGainIndex)
+
+        expect(mockCameraClientSetGain).toHaveBeenCalledWith(desiredGainIndex)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setGain',
+          args: [desiredGainIndex],
+          result: 'success'
+        })
+        expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should emit deviceApiError if gain name not found', async () => {
+        await store.setCameraGain(deviceId, 'InvalidGainName')
+
+        expect(mockCameraClientSetGain).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: "Gain name 'InvalidGainName' not found in list."
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+
+      it('should emit deviceApiError if gain index out of bounds', async () => {
+        await store.setCameraGain(deviceId, 99) // Out of bounds index
+
+        expect(mockCameraClientSetGain).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: 'Gain index 99 out of bounds.'
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('Value Mode', () => {
+      const gainMin = 10
+      const gainMax = 200
+      beforeEach(() => {
+        const device = store.getDeviceById(deviceId)
+        if (device && device.properties) {
+          device.properties.cam_gainMode = 'value'
+          device.properties.gainmin = gainMin
+          device.properties.gainmax = gainMax
+          device.properties.gains = [] // Ensure gains list is empty for value mode
+        }
+      })
+
+      it('should set gain by numeric value, call client.setGain, emit event, and fetch props', async () => {
+        const desiredGainValue = 150
+        await store.setCameraGain(deviceId, desiredGainValue)
+
+        expect(mockCameraClientSetGain).toHaveBeenCalledWith(desiredGainValue)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setGain',
+          args: [desiredGainValue],
+          result: 'success'
+        })
+        expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should set gain by string value, parse it, call client.setGain, emit event, and fetch props', async () => {
+        const desiredGainString = '120'
+        const expectedNumericValue = 120
+        await store.setCameraGain(deviceId, desiredGainString)
+
+        expect(mockCameraClientSetGain).toHaveBeenCalledWith(expectedNumericValue)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setGain',
+          args: [expectedNumericValue],
+          result: 'success'
+        })
+        expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should clamp gain if value is below min', async () => {
+        await store.setCameraGain(deviceId, 5) // Below min of 10
+        expect(mockCameraClientSetGain).toHaveBeenCalledWith(gainMin) // Should be clamped to min
+      })
+
+      it('should clamp gain if value is above max', async () => {
+        await store.setCameraGain(deviceId, 250) // Above max of 200
+        expect(mockCameraClientSetGain).toHaveBeenCalledWith(gainMax) // Should be clamped to max
+      })
+
+      it('should emit deviceApiError if string gain value is invalid', async () => {
+        await store.setCameraGain(deviceId, 'NotANumber')
+
+        expect(mockCameraClientSetGain).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: "Invalid gain value string 'NotANumber'."
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('Unknown Mode and Edge Cases', () => {
+      it('should emit deviceApiError if cam_gainMode is unknown', async () => {
+        // Device defaults to unknown mode in beforeEach
+        await store.setCameraGain(deviceId, 100)
+
+        expect(mockCameraClientSetGain).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: 'Gain mode is unknown. Cannot set gain.'
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+
+      it('should emit deviceApiError if client or device not found', async () => {
+        mockGetDeviceById.mockReturnValueOnce(null) // Simulate device not found
+        await store.setCameraGain(deviceId, 100)
+
+        expect(mockCameraClientSetGain).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: 'Client or device not found for setCameraGain'
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+
+      it('should emit deviceApiError if client.setGain fails', async () => {
+        const setGainError = new Error('Client failed to setGain')
+        mockCameraClientSetGain.mockRejectedValueOnce(setGainError)
+
+        // Setup for a valid call to reach client.setGain (e.g., value mode)
+        const device = store.getDeviceById(deviceId)
+        if (device && device.properties) {
+          device.properties.cam_gainMode = 'value'
+          device.properties.gainmin = 0
+          device.properties.gainmax = 200
+        }
+
+        await store.setCameraGain(deviceId, 100)
+
+        expect(mockCameraClientSetGain).toHaveBeenCalledWith(100)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: `Failed to set gain: ${setGainError}`
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled() // Should not fetch if setGain failed
+      })
+
+      it('should emit deviceApiError if numericValueToSend cannot be determined (e.g. list mode, desiredGain is object)', async () => {
+        const device = store.getDeviceById(deviceId)
+        if (device && device.properties) {
+          device.properties.cam_gainMode = 'list'
+          device.properties.gains = ['A', 'B']
+        }
+        // Pass an object, which is not handled for numeric conversion in list mode
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await store.setCameraGain(deviceId, { complex: 'object' } as any)
+
+        expect(mockCameraClientSetGain).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: 'Could not determine numeric gain value to send.'
+        })
+      })
+    })
+  })
+
+  describe('setCameraOffset', () => {
+    const deviceId = 'test-cam-offset'
+    let mockCameraClientSetOffset: MockInstance<(value: number) => Promise<void>>
+    let mockFetchCameraProperties: MockInstance<(deviceId: string) => Promise<boolean>>
+
+    beforeEach(() => {
+      const mockOffsetDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test Offset Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected' as DeviceState,
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true,
+          cam_offsetMode: 'unknown', // Default to unknown
+          offsets: [],
+          offsetmin: 0,
+          offsetmax: 100
+        }
+      }
+      store.devices.set(deviceId, { ...mockOffsetDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
+
+      mockCameraClientSetOffset = vi.fn().mockResolvedValue(undefined)
+      mockGetDeviceClient.mockImplementation((id: string) => {
+        if (id === deviceId) {
+          return {
+            ...mockAlpacaClientInstance,
+            setOffset: mockCameraClientSetOffset
+          } as unknown as AlpacaClient
+        }
+        return null
+      })
+
+      mockFetchCameraProperties = vi.spyOn(store, 'fetchCameraProperties').mockResolvedValue(true)
+      mockEmitEvent.mockClear()
+    })
+
+    describe('List Mode', () => {
+      const offsetsList = ['Zero', 'Ten', 'Twenty']
+      beforeEach(() => {
+        const device = store.getDeviceById(deviceId)
+        if (device && device.properties) {
+          device.properties.cam_offsetMode = 'list'
+          device.properties.offsets = offsetsList
+        }
+      })
+
+      it('should set offset by name, call client.setOffset with index, emit event, and fetch props', async () => {
+        const desiredOffsetName = 'Ten'
+        const expectedIndex = 1
+
+        await store.setCameraOffset(deviceId, desiredOffsetName)
+
+        expect(mockCameraClientSetOffset).toHaveBeenCalledWith(expectedIndex)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setOffset',
+          args: [expectedIndex],
+          result: 'success'
+        })
+        expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should set offset by index, call client.setOffset with index, emit event, and fetch props', async () => {
+        const desiredOffsetIndex = 2
+        await store.setCameraOffset(deviceId, desiredOffsetIndex)
+
+        expect(mockCameraClientSetOffset).toHaveBeenCalledWith(desiredOffsetIndex)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setOffset',
+          args: [desiredOffsetIndex],
+          result: 'success'
+        })
+        expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should emit deviceApiError if offset name not found', async () => {
+        await store.setCameraOffset(deviceId, 'InvalidOffsetName')
+        expect(mockCameraClientSetOffset).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: "Offset name 'InvalidOffsetName' not found in list."
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+
+      it('should emit deviceApiError if offset index out of bounds', async () => {
+        await store.setCameraOffset(deviceId, 99)
+        expect(mockCameraClientSetOffset).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: 'Offset index 99 out of bounds.'
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('Value Mode', () => {
+      const offsetMin = 10
+      const offsetMax = 200
+      beforeEach(() => {
+        const device = store.getDeviceById(deviceId)
+        if (device && device.properties) {
+          device.properties.cam_offsetMode = 'value'
+          device.properties.offsetmin = offsetMin
+          device.properties.offsetmax = offsetMax
+          device.properties.offsets = [] // Ensure offsets list is empty
+        }
+      })
+
+      it('should set offset by numeric value, call client.setOffset, emit event, and fetch props', async () => {
+        const desiredOffsetValue = 150
+        await store.setCameraOffset(deviceId, desiredOffsetValue)
+
+        expect(mockCameraClientSetOffset).toHaveBeenCalledWith(desiredOffsetValue)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setOffset',
+          args: [desiredOffsetValue],
+          result: 'success'
+        })
+        expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should set offset by string value, parse it, call client.setOffset, emit event, and fetch props', async () => {
+        const desiredOffsetString = '120'
+        const expectedNumericValue = 120
+        await store.setCameraOffset(deviceId, desiredOffsetString)
+
+        expect(mockCameraClientSetOffset).toHaveBeenCalledWith(expectedNumericValue)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceMethodCalled',
+          deviceId,
+          method: 'setOffset',
+          args: [expectedNumericValue],
+          result: 'success'
+        })
+        expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+      })
+
+      it('should clamp offset if value is below min', async () => {
+        await store.setCameraOffset(deviceId, 5) // Below min of 10
+        expect(mockCameraClientSetOffset).toHaveBeenCalledWith(offsetMin)
+      })
+
+      it('should clamp offset if value is above max', async () => {
+        await store.setCameraOffset(deviceId, 250) // Above max of 200
+        expect(mockCameraClientSetOffset).toHaveBeenCalledWith(offsetMax)
+      })
+
+      it('should emit deviceApiError if string offset value is invalid', async () => {
+        await store.setCameraOffset(deviceId, 'NotANumber')
+        expect(mockCameraClientSetOffset).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: "Invalid offset value string 'NotANumber'."
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('Unknown Mode and Edge Cases', () => {
+      it('should emit deviceApiError if cam_offsetMode is unknown', async () => {
+        // Device defaults to unknown mode in beforeEach
+        await store.setCameraOffset(deviceId, 100)
+        expect(mockCameraClientSetOffset).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: 'Offset mode is unknown. Cannot set offset.'
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+
+      it('should emit deviceApiError if client or device not found', async () => {
+        mockGetDeviceById.mockReturnValueOnce(null) // Simulate device not found
+        await store.setCameraOffset(deviceId, 100)
+        expect(mockCameraClientSetOffset).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: 'Client or device not found for setCameraOffset'
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+
+      it('should emit deviceApiError if client.setOffset fails', async () => {
+        const setOffsetError = new Error('Client failed to setOffset')
+        mockCameraClientSetOffset.mockRejectedValueOnce(setOffsetError)
+
+        const device = store.getDeviceById(deviceId)
+        if (device && device.properties) {
+          device.properties.cam_offsetMode = 'value' // Ensure a valid mode to reach the call
+          device.properties.offsetmin = 0
+          device.properties.offsetmax = 200
+        }
+
+        await store.setCameraOffset(deviceId, 100)
+        expect(mockCameraClientSetOffset).toHaveBeenCalledWith(100)
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: `Failed to set offset: ${setOffsetError}`
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+
+      it('should emit deviceApiError if numericValueToSend cannot be determined (e.g., list mode, desiredOffset is object)', async () => {
+        const device = store.getDeviceById(deviceId)
+        if (device && device.properties) {
+          device.properties.cam_offsetMode = 'list'
+          device.properties.offsets = ['X', 'Y']
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await store.setCameraOffset(deviceId, { complex: 'object' } as any)
+        expect(mockCameraClientSetOffset).not.toHaveBeenCalled()
+        expect(mockEmitEvent).toHaveBeenCalledWith({
+          type: 'deviceApiError',
+          deviceId,
+          error: 'Could not determine numeric offset value to send.'
+        })
+        expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('setCameraReadoutMode', () => {
+    const deviceId = 'test-cam-readout'
+    let mockCameraClientSetReadoutMode: MockInstance<(value: number) => Promise<void>>
+    let mockFetchCameraProperties: MockInstance<(deviceId: string) => Promise<boolean>>
+
+    beforeEach(() => {
+      const mockReadoutDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test ReadoutMode Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected' as DeviceState,
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true,
+          readoutmodes: ['Fast', 'Normal', 'Slow'], // Example modes
+          readoutmode: 0 // Current mode index
+        }
+      }
+      store.devices.set(deviceId, { ...mockReadoutDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
+
+      mockCameraClientSetReadoutMode = vi.fn().mockResolvedValue(undefined)
+      mockGetDeviceClient.mockImplementation((id: string) => {
+        if (id === deviceId) {
+          return {
+            ...mockAlpacaClientInstance,
+            setReadoutMode: mockCameraClientSetReadoutMode
+          } as unknown as AlpacaClient
+        }
+        return null
+      })
+
+      mockFetchCameraProperties = vi.spyOn(store, 'fetchCameraProperties').mockResolvedValue(true)
+      mockEmitEvent.mockClear()
+    })
+
+    it('should call client.setReadoutMode, emit event, and fetch properties on success', async () => {
+      const modeIndex = 1 // Target 'Normal' mode
+
+      await store.setCameraReadoutMode(deviceId, modeIndex)
+
+      expect(mockCameraClientSetReadoutMode).toHaveBeenCalledWith(modeIndex)
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceMethodCalled',
+        deviceId,
+        method: 'setReadoutMode',
+        args: [modeIndex],
+        result: 'success'
+      })
+      expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+    })
+
+    it('should emit deviceApiError if client is not found', async () => {
+      mockGetDeviceClient.mockReturnValueOnce(null) // Simulate client not found
+      const modeIndex = 1
+
+      await store.setCameraReadoutMode(deviceId, modeIndex)
+
+      expect(mockCameraClientSetReadoutMode).not.toHaveBeenCalled()
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: 'Client not found for setCameraReadoutMode'
+      })
+      expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+    })
+
+    it('should emit deviceApiError if client.setReadoutMode fails', async () => {
+      const setModeError = new Error('Client failed to setReadoutMode')
+      mockCameraClientSetReadoutMode.mockRejectedValueOnce(setModeError)
+      const modeIndex = 1
+
+      await store.setCameraReadoutMode(deviceId, modeIndex)
+
+      expect(mockCameraClientSetReadoutMode).toHaveBeenCalledWith(modeIndex)
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: `Failed to set readout mode: ${setModeError}`
+      })
+      expect(mockFetchCameraProperties).not.toHaveBeenCalled() // Should not fetch if setReadoutMode failed
+    })
+
+    // Note: The SUT for setCameraReadoutMode does not currently validate modeIndex against device.properties.readoutmodes.
+    // It directly passes the modeIndex to the client.setReadoutMode.
+    // If validation were added, tests for out-of-bounds index would be relevant here.
+  })
+
+  describe('setCameraSubframe', () => {
+    const deviceId = 'test-cam-subframe'
+    let mockCameraClientSetSubframe: MockInstance<(startX: number, startY: number, numX: number, numY: number) => Promise<void>>
+    let mockFetchCameraProperties: MockInstance<(deviceId: string) => Promise<boolean>>
+
+    beforeEach(() => {
+      const mockSubframeDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test Subframe Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected' as DeviceState,
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true
+          // Relevant properties like startX, numX etc. are usually updated via polling/fetch
+        }
+      }
+      store.devices.set(deviceId, { ...mockSubframeDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
+
+      mockCameraClientSetSubframe = vi.fn().mockResolvedValue(undefined)
+      mockGetDeviceClient.mockImplementation((id: string) => {
+        if (id === deviceId) {
+          return {
+            ...mockAlpacaClientInstance,
+            setSubframe: mockCameraClientSetSubframe
+          } as unknown as AlpacaClient
+        }
+        return null
+      })
+
+      mockFetchCameraProperties = vi.spyOn(store, 'fetchCameraProperties').mockResolvedValue(true)
+      mockEmitEvent.mockClear()
+    })
+
+    it('should call client.setSubframe, emit event, and fetch properties on success', async () => {
+      const startX = 10
+      const startY = 20
+      const numX = 100
+      const numY = 200
+
+      await store.setCameraSubframe(deviceId, startX, startY, numX, numY)
+
+      expect(mockCameraClientSetSubframe).toHaveBeenCalledWith(startX, startY, numX, numY)
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceMethodCalled',
+        deviceId,
+        method: 'setSubframe',
+        args: [startX, startY, numX, numY],
+        result: 'success'
+      })
+      expect(mockFetchCameraProperties).toHaveBeenCalledWith(deviceId)
+    })
+
+    it('should emit deviceApiError if client is not found', async () => {
+      mockGetDeviceClient.mockReturnValueOnce(null) // Simulate client not found
+
+      await store.setCameraSubframe(deviceId, 10, 20, 100, 200)
+
+      expect(mockCameraClientSetSubframe).not.toHaveBeenCalled()
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: 'Client not found for setCameraSubframe'
+      })
+      expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+    })
+
+    it('should emit deviceApiError if client.setSubframe fails', async () => {
+      const setSubframeError = new Error('Client failed to setSubframe')
+      mockCameraClientSetSubframe.mockRejectedValueOnce(setSubframeError)
+      const startX = 10,
+        startY = 20,
+        numX = 100,
+        numY = 200
+
+      await store.setCameraSubframe(deviceId, startX, startY, numX, numY)
+
+      expect(mockCameraClientSetSubframe).toHaveBeenCalledWith(startX, startY, numX, numY)
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: `Failed to set subframe: ${setSubframeError}`
+      })
+      expect(mockFetchCameraProperties).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('stopCameraExposure', () => {
+    const deviceId = 'test-cam-stop-exposure'
+    let mockCameraClientStopExposure: MockInstance<() => Promise<void>>
+
+    beforeEach(() => {
+      const mockStopExposureDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test StopExposure Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected' as DeviceState,
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true,
+          isExposing: true // Assume initially exposing
+        }
+      }
+      store.devices.set(deviceId, { ...mockStopExposureDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
+
+      mockCameraClientStopExposure = vi.fn().mockResolvedValue(undefined)
+      mockGetDeviceClient.mockImplementation((id: string) => {
+        if (id === deviceId) {
+          return {
+            ...mockAlpacaClientInstance,
+            stopExposure: mockCameraClientStopExposure
+          } as unknown as AlpacaClient
+        }
+        return null
+      })
 
       mockUpdateDeviceProperties.mockClear()
       mockEmitEvent.mockClear()
     })
 
-    afterEach(() => {
-      vi.useRealTimers()
-      mockHandleExposureCompleteSpy.mockRestore() // Restore spy
-      clearIntervalSpy.mockRestore() // Restore spy
-    })
+    it('should call client.stopExposure, update properties, and emit event on success', async () => {
+      await store.stopCameraExposure(deviceId)
 
-    it('should initialize device properties and start interval timer', () => {
-      const setIntervalSpy = vi.spyOn(global, 'setInterval')
-
-      store.trackExposureProgress(deviceId, exposureTime)
-
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
-        isExposing: true,
-        exposureProgress: 0
-      })
-      expect(setIntervalSpy).toHaveBeenCalledTimes(1)
-      expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 500) // POLLING_INTERVAL
-    })
-
-    it('should update progress based on camerastate if exposing and emit event', async () => {
-      // Override specificMockGetProperty for this test case
-      specificMockGetProperty.mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') return CameraStates.Exposing // Exposing
-        if (propName === 'imageready') return false
-        return null
-      })
-
-      store.trackExposureProgress(deviceId, exposureTime) // 3 seconds exposure
-
-      // Advance time by one interval (500ms)
-      await vi.advanceTimersByTimeAsync(500)
-
-      expect(specificMockGetProperty).toHaveBeenCalledWith('camerastate') // Corrected Assertion
-
-      // Progress for 500ms out of 3000ms (3s) = (500/3000)*100 = 16.66... ~ 17%
-      // The action logs 'Camera X state: Y', and then updates properties with cameraState and isExposing.
-      // Then calculates progress.
-      // Call 1: Initial isExposing: true, exposureProgress: 0
-      // Call 2: camerastate update (isExposing: true, cameraState: 2)
-      // Call 3: progress update (isExposing: true, exposureProgress: 17)
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, expect.objectContaining({ exposureProgress: 17 }))
-
-      const changedEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraExposureChanged')
-      expect(changedEvent).toBeDefined()
-      if (changedEvent) {
-        expect(changedEvent[0]).toEqual(expect.objectContaining({ type: 'cameraExposureChanged', deviceId, percentComplete: 17 }))
-      }
-
-      // Advance time to just over half the exposure (e.g., 1600ms total, which is 3 intervals + 100ms)
-      // Total elapsed: 500ms (previous) + 1100ms (current) = 1600ms
-      // The setInterval fires at t=500 (prog=17), t=1000 (prog=33), t=1500 (prog=50)
-      // The last progress update before time reaches 1600ms is from t=1500ms.
-      await vi.advanceTimersByTimeAsync(1100)
-      // Progress for 1500ms out of 3000ms = (1500/3000)*100 = 50%
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, expect.objectContaining({ exposureProgress: 50 }))
-      const changedEvent2 = mockEmitEvent.mock.calls.filter((call) => call[0].type === 'cameraExposureChanged').pop()
-      expect(changedEvent2).toBeDefined()
-      if (changedEvent2) {
-        expect(changedEvent2[0]).toEqual(expect.objectContaining({ type: 'cameraExposureChanged', deviceId, percentComplete: 50 }))
-      }
-    })
-
-    it('should call handleExposureComplete when exposure finishes and image is ready', async () => {
-      const shortExposureTime = 1 // 1 second for quicker test
-      mockExposureDevice.properties.exposureStartTime = Date.now() // Reset start time for this test
-      store.devices.set(deviceId, { ...mockExposureDevice })
-
-      // Phase 1: Exposing
-      specificMockGetProperty.mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') return CameraStates.Exposing
-        if (propName === 'imageready') return false
-        return null
-      })
-
-      store.trackExposureProgress(deviceId, shortExposureTime)
-      await vi.advanceTimersByTimeAsync(500) // Interval 1: elapsedTime = 500ms, progress = 50%
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, expect.objectContaining({ exposureProgress: 50 }))
-
-      // Phase 2: Exposure time passed, camera becomes Idle, image not yet ready
-      // Total time elapsed needs to be > shortExposureTime * 1000 (i.e., > 1000ms)
-      // Advance by another 600ms. Total elapsed = 500 + 600 = 1100ms.
-      specificMockGetProperty.mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') return CameraStates.Idle // Now idle
-        if (propName === 'imageready') return false // Image still not ready
-        return null
-      })
-      await vi.advanceTimersByTimeAsync(600)
-      // Action should log 'Exposure time complete, starting to poll for image ready'
-      // It will then check imageready (which is false) - handleExposureComplete not called yet.
-      expect(mockHandleExposureCompleteSpy).not.toHaveBeenCalled()
-
-      // Phase 3: Camera still Idle, image becomes ready
-      // Advance by another 500ms. Total elapsed = 1100 + 500 = 1600ms.
-      specificMockGetProperty.mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') return CameraStates.Idle
-        if (propName === 'imageready') return true // Image IS NOW READY
-        return null
-      })
-      await vi.advanceTimersByTimeAsync(500)
-
-      expect(mockHandleExposureCompleteSpy).toHaveBeenCalledWith(deviceId)
-      expect(clearIntervalSpy).toHaveBeenCalled() // Timer should be cleared
-    })
-
-    it('should fallback to time-based progress if camerastate fetch fails', async () => {
-      const shortExposureTime = 2 // 2 seconds
-      mockExposureDevice.properties.exposureStartTime = Date.now()
-      store.devices.set(deviceId, { ...mockExposureDevice })
-
-      // Mock getProperty to throw an error for camerastate
-      specificMockGetProperty.mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') {
-          throw new Error('Simulated client error getting camerastate')
-        }
-        if (propName === 'imageready') return false
-        return null
-      })
-
-      const consoleWarnSpy = vi.spyOn(console, 'warn')
-
-      store.trackExposureProgress(deviceId, shortExposureTime)
-
-      // Advance time by 500ms (1st interval)
-      // elapsedTime = 500ms. Progress = (500 / 2000) * 100 = 25%
-      await vi.advanceTimersByTimeAsync(500)
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error checking camera state'), expect.any(Error))
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, expect.objectContaining({ exposureProgress: 25 }))
-
-      const exposureChangedEvents1 = mockEmitEvent.mock.calls
-        .map((call) => call[0])
-        .filter((event) => event.type === 'cameraExposureChanged') as Extract<DeviceEvent, { type: 'cameraExposureChanged' }>[]
-      expect(exposureChangedEvents1.find((e) => e.percentComplete === 25)).toBeDefined()
-
-      // Advance time by another 1000ms (2nd interval, total 1500ms)
-      // elapsedTime = 1500ms. Progress = (1500 / 2000) * 100 = 75%
-      await vi.advanceTimersByTimeAsync(1000)
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(3) // Corrected: Expect 3 warnings (initial + two more ticks)
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, expect.objectContaining({ exposureProgress: 75 }))
-
-      const exposureChangedEvents2 = mockEmitEvent.mock.calls
-        .map((call) => call[0])
-        .filter((event) => event.type === 'cameraExposureChanged') as Extract<DeviceEvent, { type: 'cameraExposureChanged' }>[]
-      expect(exposureChangedEvents2.find((e) => e.percentComplete === 75)).toBeDefined()
-
-      consoleWarnSpy.mockRestore()
-    })
-
-    it('should timeout if exposure exceeds MAX_WAIT_TIME', async () => {
-      const longExposureTime = 10 // 10 seconds, but MAX_WAIT_TIME is 300s in source
-      const MAX_WAIT_TIME_FROM_SOURCE = 300000 // As defined in cameraActions.ts
-      mockExposureDevice.properties.exposureStartTime = Date.now()
-      store.devices.set(deviceId, { ...mockExposureDevice })
-
-      // Ensure camerastate remains exposing and image is never ready
-      specificMockGetProperty.mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') return CameraStates.Exposing
-        if (propName === 'imageready') return false
-        return null
-      })
-
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-      store.trackExposureProgress(deviceId, longExposureTime)
-
-      // Advance time just past MAX_WAIT_TIME
-      await vi.advanceTimersByTimeAsync(MAX_WAIT_TIME_FROM_SOURCE + 500)
-
-      expect(consoleWarnSpy).toHaveBeenCalledWith(`Exposure for ${deviceId} exceeded maximum wait time (${MAX_WAIT_TIME_FROM_SOURCE}ms), aborting`)
-      expect(clearIntervalSpy).toHaveBeenCalled()
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
-        isExposing: false,
-        exposureProgress: 100, // As per source code on timeout
-        cameraState: CameraStates.Idle // As per source code on timeout
-      })
+      expect(mockCameraClientStopExposure).toHaveBeenCalledTimes(1)
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, { isExposing: false })
       expect(mockEmitEvent).toHaveBeenCalledWith({
-        type: 'cameraExposureFailed',
+        type: 'deviceMethodCalled',
         deviceId,
-        error: 'Exposure timed out waiting for image'
+        method: 'stopExposure',
+        args: [],
+        result: 'success'
       })
-      expect(mockHandleExposureCompleteSpy).not.toHaveBeenCalled()
-
-      consoleWarnSpy.mockRestore()
     })
 
-    it('should stop polling and log a warning if device disconnects during exposure', async () => {
-      mockExposureDevice.properties.exposureStartTime = Date.now()
-      store.devices.set(deviceId, { ...mockExposureDevice })
+    it('should emit deviceApiError if client is not found', async () => {
+      mockGetDeviceClient.mockReturnValueOnce(null) // Simulate client not found
 
-      // Initial state: device connected, camera exposing
-      specificMockGetProperty.mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') return CameraStates.Exposing
-        if (propName === 'imageready') return false
+      await store.stopCameraExposure(deviceId)
+
+      expect(mockCameraClientStopExposure).not.toHaveBeenCalled()
+      expect(mockUpdateDeviceProperties).not.toHaveBeenCalled() // Properties should not be updated
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: 'Client not found for stopCameraExposure'
+      })
+    })
+
+    it('should emit deviceApiError if client.stopExposure fails', async () => {
+      const stopExposureError = new Error('Client failed to stopExposure')
+      mockCameraClientStopExposure.mockRejectedValueOnce(stopExposureError)
+
+      await store.stopCameraExposure(deviceId)
+
+      expect(mockCameraClientStopExposure).toHaveBeenCalledTimes(1)
+      expect(mockUpdateDeviceProperties).not.toHaveBeenCalled() // Properties should not be updated on error
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: `Failed to stop exposure: ${stopExposureError}`
+      })
+    })
+  })
+
+  describe('pulseGuideCamera', () => {
+    const deviceId = 'test-cam-pulseguide'
+    let mockCameraClientPulseGuide: MockInstance<(direction: number, duration: number) => Promise<void>>
+    // No mockFetchCameraProperties needed as it's not called by pulseGuideCamera
+
+    beforeEach(() => {
+      const mockPulseGuideDevice: UnifiedDevice = {
+        id: deviceId,
+        name: 'Test PulseGuide Camera',
+        type: 'camera',
+        uniqueId: `mock-camera-${deviceId}`,
+        deviceNum: 0,
+        isConnected: true,
+        isConnecting: false,
+        isDisconnecting: false,
+        status: 'connected' as DeviceState,
+        apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
+        properties: {
+          connected: true,
+          canPulseGuide: true // Assume capability
+        }
+      }
+      store.devices.set(deviceId, { ...mockPulseGuideDevice })
+      store.devicesArray = Array.from(store.devices.values())
+
+      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? store.devices.get(id) || null : null))
+
+      mockCameraClientPulseGuide = vi.fn().mockResolvedValue(undefined)
+      mockGetDeviceClient.mockImplementation((id: string) => {
+        if (id === deviceId) {
+          return {
+            ...mockAlpacaClientInstance,
+            pulseGuide: mockCameraClientPulseGuide
+          } as unknown as AlpacaClient
+        }
         return null
       })
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      store.trackExposureProgress(deviceId, exposureTime)
-
-      // First tick, device is connected
-      await vi.advanceTimersByTimeAsync(500)
-      expect(mockGetDeviceById).toHaveBeenCalledWith(deviceId) // Ensure it was called for the first tick
-      expect(clearIntervalSpy).not.toHaveBeenCalled() // Not yet
-      const callsBeforeDisconnect = mockUpdateDeviceProperties.mock.calls.length
-
-      // Simulate device disconnect
-      mockGetDeviceById.mockImplementation((id: string) => (id === deviceId ? null : null))
-      // Verify the mock is active for the current scope
-      expect(store.getDeviceById(deviceId)).toBeNull() // Explicitly check the store method with the spy applied
-
-      // Second tick, device is now disconnected
-      await vi.advanceTimersByTimeAsync(500)
-
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        `[UnifiedStore/cameraActions] Device ${deviceId} not found during exposure tracking interval. Clearing timer.`
-      )
-      expect(clearIntervalSpy).toHaveBeenCalled()
-      expect(mockHandleExposureCompleteSpy).not.toHaveBeenCalled()
-      // Check that no new calls to updateDeviceProperties happened for this device after disconnect simulation
-      // The calls made *before* disconnect are expected (e.g. initial set, progress update)
-      // So, we check if the number of calls increased *after* the point of disconnect and subsequent timer advance.
-      await vi.advanceTimersByTimeAsync(500) // another tick to ensure no more calls
-      expect(mockUpdateDeviceProperties.mock.calls.length).toBe(callsBeforeDisconnect)
-
-      consoleWarnSpy.mockRestore()
+      mockEmitEvent.mockClear()
     })
 
-    it('should call handleExposureComplete and update state if camera reports an error', async () => {
-      mockExposureDevice.properties.exposureStartTime = Date.now()
-      store.devices.set(deviceId, { ...mockExposureDevice })
+    it('should call client.pulseGuide and emit event on success', async () => {
+      const direction = 0 // Example: GuideNorth
+      const duration = 1000 // 1 second
 
-      // Camera reports error state
-      specificMockGetProperty.mockImplementation(async (propName: string) => {
-        if (propName === 'camerastate') return CameraStates.Error // Error state (value 5)
-        return null // imageready doesn't matter here
-      })
+      await store.pulseGuideCamera(deviceId, direction, duration)
 
-      store.trackExposureProgress(deviceId, exposureTime)
-
-      await vi.advanceTimersByTimeAsync(500) // Let one interval pass
-
-      expect(specificMockGetProperty).toHaveBeenCalledWith('camerastate')
-      expect(clearIntervalSpy).toHaveBeenCalled()
-
-      // Verify that the client.getProperty was called and it would have returned CameraStates.Error
-      // This can be indirectly verified by the subsequent behavior.
-
-      // According to the source, when cameraState is Error (5):
-      // - clearInterval is called (asserted above)
-      // - updateDeviceProperties is called with isExposing: false, cameraState: 5
-      // - cameraExposureFailed event is emitted
-      // - handleExposureComplete is NOT called
-
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
-        isExposing: false,
-        exposureProgress: 0, // Source sets progress to 0 on error
-        cameraState: CameraStates.Error
-      })
-
-      expect(mockHandleExposureCompleteSpy).not.toHaveBeenCalled() // Should NOT be called
-
-      const exposureFailedEvent = mockEmitEvent.mock.calls.find((call) => call[0].type === 'cameraExposureFailed')
-      expect(exposureFailedEvent).toBeDefined()
-      expect(exposureFailedEvent?.[0]).toEqual({
-        type: 'cameraExposureFailed',
+      expect(mockCameraClientPulseGuide).toHaveBeenCalledWith(direction, duration)
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceMethodCalled',
         deviceId,
-        error: 'Camera reported error state'
+        method: 'pulseGuide',
+        args: [direction, duration],
+        result: 'success'
+      })
+    })
+
+    it('should emit deviceApiError if client is not found', async () => {
+      mockGetDeviceClient.mockReturnValueOnce(null) // Simulate client not found
+      const direction = 1,
+        duration = 500
+
+      await store.pulseGuideCamera(deviceId, direction, duration)
+
+      expect(mockCameraClientPulseGuide).not.toHaveBeenCalled()
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: 'Client not found for pulseGuideCamera'
+      })
+    })
+
+    it('should emit deviceApiError if client.pulseGuide fails', async () => {
+      const pulseGuideError = new Error('Client failed to pulseGuide')
+      mockCameraClientPulseGuide.mockRejectedValueOnce(pulseGuideError)
+      const direction = 2,
+        duration = 750
+
+      await store.pulseGuideCamera(deviceId, direction, duration)
+
+      expect(mockCameraClientPulseGuide).toHaveBeenCalledWith(direction, duration)
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: `Failed to pulse guide: ${pulseGuideError}`
       })
     })
   })

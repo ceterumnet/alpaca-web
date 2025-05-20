@@ -47,7 +47,16 @@ export type DeviceEvent =
   | { type: 'discoveryCompleted'; devices: UnifiedDevice[] }
   | { type: 'discoveryError'; error: string }
   | { type: 'cameraExposureStarted'; deviceId: string; duration: number; isLight: boolean }
-  | { type: 'cameraExposureComplete'; deviceId: string; imageData?: ArrayBuffer }
+  | {
+      type: 'cameraExposureComplete'
+      deviceId: string
+      imageData?: ArrayBuffer | number[][] | number[][][] // Can be binary or JSON
+      width?: number
+      height?: number
+      imageElementType?: number // 0 for Int16, 1 for Int32, 2 for Double
+      metadata?: Record<string, unknown> // For any other metadata
+      error?: string // Optional error message if the process failed
+    }
   | { type: 'cameraExposureAborted'; deviceId: string }
   | { type: 'cameraExposureFailed'; deviceId: string; error: string }
   | { type: 'cameraImageReady'; deviceId: string; imageData?: ArrayBuffer }
@@ -115,3 +124,28 @@ export interface BatchedEvents {
 // Re-export core types for convenience
 export type Device = CoreDevice
 export type UnifiedDevice = CoreUnifiedDevice
+
+export interface BaseDeviceEvent {
+  deviceId: string
+}
+
+export interface CameraExposureStartedEvent extends BaseDeviceEvent {
+  type: 'cameraExposureStarted'
+  duration: number
+  isLight: boolean
+}
+
+export interface CameraExposureProgressEvent extends BaseDeviceEvent {
+  type: 'cameraExposureProgress'
+  progress: number // 0-100
+  remaining: number // seconds
+  timestamp: number // time of this update
+}
+
+// This is the specific interface I want to modify
+export interface CameraExposureCompleteEvent extends BaseDeviceEvent {
+  type: 'cameraExposureComplete'
+  imageData?: ArrayBuffer
+  imageUrl?: string
+  error?: string // ADDED THIS LINE
+}

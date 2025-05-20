@@ -452,7 +452,26 @@ export function createCameraActions() {
               if (imageReady) {
                 // Get device to determine preferred image format
                 const device = this.getDeviceById(deviceId)
-                const properties = device?.properties || {}
+
+                if (!device) {
+                  const errorMessage = `Device ${deviceId} not found after imageready check`
+                  console.error(errorMessage)
+                  // Update device properties to a consistent state
+                  this.updateDeviceProperties(deviceId, {
+                    isExposing: false,
+                    exposureProgress: 100, // Progress was 100 as imageready was true
+                    imageReady: false, // Set to false as device is gone, can't confirm
+                    cameraState: 0 // CameraStates.Idle
+                  })
+                  this._emitEvent({
+                    type: 'cameraExposureComplete',
+                    deviceId,
+                    error: errorMessage
+                  })
+                  return // Stop further processing
+                }
+
+                const properties = device.properties || {} // device is now guaranteed
                 const preferredFormat = (properties.preferredImageFormat as string) || 'binary'
 
                 console.log(`Retrieving image data in ${preferredFormat} format`)

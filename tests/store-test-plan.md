@@ -205,15 +205,22 @@ For each device-specific module (e.g., `cameraActions.ts`, `telescopeActions.ts`
 
 #### 3.6.1. `cameraActions.ts`
 
-- ✅ `startCameraExposure`: Test PUT with named parameters.
-- `trackExposureProgress`: Complex logic with `setInterval`, `camerastate` checking, `imageready` polling, fallback logic. Mock client heavily.
-- `handleExposureComplete`: Image download logic (mock `fetch`, `response.arrayBuffer`), preferred format, fallback to JSON.
-- `abortCameraExposure`.
-- `setCameraCooler`, `setCameraBinning`.
-- `fetchCameraProperties`: `getCameraInfo` mock, gain/offset mode detection.
-- `startCameraPropertyPolling`: `devicestate` usage, polling different props based on `isExposing`.
-- Gain/Offset/ReadoutMode/Subframe/SubExposureDuration setting actions: Test parameter validation, mode detection, client calls, and `fetchCameraProperties` calls.
-- `pulseGuideCamera`, `stopCameraExposure`.
+- ✅ `fetchCameraProperties`: `getCameraInfo` mock, gain/offset mode detection. (All tests passing)
+- ✅ `startCameraPropertyPolling`: `devicestate` usage, polling different props based on `isExposing`. (All tests passing)
+- ✅ `setPropertyPollingInterval`: Updating interval, restarting polling, min interval. (All tests passing)
+- ✅ `startCameraExposure`: Test PUT with named parameters, state updates, event emission, `trackExposureProgress` call. (All tests passing for success and error cases: client fail, device not found, client not found).
+- ✅ `trackExposureProgress`: Complex logic with `setInterval`, `camerastate` checking, `imageready` polling, fallback logic, timeout, device disconnect, camera error state. (All 7 tests passing).
+- **`handleExposureComplete` Test Suite:**
+  - Successfully resolved all failing tests.
+  - Key fixes involved:
+    - Correcting mock implementations for `getDeviceById` to accurately simulate device disappearance at critical points.
+    - Ensuring the System Under Test (SUT) in `cameraActions.ts` correctly handles the 'device not found after imageready check' scenario by logging the appropriate error and emitting an event with an error property.
+    - Addressing linter errors in the test file by adding proper type assertions for event objects.
+  - All tests related to binary image download, JSON image download (if applicable), imageready checks, and device not found scenarios are now passing.
+- ✅ `abortCameraExposure`. (All tests passing)
+- ✅ `setCameraCooler`, ✅ `setCameraBinning`. (All tests passing)
+- ✅ Gain/Offset/ReadoutMode/Subframe/SubExposureDuration setting actions: Test parameter validation, mode detection, client calls, and `fetchCameraProperties` calls. (All tests passing)
+- ✅ `pulseGuideCamera`, ✅ `stopCameraExposure`. (All tests passing)
 
 #### 3.6.2. `telescopeActions.ts`
 
