@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, type MockInstance } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import type { TelescopeState, createTelescopeActions } from '@/stores/modules/telescopeActions'
+import type { createTelescopeActions } from '@/stores/modules/telescopeActions'
 import type { AlpacaClient } from '@/api/AlpacaClient'
 import { createAlpacaClient } from '@/api/AlpacaClient' // Actual import for mocking
 import type { Device, TelescopeDevice, DeviceState } from '@/types/device.types'
@@ -102,7 +102,7 @@ describe('telescopeActions.ts', () => {
     )
 
     // Spy on store actions/getters
-    mockEmitEvent = vi.spyOn(store as any, '_emitEvent')
+    mockEmitEvent = vi.spyOn(store as unknown as { _emitEvent: (event: DeviceEvent) => void }, '_emitEvent')
     mockUpdateDeviceProperties = vi.spyOn(store, 'updateDeviceProperties').mockReturnValue(true)
     mockGetDeviceById = vi.spyOn(store, 'getDeviceById').mockReturnValue(mockTelescopeDevice)
     mockGetDeviceClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockAlpacaClientInstance as unknown as AlpacaClient)
@@ -537,7 +537,7 @@ describe('telescopeActions.ts', () => {
         setGuideRateDeclination: vi.fn().mockResolvedValue(undefined),
         getProperty: vi.fn()
       }
-      mockGetDeviceClient.mockReturnValue(specificClientMock as any)
+      mockGetDeviceClient.mockReturnValue(specificClientMock as unknown as AlpacaClient)
     })
 
     it('should call client.setGuideRateDeclination, emit event, and re-fetch properties on success', async () => {
@@ -569,7 +569,7 @@ describe('telescopeActions.ts', () => {
         setGuideRateDeclination: vi.fn().mockRejectedValue(apiError),
         getProperty: vi.fn()
       }
-      mockGetDeviceClient.mockReturnValue(rejectingClientMock as any)
+      mockGetDeviceClient.mockReturnValue(rejectingClientMock as unknown as AlpacaClient)
 
       const result = await store.setTelescopeGuideRateDeclination(testDeviceId, rate)
 
@@ -604,7 +604,7 @@ describe('telescopeActions.ts', () => {
         setGuideRateRightAscension: vi.fn().mockResolvedValue(undefined),
         getProperty: vi.fn()
       }
-      mockGetDeviceClient.mockReturnValue(specificClientMock as any)
+      mockGetDeviceClient.mockReturnValue(specificClientMock as unknown as AlpacaClient)
     })
 
     it('should call client.setGuideRateRightAscension, emit event, and re-fetch properties on success', async () => {
@@ -636,7 +636,7 @@ describe('telescopeActions.ts', () => {
         setGuideRateRightAscension: vi.fn().mockRejectedValue(apiError),
         getProperty: vi.fn()
       }
-      mockGetDeviceClient.mockReturnValue(rejectingClientMock as any)
+      mockGetDeviceClient.mockReturnValue(rejectingClientMock as unknown as AlpacaClient)
 
       const result = await store.setTelescopeGuideRateRightAscension(testDeviceId, rate)
 
@@ -671,7 +671,7 @@ describe('telescopeActions.ts', () => {
         setSlewSettleTime: vi.fn().mockResolvedValue(undefined),
         getProperty: vi.fn()
       }
-      mockGetDeviceClient.mockReturnValue(specificClientMock as any)
+      mockGetDeviceClient.mockReturnValue(specificClientMock as unknown as AlpacaClient)
     })
 
     it('should call client.setSlewSettleTime, emit event, and re-fetch properties on success', async () => {
@@ -703,7 +703,7 @@ describe('telescopeActions.ts', () => {
         setSlewSettleTime: vi.fn().mockRejectedValue(apiError),
         getProperty: vi.fn()
       }
-      mockGetDeviceClient.mockReturnValue(rejectingClientMock as any)
+      mockGetDeviceClient.mockReturnValue(rejectingClientMock as unknown as AlpacaClient)
 
       const result = await store.setTelescopeSlewSettleTime(testDeviceId, time)
 
@@ -1134,10 +1134,15 @@ describe('telescopeActions.ts', () => {
         })
       )
       // Ensure slewToCoordinatesString didn't emit its own redundant error event for this case
-      const stringSlewErrorCalls = mockEmitEvent.mock.calls.filter(
-        (call) =>
-          (call[0] as DeviceEvent).type === 'telescopeSlewError' && (call[0] as any).error?.startsWith('Error parsing RA/Dec strings or slewing')
-      )
+      const stringSlewErrorCalls = mockEmitEvent.mock.calls.filter((callArguments) => {
+        const event = callArguments[0] // event is DeviceEvent because mockEmitEvent is MockInstance<(event: DeviceEvent) => void>
+        if (event.type === 'telescopeSlewError') {
+          // Within this block, TypeScript knows event is the TelescopeSlewError variant,
+          // which has a mandatory 'error: string' property.
+          return event.error.startsWith('Error parsing RA/Dec strings or slewing')
+        }
+        return false
+      })
       expect(stringSlewErrorCalls.length).toBe(0) // Or check based on the specific event from slewToCoordinates
     })
 
