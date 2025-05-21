@@ -91,11 +91,11 @@
   --aw-link-color: var(--aw-color-primary-500);
 
   /* Panel colors */
-  --aw-panel-bg-color: #ffffff;
+  --aw-panel-bg-color: var(--aw-color-neutral-100);
   --aw-panels-bg-color: var(--aw-color-neutral-200);
   --aw-panel-border-color: var(--aw-color-neutral-300);
   --aw-panel-header-bg-color: var(--aw-color-primary-500);
-  --aw-panel-header-text-color: #ffffff;
+  --aw-panel-header-text-color: var(--aw-color-neutral-900);
   --aw-panel-hover-bg-color: var(--aw-color-neutral-50);
   --aw-panel-content-bg-color: var(--aw-color-neutral-50);
   --aw-panel-content-color: var(--aw-text-color);
@@ -106,6 +106,13 @@
   --aw-panel-resize-color: #ffffff;
   --aw-panel-button-hover-bg: var(--aw-color-neutral-200);
 
+  /* log entry colors */
+  --aw-log-entry-bg-color: var(--aw-color-neutral-400);
+  --aw-log-entry-text-color: var(--aw-color-neutral-900);
+  --aw-log-entry-level-color: var(--aw-color-neutral-900);
+  --aw-log-entry-source-color: var(--aw-color-neutral-900);
+  --aw-log-entries-bg-color: var(--aw-color-neutral-400);
+  --aw-log-entry-list-bg-color: var(--aw-color-neutral-400);
   /* Form colors */
   --aw-form-bg-color: #ffffff;
   --aw-input-bg-color: #ffffff;
@@ -218,7 +225,7 @@
    The red theme is specifically designed for astronomy to 
    preserve night vision during observations.
    ============================================================ */
-:root .dark-theme {
+html.dark-theme {
   /* Base colors - red-based dark theme for astronomy */
   --aw-color-neutral-50: #2d1010; /* Darkest background */
   --aw-color-neutral-100: #1a0808; /* Main background */

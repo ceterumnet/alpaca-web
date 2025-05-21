@@ -19,6 +19,7 @@ import NavigationBar from '@/components/layout/NavigationBar.vue'
 import NotificationCenter from '@/components/ui/NotificationCenter.vue'
 import NotificationManager from '@/components/ui/NotificationManager.vue'
 import Icon from '@/components/ui/Icon.vue' // Import Icon component
+import SlideUpLogContainer from '@/components/ui/SlideUpLogContainer.vue' // Import the new log container
 
 // Get stores
 const uiStore = useUIPreferencesStore()
@@ -145,6 +146,9 @@ onMounted(() => {
         </div>
       </div>
     </transition>
+
+    <!-- Global Slide-up Log Container -->
+    <SlideUpLogContainer />
   </div>
 </template>
 
