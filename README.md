@@ -1,153 +1,175 @@
 # alpaca-web
 
-This template should help get you started developing with Vue 3 in Vite.
+[![Build Status](https://img.shields.io/github/actions/workflow/status/your-org/alpaca-web/build.yml?branch=main)](https://github.com/your-org/alpaca-web/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
-## Recommended IDE Setup
+> **A modern, responsive web client for ASCOM Alpaca devices.**
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+---
 
-## Type Support for `.vue` Imports in TS
+## Overview
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+**alpaca-web** is a Vue 3 + Vite application for discovering, controlling, and monitoring astronomical equipment via the [ASCOM Alpaca](https://ascom-standards.org/) protocol. It provides a user-friendly, responsive interface for a wide range of devices (cameras, telescopes, focusers, filter wheels, domes, and more), supporting both local and networked device discovery.
 
-## Customize configuration
+- **Who is it for?**
+  - Astronomers, observatory operators, and hobbyists using ASCOM Alpaca-compatible hardware.
+- **What does it do?**
+  - Device discovery, control, and monitoring in a browser-based UI.
+  - Advanced panel system for flexible, multi-device workflows.
+  - Extensible, standards-compliant, and open source.
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+---
 
-## Project Setup
+## Table of Contents
+
+- [Features](#features)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Documentation](#documentation)
+- [ASCOM Alpaca Integration](#ascom-alpaca-integration)
+- [License](#license)
+- [Contact & Support](#contact--support)
+
+---
+
+## Features
+
+- **Responsive Panel System:**
+  - Adapts to all screen sizes and device capabilities
+  - Feature prioritization and collapsible sections
+  - Dynamic component resolution
+- **ASCOM Alpaca Integration:**
+  - Supports cameras, telescopes, focusers, filter wheels, domes, and more
+  - Adheres to the Alpaca specification for maximum compatibility
+- **Device Discovery:**
+  - Local and networked device discovery via a Node.js backend
+- **Modern UI/UX:**
+  - Consistent design system, dark/light themes, and accessibility focus
+- **Extensible Architecture:**
+  - Modular codebase for easy addition of new device types and features
+- **Robust Logging:**
+  - Structured, filterable logs with in-app viewer (see [Logging Strategy](LOGGING.md))
+- **Comprehensive Testing:**
+  - Strong Unit tests with Vitest
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18+ recommended)
+- [npm](https://www.npmjs.com/) (comes with Node.js)
+
+### Installation
 
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### Development
 
 ```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+### Build for Production
 
 ```sh
 npm run build
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+### Run Unit Tests
 
 ```sh
 npm run test:unit
 ```
 
-### Run End-to-End Tests with [Cypress](https://www.cypress.io/)
+### Run End-to-End Tests
 
 ```sh
 npm run test:e2e:dev
 ```
 
-This runs the end-to-end tests against the Vite development server.
-It is much faster than the production build.
+For more details, see the [Project Setup](#project-structure) and [docs/](docs/) directory.
 
-But it's still recommended to test the production build with `test:e2e` before deploying (e.g. in CI environments):
+---
 
-```sh
-npm run build
-npm run test:e2e
-```
+## Usage
 
-### Lint with [ESLint](https://eslint.org/)
+1. **Start the development server:**
+   ```sh
+   npm run dev
+   ```
+2. **Open your browser:**
+   - Visit [http://localhost:5173](http://localhost:5173) (or the port shown in your terminal)
+3. **Discover and control devices:**
+   - Use the UI to discover Alpaca devices on your network and interact with them
 
-```sh
-npm run lint
-```
+> **Note:** For production deployment or packaging, see the [manual packaging instructions](#building-and-packaging) below or in the original README history.
+
+---
 
 ## Project Structure
 
-The project consists of two main components:
+```
+├── src/                # Main application source code
+│   ├── api/            # Alpaca protocol clients
+│   ├── assets/         # Static assets, design tokens, icons
+│   ├── components/     # Vue components (devices, panels, layout, UI)
+│   ├── lib/            # Utility libraries
+│   ├── plugins/        # Vue plugins (logging, etc.)
+│   ├── router/         # Vue Router setup
+│   ├── services/       # Device discovery, imaging, etc.
+│   ├── stores/         # Pinia stores (state management)
+│   ├── types/          # TypeScript types
+│   ├── ui/             # UI-specific utilities
+│   ├── utils/          # General utilities
+│   └── views/          # Top-level views/pages
+├── server/             # Node.js discovery server
+├── tests/              # Unit and integration tests
+├── docs/               # Additional documentation
+├── public/             # Static public assets
+├── ...
+```
 
-1. **Vue Web Application**: The frontend application built with Vue 3 and Vite
-2. **Discovery Server**: A Node.js server located in the `server/` directory that provides discovery functionality
+---
 
-## Building and Packaging
+## Documentation
 
-### GitHub Actions
+- **UI Style Consistency Plan:**
+  - [UI_STYLE_CONSISTENCY_PLAN.md](UI_STYLE_CONSISTENCY_PLAN.md)
+- **Camera Gain/Offset Implementation Details:**
+  - [VALUES_VS_INDEX_ALPACA_IMPLEMENTATION_DETAILS.md](VALUES_VS_INDEX_ALPACA_IMPLEMENTATION_DETAILS.md)
+- **Logging Strategy:**
+  - [LOGGING.md](LOGGING.md)
+- **Full API, architecture, and more:**
+  - See the [docs/](docs/) directory for in-depth guides
 
-This project uses GitHub Actions for continuous integration and deployment:
+---
 
-1. **Build Workflow**: Runs on every push to main and pull requests, checking build and tests
-2. **Server Workflow**: Runs on changes to server files, checking the server's functionality
-3. **Release Workflow**: Creates distribution packages when a new tag is pushed
+## ASCOM Alpaca Integration
 
-### Creating a Release
+**alpaca-web** is built to be fully compatible with the [ASCOM Alpaca](https://ascom-standards.org/) protocol, enabling seamless control of a wide range of astronomical devices. For more on the Alpaca standard, see:
 
-To create a new release:
+- [ASCOM Alpaca Documentation](https://ascom-standards.org/Alpaca.htm)
+- [VALUES_VS_INDEX_ALPACA_IMPLEMENTATION_DETAILS.md](VALUES_VS_INDEX_ALPACA_IMPLEMENTATION_DETAILS.md)
 
-1. Update the version in `package.json`
-2. Create and push a new tag:
-   ```sh
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-3. GitHub Actions will automatically build the project and create a release with distribution packages
+---
 
-### Manual Packaging
+## Screenshot
 
-To manually create a distribution package:
+> _Add a screenshot or animated GIF here to showcase the UI._
 
-1. Build the web application:
+---
 
-   ```sh
-   npm run build
-   ```
+## License
 
-2. Create a distribution folder:
+This project is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for details.
 
-   ```sh
-   mkdir -p dist-package
-   cp -r dist/* dist-package/
-   mkdir -p dist-package/server
-   cp server/{package.json,package-lock.json,index.js,alpacaDiscovery.js} dist-package/server/
-   cp README.md dist-package/
-   ```
+---
 
-3. Create startup scripts:
+## Contact & Support
 
-   ```sh
-   echo '#!/bin/bash
-   cd server && npm i --production && node index.js' > dist-package/start.sh
-   chmod +x dist-package/start.sh
-
-   echo '@echo off
-   cd server && npm i --production && node index.js' > dist-package/start.bat
-   ```
-
-4. Create a zip or tar archive:
-   ```sh
-   cd dist-package
-   zip -r ../alpaca-web-v1.0.0.zip .
-   # or
-   tar -czf ../alpaca-web-v1.0.0.tar.gz .
-   ```
-
-## Features
-
-### Responsive Panel System
-
-The application includes a responsive panel system that adapts to different screen sizes and device capabilities. The system provides:
-
-- Responsive layout that adapts to available space
-- Feature prioritization based on screen size
-- Collapsible sections for related settings
-- Dynamic component resolution
-
-For more information, see the [Responsive Panels Documentation](docs/ResponsivePanels.md).
-
-### ASCOM Alpaca Integration
-
-This application provides a user-friendly interface for controlling astronomical equipment through the ASCOM Alpaca protocol. It supports various device types including:
-
-- Cameras
-- Telescopes
-- Focusers
-- Filter Wheels
-- Domes
-- And more...
+- For bug reports, feature requests, or questions, please use the [GitHub Issues](https://github.com/your-org/alpaca-web/issues) page.
+- For general discussion, see the [docs/](docs/) directory or open an issue.
