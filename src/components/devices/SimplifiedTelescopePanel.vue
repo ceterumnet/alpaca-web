@@ -1,4 +1,6 @@
 <script setup lang="ts">
+
+import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { setAlpacaProperty, callAlpacaMethod } from '@/utils/alpacaPropertyAccess'
@@ -60,7 +62,7 @@ const tracking = computed({
     try {
       await setAlpacaProperty(props.deviceId, 'tracking', newValue)
     } catch (error) {
-      console.error('Error toggling tracking:', error)
+      log.error({deviceIds:[props.deviceId]}, 'Error toggling tracking:', error)
     }
   }
 })
@@ -76,7 +78,7 @@ const selectedTrackingRate = computed({
     try {
       await setAlpacaProperty(props.deviceId, 'trackingRate', newValue)
     } catch (error) {
-      console.error('Error setting tracking rate:', error)
+      log.error({deviceIds:[props.deviceId]}, 'Error setting tracking rate:', error)
     }
   }
 })
@@ -94,7 +96,7 @@ const resetTelescopeState = () => {
 // Watch for device ID changes to update our state
 watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   if (newDeviceId !== oldDeviceId) {
-    console.log(`SimplifiedTelescopePanel: Device changed from ${oldDeviceId} to ${newDeviceId}`)
+    log.debug({deviceIds:[props.deviceId]}, `SimplifiedTelescopePanel: Device changed from ${oldDeviceId} to ${newDeviceId}`)
     resetTelescopeState() // Reset local UI state like targets
     // No need to call updateCoordinates() anymore. Data flows from store.
   }
@@ -118,7 +120,7 @@ const slewToCoordinates = async () => {
       declination: targetDec.value
     })
   } catch (error) {
-    console.error('Error slewing to coordinates:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error slewing to coordinates:', error)
   }
 }
 
@@ -151,7 +153,7 @@ const moveDirection = async (direction: string) => {
       await callAlpacaMethod(props.deviceId, 'moveAxis', axisParam)
     }
   } catch (error) {
-    console.error(`Error moving telescope ${direction}:`, error)
+    log.error({deviceIds:[props.deviceId]}, `Error moving telescope ${direction}:`, error)
   }
 }
 
@@ -160,7 +162,7 @@ const parkTelescope = async () => {
   try {
     await callAlpacaMethod(props.deviceId, 'park')
   } catch (error) {
-    console.error('Error parking telescope:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error parking telescope:', error)
   }
 }
 
@@ -168,7 +170,7 @@ const unparkTelescope = async () => {
   try {
     await callAlpacaMethod(props.deviceId, 'unpark')
   } catch (error) {
-    console.error('Error unparking telescope:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error unparking telescope:', error)
   }
 }
 
@@ -176,7 +178,7 @@ const findHome = async () => {
   try {
     await callAlpacaMethod(props.deviceId, 'findHome')
   } catch (error) {
-    console.error('Error finding home position:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error finding home position:', error)
   }
 }
 
@@ -191,7 +193,7 @@ onMounted(() => {
 
 // Watch for changes in connection status (from parent)
 watch(() => props.isConnected, (newIsConnected) => {
-  console.log(`SimplifiedTelescopePanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedTelescopePanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
   if (newIsConnected) {
     // Data will flow from the store.
     // Call resetTelescopeState if local UI elements (like targets) need resetting on new connection.

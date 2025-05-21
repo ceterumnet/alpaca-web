@@ -7,6 +7,7 @@
 // - Provides unified camera control interface
 
 <script setup lang="ts">
+import log from '@/plugins/logger'
 import { ref, watch } from 'vue'
 import CameraExposureControl from './features/CameraExposureControl.vue'
 import CameraImageDisplay from './features/CameraImageDisplay.vue'
@@ -33,26 +34,26 @@ const exposureInProgress = ref(false)
 // Handlers for exposure control events
 const handleExposureStarted = (params: { duration: number; isLight: boolean }) => {
   exposureInProgress.value = true
-  console.log(`Exposure started: ${params.duration}s, Light: ${params.isLight}`)
+  log.debug({deviceIds:[props.deviceId]}, `Exposure started: ${params.duration}s, Light: ${params.isLight}`)
 }
 
 const handleExposureComplete = () => {
   exposureInProgress.value = false
-  console.log('Exposure complete')
+  log.debug({deviceIds:[props.deviceId]}, 'Exposure complete')
 }
 
 const handleImageDownloaded = (data: ArrayBuffer) => {
   imageData.value = data
-  console.log(`Image downloaded: ${data.byteLength} bytes`)
+  log.debug({deviceIds:[props.deviceId]}, `Image downloaded: ${data.byteLength} bytes`)
 }
 
 const handleError = (error: string) => {
-  console.error('Camera error:', error)
+  log.error({deviceIds:[props.deviceId]}, 'Camera error:', error)
 }
 
 // Handle histogram generation
 const handleHistogramGenerated = (histogram: number[]) => {
-  console.log('Histogram generated with', histogram.length, 'bins')
+  log.debug({deviceIds:[props.deviceId]}, 'Histogram generated with', histogram.length, 'bins')
 }
 
 // Reset state when device changes

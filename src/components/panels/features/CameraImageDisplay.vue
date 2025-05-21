@@ -4,6 +4,7 @@ with advanced features: // - ASCOM Alpaca image format support // - Image stretc
 Real-time image updates
 
 <script setup lang="ts">
+import log from '@/plugins/logger'
 import { ref, onMounted, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import {
   processImageBytes,
@@ -79,7 +80,6 @@ const currentThemeRef = ref<'light' | 'dark'>('light')
 const updateThemeRef = () => {
   const isDark = document.documentElement.classList.contains('dark-theme');
   currentThemeRef.value = isDark ? 'dark' : 'light';
-  // console.log(`[THEME] updateThemeRef: documentElement.classList has 'dark-theme'=${isDark}. currentThemeRef set to: ${currentThemeRef.value}`); // COMMENTED OUT
 }
 
 let themeObserver: MutationObserver | null = null
@@ -87,19 +87,20 @@ let themeObserver: MutationObserver | null = null
 // Draw the image on canvas
 const drawImage = async () => {
   // Add detailed logging for received props at the beginning of drawImage
-  console.log(
-    `CameraImageDisplay: drawImage called. Props: ` +
-    `imageData byteLength: ${props.imageData?.byteLength}, ` +
-    `width: ${props.width}, height: ${props.height}, sensorType: ${props.sensorType}`
-  );
-
+  log.debug({
+    imageData: props.imageData,
+    width: props.width,
+    height: props.height,
+    sensorType: props.sensorType
+  }, 'CameraImageDisplay: drawImage called. Props:')
+  
   if (!canvasRef.value || props.imageData.byteLength === 0) {
-    console.warn('CameraImageDisplay: drawImage aborted - no canvas or no image data.');
+    log.warn('CameraImageDisplay: drawImage aborted - no canvas or no image data.');
     return
   }
 
   if (!props.width || !props.height) {
-    console.error('CameraImageDisplay: drawImage aborted - width or height is zero or invalid.');
+    log.error('CameraImageDisplay: drawImage aborted - width or height is zero or invalid.');
     // Optionally, clear the canvas or show a message
     const canvas = canvasRef.value;
     const ctx = canvas.getContext('2d');
@@ -124,7 +125,7 @@ const drawImage = async () => {
   }
   
   if (!processedImage.value) { // Check again in case processing failed
-      console.error("Image processing failed in drawImage");
+      log.error("Image processing failed in drawImage");
       return;
   }
 
@@ -137,7 +138,7 @@ const drawImage = async () => {
   const imageHeight = processedImage.value.height
 
   if (!imageWidth || !imageHeight) {
-    console.warn('Invalid image dimensions:', imageWidth, 'x', imageHeight)
+    log.warn('Invalid image dimensions:', imageWidth, 'x', imageHeight)
     return
   }
 
@@ -173,7 +174,7 @@ const drawImage = async () => {
     if (robustValues.max > robustValues.min) {
       minToUse = robustValues.min // Use for current rendering
       maxToUse = robustValues.max // Use for current rendering
-      console.log(`Applied robust stretch: min=${minToUse}, max=${maxToUse}`)
+      log.debug(`Applied robust stretch: min=${minToUse}, max=${maxToUse}`)
       // DO NOT update minPixelValue.value and maxPixelValue.value here if autoStretch is true, as it causes a loop.
       // These refs are for manual control or for reflecting the auto values once, not continuously.
     }
@@ -319,7 +320,7 @@ const calculateHistogram = () => {
         bayerPatternToUse
       )
       if (!processedImage.value) {
-          console.error("Image processing failed in calculateHistogram");
+          log.error("Image processing failed in calculateHistogram");
           return [];
       }
   }
@@ -327,7 +328,7 @@ const calculateHistogram = () => {
 
   // Verify we have valid data
   if (!processedImage.value || processedImage.value.pixelData.length === 0) {
-    console.error('No valid image data for histogram calculation');
+    log.error('No valid image data for histogram calculation');
     histogram.value = []; // Clear histogram data
     if (histogramCanvas.value) {
       const canvas = histogramCanvas.value;
@@ -385,7 +386,7 @@ const calculateHistogram = () => {
       if (histogramCanvas.value) { 
         drawHistogram(hist);
       } else {
-        console.warn('[Histogram] drawHistogram skipped: histogramCanvas ref not available even after nextTick.');
+        log.warn('[Histogram] drawHistogram skipped: histogramCanvas ref not available even after nextTick.');
       }
     });
   }
@@ -402,7 +403,7 @@ const drawHistogram = (histData: number[]) => {
   const canvas = histogramCanvas.value;
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    console.warn('[Histogram] No canvas context.');
+    log.warn('[Histogram] No canvas context.');
     return;
   }
 
@@ -421,14 +422,14 @@ const drawHistogram = (histData: number[]) => {
       if (computedThemeColor) {
         barColor = computedThemeColor;
       } else {
-        console.warn('[Histogram] CSS variable --aw-primary-color is empty or not found. Using #CCCCCC fallback.');
+        log.warn('[Histogram] CSS variable --aw-primary-color is empty or not found. Using #CCCCCC fallback.');
       }
     } catch (e) {
-      console.warn('[Histogram] Error accessing CSS variable --aw-primary-color. Using #CCCCCC fallback.', e);
+      log.warn('[Histogram] Error accessing CSS variable --aw-primary-color. Using #CCCCCC fallback.', e);
     }
   } else {
     // This case is highly unlikely in modern browsers
-    console.warn('[Histogram] getComputedStyle not available. Using #CCCCCC fallback.');
+    log.warn('[Histogram] getComputedStyle not available. Using #CCCCCC fallback.');
   }
   
   ctx.fillStyle = barColor;

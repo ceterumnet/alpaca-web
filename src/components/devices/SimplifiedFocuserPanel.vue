@@ -1,4 +1,6 @@
 <script setup lang="ts">
+
+import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 
@@ -117,7 +119,7 @@ onMounted(() => {
 
 // Watch for changes in connection status (from parent)
 watch(() => props.isConnected, (newIsConnected) => {
-  console.log(`SimplifiedFocuserPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedFocuserPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
   if (newIsConnected && props.deviceId) {
     // Connection logic (fetching details, starting polling) is handled by
     // handleFocuserConnected in focuserActions.ts when the store detects connection.
@@ -130,7 +132,7 @@ watch(() => props.isConnected, (newIsConnected) => {
 // Watch for device ID changes
 watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   if (newDeviceId !== oldDeviceId) {
-    console.log(`SimplifiedFocuserPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
+    log.debug({deviceIds:[props.deviceId]}, `SimplifiedFocuserPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
     resetFocuserPanelState() // Reset local UI state for the new device
     
     // If connected, the store's connection handler for the new device would have already

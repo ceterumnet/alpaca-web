@@ -8,6 +8,7 @@
 // - Error handling 
 // - Event emission for UI updates
 <script setup lang="ts">
+import log from '@/plugins/logger'
 import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import Icon from '@/components/ui/Icon.vue'
@@ -18,7 +19,7 @@ function debugClientStatus(store: {
   getDeviceClient: (id: string) => unknown | null;
 }, deviceId: string) {
   const device = store.getDeviceById(deviceId)
-  console.log(`DEBUG - Device status for ${deviceId}:`, {
+  log.debug({deviceIds:[deviceId]}, `DEBUG - Device status for ${deviceId}:`, {
     device: device ? {
       id: device.id,
       type: device.type,
@@ -126,8 +127,7 @@ const startExposure = async () => {
     return
   }
 
-  console.log('exposureMin', props.exposureMin)
-  console.log('exposureMax', props.exposureMax)
+  log.debug({exposureMin: props.exposureMin, exposureMax: props.exposureMax}, 'exposureMin and exposureMax')
   // Validate exposure duration is within allowed range
   if (exposureDuration.value < props.exposureMin || exposureDuration.value > props.exposureMax) {
     error.value = `Exposure duration must be between ${props.exposureMin} and ${props.exposureMax} seconds`
@@ -142,7 +142,7 @@ const startExposure = async () => {
   const device = unifiedStore.getDeviceById(props.deviceId)
   if (!device || device.type !== 'camera') {
     error.value = `Device ${props.deviceId} is not a camera (type: ${device?.type})`
-    console.error(error.value)
+    log.error({deviceIds:[props.deviceId]}, error.value)
     emit('error', error.value)
     return
   }
@@ -154,16 +154,16 @@ const startExposure = async () => {
     // If exposure is already in progress, abort it
     try {
       // Always use callDeviceMethod for abortexposure
-      console.log('Using callDeviceMethod for abortexposure')
+      log.debug({deviceIds:[props.deviceId]}, 'Using callDeviceMethod for abortexposure')
       await unifiedStore.callDeviceMethod(props.deviceId, props.stopMethod)
       
-      console.log('Exposure aborted')
+      log.debug({deviceIds:[props.deviceId]}, 'Exposure aborted')
       exposureInProgress.value = false
       percentComplete.value = 0
       clearPollingIntervals()
     } catch (err) {
       error.value = `Failed to abort exposure: ${err}`
-      console.error(`Abort error:`, err)
+      log.error({deviceIds:[props.deviceId]}, `Abort error:`, err)
       emit('error', error.value)
     }
     return
@@ -177,13 +177,13 @@ const startExposure = async () => {
 
     if (isCameraClient) {
       // Always use callDeviceMethod for startexposure
-      console.log('Using callDeviceMethod for startexposure')
+      log.debug({deviceIds:[props.deviceId]}, 'Using callDeviceMethod for startexposure')
       await unifiedStore.callDeviceMethod(props.deviceId, props.method, [
         { Duration: exposureDuration.value, Light: isLight.value }
       ])
     } else {
       // Use the store/service abstraction
-      console.log('Using store/service abstraction for startexposure')
+      log.debug({deviceIds:[props.deviceId]}, 'Using store/service abstraction for startexposure')
       await unifiedStore.startCameraExposure(props.deviceId, exposureDuration.value, isLight.value)
     }
 
@@ -194,7 +194,7 @@ const startExposure = async () => {
   } catch (err) {
     exposureInProgress.value = false
     error.value = `Failed to start exposure: ${err}`
-    console.error(`Start exposure error:`, err)
+    log.error({deviceIds:[props.deviceId]}, `Start exposure error:`, err)
     emit('error', error.value)
   }
 }
@@ -203,7 +203,7 @@ const startExposure = async () => {
 const setupPolling = () => {
   clearPollingIntervals()
 
-  console.log('%c🔄 CameraExposureControl: Starting exposure polling', 'color: purple')
+  log.debug({deviceIds:[props.deviceId]}, '%c🔄 CameraExposureControl: Starting exposure polling', 'color: purple')
 
   // Poll for percent completed (every 500ms)
   const progressInterval = window.setInterval(async () => {
@@ -221,14 +221,14 @@ const setupPolling = () => {
         // Remove from our tracking array
         pollingIntervals.value = pollingIntervals.value.filter((id) => id !== progressInterval)
 
-        console.log(
+        log.debug({deviceIds:[props.deviceId]},
           '%c✅ CameraExposureControl: Exposure reported 100% complete. Store will handle image download.',
           'color: #4caf50'
         )
         // Removed: startImageReadyPolling() - Store handles image readiness and download
       }
     } catch (err) {
-      console.error('Error polling exposure progress:', err)
+      log.error({deviceIds:[props.deviceId]}, 'Error polling exposure progress:', err)
     }
   }, 500)
 
@@ -253,7 +253,7 @@ watch(() => props.deviceId, (newId, oldId) => {
     
     // Update component state tracking
     componentState.value.lastPropsUpdate = Date.now()
-    console.log(`[CameraExposureControl] Device ID changed from ${oldId} to ${newId}`)
+    log.debug({deviceIds:[props.deviceId]}, `[CameraExposureControl] Device ID changed from ${oldId} to ${newId}`)
     
     // Force debug check of device state
     debugClientStatus(unifiedStore, newId)
@@ -263,7 +263,7 @@ watch(() => props.deviceId, (newId, oldId) => {
     componentState.value.deviceConnectionChecked = true
     componentState.value.deviceHasClient = device?.isConnected || false
     
-    console.log(`[CameraExposureControl] State after device change:`, {
+    log.debug({deviceIds:[props.deviceId]}, `[CameraExposureControl] State after device change:`, {
       deviceId: newId,
       deviceFound: !!device,
       isConnected: device?.isConnected,
@@ -279,7 +279,7 @@ watch(() => unifiedStore.getDeviceById(props.deviceId)?.properties?.imageData, (
     // if oldImageData could be the same ArrayBuffer instance but modified,
     // however, Pinia typically creates new state objects/values.
     if (newImageData !== oldImageData) {
-      console.log('%c📷 CameraExposureControl: Detected new image data from store', 'color: #4caf50');
+      log.debug({deviceIds:[props.deviceId]}, '%c📷 CameraExposureControl: Detected new image data from store', 'color: #4caf50');
       emit('imageDownloaded', newImageData);
     }
   }

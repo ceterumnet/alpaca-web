@@ -62,6 +62,8 @@
 </template>
 
 <script setup lang="ts">
+
+import log from '@/plugins/logger'
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 
@@ -80,7 +82,6 @@ const store = useUnifiedStore()
 
 const currentDevice = computed(() => {
   const device = store.getDeviceById(props.deviceId);
-  // console.log('SF<x_bin_273>currentDevice computed:', device ? { name: device.name, id: device.id, fw_currentPosition: device.fw_currentPosition } : null);
   return device;
 })
 
@@ -137,7 +138,7 @@ const selectFilter = async () => {
       await store.setFilterWheelPosition(props.deviceId, selectedFilterPosition.value)
       // The store action will update fw_currentPosition, and computed props will react.
     } catch (error) {
-      console.error(`Error setting filter position via store to ${selectedFilterPosition.value}:`, error)
+      log.error({deviceIds:[props.deviceId]}, `Error setting filter position via store to ${selectedFilterPosition.value}:`, error)
       // Optionally, revert selection if store action failed and didn't update position
       // This depends on how store handles errors and updates state on failure.
       // For now, assume store handles state consistency.
@@ -153,7 +154,7 @@ const updateFilterName = async (filterIndex: number) => {
       await store.setFilterWheelName(props.deviceId, filterIndex, newName);
       // Store action should refresh fw_filterNames, triggering reactive updates.
     } catch (error) {
-      console.error(`Error updating name for filter ${filterIndex} via store:`, error)
+      log.error({deviceIds:[props.deviceId]}, `Error updating name for filter ${filterIndex} via store:`, error)
       // Revert editable name if API call fails and store doesn't handle it
       // This part might need adjustment based on store error handling behavior
       if (filterNamesArray.value[filterIndex]) {

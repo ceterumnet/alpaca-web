@@ -7,6 +7,7 @@
 // - Maintains layout consistency
 
 <script setup lang="ts">
+import log from '@/plugins/logger'
 import { computed, onMounted, watch } from 'vue'
 import { useLayoutStore } from '@/stores/useLayoutStore'
 import type { PanelPosition } from '@/types/layouts/LayoutDefinition'
@@ -19,13 +20,13 @@ const layoutStore = useLayoutStore()
 
 // Local computed properties to ensure reactivity
 const currentLayout = computed(() => {
-  console.log('Computing currentLayout with layoutId:', props.layoutId)
+  log.debug({ layoutId: props.layoutId }, 'Computing currentLayout with layoutId:')
   return layoutStore.layouts.find(layout => layout.id === props.layoutId) || null
 })
 
 const currentDeviceLayout = computed(() => {
   if (!currentLayout.value) return null
-  console.log('Computing currentDeviceLayout for viewport:', layoutStore.currentViewport)
+  log.debug({ viewport: layoutStore.currentViewport }, 'Computing currentDeviceLayout for viewport:')
   return currentLayout.value.layouts.find(layout => layout.deviceType === layoutStore.currentViewport) || null
 })
 
@@ -33,16 +34,16 @@ const currentDeviceLayout = computed(() => {
 watch(
   () => props.layoutId,
   (newLayoutId) => {
-    console.log('LayoutContainer - Layout ID changed:', newLayoutId)
-    console.log('LayoutContainer - Available layouts:', layoutStore.layouts.map(l => l.id))
+    log.debug({ newLayoutId }, 'LayoutContainer - Layout ID changed:')
+    log.debug({ availableLayouts: layoutStore.layouts.map(l => l.id) }, 'LayoutContainer - Available layouts:')
     layoutStore.setCurrentLayout(newLayoutId)
   }
 )
 
 // Set the current layout when component is mounted
 onMounted(() => {
-  console.log('LayoutContainer - Mounted with layout ID:', props.layoutId)
-  console.log('LayoutContainer - Available layouts:', layoutStore.layouts.map(l => l.id))
+  log.debug({ layoutId: props.layoutId }, 'LayoutContainer - Mounted with layout ID:')
+  log.debug({ availableLayouts: layoutStore.layouts.map(l => l.id) }, 'LayoutContainer - Available layouts:')
   layoutStore.setCurrentLayout(props.layoutId)
 })
 
@@ -50,14 +51,14 @@ onMounted(() => {
 watch(
   () => layoutStore.currentLayout,
   (layout) => {
-    console.log('LayoutContainer - Current layout changed:', layout?.id)
+    log.debug('LayoutContainer - Current layout changed:', layout?.id)
   }
 )
 
 watch(
   () => layoutStore.currentDeviceLayout,
   (deviceLayout) => {
-    console.log('LayoutContainer - Current device layout changed:', 
+    log.debug('LayoutContainer - Current device layout changed:', 
       deviceLayout ? `${deviceLayout.deviceType} with ${deviceLayout.positions.length} panels` : 'null')
   }
 )
@@ -65,7 +66,7 @@ watch(
 // Debug current positions
 watch(currentDeviceLayout, (deviceLayout) => {
   if (deviceLayout) {
-    console.log(`LayoutContainer - Current device (${deviceLayout.deviceType}) positions:`, 
+    log.debug(`LayoutContainer - Current device (${deviceLayout.deviceType}) positions:`, 
       deviceLayout.positions.map(p => `${p.panelId}: (${p.x},${p.y}) ${p.width}x${p.height}`))
   }
 }, { immediate: true })
@@ -86,7 +87,7 @@ function getPanelStyle(position: PanelPosition) {
   }
 
   // Use row/column span to properly position cells
-  // console.log(`Panel ${position.panelId}: Position (${position.x}, ${position.y}), Size ${position.width}x${position.height}`)
+  log.debug({ position }, `Panel ${position.panelId}: Position (${position.x}, ${position.y}), Size ${position.width}x${position.height}`)
   
   const style = {
     gridColumnStart: position.x + 1,
@@ -95,7 +96,7 @@ function getPanelStyle(position: PanelPosition) {
     gridRowEnd: position.y + position.height + 1 // The correct position takes into account the height
   }
   
-  // console.log(`Panel ${position.panelId}: Grid position - Column ${style.gridColumnStart}/${style.gridColumnEnd}, Row ${style.gridRowStart}/${style.gridRowEnd}`)
+  log.debug({ position, style }, `Panel ${position.panelId}: Grid position - Column ${style.gridColumnStart}/${style.gridColumnEnd}, Row ${style.gridRowStart}/${style.gridRowEnd}`)
   
   return style
 }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+
+import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 // import CameraControls from '@/components/panels/CameraControls.vue'
@@ -34,13 +36,13 @@ const currentDevice = computed(() => {
 // Computed properties for image dimensions with logging
 const computedImageWidth = computed(() => {
   const width = Number(currentDevice.value?.properties?.imageWidth);
-  console.log(`SimplifiedCameraPanel (${props.deviceId}): computedImageWidth is ${width}, raw value was: ${currentDevice.value?.properties?.imageWidth}`);
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel (${props.deviceId}): computedImageWidth is ${width}, raw value was: ${currentDevice.value?.properties?.imageWidth}`);
   return isNaN(width) ? 0 : width; // Default to 0 if not a number
 });
 
 const computedImageHeight = computed(() => {
   const height = Number(currentDevice.value?.properties?.imageHeight);
-  console.log(`SimplifiedCameraPanel (${props.deviceId}): computedImageHeight is ${height}, raw value was: ${currentDevice.value?.properties?.imageHeight}`);
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel (${props.deviceId}): computedImageHeight is ${height}, raw value was: ${currentDevice.value?.properties?.imageHeight}`);
   return isNaN(height) ? 0 : height; // Default to 0 if not a number
 });
 
@@ -82,12 +84,12 @@ watch(
   () => currentDevice.value?.properties?.imageData,
   (newImageData) => {
     if (newImageData instanceof ArrayBuffer && newImageData.byteLength > 0) {
-      console.log(`SimplifiedCameraPanel: imageData updated from store for device ${props.deviceId}, size: ${newImageData.byteLength}`);
+      log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: imageData updated from store for device ${props.deviceId}, size: ${newImageData.byteLength}`);
       imageData.value = newImageData;
     } else if (newImageData === null || (newImageData instanceof ArrayBuffer && newImageData.byteLength === 0)) {
       // Handle case where image data is explicitly cleared in the store or props reset
       if (imageData.value.byteLength > 0) { // Only update if it actually changed to empty
-        console.log(`SimplifiedCameraPanel: imageData cleared (from store/props) for device ${props.deviceId}`);
+        log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: imageData cleared (from store/props) for device ${props.deviceId}`);
         imageData.value = new ArrayBuffer(0);
       }
     }
@@ -108,7 +110,7 @@ const toggleCooler = async () => {
     await setAlpacaProperty(props.deviceId, 'coolerOn', !coolerOn.value)
     coolerOn.value = !coolerOn.value
   } catch (error) {
-    console.error('Error toggling cooler:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error toggling cooler:', error)
     settingsError.value = `Failed to toggle cooler: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isTogglingCooler.value = false
@@ -122,7 +124,7 @@ const updateGain = async () => {
   try {
     await setAlpacaProperty(props.deviceId, 'gain', gain.value)
   } catch (error) {
-    console.error('Error setting gain:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error setting gain:', error)
     settingsError.value = `Failed to set gain: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingGain.value = false
@@ -135,7 +137,7 @@ const updateOffset = async () => {
   try {
     await setAlpacaProperty(props.deviceId, 'offset', offset.value)
   } catch (error) {
-    console.error('Error setting offset:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error setting offset:', error)
     settingsError.value = `Failed to set offset: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingOffset.value = false
@@ -149,7 +151,7 @@ const updateBinning = async () => {
     await setAlpacaProperty(props.deviceId, 'binX', binning.value)
     await setAlpacaProperty(props.deviceId, 'binY', binning.value)
   } catch (error) {
-    console.error('Error setting binning:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error setting binning:', error)
     settingsError.value = `Failed to set binning: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingBinning.value = false
@@ -163,7 +165,7 @@ const updateTargetTemp = async () => {
   try {
     await setAlpacaProperty(props.deviceId, 'setCCDTemperature', targetTemp.value)
   } catch (error) {
-    console.error('Error setting target temperature:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error setting target temperature:', error)
     settingsError.value = `Failed to set target temperature: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingTargetTemp.value = false
@@ -174,12 +176,12 @@ const updateTargetTemp = async () => {
 const handleExposureStarted = (params: { duration: number; isLight: boolean }) => {
   // Clear any previous exposure-related errors if settingsError is used for this
   // settingsError.value = null; 
-  console.log(`SimplifiedCameraPanel: Exposure started: ${params.duration}s, Light: ${params.isLight}`)
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Exposure started: ${params.duration}s, Light: ${params.isLight}`)
   // You might want to set a specific loading state related to exposure if needed elsewhere in this panel
 }
 
 const handleExposureComplete = () => {
-  console.log('SimplifiedCameraPanel: Exposure complete')
+  log.debug({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: Exposure complete')
   // Handle post-exposure actions if any specific to this panel
   // Note: Image data is now handled by the watcher on currentDevice.value.properties.imageData
 }
@@ -188,19 +190,19 @@ const handleExposureComplete = () => {
 // as image download responsibility moved to store actions.
 // Keeping it for now in case of other uses, but the watcher above is the primary mechanism.
 const handleImageDownloaded = () => {
-  console.warn('SimplifiedCameraPanel: handleImageDownloaded called. This might be from a legacy path or an event without data. Image data should primarily come from store watcher.');
+  log.warn({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: handleImageDownloaded called. This might be from a legacy path or an event without data. Image data should primarily come from store watcher.');
   // imageData.value = data // Commenting out to prefer store-driven updates
-  // console.log(`SimplifiedCameraPanel: Image downloaded (via event): ${data.byteLength} bytes`)
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Image downloaded (via event): ${data.byteLength} bytes`)
 }
 
 const handleExposureError = (error: string) => {
-  console.error('SimplifiedCameraPanel: Exposure error:', error)
+  log.error({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: Exposure error:', error)
   settingsError.value = `Exposure failed: ${error}` // Display exposure error in the existing error display
 }
 
 // Handler for histogram generation from CameraImageDisplay
 const handleHistogramGenerated = (histogram: number[]) => {
-  console.log('SimplifiedCameraPanel: Histogram generated with', histogram.length, 'bins')
+  log.debug({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: Histogram generated with', histogram.length, 'bins')
   // Process histogram data if needed at this level
 }
 
@@ -227,7 +229,7 @@ const updateDeviceCapabilities = async () => {
     }
     
   } catch (error) {
-    console.error('Error checking device capabilities:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error checking device capabilities:', error)
   }
 }
 
@@ -293,7 +295,7 @@ const updateCameraStatus = async () => {
       exposureMax.value = properties.exposureMax
     }
   } catch (error) {
-    console.error('Error updating camera status:', error)
+    log.error({deviceIds:[props.deviceId]}, 'Error updating camera status:', error)
   }
 }
 
@@ -336,7 +338,7 @@ onMounted(() => {
 
 // Watch for changes in connection status (from parent)
 watch(() => props.isConnected, (newIsConnected) => {
-  console.log(`SimplifiedCameraPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
   if (newIsConnected) {
     // Reset capabilities
     resetCameraSettings() // Reset settings on new connection to ensure fresh state
@@ -370,7 +372,7 @@ watch(() => props.isConnected, (newIsConnected) => {
 // Watch for device ID changes
 watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   if (newDeviceId !== oldDeviceId) {
-    console.log(`SimplifiedCameraPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
+    log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
     // Reset settings when device changes
     resetCameraSettings()
     imageData.value = new ArrayBuffer(0) // Also reset image data when device changes

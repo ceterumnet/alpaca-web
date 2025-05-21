@@ -228,15 +228,15 @@ The following table tracks the progress of migrating console logging statements 
 | `src/services/discoveryServiceFactory.ts`                  | Reviewed | [X]      |
 | `src/services/ProxiedDiscoveryService.ts`                  | Reviewed | [X]      |
 | `src/api/alpaca/base-client.ts`                            | Reviewed | [X]      |
-| `src/api/alpaca/camera-client.ts`                          | Pending  | [ ]      |
-| `src/components/layout/LayoutContainer.vue`                | Pending  | [ ]      |
-| `src/components/panels/features/CameraImageDisplay.vue`    | Pending  | [ ]      |
-| `src/components/panels/features/CameraExposureControl.vue` | Pending  | [ ]      |
-| `src/components/panels/CameraControls.vue`                 | Pending  | [ ]      |
-| `src/components/devices/SimplifiedFocuserPanel.vue`        | Pending  | [ ]      |
-| `src/components/devices/SimplifiedCameraPanel.vue`         | Pending  | [ ]      |
-| `src/components/devices/SimplifiedTelescopePanel.vue`      | Pending  | [ ]      |
-| `src/components/devices/SimplifiedFilterWheelPanel.vue`    | Pending  | [ ]      |
+| `src/api/alpaca/camera-client.ts`                          | Reviewed | [X]      |
+| `src/components/layout/LayoutContainer.vue`                | Reviewed | [X]      |
+| `src/components/panels/features/CameraImageDisplay.vue`    | Reviewed | [X]      |
+| `src/components/panels/features/CameraExposureControl.vue` | Reviewed | [X]      |
+| `src/components/panels/CameraControls.vue`                 | Reviewed | [X]      |
+| `src/components/devices/SimplifiedFocuserPanel.vue`        | Reviewed | [X]      |
+| `src/components/devices/SimplifiedCameraPanel.vue`         | Reviewed | [X]      |
+| `src/components/devices/SimplifiedTelescopePanel.vue`      | Reviewed | [X]      |
+| `src/components/devices/SimplifiedFilterWheelPanel.vue`    | Reviewed | [X]      |
 | `src/stores/modules/cameraActions.ts`                      | Pending  | [ ]      |
 | `src/stores/modules/focuserActions.ts`                     | Pending  | [ ]      |
 | `src/stores/modules/discoveryActions.ts`                   | Pending  | [ ]      |
