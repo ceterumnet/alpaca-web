@@ -19,6 +19,7 @@
 // - Event emission for UI updates
 // - Support for both binary and JSON image formats
 
+import log from '@/plugins/logger'
 import type { DeviceEvent, Device } from '../types/device-store.types'
 import type { AlpacaClient } from '@/api/AlpacaClient'
 import { AlpacaClient as BaseAlpacaClient } from '@/api/alpaca/base-client'
@@ -83,30 +84,30 @@ export function createCameraActions() {
       ): Promise<boolean> {
         const device = this.getDeviceById(deviceId)
         if (!device) {
-          console.error(`[UnifiedStore/cameraActions] Device ${deviceId} not found for startCameraExposure`)
+          log.error({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Device ${deviceId} not found for startCameraExposure`)
           return false
         }
 
         if (device.type !== 'camera') {
-          console.error(`[UnifiedStore/cameraActions] Device ${deviceId} is not a camera for startCameraExposure`)
+          log.error({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Device ${deviceId} is not a camera for startCameraExposure`)
           // This case should ideally not happen if called correctly, but good to have a guard.
           return false
         }
 
         const client = this.getDeviceClient(deviceId) // Explicitly get client to check before callDeviceMethod
         if (!client) {
-          console.error(`[UnifiedStore/cameraActions] No client available for device ${deviceId} for startCameraExposure`)
+          log.error({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] No client available for device ${deviceId} for startCameraExposure`)
           return false
         }
 
-        console.log(`[UnifiedStore/cameraActions] Starting exposure on camera ${deviceId}:`, {
+        log.debug({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Starting exposure on camera ${deviceId}:`, {
           exposureTime,
           isLight
         })
 
         try {
           // Update device properties to show exposure in progress
-          console.log(`[UnifiedStore/cameraActions] Updating device properties to show exposure in progress`)
+          log.debug({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Updating device properties to show exposure in progress`)
           this.updateDeviceProperties(deviceId, {
             isExposing: true,
             exposureProgress: 0,
@@ -115,7 +116,7 @@ export function createCameraActions() {
             cameraState: 2 // CameraStates.Exposing
           })
 
-          console.log(`[UnifiedStore/cameraActions] Attempting to call startexposure via API`)
+          log.debug({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Attempting to call startexposure via API`)
 
           const params = {
             Duration: exposureTime,
@@ -127,7 +128,7 @@ export function createCameraActions() {
           await client.put('startexposure', params)
 
           // Emit exposure started event AFTER successful API call
-          console.log(`[UnifiedStore/cameraActions] Emitting cameraExposureStarted event`)
+          log.debug({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Emitting cameraExposureStarted event`)
           this._emitEvent({
             type: 'cameraExposureStarted',
             deviceId,
@@ -136,12 +137,12 @@ export function createCameraActions() {
           })
 
           // Start a progress tracking timer
-          console.log(`[UnifiedStore/cameraActions] Starting exposure progress tracking`)
+          log.debug({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Starting exposure progress tracking`)
           this.trackExposureProgress(deviceId, exposureTime)
 
           return true
         } catch (error) {
-          console.error(`[UnifiedStore/cameraActions] Error starting exposure on camera ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Error starting exposure on camera ${deviceId}:`, error)
 
           // Update device state to show error
           this.updateDeviceProperties(deviceId, {
@@ -165,25 +166,20 @@ export function createCameraActions() {
         deviceId: string,
         exposureTime: number
       ): void {
-        // console.log(`[TRACK_DEBUG] trackExposureProgress called for ${deviceId}, exposureTime: ${exposureTime}s`);
         const device = this.getDeviceById(deviceId)
         if (!device) {
-          // console.error(`[TRACK_DEBUG] Device ${deviceId} NOT FOUND for trackExposureProgress`);
-          console.error(`[UnifiedStore/cameraActions] Device ${deviceId} not found for trackExposureProgress`) // Restored original log
+          log.error({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Device ${deviceId} not found for trackExposureProgress`) // Restored original log
           return
         }
-        // console.log(`[TRACK_DEBUG] Device ${deviceId} found. Properties:`, JSON.stringify(device.properties));
 
         const initialStartTime = device.properties.exposureStartTime as number | undefined
         if (typeof initialStartTime !== 'number') {
-          // console.error(`[TRACK_DEBUG] exposureStartTime NOT A NUMBER for ${deviceId}. Value: ${initialStartTime}, Type: ${typeof initialStartTime}`);
-          console.error(
-            // Restored original log
+          log.error(
+            { deviceIds: [deviceId] },
             `[UnifiedStore/cameraActions] exposureStartTime not found or invalid for device ${deviceId}. Cannot track progress accurately.`
           )
           return
         }
-        // console.log(`[TRACK_DEBUG] exposureStartTime for ${deviceId} is ${initialStartTime}`);
 
         // Ensure the isExposing property is set when tracking starts
         this.updateDeviceProperties(deviceId, {
@@ -205,8 +201,10 @@ export function createCameraActions() {
         const progressTimer = setInterval(async () => {
           const device = this.getDeviceById(deviceId) // Re-fetch device in each interval
           if (!device) {
-            // console.log('[TRACK_DEBUG] Device not found inside interval, should warn and clear.') // Removed diagnostic log
-            console.warn(`[UnifiedStore/cameraActions] Device ${deviceId} not found during exposure tracking interval. Clearing timer.`)
+            log.error(
+              { deviceIds: [deviceId] },
+              `[UnifiedStore/cameraActions] Device ${deviceId} not found during exposure tracking interval. Clearing timer.`
+            )
             clearInterval(progressTimer)
             return
           }
@@ -218,7 +216,7 @@ export function createCameraActions() {
 
             // Check if we've exceeded the maximum wait time
             if (elapsedTime > MAX_WAIT_TIME) {
-              console.warn(`Exposure for ${deviceId} exceeded maximum wait time (${MAX_WAIT_TIME}ms), aborting`)
+              log.error({ deviceIds: [deviceId] }, `Exposure for ${deviceId} exceeded maximum wait time (${MAX_WAIT_TIME}ms), aborting`)
               clearInterval(progressTimer)
               this.updateDeviceProperties(deviceId, {
                 isExposing: false,
@@ -238,7 +236,7 @@ export function createCameraActions() {
               try {
                 // Assuming AlpacaClient.getProperty throws on error and returns direct value on success
                 const cameraState = (await client.getProperty('camerastate')) as number | undefined
-                console.log(`Camera ${deviceId} state: ${cameraState}`)
+                log.debug({ deviceIds: [deviceId] }, `Camera ${deviceId} state: ${cameraState}`)
 
                 // Update the camera state in our store
                 this.updateDeviceProperties(deviceId, {
@@ -261,26 +259,24 @@ export function createCameraActions() {
                     // We were polling for an image and now camera is idle - final check for imageready
                     const imageReady = (await client.getProperty('imageready')) as boolean | undefined
                     if (imageReady) {
-                      console.log(`Camera ${deviceId} is idle and image is ready`)
+                      log.debug({ deviceIds: [deviceId] }, `Camera ${deviceId} is idle and image is ready`)
                       clearInterval(progressTimer)
                       await this.handleExposureComplete(deviceId)
                       return
                     } else {
-                      console.warn(`Camera ${deviceId} is idle but image not ready, possible error`)
+                      log.warn({ deviceIds: [deviceId] }, `Camera ${deviceId} is idle but image not ready, possible error`)
                       // Continue polling a bit longer, might be transitional state
                     }
                   } else if (elapsedTime > durationMs) {
                     // Camera is idle and exposure time has passed, start polling for image
                     isPollingForImage = true
-                    console.log(`Exposure time complete, starting to poll for image ready`)
+                    log.debug({ deviceIds: [deviceId] }, `Exposure time complete, starting to poll for image ready`)
                   }
                 } else if (cameraState === 2) {
                   // Camera is exposing
                   // Calculate progress based on exposure time
                   const progress = Math.min(100, Math.round((elapsedTime / durationMs) * 100)) // Use durationMs
                   lastKnownProgress = progress
-
-                  // console.log(`[TRACK_DEBUG] Calculated progress for ${deviceId}: ${progress}, elapsedTime: ${elapsedTime}, durationMs: ${durationMs}`);
 
                   // Update properties with current progress
                   this.updateDeviceProperties(deviceId, {
@@ -308,14 +304,14 @@ export function createCameraActions() {
                   // Check if image is ready
                   const imageReadyAfterRead = (await client.getProperty('imageready')) as boolean | undefined
                   if (imageReadyAfterRead) {
-                    console.log(`Camera ${deviceId} reports image is ready while in state ${cameraState}`)
+                    log.debug({ deviceIds: [deviceId] }, `Camera ${deviceId} reports image is ready while in state ${cameraState}`)
                     clearInterval(progressTimer)
                     await this.handleExposureComplete(deviceId)
                     return
                   }
                 } else if (cameraState === 5) {
                   // Error
-                  console.error(`Camera ${deviceId} reported error state, aborting exposure tracking`)
+                  log.error({ deviceIds: [deviceId] }, `Camera ${deviceId} reported error state, aborting exposure tracking`)
                   clearInterval(progressTimer)
                   this.updateDeviceProperties(deviceId, {
                     isExposing: false,
@@ -333,25 +329,25 @@ export function createCameraActions() {
                 // If we're now polling for image, always check imageready
                 if (isPollingForImage) {
                   const imageReadyPolling = (await client.getProperty('imageready')) as boolean | undefined
-                  console.log(`Image ready polling check: ${imageReadyPolling}`)
+                  log.debug({ deviceIds: [deviceId] }, `Image ready polling check: ${imageReadyPolling}`)
                   if (imageReadyPolling) {
-                    console.log(`Camera ${deviceId} reports image is ready during polling`)
+                    log.debug({ deviceIds: [deviceId] }, `Camera ${deviceId} reports image is ready during polling`)
                     clearInterval(progressTimer)
                     await this.handleExposureComplete(deviceId)
                     return
                   }
                 }
               } catch (error) {
-                console.warn(`Error checking camera state for ${deviceId}:`, error)
+                log.error({ deviceIds: [deviceId] }, `Error checking camera state for ${deviceId}:`, error)
                 // Fall back to time-based tracking
                 fallbackToTimeBasedTracking(elapsedTime, durationMs)
               }
             } else {
-              console.warn(`No client available for device ${deviceId}, using time-based tracking only`)
+              log.warn({ deviceIds: [deviceId] }, `No client available for device ${deviceId}, using time-based tracking only`)
               fallbackToTimeBasedTracking(elapsedTime, durationMs)
             }
           } catch (error) {
-            console.error(`Error tracking exposure progress for camera ${deviceId}:`, error)
+            log.error({ deviceIds: [deviceId] }, `Error tracking exposure progress for camera ${deviceId}:`, error)
           }
         }, POLLING_INTERVAL)
 
@@ -373,7 +369,7 @@ export function createCameraActions() {
             // If we've been polling too long, give up eventually
             if (elapsedTime > duration + 60000) {
               // 1 minute after expected completion
-              console.warn(`Polling for image ready timed out for ${deviceId}`)
+              log.warn({ deviceIds: [deviceId] }, `Polling for image ready timed out for ${deviceId}`)
               clearInterval(progressTimer)
               this.updateDeviceProperties(deviceId, {
                 isExposing: false,
@@ -392,7 +388,10 @@ export function createCameraActions() {
             // Only update if progress has changed
             if (progress !== lastKnownProgress) {
               lastKnownProgress = progress
-              console.log(`Exposure progress update for ${deviceId}: ${progress}% (elapsed: ${elapsedTime}ms, duration: ${duration}ms)`)
+              log.debug(
+                { deviceIds: [deviceId] },
+                `Exposure progress update for ${deviceId}: ${progress}% (elapsed: ${elapsedTime}ms, duration: ${duration}ms)`
+              )
 
               // Update the device properties with the current progress
               this.updateDeviceProperties(deviceId, {
@@ -421,7 +420,7 @@ export function createCameraActions() {
         },
         deviceId: string
       ): Promise<void> {
-        console.log(`Handling exposure completion for camera ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `Handling exposure completion for camera ${deviceId}`)
 
         try {
           // Update state to show exposure complete but image not downloaded yet
@@ -436,15 +435,15 @@ export function createCameraActions() {
           const client = this.getDeviceClient(deviceId)
           if (client) {
             try {
-              console.log(`Attempting to download image data for camera ${deviceId}`)
+              log.debug({ deviceIds: [deviceId] }, `Attempting to download image data for camera ${deviceId}`)
 
               // First check if the image is really ready
               let imageReady = false
               try {
                 imageReady = (await client.getProperty('imageready')) as boolean
-                console.log(`Camera ${deviceId} imageready check: ${imageReady}`)
+                log.debug({ deviceIds: [deviceId] }, `Camera ${deviceId} imageready check: ${imageReady}`)
               } catch (readyError) {
-                console.warn(`Error checking if image is ready: ${readyError}`)
+                log.warn({ deviceIds: [deviceId] }, `Error checking if image is ready: ${readyError}`)
                 // Assume it's ready since we've reached this point
                 imageReady = true
               }
@@ -455,7 +454,7 @@ export function createCameraActions() {
 
                 if (!device) {
                   const errorMessage = `Device ${deviceId} not found after imageready check`
-                  console.error(errorMessage)
+                  log.error({ deviceIds: [deviceId] }, errorMessage)
                   // Update device properties to a consistent state
                   this.updateDeviceProperties(deviceId, {
                     isExposing: false,
@@ -474,7 +473,7 @@ export function createCameraActions() {
                 const properties = device.properties || {} // device is now guaranteed
                 const preferredFormat = (properties.preferredImageFormat as string) || 'binary'
 
-                console.log(`Retrieving image data in ${preferredFormat} format`)
+                log.debug({ deviceIds: [deviceId] }, `Retrieving image data in ${preferredFormat} format`)
 
                 let imageData: ArrayBuffer | null = null
 
@@ -483,7 +482,7 @@ export function createCameraActions() {
                     // Access base client's protected methods safely by casting
                     const baseClient = client as BaseAlpacaClient
                     const url = baseClient['getDeviceUrl']('imagearray')
-                    console.log(`Fetching image data from ${url}`)
+                    log.debug({ deviceIds: [deviceId] }, `Fetching image data from ${url}`)
 
                     // Add ClientID as URL parameter
                     const urlWithParams = new URL(url, window.location.origin)
@@ -505,12 +504,12 @@ export function createCameraActions() {
 
                     // Get binary data as ArrayBuffer
                     imageData = await response.arrayBuffer()
-                    console.log(`Successfully received image data, size: ${imageData.byteLength} bytes`)
+                    log.debug({ deviceIds: [deviceId] }, `Successfully received image data, size: ${imageData.byteLength} bytes`)
                   }
                 } catch (error) {
-                  console.error(`Error fetching image data: ${error}`)
+                  log.error({ deviceIds: [deviceId] }, `Error fetching image data: ${error}`)
                   // Fall back to JSON mode as last resort
-                  console.log(`Falling back to JSON image data`)
+                  log.debug({ deviceIds: [deviceId] }, `Falling back to JSON image data`)
                   try {
                     const jsonData = await this.callDeviceMethod(deviceId, 'imagearray', [])
                     if (jsonData && Array.isArray(jsonData)) {
@@ -518,12 +517,12 @@ export function createCameraActions() {
                       imageData = typedArray.buffer
                     }
                   } catch (jsonError) {
-                    console.error(`Error fetching image as JSON: ${jsonError}`)
+                    log.error({ deviceIds: [deviceId] }, `Error fetching image as JSON: ${jsonError}`)
                   }
                 }
 
                 if (imageData) {
-                  console.log(`Downloaded image data for camera ${deviceId}, size: ${imageData.byteLength} bytes`)
+                  log.debug({ deviceIds: [deviceId] }, `Downloaded image data for camera ${deviceId}, size: ${imageData.byteLength} bytes`)
 
                   // Update device with image data
                   this.updateDeviceProperties(deviceId, {
@@ -550,27 +549,27 @@ export function createCameraActions() {
 
                   return
                 } else {
-                  console.warn(`Retrieved imagearray but it's not a valid image data`)
+                  log.warn({ deviceIds: [deviceId] }, `Retrieved imagearray but it's not a valid image data`)
                 }
               } else {
-                console.warn(`Camera reports image is not ready, skipping image download`)
+                log.warn({ deviceIds: [deviceId] }, `Camera reports image is not ready, skipping image download`)
               }
             } catch (error) {
-              console.error(`Error downloading image data for camera ${deviceId}:`, error)
+              log.error({ deviceIds: [deviceId] }, `Error downloading image data for camera ${deviceId}:`, error)
             }
           } else {
-            console.warn(`No client available for device ${deviceId}, can't download image`)
+            log.warn({ deviceIds: [deviceId] }, `No client available for device ${deviceId}, can't download image`)
           }
 
           // If we reach here, we couldn't download the image
           // Still emit completion event but without image data
-          console.log(`Emitting completion event without image data`)
+          log.debug({ deviceIds: [deviceId] }, `Emitting completion event without image data`)
           this._emitEvent({
             type: 'cameraExposureComplete',
             deviceId
           })
         } catch (error) {
-          console.error(`Error handling exposure completion for camera ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `Error handling exposure completion for camera ${deviceId}:`, error)
 
           // Ensure exposure state is set to false even on error
           this.updateDeviceProperties(deviceId, {
@@ -593,7 +592,7 @@ export function createCameraActions() {
         },
         deviceId: string
       ): Promise<boolean> {
-        console.log(`Aborting exposure on camera ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `Aborting exposure on camera ${deviceId}`)
 
         try {
           // Call abortexposure via the API - Per Alpaca spec, this is a PUT with no parameters
@@ -615,7 +614,7 @@ export function createCameraActions() {
 
           return true
         } catch (error) {
-          console.error(`Error aborting exposure on camera ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `Error aborting exposure on camera ${deviceId}:`, error)
 
           // Still update the device state to indicate we're not exposing anymore
           this.updateDeviceProperties(deviceId, {
@@ -639,7 +638,7 @@ export function createCameraActions() {
         enabled: boolean,
         targetTemperature?: number
       ): Promise<boolean> {
-        console.log(`Setting camera ${deviceId} cooler:`, {
+        log.debug({ deviceIds: [deviceId] }, `Setting camera ${deviceId} cooler:`, {
           enabled,
           targetTemperature
         })
@@ -675,7 +674,7 @@ export function createCameraActions() {
 
           return true
         } catch (error) {
-          console.error(`Error setting camera ${deviceId} cooler:`, error)
+          log.error({ deviceIds: [deviceId] }, `Error setting camera ${deviceId} cooler:`, error)
           throw error
         }
       },
@@ -690,7 +689,7 @@ export function createCameraActions() {
         binX: number,
         binY: number
       ): Promise<boolean> {
-        console.log(`Setting camera ${deviceId} binning:`, { binX, binY })
+        log.debug({ deviceIds: [deviceId] }, `Setting camera ${deviceId} binning:`, { binX, binY })
 
         try {
           // Set binning X - Per Alpaca spec, property name must be capitalized correctly
@@ -715,7 +714,7 @@ export function createCameraActions() {
 
           return true
         } catch (error) {
-          console.error(`Error setting camera ${deviceId} binning:`, error)
+          log.error({ deviceIds: [deviceId] }, `Error setting camera ${deviceId} binning:`, error)
           throw error
         }
       },
@@ -735,17 +734,17 @@ export function createCameraActions() {
         },
         deviceId: string
       ): Promise<boolean> {
-        console.log(`Fetching properties for camera ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `Fetching properties for camera ${deviceId}`)
 
         const device = this.getDeviceById(deviceId)
         if (!device) {
-          console.error(`Device not found: ${deviceId}`)
+          log.error({ deviceIds: [deviceId] }, `Device not found: ${deviceId}`)
           return false
         }
 
         const client = this.getDeviceClient(deviceId)
         if (!client) {
-          console.error(`No client available for device ${deviceId}`)
+          log.error({ deviceIds: [deviceId] }, `No client available for device ${deviceId}`)
           return false
         }
 
@@ -838,10 +837,10 @@ export function createCameraActions() {
           // Now start polling for the read/write properties
           this.startCameraPropertyPolling(deviceId)
 
-          console.log(`Successfully fetched properties for camera ${deviceId}`)
+          log.debug({ deviceIds: [deviceId] }, `Successfully fetched properties for camera ${deviceId}`)
           return true
         } catch (error) {
-          console.error(`Error fetching properties for camera ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `Error fetching properties for camera ${deviceId}:`, error)
           return false
         }
       },
@@ -860,11 +859,11 @@ export function createCameraActions() {
         },
         deviceId: string
       ): void {
-        console.log(`Starting property polling for camera ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `Starting property polling for camera ${deviceId}`)
 
         const device = this.getDeviceById(deviceId)
         if (!device) {
-          console.error(`Cannot start polling: Device not found ${deviceId}`)
+          log.error({ deviceIds: [deviceId] }, `Cannot start polling: Device not found ${deviceId}`)
           return
         }
 
@@ -893,14 +892,14 @@ export function createCameraActions() {
             // Get current device before each poll cycle to ensure we have latest state
             const currentDevice = this.getDeviceById(deviceId)
             if (!currentDevice || !currentDevice.isConnected) {
-              console.log(`Device ${deviceId} is no longer connected, stopping property polling`)
+              log.debug({ deviceIds: [deviceId] }, `Device ${deviceId} is no longer connected, stopping property polling`)
               this.stopCameraPropertyPolling(deviceId)
               return
             }
 
             const client = this.getDeviceClient(deviceId)
             if (!client) {
-              console.warn(`No client available for device ${deviceId}, stopping property polling`)
+              log.warn({ deviceIds: [deviceId] }, `No client available for device ${deviceId}, stopping property polling`)
               this.stopCameraPropertyPolling(deviceId)
               return
             }
@@ -910,7 +909,7 @@ export function createCameraActions() {
             const isExposing = currentProps.isExposing === true
 
             // Log exposure state for debugging
-            console.debug(`Camera ${deviceId} polling cycle - exposure state: ${isExposing ? 'EXPOSING' : 'IDLE'}`)
+            log.debug({ deviceIds: [deviceId] }, `Camera ${deviceId} polling cycle - exposure state: ${isExposing ? 'EXPOSING' : 'IDLE'}`)
 
             // Define base properties that are always polled
             const propsToFetch = [
@@ -943,7 +942,7 @@ export function createCameraActions() {
 
             // Add state properties only if camera is currently exposing
             if (isExposing) {
-              console.debug(`Camera ${deviceId} is exposing, polling state properties`)
+              log.debug({ deviceIds: [deviceId] }, `Camera ${deviceId} is exposing, polling state properties`)
               propsToFetch.push('camerastate')
               propsToFetch.push('imageready')
             }
@@ -994,19 +993,23 @@ export function createCameraActions() {
 
             if (individualPropsToFetch.length > 0) {
               // Debug log showing exactly which properties are being polled
-              console.debug(`Camera ${deviceId} properties being polled:`, individualPropsToFetch)
+              log.debug({ deviceIds: [deviceId] }, `Camera ${deviceId} properties being polled:`, individualPropsToFetch)
 
               // Check if we're polling state properties and log clearly
               const pollingStateProps = individualPropsToFetch.some((prop) => prop === 'camerastate' || prop === 'imageready')
               if (pollingStateProps) {
-                console.log(`%c Camera ${deviceId} polling state properties - isExposing: ${isExposing}`, 'color: blue; font-weight: bold')
+                log.debug(
+                  { deviceIds: [deviceId] },
+                  `%c Camera ${deviceId} polling state properties - isExposing: ${isExposing}`,
+                  'color: blue; font-weight: bold'
+                )
               }
 
               for (const property of individualPropsToFetch) {
                 try {
                   // Log each individual fetch for state properties
                   if (property === 'camerastate' || property === 'imageready') {
-                    console.log(`%c📊 Polling individual property: ${property}`, 'color: green')
+                    log.debug({ deviceIds: [deviceId] }, `%c📊 Polling individual property: ${property}`, 'color: green')
                   }
 
                   const value = await client.getProperty(property)
@@ -1015,7 +1018,7 @@ export function createCameraActions() {
                   // Silently ignore errors for properties that might not be supported
                   // Only log in debug mode to avoid console spam
                   if (property === 'camerastate' || property === 'ccdtemperature' || property === 'imageready') {
-                    console.debug(`Failed to get important camera property ${property}:`, error)
+                    log.debug({ deviceIds: [deviceId] }, `Failed to get important camera property ${property}:`, error)
                   }
                 }
               }
@@ -1042,7 +1045,7 @@ export function createCameraActions() {
               }
             }
           } catch (error) {
-            console.error(`Error polling properties for camera ${deviceId}:`, error)
+            log.error({ deviceIds: [deviceId] }, `Error polling properties for camera ${deviceId}:`, error)
           }
         }, pollInterval)
 
@@ -1050,7 +1053,7 @@ export function createCameraActions() {
         // Note: Window.setInterval returns a number ID
         this._propertyPollingIntervals.set(deviceId, intervalId)
 
-        console.log(`Property polling started for camera ${deviceId} with interval ${pollInterval}ms`)
+        log.debug({ deviceIds: [deviceId] }, `Property polling started for camera ${deviceId} with interval ${pollInterval}ms`)
       },
 
       /**
@@ -1069,7 +1072,7 @@ export function createCameraActions() {
         const intervalId = this._propertyPollingIntervals.get(deviceId)
 
         if (intervalId) {
-          console.log(`Stopping property polling for camera ${deviceId}`)
+          log.debug({ deviceIds: [deviceId] }, `Stopping property polling for camera ${deviceId}`)
           clearInterval(intervalId)
           this._propertyPollingIntervals.delete(deviceId)
 
@@ -1093,7 +1096,7 @@ export function createCameraActions() {
         intervalMs: number
       ): void {
         if (intervalMs < 100) {
-          console.warn(`Polling interval too small (${intervalMs}ms), using 100ms minimum`)
+          log.warn({ deviceIds: [deviceId] }, `Polling interval too small (${intervalMs}ms), using 100ms minimum`)
           intervalMs = 100
         }
 
@@ -1121,16 +1124,16 @@ export function createCameraActions() {
       ): void {
         const device = this.getDeviceById(deviceId)
         if (!device) {
-          console.error(`Cannot set preferred image format: Device not found ${deviceId}`)
+          log.error({ deviceIds: [deviceId] }, `Cannot set preferred image format: Device not found ${deviceId}`)
           return
         }
 
         if (device.type !== 'camera') {
-          console.error(`Device ${deviceId} is not a camera`)
+          log.error({ deviceIds: [deviceId] }, `Device ${deviceId} is not a camera`)
           return
         }
 
-        console.log(`Setting preferred image format for ${deviceId} to ${format}`)
+        log.debug({ deviceIds: [deviceId] }, `Setting preferred image format for ${deviceId} to ${format}`)
         this.updateDeviceProperties(deviceId, {
           preferredImageFormat: format
         })
@@ -1140,7 +1143,7 @@ export function createCameraActions() {
        * Cleanup all device state tracking when a device is disconnected or removed
        */
       cleanupDeviceState(this: CameraState, deviceId: string): void {
-        console.log(`Cleaning up device state tracking for camera ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `Cleaning up device state tracking for camera ${deviceId}`)
 
         // Remove from device state tracking
         this._deviceStateAvailableProps.delete(deviceId)
@@ -1159,7 +1162,7 @@ export function createCameraActions() {
         },
         deviceId: string
       ): void {
-        console.log(`Handling disconnection for camera ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `Handling disconnection for camera ${deviceId}`)
 
         // Stop property polling
         this.stopCameraPropertyPolling(deviceId)
@@ -1184,7 +1187,7 @@ export function createCameraActions() {
         },
         deviceId: string
       ): void {
-        console.log(`Handling connection for camera ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `Handling connection for camera ${deviceId}`)
 
         // Initialize devicestate tracking for this device
         if (!this._deviceStateAvailableProps.has(deviceId)) {

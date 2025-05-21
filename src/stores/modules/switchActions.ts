@@ -4,6 +4,7 @@
  * Provides functionality for interacting with switch devices.
  */
 
+import log from '@/plugins/logger'
 import type { Device, DeviceEvent } from '../types/device-store.types' // Ensure Device is imported if used by UnifiedStoreType context implicitly
 // import type { CoreState } from './coreActions' // This might become unused if SwitchActionContext is removed and actions use UnifiedStoreType
 import type { UnifiedStoreType } from '../UnifiedStore'
@@ -61,7 +62,7 @@ export function createSwitchActions(): {
       _getSwitchClient(this: UnifiedStoreType, deviceId: string): SwitchClient | null {
         const device: Device | null = this.getDeviceById(deviceId)
         if (!device || !isSwitch(device)) {
-          console.error(`[SwitchStore] Device ${deviceId} not found or is not a Switch device.`)
+          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Device ${deviceId} not found or is not a Switch device.`)
           return null
         }
         let baseUrl = ''
@@ -69,7 +70,7 @@ export function createSwitchActions(): {
         else if (device.address && device.port) baseUrl = `http://${device.address}:${device.port}`
         else if (device.ipAddress && device.port) baseUrl = `http://${device.ipAddress}:${device.port}`
         else {
-          console.error(`[SwitchStore] Device ${deviceId} has incomplete address details.`)
+          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Device ${deviceId} has incomplete address details.`)
           return null
         }
         if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
@@ -86,7 +87,7 @@ export function createSwitchActions(): {
           this.updateDevice(deviceId, { sw_maxSwitch: maxSwitch, sw_switches: switches })
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'switchDetails', value: { maxSwitch, switches } } as DeviceEvent)
         } catch (error) {
-          console.error(`[SwitchStore] Error fetching switch details for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Error fetching switch details for ${deviceId}.`, error)
           this.updateDevice(deviceId, { sw_maxSwitch: null, sw_switches: null })
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to fetch switch details: ${error}` } as DeviceEvent)
         }
@@ -117,7 +118,7 @@ export function createSwitchActions(): {
             await this.fetchSwitchDetails(deviceId) // Fallback to full refresh if switch wasn't in store
           }
         } catch (error) {
-          console.error(`[SwitchStore] Error setting value for switch ${switchId} on ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Error setting value for switch ${switchId} on ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set switch value: ${error}` } as DeviceEvent)
           await this.fetchSwitchDetails(deviceId) // Ensure consistency on error
         }
@@ -139,7 +140,7 @@ export function createSwitchActions(): {
             await this.fetchSwitchDetails(deviceId)
           }
         } catch (error) {
-          console.error(`[SwitchStore] Error setting name for switch ${switchId} on ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Error setting name for switch ${switchId} on ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set switch name: ${error}` } as DeviceEvent)
           await this.fetchSwitchDetails(deviceId)
         }
@@ -161,7 +162,7 @@ export function createSwitchActions(): {
             result: 'success'
           } as DeviceEvent)
         } catch (error) {
-          console.error(`[SwitchStore] Error setting async state for switch ${switchId} on ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Error setting async state for switch ${switchId} on ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set async switch state: ${error}` } as DeviceEvent)
         }
       },
@@ -180,7 +181,7 @@ export function createSwitchActions(): {
             result: 'success'
           } as DeviceEvent)
         } catch (error) {
-          console.error(`[SwitchStore] Error setting async value for switch ${switchId} on ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Error setting async value for switch ${switchId} on ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set async switch value: ${error}` } as DeviceEvent)
         }
       },
@@ -204,7 +205,7 @@ export function createSwitchActions(): {
           } as DeviceEvent)
           return isComplete
         } catch (error) {
-          console.error(`[SwitchStore] Error checking state change completion for switch ${switchId} on ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Error checking state change completion for switch ${switchId} on ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to check state change completion: ${error}` } as DeviceEvent)
           return null
         }
@@ -224,7 +225,7 @@ export function createSwitchActions(): {
         if (!oldSwitches || oldSwitches.length === 0) {
           // Also check if oldSwitches is empty
           // Consider if fetching all details is appropriate or if it should just skip this poll cycle
-          console.warn(`[SwitchStore] No switch details available for ${deviceId} during poll, attempting to fetch.`)
+          log.warn({ deviceIds: [deviceId] }, `[SwitchStore] No switch details available for ${deviceId} during poll, attempting to fetch.`)
           await this.fetchSwitchDetails(deviceId)
           return
         }
@@ -241,7 +242,7 @@ export function createSwitchActions(): {
               this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: `switchValue_${i}`, value: newValue } as DeviceEvent)
             }
           } catch (error) {
-            console.warn(`[SwitchStore] Error polling value for switch ${i} on ${deviceId}:`, error)
+            log.warn({ deviceIds: [deviceId] }, `[SwitchStore] Error polling value for switch ${i} on ${deviceId}.`, error)
             // Continue to the next switch in the loop
           }
         }
@@ -261,7 +262,7 @@ export function createSwitchActions(): {
         this._sw_isPolling.set(deviceId, true)
         const timerId = window.setInterval(() => this._pollSwitchStatus(deviceId), pollInterval)
         this._sw_pollingTimers.set(deviceId, timerId)
-        console.log(`[SwitchStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
+        log.debug({ deviceIds: [deviceId], pollInterval }, `[SwitchStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       stopSwitchPolling(this: UnifiedStoreType, deviceId: string): void {
@@ -269,18 +270,18 @@ export function createSwitchActions(): {
         if (this._sw_pollingTimers.has(deviceId)) {
           clearInterval(this._sw_pollingTimers.get(deviceId)!)
           this._sw_pollingTimers.delete(deviceId)
-          console.log(`[SwitchStore] Stopped polling for ${deviceId}.`)
+          log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Stopped polling for ${deviceId}.`)
         }
       },
 
       handleSwitchConnected(this: UnifiedStoreType, deviceId: string): void {
-        console.log(`[SwitchStore] Switch ${deviceId} connected. Fetching details and starting poll.`)
+        log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Switch ${deviceId} connected. Fetching details and starting poll.`)
         this.fetchSwitchDetails(deviceId)
         this.startSwitchPolling(deviceId)
       },
 
       handleSwitchDisconnected(this: UnifiedStoreType, deviceId: string): void {
-        console.log(`[SwitchStore] Switch ${deviceId} disconnected. Stopping poll and clearing state.`)
+        log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Switch ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopSwitchPolling(deviceId)
         this.updateDevice(deviceId, { sw_maxSwitch: null, sw_switches: null })
       }

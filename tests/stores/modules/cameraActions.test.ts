@@ -5,6 +5,7 @@ import type { AlpacaClient } from '@/api/AlpacaClient' // Main client type
 import type { UnifiedDevice, DeviceEvent } from '@/stores/types/device-store.types'
 import type { DeviceState } from '@/types/device.types' // Ensured correct path
 import { createAlpacaClient } from '@/api/AlpacaClient'
+import log from '@/plugins/logger'
 
 // Local type definition for AlpacaResponse if not easily importable
 export interface AlpacaResponse<T> {
@@ -73,6 +74,7 @@ describe('cameraActions', () => {
   let mockGetDeviceClient: MockInstance<(id: string) => AlpacaClient | null>
   let mockConsoleError: MockInstance<
     (
+      args: any, // eslint-disable-line @typescript-eslint/no-explicit-any
       message?: any, // eslint-disable-line @typescript-eslint/no-explicit-any
       ...optionalParams: any[] // eslint-disable-line @typescript-eslint/no-explicit-any
     ) => void
@@ -105,7 +107,7 @@ describe('cameraActions', () => {
     mockEmitEvent = vi.spyOn(store as any, '_emitEvent')
     mockGetDeviceById = vi.spyOn(store, 'getDeviceById')
     mockGetDeviceClient = vi.spyOn(store, 'getDeviceClient')
-    mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockConsoleError = vi.spyOn(log, 'error').mockImplementation(() => {})
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockTrackExposureProgress = vi.spyOn(store as any, 'trackExposureProgress').mockImplementation(async () => {})
 
@@ -250,7 +252,7 @@ describe('cameraActions', () => {
       const errorMessage = 'Failed to get camera info from client'
       mockAlpacaClientInstance.getCameraInfo.mockRejectedValueOnce(new Error(errorMessage))
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(log, 'error').mockImplementation(() => {})
 
       // Act
       const result = await store.fetchCameraProperties(deviceId)
@@ -288,7 +290,7 @@ describe('cameraActions', () => {
         return null
       })
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(log, 'error').mockImplementation(() => {})
       mockAlpacaClientInstance.getCameraInfo.mockClear() // Ensure no previous calls interfere
       mockStartCameraPropertyPolling.mockClear()
 
@@ -341,7 +343,7 @@ describe('cameraActions', () => {
         return { ...mockAlpacaClientInstance } as unknown as AlpacaClient
       })
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(log, 'error').mockImplementation(() => {})
       mockAlpacaClientInstance.getCameraInfo.mockClear()
       mockStartCameraPropertyPolling.mockClear()
 
@@ -437,8 +439,8 @@ describe('cameraActions', () => {
 
     it('should set up an interval, call helpers, and attempt to fetch properties', async () => {
       // Arrange
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
+      const consoleLogSpy = vi.spyOn(log, 'info').mockImplementation(() => {})
+      const consoleDebugSpy = vi.spyOn(log, 'debug').mockImplementation(() => {})
       // Mock getProperty on the client returned by getDeviceClient for this specific test
       const specificClientMock = { ...mockAlpacaClientInstance, getProperty: vi.fn().mockResolvedValue('test-prop-value') }
       mockGetDeviceClient.mockReturnValueOnce(specificClientMock as unknown as AlpacaClient)
@@ -449,8 +451,8 @@ describe('cameraActions', () => {
       // Assert: Initial setup
       expect(mockStopCameraPropertyPolling).toHaveBeenCalledTimes(1) // Called to clear previous timers
       expect(store._propertyPollingIntervals.has(deviceId)).toBe(true)
-      expect(consoleLogSpy).toHaveBeenCalledWith(`Starting property polling for camera ${deviceId}`)
-      expect(consoleLogSpy).toHaveBeenCalledWith(`Property polling started for camera ${deviceId} with interval 1000ms`)
+      expect(consoleDebugSpy).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Starting property polling for camera ${deviceId}`)
+      expect(consoleDebugSpy).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Property polling started for camera ${deviceId} with interval 1000ms`)
 
       // Assert: After one interval tick
       await vi.advanceTimersByTimeAsync(1000) // Advance by the poll interval
@@ -687,13 +689,16 @@ describe('cameraActions', () => {
       const startPollingSpy = vi.spyOn(store as any, 'startCameraPropertyPolling').mockImplementation(() => {})
       const tooSmallInterval = 50
       const minimumInterval = 100
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleWarnSpy = vi.spyOn(log, 'warn').mockImplementation(() => {})
 
       // Act
       store.setPropertyPollingInterval(deviceId, tooSmallInterval)
 
       // Assert
-      expect(consoleWarnSpy).toHaveBeenCalledWith(`Polling interval too small (${tooSmallInterval}ms), using 100ms minimum`)
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        { deviceIds: [deviceId] },
+        `Polling interval too small (${tooSmallInterval}ms), using 100ms minimum`
+      )
       expect(mockUpdateDeviceProperties).toHaveBeenCalledTimes(1)
       expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
         propertyPollIntervalMs: minimumInterval // Expect it to be corrected to 100ms
@@ -780,6 +785,7 @@ describe('cameraActions', () => {
         expect(result).toBe(false)
         expect(mockAlpacaClientInstance.put).toHaveBeenCalledTimes(1)
         expect(mockConsoleError).toHaveBeenCalledWith(
+          { deviceIds: [deviceId] },
           expect.stringContaining('[UnifiedStore/cameraActions] Error starting exposure on camera test-cam-control'),
           expect.any(Error)
         )
@@ -797,7 +803,10 @@ describe('cameraActions', () => {
         const result = await store.startCameraExposure(deviceId, duration, light)
 
         expect(result).toBe(false)
-        expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('Device test-cam-control not found for startCameraExposure'))
+        expect(mockConsoleError).toHaveBeenCalledWith(
+          { deviceIds: [deviceId] },
+          expect.stringContaining('Device test-cam-control not found for startCameraExposure')
+        )
         expect(mockAlpacaClientInstance.put).not.toHaveBeenCalled()
         expect(mockTrackExposureProgress).not.toHaveBeenCalled()
       })
@@ -808,6 +817,7 @@ describe('cameraActions', () => {
 
         expect(result).toBe(false)
         expect(mockConsoleError).toHaveBeenCalledWith(
+          { deviceIds: [deviceId] },
           expect.stringContaining('No client available for device test-cam-control for startCameraExposure')
         )
         expect(mockAlpacaClientInstance.put).not.toHaveBeenCalled()
@@ -983,12 +993,12 @@ describe('cameraActions', () => {
       testSpecificClient.getDeviceUrl = vi.fn().mockReturnValue('should.not.be.called.url')
       testSpecificClient.get = vi.fn().mockRejectedValue(new Error('should.not.be.called.error'))
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleWarnSpy = vi.spyOn(log, 'warn').mockImplementation(() => {})
 
       await store.handleExposureComplete(deviceId)
 
       expect(testSpecificClient.getProperty).toHaveBeenCalledWith('imageready')
-      expect(consoleWarnSpy).toHaveBeenCalledWith('Camera reports image is not ready, skipping image download')
+      expect(consoleWarnSpy).toHaveBeenCalledWith({ deviceIds: [deviceId] }, 'Camera reports image is not ready, skipping image download')
       expect(fetchMock).not.toHaveBeenCalled()
       expect(testSpecificClient.getDeviceUrl).not.toHaveBeenCalled()
       expect(testSpecificClient.get).not.toHaveBeenCalled()
@@ -1028,13 +1038,13 @@ describe('cameraActions', () => {
 
       mockGetDeviceById.mockImplementation(stagedGetDeviceByIdMockFn)
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(log, 'error').mockImplementation(() => {})
 
       await store.handleExposureComplete(deviceId)
 
       const consoleErrorCalls = consoleErrorSpy.mock.calls
       const expectedErrorMessage = `Device ${deviceId} not found after imageready check`
-      const specificErrorLogged = consoleErrorCalls.some((call) => call[0] === expectedErrorMessage)
+      const specificErrorLogged = consoleErrorCalls.some((call) => call[1] === expectedErrorMessage)
       expect(specificErrorLogged, 'The specific error message about device not found after imageready was not logged.').toBe(true)
 
       expect(stagedGetDeviceByIdMockFn, 'stagedGetDeviceByIdMockFn was not called exactly once').toHaveBeenCalledTimes(1)
@@ -1129,7 +1139,7 @@ describe('cameraActions', () => {
       expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
       expect(mockCallDeviceMethod).toHaveBeenCalledWith(deviceId, 'abortexposure', [])
 
-      expect(mockConsoleError).toHaveBeenCalledWith(`Error aborting exposure on camera ${deviceId}:`, abortError)
+      expect(mockConsoleError).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Error aborting exposure on camera ${deviceId}:`, abortError)
 
       // Check that properties are reset even on error, as per the implementation's catch block
       expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
@@ -1150,7 +1160,7 @@ describe('cameraActions', () => {
       await expect(store.abortCameraExposure(deviceId)).rejects.toThrow(deviceNotFoundError)
 
       expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
-      expect(mockConsoleError).toHaveBeenCalledWith(`Error aborting exposure on camera ${deviceId}:`, deviceNotFoundError)
+      expect(mockConsoleError).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Error aborting exposure on camera ${deviceId}:`, deviceNotFoundError)
       expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
         isExposing: false,
         exposureProgress: 0,
@@ -1283,7 +1293,7 @@ describe('cameraActions', () => {
 
       expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
       expect(mockCallDeviceMethod).toHaveBeenCalledWith(deviceId, 'cooleron', [{ CoolerOn: true }])
-      expect(mockConsoleError).toHaveBeenCalledWith(`Error setting camera ${deviceId} cooler:`, coolerOnError)
+      expect(mockConsoleError).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Error setting camera ${deviceId} cooler:`, coolerOnError)
       expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
       expect(mockEmitEvent).not.toHaveBeenCalled()
     })
@@ -1301,7 +1311,7 @@ describe('cameraActions', () => {
       expect(mockCallDeviceMethod).toHaveBeenCalledTimes(2)
       expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, deviceId, 'cooleron', [{ CoolerOn: true }])
       expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, deviceId, 'setccdtemperature', [{ SetCCDTemperature: targetTemperature }])
-      expect(mockConsoleError).toHaveBeenCalledWith(`Error setting camera ${deviceId} cooler:`, setTempError)
+      expect(mockConsoleError).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Error setting camera ${deviceId} cooler:`, setTempError)
       // updateDeviceProperties and emitEvent should not be called if the second call fails
       expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
       expect(mockEmitEvent).not.toHaveBeenCalled()
@@ -1383,7 +1393,7 @@ describe('cameraActions', () => {
 
       expect(mockCallDeviceMethod).toHaveBeenCalledTimes(1)
       expect(mockCallDeviceMethod).toHaveBeenCalledWith(deviceId, 'binx', [{ BinX: 2 }])
-      expect(mockConsoleError).toHaveBeenCalledWith(`Error setting camera ${deviceId} binning:`, binxError)
+      expect(mockConsoleError).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Error setting camera ${deviceId} binning:`, binxError)
       expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
       expect(mockEmitEvent).not.toHaveBeenCalled()
     })
@@ -1402,7 +1412,7 @@ describe('cameraActions', () => {
       expect(mockCallDeviceMethod).toHaveBeenCalledTimes(2) // binx and biny called
       expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, deviceId, 'binx', [{ BinX: 2 }])
       expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, deviceId, 'biny', [{ BinY: 2 }])
-      expect(mockConsoleError).toHaveBeenCalledWith(`Error setting camera ${deviceId} binning:`, binyError)
+      expect(mockConsoleError).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Error setting camera ${deviceId} binning:`, binyError)
       // updateDeviceProperties and emitEvent should not be called if the second call fails
       expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
       expect(mockEmitEvent).not.toHaveBeenCalled()

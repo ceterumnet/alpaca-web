@@ -4,7 +4,7 @@ import { useUnifiedStore, type UnifiedStoreType } from '@/stores/UnifiedStore'
 import type { SwitchDeviceProperties, Device, UnifiedDevice, DeviceEvent, StoreOptions } from '@/stores/types/device-store.types'
 import { SwitchClient, type ISwitchDetail } from '@/api/alpaca/switch-client'
 import { type SwitchDevice as CoreSwitchDevice } from '@/types/device.types'
-
+import log from '@/plugins/logger'
 // Define a type for the mocked SwitchClient methods
 type MockedSwitchClientMethods = {
   getProperty: MockInstance<(...args: unknown[]) => Promise<unknown>>
@@ -1018,13 +1018,14 @@ describe('switchActions', () => {
       })
 
       it('should log warning if client.getSwitchValue fails for one switch but continue for others', async () => {
-        const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        const consoleWarnSpy = vi.spyOn(log, 'warn').mockImplementation(() => {})
         mockSwitchClientInstance.getSwitchValue.mockRejectedValueOnce(new Error('Poll fail for S0')).mockResolvedValueOnce(false)
 
         await store._pollSwitchStatus(deviceId)
 
         expect(consoleWarnSpy).toHaveBeenCalledWith(
-          expect.stringContaining(`[SwitchStore] Error polling value for switch 0 on ${deviceId}:`),
+          { deviceIds: [deviceId] },
+          expect.stringContaining(`[SwitchStore] Error polling value for switch 0 on ${deviceId}.`),
           expect.any(Error)
         )
         expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenCalledTimes(2)

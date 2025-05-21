@@ -16,6 +16,7 @@ import type { Device } from '@/types/device.types'
 import type { DeviceEvent } from '../types/device-store.types'
 import type { AlpacaClient } from '@/api/AlpacaClient'
 import { formatSiderealTime, parseRaString, parseDecString } from '@/utils/astroCoordinates'
+import log from '@/plugins/logger'
 
 // Define telescope state interface with property polling intervals
 export interface TelescopeState {
@@ -47,7 +48,7 @@ export function createTelescopeActions() {
         },
         deviceId: string
       ): Promise<boolean> {
-        console.log(`Fetching properties for telescope ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Fetching properties for telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
         if (!device) {
@@ -96,9 +97,9 @@ export function createTelescopeActions() {
             try {
               const value = await client.getProperty(property)
               properties[property] = value
-              console.log(`Telescope ${deviceId} property ${property} = ${value}`)
+              log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Telescope ${deviceId} property ${property} = ${value}.`)
             } catch (error) {
-              console.warn(`Failed to get telescope property ${property}:`, error)
+              log.warn({ deviceIds: [deviceId] }, `[TelescopeActions] Failed to get telescope property ${property}:`, error)
             }
           }
 
@@ -125,10 +126,10 @@ export function createTelescopeActions() {
           // Now start polling for the read/write properties
           this.startTelescopePropertyPolling(deviceId)
 
-          console.log(`Successfully fetched properties for telescope ${deviceId}`)
+          log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Successfully fetched properties for telescope ${deviceId}.`)
           return true
         } catch (error) {
-          console.error(`Error fetching properties for telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error fetching properties for telescope ${deviceId}.`, error)
           return false
         }
       },
@@ -148,11 +149,11 @@ export function createTelescopeActions() {
         },
         deviceId: string
       ): void {
-        console.log(`Starting property polling for telescope ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Starting property polling for telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
         if (!device) {
-          console.error(`Cannot start polling: Device not found ${deviceId}`)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Cannot start polling: Device not found ${deviceId}.`)
           return
         }
 
@@ -208,14 +209,14 @@ export function createTelescopeActions() {
             // If device is disconnected, stop polling
             const currentDevice = this.getDeviceById(deviceId)
             if (!currentDevice || !currentDevice.isConnected) {
-              console.log(`Device ${deviceId} is no longer connected, stopping property polling`)
+              log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Device ${deviceId} is no longer connected, stopping property polling.`)
               this.stopTelescopePropertyPolling(deviceId)
               return
             }
 
             const client = this.getDeviceClient(deviceId)
             if (!client) {
-              console.warn(`No client available for device ${deviceId}, stopping property polling`)
+              log.warn({ deviceIds: [deviceId] }, `[TelescopeActions] No client available for device ${deviceId}, stopping property polling.`)
               this.stopTelescopePropertyPolling(deviceId)
               return
             }
@@ -245,13 +246,17 @@ export function createTelescopeActions() {
                       availableProps.add(prop)
                     }
                   }
-                  console.log(`Device ${deviceId} has ${availableProps.size} properties available via devicestate:`, Array.from(availableProps))
+                  log.debug(
+                    { deviceIds: [deviceId] },
+                    `[TelescopeActions] Device ${deviceId} has ${availableProps.size} properties available via devicestate:`,
+                    Array.from(availableProps)
+                  )
 
                   // Update the available properties map
                   this._deviceStateAvailableProps.set(deviceId, availableProps)
                 }
               } catch (error) {
-                console.warn(`Error fetching devicestate for ${deviceId}:`, error)
+                log.warn({ deviceIds: [deviceId] }, `[TelescopeActions] Error fetching devicestate for ${deviceId}:`, error)
                 // If devicestate completely fails, mark as unsupported to avoid future attempts
                 this._deviceStateUnsupported.add(deviceId)
                 deviceState = null
@@ -299,11 +304,15 @@ export function createTelescopeActions() {
 
             if (remainingProps.length > 0) {
               if (deviceState) {
-                console.debug(
-                  `Polling ${remainingProps.length} remaining properties individually for device ${deviceId}: ${remainingProps.join(', ')}`
+                log.debug(
+                  { deviceIds: [deviceId] },
+                  `[TelescopeActions] Polling ${remainingProps.length} remaining properties individually for device ${deviceId}: ${remainingProps.join(', ')}`
                 )
               } else {
-                console.debug(`Polling all ${remainingProps.length} properties individually for device ${deviceId} (devicestate not available)`)
+                log.debug(
+                  { deviceIds: [deviceId] },
+                  `[TelescopeActions] Polling all ${remainingProps.length} properties individually for device ${deviceId} (devicestate not available)`
+                )
               }
 
               for (const property of remainingProps) {
@@ -335,7 +344,7 @@ export function createTelescopeActions() {
                   // Silently ignore errors for properties that might not be supported
                   // Only log important properties
                   if (property === 'rightascension' || property === 'declination' || property === 'tracking') {
-                    console.debug(`Failed to get important telescope property ${property}:`, error)
+                    log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Failed to get important telescope property ${property}:`, error)
                   }
                 }
               }
@@ -395,7 +404,7 @@ export function createTelescopeActions() {
               }
             }
           } catch (error) {
-            console.error(`Error polling properties for telescope ${deviceId}:`, error)
+            log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error polling properties for telescope ${deviceId}:`, error)
           }
         }, pollInterval)
 
@@ -403,7 +412,7 @@ export function createTelescopeActions() {
         // Note: Window.setInterval returns a number ID
         this._propertyPollingIntervals.set(deviceId, intervalId)
 
-        console.log(`Property polling started for telescope ${deviceId} with interval ${pollInterval}ms`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Property polling started for telescope ${deviceId} with interval ${pollInterval}ms`)
       },
 
       /**
@@ -417,7 +426,7 @@ export function createTelescopeActions() {
         const intervalId = this._propertyPollingIntervals.get(deviceId)
 
         if (intervalId) {
-          console.log(`Stopping property polling for telescope ${deviceId}`)
+          log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Stopping property polling for telescope ${deviceId}.`)
           clearInterval(intervalId)
           this._propertyPollingIntervals.delete(deviceId)
         }
@@ -436,7 +445,7 @@ export function createTelescopeActions() {
         intervalMs: number
       ): void {
         if (intervalMs < 100) {
-          console.warn(`Polling interval too small (${intervalMs}ms), using 100ms minimum`)
+          log.warn({ deviceIds: [deviceId] }, `[TelescopeActions] Polling interval too small (${intervalMs}ms), using 100ms minimum`)
           intervalMs = 100
         }
 
@@ -461,7 +470,7 @@ export function createTelescopeActions() {
         },
         deviceId: string
       ): Promise<boolean> {
-        console.log(`Parking telescope ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Parking telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
         if (!device) {
@@ -496,7 +505,7 @@ export function createTelescopeActions() {
 
           return true
         } catch (error) {
-          console.error(`Error parking telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error parking telescope ${deviceId}:`, error)
 
           // Emit error event
           this._emitEvent({
@@ -521,7 +530,7 @@ export function createTelescopeActions() {
         },
         deviceId: string
       ): Promise<boolean> {
-        console.log(`Unparking telescope ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Unparking telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
         if (!device) {
@@ -556,7 +565,7 @@ export function createTelescopeActions() {
 
           return true
         } catch (error) {
-          console.error(`Error unparking telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error unparking telescope ${deviceId}:`, error)
 
           // Emit error event
           this._emitEvent({
@@ -583,7 +592,7 @@ export function createTelescopeActions() {
         enabled: boolean,
         trackingRate?: number
       ): Promise<boolean> {
-        console.log(`Setting tracking for telescope ${deviceId} to ${enabled}, rate: ${trackingRate}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting tracking for telescope ${deviceId} to ${enabled}, rate: ${trackingRate}.`)
         const device = this.getDeviceById(deviceId)
         if (!device) {
           throw new Error(`Device not found: ${deviceId}`)
@@ -608,7 +617,7 @@ export function createTelescopeActions() {
           } as DeviceEvent)
           return true
         } catch (error) {
-          console.error(`Error setting tracking for telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error setting tracking for telescope ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set tracking: ${error}` } as DeviceEvent)
           return false
         }
@@ -625,7 +634,7 @@ export function createTelescopeActions() {
         deviceId: string,
         rate: number
       ): Promise<boolean> {
-        console.log(`Setting guide rate declination for telescope ${deviceId} to ${rate}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting guide rate declination for telescope ${deviceId} to ${rate}.`)
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
         if (!client) {
           throw new Error(`No Telescope client available for device ${deviceId}`)
@@ -642,7 +651,7 @@ export function createTelescopeActions() {
           await this.fetchTelescopeProperties(deviceId) // Re-fetch to update state
           return true
         } catch (error) {
-          console.error(`Error setting guide rate declination for telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error setting guide rate declination for telescope ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set guide rate declination: ${error}` } as DeviceEvent)
           return false
         }
@@ -659,7 +668,7 @@ export function createTelescopeActions() {
         deviceId: string,
         rate: number
       ): Promise<boolean> {
-        console.log(`Setting guide rate right ascension for telescope ${deviceId} to ${rate}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting guide rate right ascension for telescope ${deviceId} to ${rate}.`)
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
         if (!client) {
           throw new Error(`No Telescope client available for device ${deviceId}`)
@@ -676,7 +685,7 @@ export function createTelescopeActions() {
           await this.fetchTelescopeProperties(deviceId) // Re-fetch to update state
           return true
         } catch (error) {
-          console.error(`Error setting guide rate right ascension for telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error setting guide rate right ascension for telescope ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set guide rate RA: ${error}` } as DeviceEvent)
           return false
         }
@@ -693,7 +702,7 @@ export function createTelescopeActions() {
         deviceId: string,
         time: number
       ): Promise<boolean> {
-        console.log(`Setting slew settle time for telescope ${deviceId} to ${time}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting slew settle time for telescope ${deviceId} to ${time}.`)
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
         if (!client) {
           throw new Error(`No Telescope client available for device ${deviceId}`)
@@ -710,7 +719,7 @@ export function createTelescopeActions() {
           await this.fetchTelescopeProperties(deviceId) // Re-fetch to update state
           return true
         } catch (error) {
-          console.error(`Error setting slew settle time for telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error setting slew settle time for telescope ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set slew settle time: ${error}` } as DeviceEvent)
           return false
         }
@@ -731,7 +740,7 @@ export function createTelescopeActions() {
         declination: number,
         useAsync: boolean = true
       ): Promise<boolean> {
-        console.log(`Slewing telescope ${deviceId} to RA/Dec:`, {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Slewing telescope ${deviceId} to RA/Dec:`, {
           rightAscension,
           declination,
           useAsync
@@ -787,7 +796,7 @@ export function createTelescopeActions() {
 
           return true
         } catch (error) {
-          console.error(`Error slewing telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error slewing telescope ${deviceId}:`, error)
 
           // Emit error event
           this._emitEvent({
@@ -819,7 +828,7 @@ export function createTelescopeActions() {
         azimuth: number,
         useAsync: boolean = true
       ): Promise<boolean> {
-        console.log(`Slewing telescope ${deviceId} to Alt/Az:`, {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Slewing telescope ${deviceId} to Alt/Az:`, {
           altitude,
           azimuth,
           useAsync
@@ -874,7 +883,7 @@ export function createTelescopeActions() {
 
           return true
         } catch (error) {
-          console.error(`Error slewing telescope ${deviceId} to Alt/Az:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error slewing telescope ${deviceId} to Alt/Az:`, error)
 
           // Emit error event
           this._emitEvent({
@@ -903,7 +912,7 @@ export function createTelescopeActions() {
         },
         deviceId: string
       ): Promise<boolean> {
-        console.log(`Aborting slew for telescope ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Aborting slew for telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
         if (!device) {
@@ -931,7 +940,7 @@ export function createTelescopeActions() {
 
           return true
         } catch (error) {
-          console.error(`Error aborting slew for telescope ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error aborting slew for telescope ${deviceId}:`, error)
           throw error
         }
       },
@@ -952,7 +961,7 @@ export function createTelescopeActions() {
         decString: string,
         useAsync: boolean = true
       ): Promise<boolean> {
-        console.log(`Slewing telescope ${deviceId} to RA/Dec strings:`, {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Slewing telescope ${deviceId} to RA/Dec strings:`, {
           raString,
           decString,
           useAsync
@@ -961,7 +970,7 @@ export function createTelescopeActions() {
         const device = this.getDeviceById(deviceId)
         if (!device) {
           const errorMsg = `Device not found: ${deviceId} (input RA: "${raString}", Dec: "${decString}")`
-          console.error(`slewToCoordinatesString: ${errorMsg}`)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] slewToCoordinatesString: ${errorMsg}`)
           this._emitEvent({
             type: 'telescopeSlewError',
             deviceId,
@@ -973,7 +982,7 @@ export function createTelescopeActions() {
 
         if (device.type !== 'telescope') {
           const errorMsg = `Device ${deviceId} is not a telescope (input RA: "${raString}", Dec: "${decString}")`
-          console.error(`slewToCoordinatesString: ${errorMsg}`)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] slewToCoordinatesString: ${errorMsg}`)
           this._emitEvent({
             type: 'telescopeSlewError',
             deviceId,
@@ -995,7 +1004,7 @@ export function createTelescopeActions() {
           } else {
             errorMessage = `Unknown error parsing RA/Dec strings or slewing (input RA: "${raString}", Dec: "${decString}")`
           }
-          console.error(`slewToCoordinatesString for telescope ${deviceId}:`, errorMessage, error)
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] slewToCoordinatesString for telescope ${deviceId}:`, errorMessage, error)
           this._emitEvent({
             type: 'telescopeSlewError',
             deviceId,

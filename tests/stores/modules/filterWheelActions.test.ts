@@ -6,7 +6,7 @@ import type { AlpacaClient } from '@/api/AlpacaClient'
 import { FilterWheelClient } from '@/api/alpaca/filterwheel-client' // Import for vi.mock name and instanceof
 import type { FilterWheelDevice, FilterWheelDeviceProperties } from '@/types/device.types'
 import type { UnifiedDevice } from '@/types/device.types'
-
+import log from '@/plugins/logger'
 // Mock the AlpacaClient module
 const mockAlpacaClientInstance = {
   getproperty: vi.fn(),
@@ -564,14 +564,15 @@ describe('filterWheelActions', () => {
 
       it('should log warning and not throw if client.getPosition rejects', async () => {
         mockFilterWheelClientInstance.getPosition.mockRejectedValueOnce(new Error('Poll failed'))
-        const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {}) // Suppress console output
+        const consoleWarnSpy = vi.spyOn(log, 'warn').mockImplementation(() => {}) // Suppress console output
 
         await store._pollFilterWheelStatus(deviceId)
 
         expect(mockFilterWheelClientInstance.getPosition).toHaveBeenCalledTimes(1)
         expect(store.updateDevice).not.toHaveBeenCalled()
         expect(consoleWarnSpy).toHaveBeenCalledWith(
-          expect.stringContaining('[FilterWheelStore] Error polling status for filterwheel-1:'),
+          { deviceIds: [deviceId] },
+          expect.stringContaining('[FilterWheelStore] Error polling status for filterwheel-1.'),
           expect.any(Error)
         )
         consoleWarnSpy.mockRestore()

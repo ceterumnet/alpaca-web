@@ -237,16 +237,16 @@ The following table tracks the progress of migrating console logging statements 
 | `src/components/devices/SimplifiedCameraPanel.vue`         | Reviewed | [X]      |
 | `src/components/devices/SimplifiedTelescopePanel.vue`      | Reviewed | [X]      |
 | `src/components/devices/SimplifiedFilterWheelPanel.vue`    | Reviewed | [X]      |
-| `src/stores/modules/cameraActions.ts`                      | Pending  | [ ]      |
-| `src/stores/modules/focuserActions.ts`                     | Pending  | [ ]      |
-| `src/stores/modules/discoveryActions.ts`                   | Pending  | [ ]      |
-| `src/stores/modules/observingConditionsActions.ts`         | Pending  | [ ]      |
-| `src/stores/modules/switchActions.ts`                      | Pending  | [ ]      |
-| `src/stores/modules/filterWheelActions.ts`                 | Pending  | [ ]      |
-| `src/stores/modules/telescopeActions.ts`                   | Pending  | [ ]      |
-| `src/stores/modules/domeActions.ts`                        | Pending  | [ ]      |
-| `src/stores/modules/coreActions.ts`                        | Pending  | [ ]      |
-| `src/stores/modules/safetyMonitorActions.ts`               | Pending  | [ ]      |
+| `src/stores/modules/cameraActions.ts`                      | Reviewed | [X]      |
+| `src/stores/modules/focuserActions.ts`                     | Reviewed | [X]      |
+| `src/stores/modules/discoveryActions.ts`                   | Reviewed | [X]      |
+| `src/stores/modules/observingConditionsActions.ts`         | Reviewed | [X]      |
+| `src/stores/modules/switchActions.ts`                      | Reviewed | [X]      |
+| `src/stores/modules/filterWheelActions.ts`                 | Reviewed | [X]      |
+| `src/stores/modules/telescopeActions.ts`                   | Reviewed | [X]      |
+| `src/stores/modules/domeActions.ts`                        | Reviewed | [X]      |
+| `src/stores/modules/coreActions.ts`                        | Reviewed | [X]      |
+| `src/stores/modules/safetyMonitorActions.ts`               | Reviewed | [X]      |
 | `src/utils/debugUtils.ts`                                  | Skipped  | [ ]      |
 
 <!-- Add more files as needed -->

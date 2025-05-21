@@ -12,6 +12,7 @@
  * Provides functionality for discovering and auto-configuring devices
  */
 
+import log from '@/plugins/logger'
 import type { StoreOptions, DeviceEvent } from '@/stores/types/device-store.types'
 
 export interface DiscoveryState {
@@ -29,11 +30,11 @@ export function createDiscoveryActions() {
     actions: {
       startDiscovery(this: DiscoveryState & { _emitEvent: (event: DeviceEvent) => void }, options: StoreOptions = {}): boolean {
         if (this.isDiscovering) {
-          console.warn('Discovery already in progress')
+          log.warn('Discovery already in progress')
           return false
         }
 
-        console.log('Starting device discovery')
+        log.debug('Starting device discovery')
         this.isDiscovering = true
 
         // Reset discovery timeout if it exists
@@ -51,11 +52,11 @@ export function createDiscoveryActions() {
 
       stopDiscovery(this: DiscoveryState & { _emitEvent: (event: DeviceEvent) => void }, options: StoreOptions = {}): boolean {
         if (!this.isDiscovering) {
-          console.warn('No discovery in progress')
+          log.warn('No discovery in progress')
           return false
         }
 
-        console.log('Stopping device discovery')
+        log.debug('Stopping device discovery')
         this.isDiscovering = false
 
         if (this.discoveryTimeout !== null) {

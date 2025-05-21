@@ -1,3 +1,4 @@
+import log from '@/plugins/logger'
 import type { UnifiedStoreType } from '../UnifiedStore'
 import type { Device, DeviceEvent, FocuserDeviceProperties } from '../types/device-store.types'
 import { FocuserClient } from '@/api/alpaca/focuser-client' // Assuming this will be created
@@ -61,7 +62,7 @@ export function createFocuserActions(): {
       _getFocuserClient(this: UnifiedStoreType, deviceId: string): FocuserClient | null {
         const device: Device | null = this.getDeviceById(deviceId)
         if (!device || !isFocuser(device)) {
-          console.error(`[FocuserStore] Device ${deviceId} not found or is not a Focuser.`)
+          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Device ${deviceId} not found or is not a Focuser.`)
           return null
         }
         let baseUrl = ''
@@ -69,7 +70,7 @@ export function createFocuserActions(): {
         else if (device.address && device.port) baseUrl = `http://${device.address}:${device.port}`
         else if (device.ipAddress && device.port) baseUrl = `http://${device.ipAddress}:${device.port}`
         else {
-          console.error(`[FocuserStore] Device ${deviceId} has incomplete address details.`)
+          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Device ${deviceId} has incomplete address details.`)
           return null
         }
         if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
@@ -77,7 +78,7 @@ export function createFocuserActions(): {
         try {
           return new FocuserClient(baseUrl, deviceNumber, device)
         } catch (error) {
-          console.error(`[FocuserStore] Failed to create FocuserClient for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId], error }, `[FocuserStore] Failed to create FocuserClient for ${deviceId}.`)
           return null
         }
       },
@@ -104,7 +105,7 @@ export function createFocuserActions(): {
           // Fetch dynamic status as well
           await this.fetchFocuserStatus(deviceId)
         } catch (error) {
-          console.error(`[FocuserStore] Error fetching details for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Error fetching details for ${deviceId}.`, error)
           this._emitEvent({
             type: 'deviceApiError',
             deviceId,
@@ -133,7 +134,7 @@ export function createFocuserActions(): {
           this.updateDeviceProperties(deviceId, updates)
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'focuserStatus', value: updates } as DeviceEvent)
         } catch (error) {
-          console.error(`[FocuserStore] Error fetching status for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Error fetching status for ${deviceId}.`, error)
           // Do not emit API error for routine polling failures unless critical
         }
       },
@@ -147,7 +148,7 @@ export function createFocuserActions(): {
           this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'moveFocuser', args: [targetPosition], result: 'success' } as DeviceEvent)
           await this.fetchFocuserStatus(deviceId) // Refresh status
         } catch (error) {
-          console.error(`[FocuserStore] Error moving focuser ${deviceId} to ${targetPosition}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Error moving focuser ${deviceId} to ${targetPosition}.`, error)
           this._emitEvent({
             type: 'deviceApiError',
             deviceId,
@@ -167,7 +168,7 @@ export function createFocuserActions(): {
           this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'haltFocuser', args: [], result: 'success' } as DeviceEvent)
           await this.fetchFocuserStatus(deviceId)
         } catch (error) {
-          console.error(`[FocuserStore] Error halting focuser ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Error halting focuser ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, action: 'haltFocuser', error: `Failed to halt focuser: ${error}` } as DeviceEvent)
           await this.fetchFocuserStatus(deviceId)
         }
@@ -181,7 +182,7 @@ export function createFocuserActions(): {
           this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setFocuserTempComp', args: [enable], result: 'success' } as DeviceEvent)
           await this.fetchFocuserStatus(deviceId)
         } catch (error) {
-          console.error(`[FocuserStore] Error setting TempComp for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Error setting TempComp for ${deviceId}.`, error)
           this._emitEvent({
             type: 'deviceApiError',
             deviceId,
@@ -216,7 +217,7 @@ export function createFocuserActions(): {
         this._focuser_isPolling.set(deviceId, true)
         const timerId = window.setInterval(() => this._pollFocuserStatus(deviceId), pollInterval)
         this._focuser_pollingTimers.set(deviceId, timerId)
-        console.log(`[FocuserStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
+        log.debug({ deviceId, pollInterval }, `[FocuserStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       stopFocuserPolling(this: UnifiedStoreType, deviceId: string): void {
@@ -224,12 +225,12 @@ export function createFocuserActions(): {
         if (this._focuser_pollingTimers.has(deviceId)) {
           clearInterval(this._focuser_pollingTimers.get(deviceId)!)
           this._focuser_pollingTimers.delete(deviceId)
-          console.log(`[FocuserStore] Stopped polling for ${deviceId}.`)
+          log.debug({ deviceId }, `[FocuserStore] Stopped polling for ${deviceId}.`)
         }
       },
 
       handleFocuserConnected(this: UnifiedStoreType, deviceId: string): void {
-        console.log(`[FocuserStore] Focuser ${deviceId} connected. Fetching details and starting poll.`)
+        log.debug({ deviceId }, `[FocuserStore] Focuser ${deviceId} connected. Fetching details and starting poll.`)
         // It's important to initialize the device's specific state in the module if it uses one.
         // For example, if focuserTargetPositions was used:
         // if (!this.focuserTargetPositions.has(deviceId)) {
@@ -240,7 +241,7 @@ export function createFocuserActions(): {
       },
 
       handleFocuserDisconnected(this: UnifiedStoreType, deviceId: string): void {
-        console.log(`[FocuserStore] Focuser ${deviceId} disconnected. Stopping poll and clearing state.`)
+        log.debug({ deviceId }, `[FocuserStore] Focuser ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopFocuserPolling(deviceId)
         // Clear device-specific data from module state
         // if (this.focuserTargetPositions) this.focuserTargetPositions.delete(deviceId);

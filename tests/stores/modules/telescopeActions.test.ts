@@ -7,6 +7,7 @@ import { createAlpacaClient } from '@/api/AlpacaClient' // Actual import for moc
 import type { Device, TelescopeDevice, DeviceState } from '@/types/device.types'
 import type { DeviceEvent, StoreOptions } from '@/stores/types/device-store.types'
 import * as astroCoordinates from '@/utils/astroCoordinates' // Import for mocking
+// import log from '@/plugins/logger'
 
 // Mock the AlpacaClient module
 const mockAlpacaClientInstance = {

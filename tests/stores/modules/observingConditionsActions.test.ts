@@ -7,7 +7,7 @@ import type { IObservingConditionsData } from '@/api/alpaca/observingconditions-
 import type { ObservingConditionsDeviceProperties } from '@/stores/modules/observingConditionsActions'
 import type { UnifiedDevice } from '@/types/device.types'
 import type { DeviceEvent } from '@/stores/types/device-store.types'
-
+import log from '@/plugins/logger'
 // Mock the ObservingConditionsClient
 // Define a shared mock instance
 const mockOCClientInstance = {
@@ -70,8 +70,10 @@ describe('observingConditionsActions.ts', () => {
     _mockUpdateDevice = vi.spyOn(store, 'updateDevice')
     _mockEmitEvent = vi.spyOn(store, '_emitEvent')
 
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(log, 'error').mockImplementation(() => {})
+    vi.spyOn(log, 'debug').mockImplementation(() => {})
+    vi.spyOn(log, 'info').mockImplementation(() => {})
+    vi.spyOn(log, 'warn').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -84,15 +86,19 @@ describe('observingConditionsActions.ts', () => {
       _mockGetDeviceById.mockReturnValue(null)
       const client = store._getOCClient('non-existent-device')
       expect(client).toBeNull()
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('[OCStore] Device non-existent-device not found'))
+      expect(log.error).toHaveBeenCalledWith(
+        { deviceIds: ['non-existent-device'] },
+        `[OCStore] Device non-existent-device not found or is not an ObservingConditions device.`
+      )
     })
 
     it('should return null if device is not an ObservingConditions device', () => {
       _mockGetDeviceById.mockReturnValueOnce({ ...mockDevice, type: 'camera' } as UnifiedDevice)
       const client = store._getOCClient(testDeviceId)
       expect(client).toBeNull()
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining(`[OCStore] Device ${testDeviceId} not found or is not an ObservingConditions device.`)
+      expect(log.error).toHaveBeenCalledWith(
+        { deviceIds: [testDeviceId] },
+        `[OCStore] Device ${testDeviceId} not found or is not an ObservingConditions device.`
       )
     })
 
@@ -100,7 +106,7 @@ describe('observingConditionsActions.ts', () => {
       _mockGetDeviceById.mockReturnValueOnce({ ...mockDevice, apiBaseUrl: undefined, address: undefined, ipAddress: undefined } as UnifiedDevice)
       const client = store._getOCClient(testDeviceId)
       expect(client).toBeNull()
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining(`[OCStore] Device ${testDeviceId} has incomplete address details.`))
+      expect(log.error).toHaveBeenCalledWith({ deviceIds: [testDeviceId] }, `[OCStore] Device ${testDeviceId} has incomplete address details.`)
     })
 
     it('should create and return an ObservingConditionsClient with apiBaseUrl', () => {
@@ -197,7 +203,7 @@ describe('observingConditionsActions.ts', () => {
         deviceId: testDeviceId,
         error: `Failed to fetch observing conditions: ${testError}`
       })
-      expect(console.error).toHaveBeenCalledWith(`[OCStore] Error fetching conditions for ${testDeviceId}:`, testError)
+      expect(log.error).toHaveBeenCalledWith({ deviceIds: [testDeviceId] }, `[OCStore] Error fetching conditions for ${testDeviceId}.`, testError)
     })
   })
 
@@ -251,7 +257,7 @@ describe('observingConditionsActions.ts', () => {
         deviceId: testDeviceId,
         error: `Failed to set average period: ${testError}`
       })
-      expect(console.error).toHaveBeenCalledWith(`[OCStore] Error setting average period for ${testDeviceId}:`, testError)
+      expect(log.error).toHaveBeenCalledWith({ deviceIds: [testDeviceId] }, `[OCStore] Error setting average period for ${testDeviceId}.`, testError)
       // Verify that fetchObservingConditions was still called to ensure consistency
       expect(mockOCClientInstance.getAllConditions).toHaveBeenCalledTimes(1)
       expect(_mockUpdateDevice).toHaveBeenCalledWith(testDeviceId, { oc_conditions: mockFallbackConditions })
@@ -300,7 +306,11 @@ describe('observingConditionsActions.ts', () => {
         deviceId: testDeviceId,
         error: `Failed to refresh observing conditions: ${testError}`
       })
-      expect(console.error).toHaveBeenCalledWith(`[OCStore] Error refreshing observing conditions for ${testDeviceId}:`, testError)
+      expect(log.error).toHaveBeenCalledWith(
+        { deviceIds: [testDeviceId] },
+        `[OCStore] Error refreshing observing conditions for ${testDeviceId}.`,
+        testError
+      )
       // Depending on implementation, fetchObservingConditions might not be called after a refresh error.
       // The current implementation comments out the re-fetch on error.
       expect(mockOCClientInstance.getAllConditions).not.toHaveBeenCalled()
@@ -489,7 +499,10 @@ describe('observingConditionsActions.ts', () => {
 
         expect(fetchConditionsSpy).toHaveBeenCalledWith(testDeviceId)
         expect(startPollingSpy).toHaveBeenCalledWith(testDeviceId)
-        expect(console.log).toHaveBeenCalledWith(`[OCStore] ObservingConditions ${testDeviceId} connected. Fetching data and starting poll.`)
+        expect(log.debug).toHaveBeenCalledWith(
+          { deviceId: testDeviceId },
+          `[OCStore] ObservingConditions ${testDeviceId} connected. Fetching data and starting poll.`
+        )
       })
 
       it('should not proceed if device is not found (though core connect logic might prevent this)', () => {
@@ -509,7 +522,10 @@ describe('observingConditionsActions.ts', () => {
 
         expect(stopPollingSpy).toHaveBeenCalledWith(testDeviceId)
         expect(_mockUpdateDevice).toHaveBeenCalledWith(testDeviceId, { oc_conditions: null })
-        expect(console.log).toHaveBeenCalledWith(`[OCStore] ObservingConditions ${testDeviceId} disconnected. Stopping poll and clearing state.`)
+        expect(log.debug).toHaveBeenCalledWith(
+          { deviceId: testDeviceId },
+          `[OCStore] ObservingConditions ${testDeviceId} disconnected. Stopping poll and clearing state.`
+        )
       })
 
       it('should proceed even if device is not found (updateDevice will fail gracefully)', () => {

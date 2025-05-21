@@ -8,7 +8,7 @@ import type { UnifiedStoreType } from '../UnifiedStore'
 import type { Device, DeviceEvent } from '../types/device-store.types'
 import { DomeClient } from '@/api/alpaca/dome-client'
 import { isDome } from '@/types/device.types'
-
+import log from '@/plugins/logger'
 // Properties that this module will manage on the Device object in the store
 export interface DomeDeviceProperties {
   dome_altitude?: number | null
@@ -67,7 +67,7 @@ export function createDomeActions(): {
       _getDomeClient(this: UnifiedStoreType, deviceId: string): DomeClient | null {
         const device: Device | null = this.getDeviceById(deviceId)
         if (!device || !isDome(device)) {
-          console.error(`[DomeStore] Device ${deviceId} not found or is not a Dome.`)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Device ${deviceId} not found or is not a Dome.`)
           return null
         }
         let baseUrl = ''
@@ -75,7 +75,7 @@ export function createDomeActions(): {
         else if (device.address && device.port) baseUrl = `http://${device.address}:${device.port}`
         else if (device.ipAddress && device.port) baseUrl = `http://${device.ipAddress}:${device.port}`
         else {
-          console.error(`[DomeStore] Device ${deviceId} has incomplete address details.`)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Device ${deviceId} has incomplete address details.`)
           return null
         }
         if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
@@ -100,7 +100,7 @@ export function createDomeActions(): {
           this.updateDevice(deviceId, updates)
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'domeStatus', value: updates } as DeviceEvent)
         } catch (error) {
-          console.error(`[DomeStore] Error fetching status for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Error fetching status for ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to fetch dome status: ${error}` } as DeviceEvent)
         }
       },
@@ -117,7 +117,7 @@ export function createDomeActions(): {
           await this.fetchDomeStatus(deviceId) // Refresh status after action
           this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: action, args: [], result: 'success' /* simplistic */ } as DeviceEvent)
         } catch (error) {
-          console.error(`[DomeStore] Error executing ${action} on ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Error executing ${action} on ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to ${action} dome: ${error}` } as DeviceEvent)
           await this.fetchDomeStatus(deviceId) // Refresh status even on error
         }
@@ -148,7 +148,7 @@ export function createDomeActions(): {
           // For now, we'll assume no immediate state change that needs re-fetching.
           this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setPark', args: [], result: 'success' } as DeviceEvent)
         } catch (error) {
-          console.error(`[DomeStore] Error setting park position for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Error setting park position for ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set park position: ${error}` } as DeviceEvent)
         }
       },
@@ -167,7 +167,7 @@ export function createDomeActions(): {
             result: 'success'
           } as DeviceEvent)
         } catch (error) {
-          console.error(`[DomeStore] Error slewing dome to altitude for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Error slewing dome to altitude for ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to slew to altitude: ${error}` } as DeviceEvent)
           await this.fetchDomeStatus(deviceId) // Refresh status even on error
         }
@@ -187,7 +187,7 @@ export function createDomeActions(): {
             result: 'success'
           } as DeviceEvent)
         } catch (error) {
-          console.error(`[DomeStore] Error slewing dome to azimuth for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Error slewing dome to azimuth for ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to slew to azimuth: ${error}` } as DeviceEvent)
           await this.fetchDomeStatus(deviceId) // Refresh status even on error
         }
@@ -207,7 +207,7 @@ export function createDomeActions(): {
             result: 'success'
           } as DeviceEvent)
         } catch (error) {
-          console.error(`[DomeStore] Error syncing dome to azimuth for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Error syncing dome to azimuth for ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to sync to azimuth: ${error}` } as DeviceEvent)
           await this.fetchDomeStatus(deviceId) // Refresh status even on error
         }
@@ -230,7 +230,7 @@ export function createDomeActions(): {
           // Optionally, full fetchDomeStatus if other related properties might change
           // await this.fetchDomeStatus(deviceId);
         } catch (error) {
-          console.error(`[DomeStore] Error setting dome slaved state for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[DomeStore] Error setting dome slaved state for ${deviceId}:`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set slaved state: ${error}` } as DeviceEvent)
           // Refresh full status on error to ensure consistency
           await this.fetchDomeStatus(deviceId)
@@ -259,7 +259,7 @@ export function createDomeActions(): {
         const timerId = window.setInterval(() => this._pollDomeStatus(deviceId), pollInterval)
         this._dome_pollingTimers.set(deviceId, timerId)
         this._pollDomeStatus(deviceId) // Immediate call after starting
-        console.log(`[DomeStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
+        log.debug({ deviceIds: [deviceId] }, `[DomeStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       stopDomePolling(this: UnifiedStoreType, deviceId: string): void {
@@ -268,20 +268,20 @@ export function createDomeActions(): {
         if (this._dome_pollingTimers.has(deviceId)) {
           clearInterval(this._dome_pollingTimers.get(deviceId)!)
           this._dome_pollingTimers.delete(deviceId)
-          console.log(`[DomeStore] Stopped polling for ${deviceId}.`)
+          log.debug({ deviceIds: [deviceId] }, `[DomeStore] Stopped polling for ${deviceId}.`)
         }
       },
 
       handleDomeConnected(this: UnifiedStoreType, deviceId: string): void {
         if (!deviceId) return // Guard against invalid deviceId
-        console.log(`[DomeStore] Dome ${deviceId} connected. Fetching status and starting poll.`)
+        log.debug({ deviceIds: [deviceId] }, `[DomeStore] Dome ${deviceId} connected. Fetching status and starting poll.`)
         this.fetchDomeStatus(deviceId)
         this.startDomePolling(deviceId)
       },
 
       handleDomeDisconnected(this: UnifiedStoreType, deviceId: string): void {
         if (!deviceId) return // Guard against invalid deviceId
-        console.log(`[DomeStore] Dome ${deviceId} disconnected. Stopping poll and clearing state.`)
+        log.debug({ deviceIds: [deviceId] }, `[DomeStore] Dome ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopDomePolling(deviceId)
         const clearedProps: DomeDeviceProperties = {
           dome_altitude: null,

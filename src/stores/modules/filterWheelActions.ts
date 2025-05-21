@@ -4,6 +4,7 @@
  * Provides functionality for interacting with filter wheel devices.
  */
 
+import log from '@/plugins/logger'
 import { FilterWheelClient } from '@/api/alpaca/filterwheel-client'
 import { isFilterWheel, type FilterWheelDeviceProperties } from '@/types/device.types' // Type guard
 import type { UnifiedStoreType } from '../UnifiedStore'
@@ -45,7 +46,7 @@ export function createFilterWheelActions(): {
       _getFilterWheelClient(this: UnifiedStoreType, deviceId: string): FilterWheelClient | null {
         const device = this.getDeviceById(deviceId)
         if (!device || !isFilterWheel(device)) {
-          console.error(`[FilterWheelStore] Device ${deviceId} not found or is not a FilterWheel.`)
+          log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Device ${deviceId} not found or is not a FilterWheel.`)
           return null
         }
 
@@ -57,7 +58,7 @@ export function createFilterWheelActions(): {
         } else if (device.ipAddress && device.port) {
           baseUrl = `http://${device.ipAddress}:${device.port}`
         } else {
-          console.error(`[FilterWheelStore] Device ${deviceId} has incomplete address details.`)
+          log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Device ${deviceId} has incomplete address details.`)
           return null
         }
         if (baseUrl.endsWith('/')) {
@@ -85,7 +86,7 @@ export function createFilterWheelActions(): {
           this.updateDevice(deviceId, updates)
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'filterWheelDetails', value: updates } as DeviceEvent)
         } catch (error) {
-          console.error(`[FilterWheelStore] Error fetching details for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Error fetching details for ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to fetch filter wheel details: ${error}` } as DeviceEvent)
         }
       },
@@ -103,7 +104,7 @@ export function createFilterWheelActions(): {
           this.updateDevice(deviceId, { fw_currentPosition: newPos, fw_isMoving: false })
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'fw_currentPosition', value: newPos } as DeviceEvent)
         } catch (error) {
-          console.error(`[FilterWheelStore] Error setting position for ${deviceId} to ${position}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Error setting position for ${deviceId} to ${position}.`, error)
           this.updateDevice(deviceId, { fw_isMoving: false })
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set filter wheel position: ${error}` } as DeviceEvent)
           await this.fetchFilterWheelDetails(deviceId)
@@ -116,7 +117,7 @@ export function createFilterWheelActions(): {
       async setFilterWheelName(this: UnifiedStoreType, deviceId: string, filterIndex: number, newName: string): Promise<void> {
         const client = this._getFilterWheelClient(deviceId)
         if (!client) {
-          console.error(`[FilterWheelStore] Could not get client for device ${deviceId} to set filter name.`)
+          log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Could not get client for device ${deviceId} to set filter name.`)
           return Promise.reject(new Error(`FilterWheel client not found for device ${deviceId}.`))
         }
 
@@ -137,9 +138,13 @@ export function createFilterWheelActions(): {
             value: { index: filterIndex, oldName, newName },
             message: `Filter ${filterIndex} name changed from "${oldName}" to "${newName}"`
           } as DeviceEvent)
-          console.log(`[FilterWheelStore] Successfully set name for filter ${filterIndex} on ${deviceId} to "${newName}".`)
+          log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] Successfully set name for filter ${filterIndex} on ${deviceId} to "${newName}".`)
         } catch (error) {
-          console.error(`[FilterWheelStore] Error setting name for filter ${filterIndex} on ${deviceId} to "${newName}":`, error)
+          log.error(
+            { deviceIds: [deviceId] },
+            `[FilterWheelStore] Error setting name for filter ${filterIndex} on ${deviceId} to "${newName}".`,
+            error
+          )
           this._emitEvent({
             type: 'deviceApiError',
             deviceId,
@@ -176,7 +181,7 @@ export function createFilterWheelActions(): {
             this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'fw_currentPosition', value: pos } as DeviceEvent)
           }
         } catch (error) {
-          console.warn(`[FilterWheelStore] Error polling status for ${deviceId}:`, error)
+          log.warn({ deviceIds: [deviceId] }, `[FilterWheelStore] Error polling status for ${deviceId}.`, error)
         }
       },
 
@@ -198,7 +203,7 @@ export function createFilterWheelActions(): {
           this._pollFilterWheelStatus(deviceId)
         }, pollInterval)
         this._fw_pollingTimers.set(deviceId, timerId)
-        console.log(`[FilterWheelStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
+        log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       /**
@@ -209,7 +214,7 @@ export function createFilterWheelActions(): {
         if (this._fw_pollingTimers.has(deviceId)) {
           clearInterval(this._fw_pollingTimers.get(deviceId)!)
           this._fw_pollingTimers.delete(deviceId)
-          console.log(`[FilterWheelStore] Stopped polling for ${deviceId}.`)
+          log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] Stopped polling for ${deviceId}.`)
         }
       },
 
@@ -217,7 +222,7 @@ export function createFilterWheelActions(): {
        * Handles actions to take when a filter wheel device connects.
        */
       handleFilterWheelConnected(this: UnifiedStoreType, deviceId: string): void {
-        console.log(`[FilterWheelStore] FilterWheel ${deviceId} connected. Fetching details and starting poll.`)
+        log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] FilterWheel ${deviceId} connected. Fetching details and starting poll.`)
         this.fetchFilterWheelDetails(deviceId)
         this.startFilterWheelPolling(deviceId)
       },
@@ -226,7 +231,7 @@ export function createFilterWheelActions(): {
        * Handles actions to take when a filter wheel device disconnects.
        */
       handleFilterWheelDisconnected(this: UnifiedStoreType, deviceId: string): void {
-        console.log(`[FilterWheelStore] FilterWheel ${deviceId} disconnected. Stopping poll and clearing state.`)
+        log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] FilterWheel ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopFilterWheelPolling(deviceId)
         const clearedProps: FilterWheelDeviceProperties = {
           fw_currentPosition: null,

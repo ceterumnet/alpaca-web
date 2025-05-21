@@ -18,7 +18,7 @@ import type { AlpacaClient } from '@/api/alpaca/base-client'
 import { createAlpacaClient } from '@/api/AlpacaClient'
 import { isValidStateTransition } from '@/types/device.types'
 import type { UnifiedStoreType } from '../UnifiedStore'
-
+import log from '@/plugins/logger'
 export interface CoreState {
   devices: Map<string, Device>
   devicesArray: Device[]
@@ -109,7 +109,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           }
         } catch (error) {
           // If parsing fails, apiBaseUrl remains undefined, which is handled later
-          console.warn(`Could not parse apiBaseUrl from device ID ${device.id}:`, error)
+          log.warn({ deviceIds: [device.id] }, `[CoreActions] Could not parse apiBaseUrl from device ID ${device.id}:`, error)
         }
       }
 
@@ -153,30 +153,30 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
                 try {
                   return createAlpacaClient(apiBaseUrl, type, deviceNum, device)
                 } catch (parseError) {
-                  console.error(`Failed to create client from parsed device ID:`, parseError)
+                  log.error({ deviceIds: [device.id] }, `[CoreActions] Failed to create client from parsed device ID:`, parseError)
                 }
               }
             }
           } catch (error) {
-            console.error(`Failed to parse device ID ${device.id}:`, error)
+            log.error({ deviceIds: [device.id] }, `[CoreActions] Failed to parse device ID ${device.id}:`, error)
           }
         }
-        console.error(`Cannot create API client: missing or invalid apiBaseUrl for device ${device.id}`)
+        log.error({ deviceIds: [device.id] }, `[CoreActions] Cannot create API client: missing or invalid apiBaseUrl for device ${device.id}`)
         return null
       }
       try {
         const deviceNum = typeof device.deviceNum === 'number' ? device.deviceNum : 0
         return createAlpacaClient(device.apiBaseUrl, device.type, deviceNum, device)
       } catch (error) {
-        console.error(`Failed to create client for device ${device.id}:`, error)
+        log.error({ deviceIds: [device.id] }, `[CoreActions] Failed to create client for device ${device.id}:`, error)
         return null
       }
     },
 
     deviceExists(this: UnifiedStoreType, device: Device): boolean {
-      console.log('[UnifiedStore/coreActions] deviceExists called for device ID:', device.id)
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] deviceExists called for device ID:`, device.id)
       const exists = this.devices.has(device.id)
-      console.log('[UnifiedStore/coreActions] Device exists in map?', exists)
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] Device exists in map?`, exists)
       return exists
     },
 
@@ -186,21 +186,21 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         throw new Error(`Cannot connect: Device not found ${deviceId}`)
       }
       if (device.isConnected) {
-        console.log(`Device ${deviceId} is already connected`)
+        log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is already connected`)
         return true
       }
       if (!isValidStateTransition(device.status, 'connecting')) {
         throw new Error(`Invalid state transition from ${device.status} to connecting`)
       }
-      console.log(`Connecting to device ${deviceId}`)
+      log.debug({ deviceIds: [deviceId] }, `[CoreActions] Connecting to device ${deviceId}`)
       this.updateDevice(deviceId, {
         isConnecting: true,
         status: 'connecting',
         stateHistory: [...(device.stateHistory || []), { from: device.status, to: 'connecting', timestamp: Date.now() }]
       })
       try {
-        console.log('[connectDevice] Device object at connect time:', device)
-        console.log('[connectDevice] device.apiBaseUrl:', device.apiBaseUrl)
+        log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device object at connect time:`, device)
+        log.debug({ deviceIds: [deviceId] }, `[CoreActions] device.apiBaseUrl:`, device.apiBaseUrl)
         let client = this.getDeviceClient(deviceId)
         if (!client && device.apiBaseUrl) {
           const plainClient = this.createDeviceClient(device)
@@ -226,39 +226,39 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         this._emitEvent({ type: 'deviceConnected', deviceId })
         if (device.type === 'camera' && this.fetchCameraProperties) {
           try {
-            console.log(`Device ${deviceId} is a camera, fetching properties`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is a camera, fetching properties`)
             await this.fetchCameraProperties(deviceId)
             this.updateDeviceCapabilities(deviceId)
           } catch (propError) {
-            console.error(`Error fetching camera properties: ${propError}`)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Error fetching camera properties: ${propError}`)
           }
         } else if (device.type === 'telescope' && this.fetchTelescopeProperties) {
           try {
-            console.log(`Device ${deviceId} is a telescope, fetching properties`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is a telescope, fetching properties`)
             await this.fetchTelescopeProperties(deviceId)
             this.updateDeviceCapabilities(deviceId)
           } catch (propError) {
-            console.error(`Error fetching telescope properties: ${propError}`)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Error fetching telescope properties: ${propError}`)
           }
         } else if (device.type === 'focuser' && this.handleFocuserConnected) {
           try {
-            console.log(`Device ${deviceId} is a focuser, handling connection.`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is a focuser, handling connection.`)
             this.handleFocuserConnected(deviceId)
             this.updateDeviceCapabilities(deviceId)
           } catch (focuserError) {
-            console.error(`Error handling focuser connection: ${focuserError}`)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Error handling focuser connection: ${focuserError}`)
           }
         } else if (device.type === 'safetymonitor' && this.handleSafetyMonitorConnected) {
           try {
-            console.log(`Device ${deviceId} is a safety monitor, handling connection.`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is a safety monitor, handling connection.`)
             this.handleSafetyMonitorConnected(deviceId)
           } catch (smError) {
-            console.error(`Error handling safety monitor connection: ${smError}`)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Error handling safety monitor connection: ${smError}`)
           }
         }
         return true
       } catch (error) {
-        console.error(`Error connecting to device ${deviceId}:`, error)
+        log.error({ deviceIds: [deviceId] }, `[CoreActions] Error connecting to device ${deviceId}:`, error)
         this.updateDevice(deviceId, {
           isConnecting: false,
           isConnected: false,
@@ -301,19 +301,19 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         }
         if (device.type === 'camera' && this.stopCameraPropertyPolling) {
           try {
-            console.log(`Stopping property polling for camera ${deviceId}`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Stopping property polling for camera ${deviceId}`)
             this.stopCameraPropertyPolling(deviceId)
           } catch (error) {
-            console.error(`Error stopping camera property polling: ${error}`)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Error stopping camera property polling: ${error}`)
           }
         }
         if (device.type === 'telescope') {
           if (this.stopTelescopePropertyPolling) {
             try {
-              console.log(`Stopping property polling for telescope ${deviceId}`)
+              log.debug({ deviceIds: [deviceId] }, `[CoreActions] Stopping property polling for telescope ${deviceId}`)
               this.stopTelescopePropertyPolling(deviceId)
             } catch (error) {
-              console.error(`Error stopping telescope property polling: ${error}`)
+              log.error({ deviceIds: [deviceId] }, `[CoreActions] Error stopping telescope property polling: ${error}`)
             }
           }
           if (this._deviceStateAvailableProps) {
@@ -325,18 +325,18 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         }
         if (device.type === 'focuser' && this.handleFocuserDisconnected) {
           try {
-            console.log(`Device ${deviceId} is a focuser, handling disconnection.`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is a focuser, handling disconnection.`)
             this.handleFocuserDisconnected(deviceId)
           } catch (focuserError) {
-            console.error(`Error handling focuser disconnection: ${focuserError}`)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Error handling focuser disconnection: ${focuserError}`)
           }
         }
         if (device.type === 'safetymonitor' && this.handleSafetyMonitorDisconnected) {
           try {
-            console.log(`Device ${deviceId} is a safety monitor, handling disconnection.`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is a safety monitor, handling disconnection.`)
             this.handleSafetyMonitorDisconnected(deviceId)
           } catch (smError) {
-            console.error(`Error handling safety monitor disconnection: ${smError}`)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Error handling safety monitor disconnection: ${smError}`)
           }
         }
         await client.setProperty('connected', false)
@@ -349,7 +349,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         this._emitEvent({ type: 'deviceDisconnected', deviceId })
         return true
       } catch (error) {
-        console.error(`Error disconnecting from device ${deviceId}:`, error)
+        log.error({ deviceIds: [deviceId] }, `[CoreActions] Error disconnecting from device ${deviceId}:`, error)
         this.updateDevice(deviceId, {
           isDisconnecting: false,
           status: 'error',
@@ -365,33 +365,33 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
     },
 
     addDevice(this: UnifiedStoreType, device: Partial<Device>, options: StoreOptions = {}): boolean {
-      console.log('[UnifiedStore/coreActions] addDevice called for device:', JSON.parse(JSON.stringify(device)))
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] addDevice called for device:`, JSON.parse(JSON.stringify(device)))
       if (!device.id || !device.type) {
-        console.error('Device ID and Type are required to add a device')
+        log.error({ deviceIds: [device.id] }, `[CoreActions] Device ID and Type are required to add a device`)
         return false
       }
 
       if (this.devices.has(device.id)) {
-        console.warn(`[UnifiedStore/coreActions] Attempted to add duplicate device with ID: ${device.id}. Add operation skipped.`)
+        log.warn({ deviceIds: [device.id] }, `[CoreActions] Attempted to add duplicate device with ID: ${device.id}. Add operation skipped.`)
         return false // Fail if device already exists
       }
 
       const normalizedDevice = this._normalizeDevice(device as Device)
-      console.log('[UnifiedStore/coreActions] Normalized device:', JSON.parse(JSON.stringify(normalizedDevice)))
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] Normalized device:`, JSON.parse(JSON.stringify(normalizedDevice)))
       this.devices.set(normalizedDevice.id, normalizedDevice)
       this.devicesArray = Array.from(this.devices.values())
-      console.log('[UnifiedStore/coreActions] devicesArray updated in addDevice. New length:', this.devicesArray.length)
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] devicesArray updated in addDevice. New length:`, this.devicesArray.length)
       if (normalizedDevice.apiBaseUrl) {
         const plainClient = this.createDeviceClient(normalizedDevice)
         if (plainClient) {
           this.deviceClients.set(normalizedDevice.id, markRaw(plainClient))
-          console.log('[UnifiedStore/coreActions] API client created for device:', normalizedDevice.id)
+          log.debug({ deviceIds: [device.id] }, `[CoreActions] API client created for device:`, normalizedDevice.id)
         }
       }
       if (!options.silent) {
         this._emitEvent({ type: 'deviceAdded', device: normalizedDevice })
       }
-      console.log('[UnifiedStore/coreActions] Device added successfully to map and array:', normalizedDevice.id)
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] Device added successfully to map and array:`, normalizedDevice.id)
       return true
     },
 
@@ -399,28 +399,28 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       if (!deviceId || !this.devices.has(deviceId)) return false
       const device = this.devices.get(deviceId)
       if (this.deviceClients.has(deviceId)) {
-        console.log(`Removing API client for device ${deviceId}`)
+        log.debug({ deviceIds: [deviceId] }, `[CoreActions] Removing API client for device ${deviceId}`)
         this.deviceClients.delete(deviceId)
       }
       if (device && device.type === 'camera' && this.stopCameraPropertyPolling) {
         try {
-          console.log(`Stopping property polling for camera ${deviceId}`)
+          log.debug({ deviceIds: [deviceId] }, `[CoreActions] Stopping property polling for camera ${deviceId}`)
           this.stopCameraPropertyPolling(deviceId)
         } catch (error) {
-          console.error(`Error stopping camera property polling: ${error}`)
+          log.error({ deviceIds: [deviceId] }, `[CoreActions] Error stopping camera property polling: ${error}`)
         }
       }
       if (device && device.type === 'telescope') {
         if (this.stopTelescopePropertyPolling) {
           try {
-            console.log(`Stopping property polling for telescope ${deviceId}`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Stopping property polling for telescope ${deviceId}`)
             this.stopTelescopePropertyPolling(deviceId)
           } catch (error) {
-            console.error(`Error stopping telescope property polling: ${error}`)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Error stopping telescope property polling: ${error}`)
           }
         }
         if (this._deviceStateAvailableProps) {
-          console.log(`Clearing devicestate tracking for telescope ${deviceId}`)
+          log.debug({ deviceIds: [deviceId] }, `[CoreActions] Clearing devicestate tracking for telescope ${deviceId}`)
           this._deviceStateAvailableProps.delete(deviceId)
         }
         if (this._deviceStateUnsupported) {
@@ -460,7 +460,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           const plainClient = this.createDeviceClient(updatedDevice)
           if (plainClient) {
             this.deviceClients.set(deviceId, markRaw(plainClient))
-            console.log(`Updated API client for device ${deviceId}`)
+            log.debug({ deviceIds: [deviceId] }, `[CoreActions] Updated API client for device ${deviceId}`)
           }
         }
       }
@@ -533,10 +533,10 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         const cameraDevices = this.devicesArray.filter((device: Device) => device.type === 'camera')
         for (const camera of cameraDevices) {
           try {
-            console.log(`Stopping property polling for camera ${camera.id}`)
+            log.debug({ deviceIds: [camera.id] }, `[CoreActions] Stopping property polling for camera ${camera.id}`)
             this.stopCameraPropertyPolling(camera.id)
           } catch (error) {
-            console.error(`Error stopping camera property polling: ${error}`)
+            log.error({ deviceIds: [camera.id] }, `[CoreActions] Error stopping camera property polling: ${error}`)
           }
         }
       }
@@ -544,10 +544,10 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         const telescopeDevices = this.devicesArray.filter((device: Device) => device.type === 'telescope')
         for (const telescope of telescopeDevices) {
           try {
-            console.log(`Stopping property polling for telescope ${telescope.id}`)
+            log.debug({ deviceIds: [telescope.id] }, `[CoreActions] Stopping property polling for telescope ${telescope.id}`)
             this.stopTelescopePropertyPolling(telescope.id)
           } catch (error) {
-            console.error(`Error stopping telescope property polling: ${error}`)
+            log.error({ deviceIds: [telescope.id] }, `[CoreActions] Error stopping telescope property polling: ${error}`)
           }
         }
       }
@@ -555,10 +555,10 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         const focuserDevices = this.devicesArray.filter((device: Device) => device.type === 'focuser')
         for (const focuser of focuserDevices) {
           try {
-            console.log(`Stopping property polling for focuser ${focuser.id}`)
+            log.debug({ deviceIds: [focuser.id] }, `[CoreActions] Stopping property polling for focuser ${focuser.id}`)
             this.stopFocuserPolling(focuser.id)
           } catch (error) {
-            console.error(`Error stopping focuser property polling: ${error}`)
+            log.error({ deviceIds: [focuser.id] }, `[CoreActions] Error stopping focuser property polling: ${error}`)
           }
         }
       }
@@ -658,7 +658,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         this.lastDeviceStateFetch.set(deviceId, { timestamp, data: state || {} })
         return state
       } catch (error) {
-        console.error(`Error fetching state for device ${deviceId}:`, error)
+        log.error({ deviceIds: [deviceId] }, `[CoreActions] Error fetching state for device ${deviceId}:`, error)
         return null
       }
     },
@@ -700,7 +700,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
                 }
               }
             } catch (err) {
-              console.error(`Failed to parse device ID ${device.id}:`, err)
+              log.error({ deviceIds: [device.id] }, `[CoreActions] Failed to parse device ID ${device.id}:`, err)
             }
           }
           if (apiBaseUrl) {
@@ -709,7 +709,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
               deviceNum
             })
           } else {
-            console.error(`Cannot create client: insufficient connection information for device ${deviceId}`)
+            log.error({ deviceIds: [device.id] }, `[CoreActions] Cannot create client: insufficient connection information for device ${deviceId}`)
           }
         }
         const updatedDevice = this.getDeviceById(deviceId)
@@ -730,7 +730,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       try {
         return await operation(client)
       } catch (error) {
-        console.error(`Error executing operation on device ${deviceId}:`, error)
+        log.error({ deviceIds: [deviceId] }, `[CoreActions] Error executing operation on device ${deviceId}:`, error)
         throw error
       }
     },
@@ -768,8 +768,8 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
 
     async callDeviceMethod(this: UnifiedStoreType, deviceId: string, method: string, args: unknown[] = []): Promise<unknown> {
       if (method === 'camerastate' || method === 'imageready') {
-        console.log(`%c📞 Method Call: ${method} for device ${deviceId}`, 'color: orange; font-weight: bold')
-        console.log('Call stack:', new Error().stack)
+        log.debug({ deviceIds: [deviceId] }, `%c📞 Method Call: ${method} for device ${deviceId}`, 'color: orange; font-weight: bold')
+        log.debug({ deviceIds: [deviceId] }, 'Call stack:', new Error().stack)
       }
       const device = this.getDeviceById(deviceId)
       if (!device) {
@@ -778,7 +778,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       const client = this.getDeviceClient(deviceId)
       if (client) {
         try {
-          console.log(`Calling method ${method} on device ${deviceId} via API client`)
+          log.debug({ deviceIds: [deviceId] }, `Calling method ${method} on device ${deviceId} via API client`)
           let result: unknown
           if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
             const params = args[0] as Record<string, unknown>
@@ -795,11 +795,11 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           })
           return result
         } catch (error) {
-          console.error(`Error calling method ${method} on device ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[CoreActions] Error calling method ${method} on device ${deviceId}:`, error)
           throw error
         }
       } else {
-        console.warn(`No API client for ${deviceId} in callDeviceMethod, attempting to create.`)
+        log.warn({ deviceIds: [deviceId] }, `[CoreActions] No API client for ${deviceId} in callDeviceMethod, attempting to create.`)
         return this.executeDeviceOperation(deviceId, async (newClient) => {
           if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
             const params = args[0] as Record<string, unknown>
@@ -819,22 +819,22 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
             return opResult
           })
           .catch((err) => {
-            console.error(`Failed to create client or call method ${method} on device ${deviceId}:`, err)
+            log.error({ deviceIds: [deviceId] }, `[CoreActions] Failed to create client or call method ${method} on device ${deviceId}:`, err)
             throw err
           })
       }
     },
 
     addDeviceWithCheck(this: UnifiedStoreType, device: Device): boolean {
-      console.log('[UnifiedStore/coreActions] addDeviceWithCheck called for device:', JSON.parse(JSON.stringify(device)))
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] addDeviceWithCheck called for device:`, JSON.parse(JSON.stringify(device)))
       if (this.deviceExists(device)) {
-        console.log('[UnifiedStore/coreActions] Device already exists:', device.id)
+        log.debug({ deviceIds: [device.id] }, `[CoreActions] Device already exists:`, device.id)
         return false
       }
-      console.log('[UnifiedStore/coreActions] Device does not exist, attempting to add:', device.id)
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] Device does not exist, attempting to add:`, device.id)
       const added = this.addDevice(device, { silent: true })
-      console.log('[UnifiedStore/coreActions] Result of this.addDevice:', added, 'for device:', device.id)
-      console.log('[UnifiedStore/coreActions] State of devicesArray after add attempt:', JSON.parse(JSON.stringify(this.devicesArray)))
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] Result of this.addDevice:`, added, 'for device:', device.id)
+      log.debug({ deviceIds: [device.id] }, `[CoreActions] State of devicesArray after add attempt:`, JSON.parse(JSON.stringify(this.devicesArray)))
       return added
     },
 
@@ -854,7 +854,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         }
         return await this.getDeviceProperty(deviceId, property)
       } catch (error) {
-        console.debug(`Devicestate failed for ${deviceId}, falling back to individual property fetch:`, error)
+        log.debug({ deviceIds: [deviceId] }, `[CoreActions] Devicestate failed for ${deviceId}, falling back to individual property fetch:`, error)
         return await this.getDeviceProperty(deviceId, property)
       }
     }

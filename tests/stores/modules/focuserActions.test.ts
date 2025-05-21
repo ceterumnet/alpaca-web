@@ -6,6 +6,7 @@ import type { Device, FocuserDeviceProperties } from '@/stores/types/device-stor
 import type { DeviceEvent } from '@/stores/types/device-store.types'
 import { FocuserClient } from '@/api/alpaca/focuser-client' // Actual client for type reference
 import type { StoreOptions } from '@/stores/types/device-store.types'
+import log from '@/plugins/logger'
 
 // Mock the FocuserClient
 const mockFocuserClientInstance = {
@@ -295,13 +296,17 @@ describe('focuserActions', () => {
       // Based on SUT: console.error, but no _emitEvent for deviceApiError in fetchFocuserStatus's catch block
       const error = new Error('Failed to get position')
       vi.mocked(mockFocuserClientInstance.getPosition).mockRejectedValue(error)
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {}) // Suppress console output for test
+      const consoleErrorSpy = vi.spyOn(log, 'error').mockImplementation(() => {}) // Suppress console output for test
 
       await store.fetchFocuserStatus(FOCUSER_DEVICE_ID)
 
       expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
       expect(emitEventSpy).not.toHaveBeenCalled() // No deviceApiError event expected for status polling failures
-      expect(consoleErrorSpy).toHaveBeenCalledWith(`[FocuserStore] Error fetching status for ${FOCUSER_DEVICE_ID}:`, error)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        { deviceIds: [FOCUSER_DEVICE_ID] },
+        `[FocuserStore] Error fetching status for ${FOCUSER_DEVICE_ID}.`,
+        error
+      )
 
       consoleErrorSpy.mockRestore()
     })

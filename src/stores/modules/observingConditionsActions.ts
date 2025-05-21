@@ -4,7 +4,7 @@
  * Provides functionality for interacting with observing conditions devices.
  */
 
-// import type { Device, DeviceEvent } from '../types/device-store.types'
+import log from '@/plugins/logger'
 import { ObservingConditionsClient, type IObservingConditionsData } from '@/api/alpaca/observingconditions-client'
 import { isObservingConditions } from '@/types/device.types'
 import type { UnifiedStoreType } from '../UnifiedStore' // Assuming this path
@@ -59,7 +59,7 @@ export function createObservingConditionsActions(): {
       _getOCClient(this: UnifiedStoreType, deviceId: string): ObservingConditionsClient | null {
         const device = this.getDeviceById(deviceId)
         if (!device || !isObservingConditions(device)) {
-          console.error(`[OCStore] Device ${deviceId} not found or is not an ObservingConditions device.`)
+          log.error({ deviceIds: [deviceId] }, `[OCStore] Device ${deviceId} not found or is not an ObservingConditions device.`)
           return null
         }
         let baseUrl = ''
@@ -67,7 +67,7 @@ export function createObservingConditionsActions(): {
         else if (device.address && device.port) baseUrl = `http://${device.address}:${device.port}`
         else if (device.ipAddress && device.port) baseUrl = `http://${device.ipAddress}:${device.port}`
         else {
-          console.error(`[OCStore] Device ${deviceId} has incomplete address details.`)
+          log.error({ deviceIds: [deviceId] }, `[OCStore] Device ${deviceId} has incomplete address details.`)
           return null
         }
         if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
@@ -83,7 +83,7 @@ export function createObservingConditionsActions(): {
           this.updateDevice(deviceId, { oc_conditions: conditions })
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'observingConditions', value: conditions })
         } catch (error) {
-          console.error(`[OCStore] Error fetching conditions for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[OCStore] Error fetching conditions for ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to fetch observing conditions: ${error}` })
         }
       },
@@ -97,7 +97,7 @@ export function createObservingConditionsActions(): {
           await this.fetchObservingConditions(deviceId)
           this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'setAveragePeriod', args: [period], result: 'success' })
         } catch (error) {
-          console.error(`[OCStore] Error setting average period for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[OCStore] Error setting average period for ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set average period: ${error}` })
           await this.fetchObservingConditions(deviceId) // Ensure consistency
         }
@@ -112,7 +112,7 @@ export function createObservingConditionsActions(): {
           await this.fetchObservingConditions(deviceId)
           this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'refreshObservingConditions', args: [], result: 'success' })
         } catch (error) {
-          console.error(`[OCStore] Error refreshing observing conditions for ${deviceId}:`, error)
+          log.error({ deviceIds: [deviceId] }, `[OCStore] Error refreshing observing conditions for ${deviceId}.`, error)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to refresh observing conditions: ${error}` })
           // Optionally re-fetch even on error to ensure UI consistency if needed,
           // though a refresh failure likely means data hasn't changed or is unavailable.
@@ -140,7 +140,7 @@ export function createObservingConditionsActions(): {
         this._oc_isPolling.set(deviceId, true)
         const timerId = window.setInterval(() => this._pollObservingConditions(deviceId), pollInterval)
         this._oc_pollingTimers.set(deviceId, timerId)
-        console.log(`[OCStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
+        log.debug({ deviceId, pollInterval }, `[OCStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       stopObservingConditionsPolling(this: UnifiedStoreType, deviceId: string): void {
@@ -148,18 +148,18 @@ export function createObservingConditionsActions(): {
         if (this._oc_pollingTimers.has(deviceId)) {
           clearInterval(this._oc_pollingTimers.get(deviceId)!)
           this._oc_pollingTimers.delete(deviceId)
-          console.log(`[OCStore] Stopped polling for ${deviceId}.`)
+          log.debug({ deviceId }, `[OCStore] Stopped polling for ${deviceId}.`)
         }
       },
 
       handleObservingConditionsConnected(this: UnifiedStoreType, deviceId: string): void {
-        console.log(`[OCStore] ObservingConditions ${deviceId} connected. Fetching data and starting poll.`)
+        log.debug({ deviceId }, `[OCStore] ObservingConditions ${deviceId} connected. Fetching data and starting poll.`)
         this.fetchObservingConditions(deviceId)
         this.startObservingConditionsPolling(deviceId)
       },
 
       handleObservingConditionsDisconnected(this: UnifiedStoreType, deviceId: string): void {
-        console.log(`[OCStore] ObservingConditions ${deviceId} disconnected. Stopping poll and clearing state.`)
+        log.debug({ deviceId }, `[OCStore] ObservingConditions ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopObservingConditionsPolling(deviceId)
         this.updateDevice(deviceId, { oc_conditions: null })
       }
