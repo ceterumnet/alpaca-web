@@ -364,10 +364,12 @@ describe('CoverCalibratorClient', () => {
       expect(result.name).toBe(expectedProperties.name)
       // ... add other checks as needed for completeness
 
-      // Check that console.warn was called only for the 'brightness' failure
+      // Check that console.warn was called only for the 'brightness' property failure
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
-      expect(consoleWarnSpy).toHaveBeenCalledWith("Failed to get property 'brightness' (mapped to 'brightness'): Brightness error")
-
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        "Failed to get property 'brightness' (mapped to 'brightness'): Brightness error"
+      )
       DEFAULT_OPTIONS.retries = originalRetries
       DEFAULT_OPTIONS.retryDelay = originalRetryDelay
       DEFAULT_OPTIONS.timeout = originalTimeout

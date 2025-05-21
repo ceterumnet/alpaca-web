@@ -3,6 +3,7 @@ import { FilterWheelClient } from '@/api/alpaca/filterwheel-client'
 import type { Device } from '@/stores/types/device-store.types'
 import { AlpacaError } from '@/api/alpaca/errors'
 import { DEFAULT_OPTIONS } from '@/api/alpaca/types' // For pattern #11
+import logger from '@/plugins/logger'
 
 const mockFetch = (global.fetch = vi.fn())
 const mockFilterWheelDevice = {
@@ -203,7 +204,9 @@ describe('FilterWheelClient', () => {
     let consoleWarnSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
-      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      // consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      // Switch to spying on the actual logger instance for logger plugin compatibility
+      consoleWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
     })
 
     afterEach(() => {

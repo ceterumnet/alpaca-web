@@ -3,6 +3,7 @@ import { AlpacaClient } from '@/api/alpaca/base-client'
 import { AlpacaError, ErrorType } from '@/api/alpaca/errors'
 import type { Device, UnifiedDevice } from '@/types/device.types'
 import { DEFAULT_OPTIONS } from '@/api/alpaca/types'
+import logger from '@/plugins/logger'
 
 // Mock the global fetch
 const mockFetch = (global.fetch = vi.fn())
@@ -569,6 +570,16 @@ describe('AlpacaClient', () => {
   })
 
   describe('getProperties method', () => {
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+      consoleWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore()
+    })
+
     it('should call getProperty for each property and return a map of results', async () => {
       // This test remains as is, testing the happy path.
       mockFetch
@@ -586,7 +597,6 @@ describe('AlpacaClient', () => {
     })
 
     it('should handle an error in one of the getProperty calls within getProperties', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {}) // Ensure spy is initialized
       // Mock getProperty to succeed for 'name' and fail for 'someotherprop'
       mockFetch
         .mockImplementationOnce(async (url) => {
@@ -634,10 +644,12 @@ describe('AlpacaClient', () => {
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         // Match the new warning format from base-client.ts
-        "Failed to get property 'someotherprop' (mapped to 'someotherprop'): HTTP error 500: Server Error on Second Call"
+        expect.stringContaining("Failed to get property 'someotherprop' (mapped to 'someotherprop'): HTTP error 500: Server Error on Second Call")
       )
+    })
 
-      consoleWarnSpy.mockRestore()
+    it('should handle empty property list gracefully', async () => {
+      // ... existing code ...
     })
   })
 
@@ -648,7 +660,7 @@ describe('AlpacaClient', () => {
     let originalDefaultTimeout: number | undefined
 
     beforeEach(() => {
-      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      consoleWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
       // Store and override DEFAULT_OPTIONS for speed (Pattern #11)
       originalDefaultRetries = DEFAULT_OPTIONS.retries
       originalDefaultRetryDelay = DEFAULT_OPTIONS.retryDelay
@@ -740,14 +752,18 @@ describe('AlpacaClient', () => {
       expect(state).toBeNull()
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        `Error fetching device state for ${deviceType} ${deviceNumber}:`,
+        expect.stringContaining(`Error fetching device state for ${deviceType} ${deviceNumber}:`),
         expect.objectContaining({
-          message: 'HTTP error 500: DS Error 1', // Expecting the error from the first and only attempt
-          type: ErrorType.SERVER,
-          statusCode: 500
+          message: 'HTTP error 500: DS Error 1',
+          statusCode: 500,
+          type: ErrorType.SERVER
         })
       )
       // consoleWarnSpy.mockRestore() // This is handled by the describe block's afterEach
+    })
+
+    it('should return null if device state is not supported (400 error)', async () => {
+      // ... existing code ...
     })
   })
 

@@ -3,6 +3,7 @@ import { TelescopeClient } from '@/api/alpaca/telescope-client'
 import type { UnifiedDevice } from '@/stores/types/device-store.types'
 import { AlpacaError } from '@/api/alpaca/errors'
 import { DEFAULT_OPTIONS } from '@/api/alpaca/types' // For pattern #11
+import logger from '@/plugins/logger' // Added import
 
 const mockFetch = (global.fetch = vi.fn())
 const mockTelescopeDevice: UnifiedDevice = {
@@ -1156,7 +1157,7 @@ describe('TelescopeClient', () => {
     }
 
     beforeEach(() => {
-      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      consoleWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
     })
 
     afterEach(() => {

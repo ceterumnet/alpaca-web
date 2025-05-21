@@ -3,6 +3,7 @@ import { CameraClient } from '@/api/alpaca/camera-client'
 import { AlpacaError, ErrorType } from '@/api/alpaca/errors'
 import type { Device, UnifiedDevice } from '@/types/device.types' // Using UnifiedDevice for a more complete mock
 import { DEFAULT_OPTIONS } from '@/api/alpaca/types' // Import for DEFAULT_OPTIONS
+import logger from '@/plugins/logger' // Added import
 
 // Mock the global fetch
 const mockFetch = (global.fetch = vi.fn())
@@ -1005,12 +1006,12 @@ describe('CameraClient', () => {
     let consoleWarnSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
-      // client is ALREADY initialized in the outer beforeEach of CameraClient describe block
-      // We just need to ensure the spy is set up for each getCameraInfo test
-      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      // Spy on console.warn before each test in this block
+      consoleWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {}) // Changed from console.warn to logger.warn
     })
 
     afterEach(() => {
+      // Restore the original console.warn after each test
       consoleWarnSpy.mockRestore()
     })
 
@@ -1278,7 +1279,7 @@ describe('CameraClient', () => {
       })
       expect(fastReadoutDataPropertyFetched).toBe(false)
       consoleWarnSpy.mock.calls.forEach((call) => {
-        const warningMessage = call[0] as string
+        const warningMessage = call[1] as string
         expect(warningMessage.includes(`Failed to fetch ${fastReadoutDataPropertyName}`) && warningMessage.includes('CanFastReadout is true')).toBe(
           false
         )
@@ -1475,7 +1476,11 @@ describe('CameraClient', () => {
         expect(gainMinFetched).toBe(true)
         expect(gainMaxFetched).toBe(true)
 
-        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Could not fetch 'gains' list."), expect.any(Error))
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ deviceIds: expect.arrayContaining([client.device.id]) }),
+          "Could not fetch 'gains' list.",
+          expect.any(Error)
+        )
 
         const gainsCalls = mockFetch.mock.calls.filter((call) => {
           const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()
@@ -1678,7 +1683,11 @@ describe('CameraClient', () => {
         expect(offsetMinFetched).toBe(true)
         expect(offsetMaxFetched).toBe(true)
 
-        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Could not fetch 'offsets' list."), expect.any(Error))
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ deviceIds: expect.arrayContaining([client.device.id]) }),
+          "Could not fetch 'offsets' list.",
+          expect.any(Error)
+        )
 
         const offsetsCalls = mockFetch.mock.calls.filter((call) => {
           const urlString = typeof call[0] === 'string' ? call[0] : call[0].toString()

@@ -11,6 +11,7 @@
  * request/response logging, retry logic, and timeout handling.
  */
 
+import log from '@/plugins/logger'
 import { ErrorType, AlpacaError } from './errors'
 import { DEFAULT_OPTIONS, logApiRequests } from './types'
 import type { RequestOptions } from './types'
@@ -106,10 +107,9 @@ export class AlpacaClient {
    */
   private logRequest(method: string, url: string, params?: Record<string, unknown>, data?: unknown): void {
     if (logApiRequests.value) {
-      console.group(`ALPACA API Request: ${method} ${url}`)
-      if (params) console.log('Params:', params)
-      if (data) console.log('Data:', data)
-      console.groupEnd()
+      log.debug(`ALPACA API Request: ${method} ${url}`)
+      if (params) log.debug('Params:', params)
+      if (data) log.debug('Data:', data)
     }
   }
 
@@ -118,13 +118,12 @@ export class AlpacaClient {
    */
   private logResponse(url: string, response: unknown, error?: Error): void {
     if (logApiRequests.value) {
-      console.group(`ALPACA API Response: ${url}`)
+      log.debug(`ALPACA API Response: ${url}`)
       if (error) {
-        console.error('Error:', error)
+        log.error('Error:', error)
       } else {
-        console.log('Response:', response)
+        log.debug('Response:', response)
       }
-      console.groupEnd()
     }
   }
 
@@ -209,7 +208,7 @@ export class AlpacaClient {
         (!Object.prototype.hasOwnProperty.call(data, 'ErrorNumber') || data.ErrorNumber === 0)
       ) {
         // Added: Warn if ErrorMessage is present but ErrorNumber indicates success or is missing
-        console.warn(
+        log.warn(
           `AlpacaClient: Device at ${url} sent an ErrorMessage "${data.ErrorMessage}" ` +
             `but ErrorNumber was ${data.ErrorNumber === undefined ? 'missing' : data.ErrorNumber}. ` +
             `Proceeding as success.`
@@ -301,7 +300,7 @@ export class AlpacaClient {
 
         // Log the form data for debugging
         if (logApiRequests.value) {
-          console.log('Form data:', fetchOptions.body)
+          log.debug('Form data:', fetchOptions.body)
         }
       } else {
         // For other methods, use JSON
@@ -368,7 +367,7 @@ export class AlpacaClient {
         if (shouldRetry) {
           // Wait before retrying
           await this.sleep(retryDelay)
-          console.log(`Retrying request (${attemptCount}/${retries})`)
+          log.debug(`Retrying request (${attemptCount}/${retries})`)
         } else {
           // No more retries, throw the last error
           break
@@ -458,7 +457,7 @@ export class AlpacaClient {
         const value = await this.getProperty(nameFromFetchList, options)
         results[tsName] = value
       } catch (error) {
-        console.warn(`Failed to get property '${name}' (mapped to '${tsName}'): ${(error as Error).message}`)
+        log.warn(`Failed to get property '${name}' (mapped to '${tsName}'): ${(error as Error).message}`)
       }
     })
     await Promise.all(propertyPromises)
@@ -495,7 +494,7 @@ export class AlpacaClient {
 
       return null
     } catch (error) {
-      console.warn(`Error fetching device state for ${this.deviceType} ${this.deviceNumber}:`, error)
+      log.warn(`Error fetching device state for ${this.deviceType} ${this.deviceNumber}:`, error)
       return null
     }
   }

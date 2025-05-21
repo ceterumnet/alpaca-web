@@ -227,7 +227,7 @@ The following table tracks the progress of migrating console logging statements 
 | `src/services/DirectDiscoveryService.ts`                   | Reviewed | [X]      |
 | `src/services/discoveryServiceFactory.ts`                  | Reviewed | [X]      |
 | `src/services/ProxiedDiscoveryService.ts`                  | Reviewed | [X]      |
-| `src/api/alpaca/base-client.ts`                            | Pending  | [ ]      |
+| `src/api/alpaca/base-client.ts`                            | Reviewed | [X]      |
 | `src/api/alpaca/camera-client.ts`                          | Pending  | [ ]      |
 | `src/components/layout/LayoutContainer.vue`                | Pending  | [ ]      |
 | `src/components/panels/features/CameraImageDisplay.vue`    | Pending  | [ ]      |

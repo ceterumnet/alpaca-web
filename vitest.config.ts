@@ -10,7 +10,8 @@ export default defineConfig((env) => {
       test: {
         environment: 'jsdom',
         exclude: [...configDefaults.exclude, 'e2e/**'],
-        root: fileURLToPath(new URL('./', import.meta.url))
+        root: fileURLToPath(new URL('./', import.meta.url)),
+        setupFiles: ['./tests/setup.ts']
       },
       resolve: {
         alias: {

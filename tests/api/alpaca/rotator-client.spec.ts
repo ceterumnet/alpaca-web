@@ -4,6 +4,7 @@ import type { Device } from '@/stores/types/device-store.types'
 import type { RotatorDevice } from '@/types/device.types'
 import { AlpacaError } from '@/api/alpaca/errors'
 import { DEFAULT_OPTIONS, type RequestOptions } from '@/api/alpaca/types'
+import logger from '@/plugins/logger'
 
 const mockFetch = (global.fetch = vi.fn())
 
@@ -269,7 +270,7 @@ describe('RotatorClient', () => {
     let consoleWarnSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
-      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      consoleWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
     })
 
     afterEach(() => {
@@ -373,10 +374,7 @@ describe('RotatorClient', () => {
       expect(result.mechanicalposition).toBeUndefined()
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          // Match the more detailed warning from base-client's getProperties
-          "Failed to get property 'mechanicalposition' (mapped to 'mechanicalposition'): Error fetching mechanicalposition"
-        )
+        "Failed to get property 'mechanicalposition' (mapped to 'mechanicalposition'): Error fetching mechanicalposition"
       )
     })
   })
