@@ -6,6 +6,8 @@
 // - Proper responsive behavior
 
 <script setup lang="ts">
+import log from '@/plugins/logger'
+
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/useLayoutStore'
@@ -40,7 +42,7 @@ const toggleMaximizePanel = (panelId: string) => {
   const deviceRef = deviceComponentRegistry.getDeviceForCell(panelId)
   
   if (!deviceRef) {
-    console.log(`No device found for panel ${panelId}, cannot maximize`)
+    log.warn(`No device found for panel ${panelId}, cannot maximize`)
     return
   }
   
@@ -61,7 +63,7 @@ watch(
   () => layoutStore.currentLayoutId,
   (newLayoutId) => {
     if (newLayoutId && newLayoutId !== currentLayoutId.value) {
-      console.log('PanelLayoutView - layoutStore.currentLayoutId changed to:', newLayoutId)
+      log.debug('PanelLayoutView - layoutStore.currentLayoutId changed to:', newLayoutId)
       currentLayoutId.value = newLayoutId
       
       // Force component re-render
@@ -74,29 +76,29 @@ watch(
 
 // Create a default layout if none exists
 onMounted(() => {
-  console.log('PanelLayoutView - onMounted - Current layouts in store:', layoutStore.layouts.map(l => l.id))
-  console.log('PanelLayoutView - onMounted - Current grid layouts:', layoutStore.gridLayouts.map(l => l.id))
-  console.log('PanelLayoutView - onMounted - Current layout ID:', layoutStore.currentLayoutId)
+  log.debug('PanelLayoutView - onMounted - Current layouts in store:', layoutStore.layouts.map(l => l.id))
+  log.debug('PanelLayoutView - onMounted - Current grid layouts:', layoutStore.gridLayouts.map(l => l.id))
+  log.debug('PanelLayoutView - onMounted - Current layout ID:', layoutStore.currentLayoutId)
   
   // Check if there's a layout parameter in the URL
   if (route.query.layout) {
     const layoutId = route.query.layout as string
-    console.log('PanelLayoutView - onMounted - Layout ID from URL:', layoutId)
+    log.debug('PanelLayoutView - onMounted - Layout ID from URL:', layoutId)
     changeLayout(layoutId)
   }
 })
 
 // Updated with component registry integration
 onMounted(() => {
-  console.log('PanelLayoutView - onMounted - Current layouts in store:', layoutStore.layouts.map(l => l.id))
-  console.log('PanelLayoutView - onMounted - Current grid layouts:', layoutStore.gridLayouts.map(l => l.id))
-  console.log('PanelLayoutView - onMounted - Current layout ID:', layoutStore.currentLayoutId)
+  log.debug('PanelLayoutView - onMounted - Current layouts in store:', layoutStore.layouts.map(l => l.id))
+  log.debug('PanelLayoutView - onMounted - Current grid layouts:', layoutStore.gridLayouts.map(l => l.id))
+  log.debug('PanelLayoutView - onMounted - Current layout ID:', layoutStore.currentLayoutId)
   
   // Register all available devices with the component registry
   unifiedStore.devicesList.forEach(device => {
     if (device.id && device.type) {
       deviceComponentRegistry.registerDevice(device.id, device.type);
-      console.log(`Registered device with registry: ${device.type} ${device.id}`);
+      log.debug({deviceIds: [device.id]}, `Registered device with registry: ${device.type} ${device.id}`);
     }
   });
   
@@ -113,7 +115,7 @@ onMounted(() => {
   // Check if there's a layout parameter in the URL
   if (route.query.layout) {
     const layoutId = route.query.layout as string
-    console.log('PanelLayoutView - onMounted - Layout ID from URL:', layoutId)
+    log.debug('PanelLayoutView - onMounted - Layout ID from URL:', layoutId)
     changeLayout(layoutId)
   }
 })
@@ -166,7 +168,7 @@ const relevantDeviceStatuses = computed(() =>
 
 // Handle device selection for a specific cell
 const assignDeviceToCell = (cellId: string, deviceId: string) => {
-  console.log(`Assigning device ${deviceId} to cell ${cellId}`);
+  log.debug({deviceIds: [deviceId]}, `Assigning device ${deviceId} to cell ${cellId}`);
   
   // Performance measurement
   const startTime = performance.now();
@@ -191,7 +193,7 @@ const assignDeviceToCell = (cellId: string, deviceId: string) => {
       const deviceType = device.type.toLowerCase();
       
       // Update deviceMap to maintain device selection by type
-      console.log(`Updating deviceMap: ${deviceType} -> ${deviceId}`);
+      log.debug({deviceIds: [deviceId]}, `Updating deviceMap: ${deviceType} -> ${deviceId}`);
       deviceMap.value[deviceType] = deviceId;
       
       // Register with component registry to ensure state preservation
@@ -207,7 +209,7 @@ const assignDeviceToCell = (cellId: string, deviceId: string) => {
   
   // Log performance of the operation
   const assignmentTime = performance.now() - startTime;
-  console.log(`Device assignment to cell ${cellId} took ${assignmentTime.toFixed(2)}ms`);
+  log.debug({cellId}, `Device assignment to cell ${cellId} took ${assignmentTime.toFixed(2)}ms`);
 };
 
 // Toggle connection for a device in a cell
@@ -217,25 +219,25 @@ const toggleCellConnection = async (cellId: string) => {
 
   const device = unifiedStore.getDeviceById(deviceId);
   if (!device) {
-    console.error(`Device ${deviceId} not found for cell ${cellId}`);
+    log.error({deviceIds: [deviceId]}, `Device ${deviceId} not found for cell ${cellId}`);
     return;
   }
 
   cellConnectionAttemptStatus.value[cellId] = true;
   try {
     if (device.isConnected) {
-      console.log(`Disconnecting device ${deviceId} in cell ${cellId}`);
+      log.info({deviceIds: [deviceId]}, `Disconnecting device ${deviceId} in cell ${cellId}`);
       await unifiedStore.disconnectDevice(deviceId);
       cellConnectionStatus.value[cellId] = false;
-      console.log(`Device ${deviceId} disconnected successfully in cell ${cellId}`);
+      log.debug({deviceIds: [deviceId]}, `Device ${deviceId} disconnected successfully in cell ${cellId}`);
     } else {
-      console.log(`Connecting device ${deviceId} in cell ${cellId}`);
+      log.info({deviceIds: [deviceId]}, `Connecting device ${deviceId} in cell ${cellId}`);
       await unifiedStore.connectDevice(deviceId);
       cellConnectionStatus.value[cellId] = true;
-      console.log(`Device ${deviceId} connected successfully in cell ${cellId}`);
+      log.debug({deviceIds: [deviceId]}, `Device ${deviceId} connected successfully in cell ${cellId}`);
     }
   } catch (error) {
-    console.error(`Error toggling connection for device ${deviceId} in cell ${cellId}:`, error);
+    log.error({deviceIds: [deviceId]}, `Error toggling connection for device ${deviceId} in cell ${cellId}:`, error);
     // Revert status on error if needed, or rely on watcher
     const updatedDevice = unifiedStore.getDeviceById(deviceId);
     cellConnectionStatus.value[cellId] = updatedDevice?.isConnected || false;
@@ -247,7 +249,7 @@ const toggleCellConnection = async (cellId: string) => {
 // Watch for external changes to device connection statuses (Optimized)
 watch(relevantDeviceStatuses, (currentDeviceStatuses /*, previousDeviceStatuses */) => {
   // The watcher now fires only if id or isConnected changes for any device, or if devices are added/removed.
-  console.log('PanelLayoutView - relevantDeviceStatuses changed, updating cell connection statuses.');
+  log.debug('PanelLayoutView - relevantDeviceStatuses changed, updating cell connection statuses.');
   
   currentDeviceStatuses.forEach(deviceStatus => {
     // Iterate over cells to find which ones are assigned this device
@@ -255,7 +257,7 @@ watch(relevantDeviceStatuses, (currentDeviceStatuses /*, previousDeviceStatuses 
       if (assignedDeviceId === deviceStatus.id) {
         // Check if the connection status for this cell needs an update
         if (cellConnectionStatus.value[cellId] !== deviceStatus.isConnected) {
-          console.log(`Updating connection status for cell ${cellId} (device ${deviceStatus.id}) to ${deviceStatus.isConnected}`);
+          log.debug({deviceIds: [deviceStatus.id]}, `Updating connection status for cell ${cellId} (device ${deviceStatus.id}) to ${deviceStatus.isConnected}`);
           cellConnectionStatus.value[cellId] = deviceStatus.isConnected;
         }
       }
@@ -285,24 +287,24 @@ const openLayoutBuilder = () => {
 
 // Change layout
 const changeLayout = (layoutId: string) => {
-  console.log(`Attempting to change layout to: ${layoutId}`)
+  log.debug(`Attempting to change layout to: ${layoutId}`)
   
   // Check if the layout exists
   const layoutExists = layoutStore.layouts.some((layout) => layout.id === layoutId)
 
   if (layoutExists) {
-    console.log(`Layout ${layoutId} found, setting as current layout`)
+    log.debug(`Layout ${layoutId} found, setting as current layout`)
     
     // Directly set the current layout without resetting first
     layoutStore.setCurrentLayout(layoutId)
     currentLayoutId.value = layoutId
-    console.log(`Layout changed to: ${layoutId}`)
+    log.debug(`Layout changed to: ${layoutId}`)
   } else {
-    console.warn(`Layout with ID ${layoutId} not found, using default layout`)
+    log.warn(`Layout with ID ${layoutId} not found, using default layout`)
     if (layoutStore.layouts.length > 0) {
       // Use the first available layout if specified one doesn't exist
       const firstLayout = layoutStore.layouts[0]
-      console.log(`Falling back to first available layout: ${firstLayout.id}`)
+      log.debug(`Falling back to first available layout: ${firstLayout.id}`)
       layoutStore.setCurrentLayout(firstLayout.id)
       currentLayoutId.value = firstLayout.id
     }
@@ -369,7 +371,7 @@ function handleStaticLayoutSave(layout: LayoutTemplate) {
   Object.entries(deviceAssignments).forEach(([cellId, deviceType]) => {
     if (deviceType in deviceMap.value) {
       // Store the assigned device type in the cell ID -> device type mapping
-      console.log(`Assigning device type ${deviceType} to cell ${cellId}`);
+      log.debug(`Assigning device type ${deviceType} to cell ${cellId}`);
     }
   });
   
@@ -442,7 +444,7 @@ onMounted(() => {
 
 // Initialize cell device assignments when layout changes - optimized version
 watch(() => currentLayoutId.value, () => {
-  console.log('LAYOUT CHANGE - Current Layout ID:', currentLayoutId.value);
+  log.debug('LAYOUT CHANGE - Current Layout ID:', currentLayoutId.value);
   
   // Performance measurement
   const startTime = performance.now();
@@ -512,7 +514,7 @@ watch(() => currentLayoutId.value, () => {
 
       // Log performance metrics after layout change is complete
       const layoutChangeTime = performance.now() - startTime;
-      console.log(`Layout change to ${currentLayoutId.value} took ${layoutChangeTime.toFixed(2)}ms`);
+      log.debug(`Layout change to ${currentLayoutId.value} took ${layoutChangeTime.toFixed(2)}ms`);
       
       // Log component registry metrics to monitor performance
       deviceComponentRegistry.logPerformanceMetrics();
@@ -527,13 +529,13 @@ const getDeviceType = (cellId: string): string => {
   
   const device = unifiedStore.getDeviceById(deviceId);
   if (!device) {
-    // console.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getDeviceType.`);
+    log.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getDeviceType.`);
     return ''; // Device not found in store
   }
   
   // Ensure device.type is a valid, non-empty string
   if (!device.type || typeof device.type !== 'string' || device.type.trim() === '') {
-    // console.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`);
+    log.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`);
     return ''; 
   }
   
@@ -550,21 +552,21 @@ const getComponentForCell = (cellId: string) => {
   // Get the device to determine its type
   const device = unifiedStore.getDeviceById(deviceId);
   if (!device) {
-    // console.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getComponentForCell.`);
+    log.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getComponentForCell.`);
     return null; // Device not found in store
   }
   
   // Ensure device.type is a valid, non-empty string
   if (!device.type || typeof device.type !== 'string' || device.type.trim() === '') {
-    // console.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`);
+    log.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`);
     return null; 
   }
   
   // Get the component from the registry
   const component = deviceComponentRegistry.getComponent(deviceId, device.type);
-  // if (!component) {
-  //   console.warn(`PanelLayoutView: No component registered for type '${device.type}' (device ${deviceId}, cell ${cellId}).`);
-  // }
+  if (!component) {
+    log.warn(`PanelLayoutView: No component registered for type '${device.type}' (device ${deviceId}, cell ${cellId}).`);
+  }
   return component; // This might still be null if type not in registry
 };
 
@@ -608,20 +610,13 @@ const getDeviceConnectionInfo = (cellId: string): string => {
 
 // Handle device changes from child panels - simplified version using component registry
 const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: string) => {
-  console.log('PanelLayoutView - handleDeviceChange called:', deviceType, deviceId);
+  log.debug('PanelLayoutView - handleDeviceChange called:', deviceType, deviceId);
 
   // Normalize to lowercase for consistent mapping
   const normalizedType = deviceType.toLowerCase();
 
   if (normalizedType in deviceMap.value) {
-    console.log(
-      'PanelLayoutView - Updating deviceMap for type:',
-      normalizedType,
-      'from',
-      deviceMap.value[normalizedType],
-      'to',
-      deviceId
-    );
+    log.debug({deviceIds: [deviceId]}, 'PanelLayoutView - Updating deviceMap for type:', normalizedType, 'from', deviceMap.value[normalizedType], 'to', deviceId);
     
     // Update the deviceMap for this type
     deviceMap.value[normalizedType] = deviceId;
@@ -633,7 +628,7 @@ const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: strin
     if (cellId) {
       cellDeviceAssignments.value[cellId] = deviceId;
       deviceComponentRegistry.assignToCell(deviceId, normalizedType, cellId);
-      console.log(`Updated cell assignment for ${cellId} to ${normalizedType} ${deviceId}`);
+      log.debug(`Updated cell assignment for ${cellId} to ${normalizedType} ${deviceId}`);
     }
   }
 };

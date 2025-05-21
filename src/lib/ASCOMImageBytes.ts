@@ -3,6 +3,8 @@
  * Based on ASCOM specification: https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_ImageArrayElementTypes.htm
  */
 
+import log from '@/plugins/logger'
+
 // Type definitions for ASCOM Image data
 export interface ImageMetadata {
   metadataVersion: number
@@ -320,7 +322,7 @@ export function parseImageMetadata(buffer: ArrayBuffer, defaultWidth = 0, defaul
 
   // Check if buffer is too small to contain metadata
   if (buffer.byteLength < 44) {
-    console.warn('Image buffer too small to contain ASCOM metadata header')
+    log.warn('Image buffer too small to contain ASCOM metadata header')
     return defaultMetadata
   }
 
@@ -351,11 +353,11 @@ export function parseImageMetadata(buffer: ArrayBuffer, defaultWidth = 0, defaul
     ) {
       return metadata
     } else {
-      console.warn('Invalid ASCOM metadata, using default')
+      log.warn('Invalid ASCOM metadata, using default')
       return defaultMetadata
     }
   } catch (error) {
-    console.error('Error parsing image metadata:', error)
+    log.error('Error parsing image metadata:', error)
     return defaultMetadata
   }
 }
@@ -405,7 +407,7 @@ export function processImageBytes(
 
   // Default processed image data for errors
   const errorImageData = (message: string): ProcessedImageData => {
-    console.error(message)
+    log.error(message)
     return {
       width: 0,
       height: 0,
@@ -505,7 +507,7 @@ export function processImageBytes(
       bitsPerPixel: effectiveBitsPerPixel // This now means bits per channel for RGB
     }
   } catch (error) {
-    console.error('Error processing image bytes:', error)
+    log.error('Error processing image bytes:', error)
     return errorImageData(`Error processing image bytes: ${error}`)
   }
 }
@@ -538,6 +540,7 @@ function extractTypedArray(
   offset: number,
   pixelCount: number
 ): Uint8Array | Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array | Float64Array | number[] {
+  log.debug('Extracting typed array from buffer')
   try {
     switch (elementType) {
       case ImageElementType.Byte:
@@ -559,7 +562,7 @@ function extractTypedArray(
         return extractWithDataView(buffer, elementType, offset, pixelCount)
     }
   } catch (error) {
-    console.warn('Failed to create direct typed array view, falling back to manual extraction', error)
+    log.warn('Failed to create direct typed array view, falling back to manual extraction', error)
     return extractWithDataView(buffer, elementType, offset, pixelCount)
   }
 }
@@ -613,7 +616,7 @@ function extractWithDataView(buffer: ArrayBuffer, elementType: number, offset: n
           result[i] = 0
       }
     } catch (e) {
-      console.warn(`Error reading pixel at offset ${pixelOffset}`, e)
+      log.warn(`Error reading pixel at offset ${pixelOffset}`, e)
       result[i] = 0
     }
   }
@@ -758,7 +761,7 @@ function calculateImageStatistics(
 
   // Sanity check for invalid results
   if (!isFinite(min) || !isFinite(max) || count === 0) {
-    console.warn('Invalid statistics calculation, using defaults')
+    log.warn('Invalid statistics calculation, using defaults')
     const defaultMaxVal = bitsPerPixel <= 8 ? 255 : bitsPerPixel <= 16 ? 65535 : Math.pow(2, 32) - 1
     if (channels === 1) {
       return { min: 0, max: defaultMaxVal, mean: defaultMaxVal / 2 }

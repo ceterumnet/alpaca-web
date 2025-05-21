@@ -215,8 +215,7 @@ The following table tracks the progress of migrating console logging statements 
 | :-------------------------------------------------------- | :------- | :------- |
 | `server/alpacaDiscovery.js`                               | Skipped  | [ ]      |
 | `server/index.js`                                         | Skipped  | [ ]      |
-| `src/lib/ASCOMImageBytes.ts`                              | Pending  | [ ]      |
-| `src/views/GridLayoutDemo.vue`                            | Pending  | [ ]      |
+| `src/lib/ASCOMImageBytes.ts`                              | Pending  | [X]      |
 | `src/views/PanelLayoutView.vue`                           | Pending  | [ ]      |
 | `src/utils/debugUtils.ts`                                 | Pending  | [ ]      |
 | `src/utils/alpacaPropertyAccess.ts`                       | Pending  | [ ]      |
