@@ -6,6 +6,7 @@
  * It implements the IDeviceDiscoveryService interface.
  */
 
+import log from '@/plugins/logger'
 import axios from 'axios'
 // import { debugLog } from '@/utils/debugUtils'; // Temporarily use console.log for critical tracing
 import type { DiscoveredDevice } from '@/types/DiscoveredDevice' // May not be used if convertLegacyDevice is N/A
@@ -60,14 +61,14 @@ export class DirectDiscoveryService implements IDeviceDiscoveryService {
    */
   public setManualHostPort(host: string, port: number): void {
     if (!host || port <= 0 || port > 65535) {
-      console.error('Invalid host or port provided for manual discovery.')
+      log.error('Invalid host or port provided for manual discovery.')
       // Optionally throw an error or handle more gracefully
       this._manualBaseUrl = null // Reset if invalid
       return
     }
     // Assuming http for now. Could be made configurable if https is needed.
     this._manualBaseUrl = `http://${host}:${port}`
-    console.log(`[DirectDiscoveryService] Manual base URL set to: ${this._manualBaseUrl}`)
+    log.info(`[DirectDiscoveryService] Manual base URL set to: ${this._manualBaseUrl}`)
     // Reset error and status if we're setting a new manual host,
     // so the next discovery attempt starts fresh.
     this._lastError = null
@@ -80,7 +81,7 @@ export class DirectDiscoveryService implements IDeviceDiscoveryService {
     }
     this._setStatus('discovering')
     // debugLog('Starting direct device discovery with options:', options); // Keep this as debugLog or change if needed
-    console.log('[DirectDiscoveryService] Starting direct device discovery with options:', options) // Changed for visibility
+    log.info('[DirectDiscoveryService] Starting direct device discovery with options:', options) // Changed for visibility
 
     const baseUrl = this._getBaseUrl()
     // In direct mode, we assume there's one "server" which is the system itself.
@@ -95,10 +96,10 @@ export class DirectDiscoveryService implements IDeviceDiscoveryService {
         Value: ConfiguredAlpacaDevice[]
       }>(`${baseUrl}/management/v1/configureddevices`)
 
-      console.log('[DirectDiscoveryService] Full response.data from API:', JSON.parse(JSON.stringify(response.data)))
+      log.debug('[DirectDiscoveryService] Full response.data from API:', JSON.parse(JSON.stringify(response.data)))
 
       const configuredDevices = response.data.Value || []
-      console.log('[DirectDiscoveryService] Raw configuredDevices from API (response.data.Value):', JSON.parse(JSON.stringify(configuredDevices)))
+      log.debug('[DirectDiscoveryService] Raw configuredDevices from API (response.data.Value):', JSON.parse(JSON.stringify(configuredDevices)))
 
       this._lastDiscoveryTime = new Date()
 
@@ -110,7 +111,7 @@ export class DirectDiscoveryService implements IDeviceDiscoveryService {
         uniqueId: dev.UniqueID,
         isAdded: false // Initial state
       }))
-      console.log('[DirectDiscoveryService] Mapped serverDevices:', JSON.parse(JSON.stringify(serverDevices)))
+      log.debug('[DirectDiscoveryService] Mapped serverDevices:', JSON.parse(JSON.stringify(serverDevices)))
 
       const currentServer: DeviceServer = {
         id: serverId,
@@ -124,7 +125,7 @@ export class DirectDiscoveryService implements IDeviceDiscoveryService {
         isManual: false, // This isn't a manually added server in the traditional sense
         devices: serverDevices
       }
-      console.log('[DirectDiscoveryService] Constructed currentServer object:', JSON.parse(JSON.stringify(currentServer)))
+      log.debug('[DirectDiscoveryService] Constructed currentServer object:', JSON.parse(JSON.stringify(currentServer)))
 
       this._discoveryResults = {
         servers: [currentServer],
@@ -135,7 +136,7 @@ export class DirectDiscoveryService implements IDeviceDiscoveryService {
       this._setStatus('success')
       return this._discoveryResults
     } catch (error) {
-      console.error('Error during direct device discovery:', error)
+      log.error('Error during direct device discovery:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during direct discovery'
       this._lastError = errorMessage
       this._discoveryResults = {
@@ -156,7 +157,7 @@ export class DirectDiscoveryService implements IDeviceDiscoveryService {
     // This method could potentially be used to *refresh* the current direct server info
     // if the params match the current baseUrl, but discoverDevices already does that.
     // debugLog('addManualDevice called in DirectDiscoveryService, typically a NOP or error.', params);
-    console.log('[DirectDiscoveryService] addManualDevice called, typically NOP/error:', params) // Changed for visibility
+    log.info('[DirectDiscoveryService] addManualDevice called, typically NOP/error:', params) // Changed for visibility
     throw new Error('Manual device addition is not applicable in Direct Discovery mode.')
   }
 
@@ -210,7 +211,7 @@ export class DirectDiscoveryService implements IDeviceDiscoveryService {
     // This method is for converting from the old broadcast-discovered device format.
     // It's not really applicable to DirectDiscoveryService, which fetches ConfiguredAlpacaDevice.
     // debugLog('convertLegacyDevice called in DirectDiscoveryService, typically a NOP or error.', device);
-    console.log('[DirectDiscoveryService] convertLegacyDevice called, typically NOP/error:', device) // Changed for visibility
+    log.info('[DirectDiscoveryService] convertLegacyDevice called, typically NOP/error:', device) // Changed for visibility
     throw new Error('Legacy device conversion is not applicable in Direct Discovery mode.')
   }
 

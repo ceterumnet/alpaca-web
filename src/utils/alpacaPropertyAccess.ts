@@ -3,6 +3,8 @@
 // It handles property name mapping and value transformations
 // and leverages existing devicestate optimizations
 
+import log from '@/plugins/logger'
+
 import { fromAscomValue } from '@/types/value-transforms'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 
@@ -38,7 +40,7 @@ export async function getAlpacaProperty<T = unknown>(deviceId: string, property:
     const value = await store.getDevicePropertyOptimized(deviceId, apiMethod)
     return fromAscomValue(value) as T
   } catch (error) {
-    console.error(`Error getting property ${property}:`, error)
+    log.error({ deviceIds: [deviceId], property }, `Error getting property ${property}:`, error)
     return null
   }
 }
@@ -60,7 +62,7 @@ export async function setAlpacaProperty<T = unknown>(deviceId: string, property:
     await store.callDeviceMethod(deviceId, apiMethod, [param])
     return true
   } catch (error) {
-    console.error(`Error setting property ${property}:`, error)
+    log.error({ deviceIds: [deviceId], property }, `Error setting property ${property}:`, error)
     return false
   }
 }
@@ -87,7 +89,7 @@ export async function callAlpacaMethod<T = unknown, P = Record<string, unknown>>
     const result = await store.callDeviceMethod(deviceId, apiMethod, [formattedParams])
     return result as T
   } catch (error) {
-    console.error(`Error calling method ${method}:`, error)
+    log.error({ deviceIds: [deviceId], method }, `Error calling method ${method}:`, error)
     throw error
   }
 }
@@ -127,7 +129,7 @@ export async function getAlpacaProperties<T = Record<string, unknown>>(deviceId:
       }
     }
   } catch (error) {
-    console.error(`Error getting properties for device ${deviceId}:`, error)
+    log.error({ deviceIds: [deviceId] }, `Error getting properties for device ${deviceId}:`, error)
     // Fall back to individual property fetching if devicestate fails
     for (const property of properties) {
       result[property] = await getAlpacaProperty(deviceId, property)
@@ -153,7 +155,7 @@ export async function checkDeviceCapability(deviceId: string, capability: string
     // Return the capability value if it exists, otherwise return the default
     return value !== null ? value : defaultValue
   } catch (error) {
-    console.error(`Error checking device capability ${capability}:`, error)
+    log.error({ deviceIds: [deviceId] }, `Error checking device capability ${capability}:`, error)
     return defaultValue
   }
 }
@@ -178,7 +180,7 @@ export async function getDeviceCapabilities(deviceId: string, capabilities: stri
       result[capability] = typeof value === 'boolean' ? value : false
     }
   } catch (error) {
-    console.error(`Error getting device capabilities:`, error)
+    log.error({ deviceIds: [deviceId] }, `Error getting device capabilities:`, error)
 
     // Set all capabilities to false on error
     for (const capability of capabilities) {

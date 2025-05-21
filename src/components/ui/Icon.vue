@@ -22,6 +22,7 @@ export type IconType =
   | 'chevron-left' // IconChevronLeft
   | 'chevron-right' // IconChevronRight
   | 'chevron-down' // IconChevronDown (Added)
+  | 'chevron-up' // IconChevronUp (Added)
   | 'settings' // IconSettings (for gear)
   | 'exposure' // IconExposure
   | 'x' // IconX (for close)
@@ -91,7 +92,7 @@ export default defineComponent({
         return [
           'camera', 'building-observatory', 'telescope', 'sun', 'moon',
           'question-mark', 'search', 'focus-2', 'filter', 'cloud',
-          'chevron-left', 'chevron-right', 'chevron-down', 'settings', 'exposure', 'x',
+          'chevron-left', 'chevron-right', 'chevron-down', 'chevron-up', 'settings', 'exposure', 'x',
           'arrows-maximize', 'arrows-minimize', 'layout-sidebar-left-collapse',
           'layout-sidebar-left-expand', 'maximize', 'plug-connected', 'plug-x',
           'arrow-up', 'arrow-down', 'arrow-left', 'arrow-right',

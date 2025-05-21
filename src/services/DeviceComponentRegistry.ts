@@ -5,6 +5,8 @@
 // - Maintains device state across layout changes
 // - Provides a consistent way to reference device components
 
+import log from '@/plugins/logger'
+
 import { ref, markRaw } from 'vue'
 import type { Component } from 'vue'
 import SimplifiedCameraPanel from '@/components/devices/SimplifiedCameraPanel.vue'
@@ -101,7 +103,7 @@ class DeviceComponentRegistry {
     const component = this.componentMap[normalizedType]
 
     if (!component) {
-      console.error(
+      log.error(
         `[DeviceComponentRegistry] registerDevice FAILED: No component found in componentMap for normalizedType "${normalizedType}" (original deviceType: "${deviceType}", deviceId: "${deviceId}"). Available mapped types: ${Object.keys(this.componentMap).join(', ')}`
       )
       throw new Error(`No component registered for device type "${normalizedType}"`)
@@ -122,7 +124,7 @@ class DeviceComponentRegistry {
 
     // Add to registry
     this.registry.value[key] = componentRef
-    console.log(`[DeviceComponentRegistry] Registered device component: ${normalizedType}-${deviceId}`)
+    log.info({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Registered device component: ${normalizedType}-${deviceId}`)
 
     // Update metrics
     this.metrics.componentCreations++
@@ -130,7 +132,7 @@ class DeviceComponentRegistry {
 
     // Log performance
     const elapsedTime = performance.now() - startTime
-    console.log(`[DeviceComponentRegistry] Component registration took ${elapsedTime.toFixed(2)}ms`)
+    log.info({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Component registration took ${elapsedTime.toFixed(2)}ms`)
 
     return componentRef
   }
@@ -147,7 +149,8 @@ class DeviceComponentRegistry {
     const normalizedType = deviceType ? deviceType.toLowerCase() : ''
 
     if (!normalizedType) {
-      console.warn(
+      log.warn(
+        { deviceIds: [deviceId] },
         `[DeviceComponentRegistry] getComponent received invalid deviceType: original="${originalDeviceType}" normalized="${normalizedType}" for deviceId: "${deviceId}". Returning null.`
       )
       return null
@@ -158,19 +161,29 @@ class DeviceComponentRegistry {
     if (this.registry.value[key]) {
       // Update last active time
       this.registry.value[key].lastActive = Date.now()
-      // console.log(`[DeviceComponentRegistry] getComponent: Returning existing component for key "${key}"`);
+      log.debug({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] getComponent: Returning existing component for key "${key}"`)
       return this.registry.value[key].component
     }
 
-    // console.log(`[DeviceComponentRegistry] getComponent: Component for key "${key}" not in registry. Attempting to register.`);
+    log.debug(
+      { deviceIds: [deviceId] },
+      `[DeviceComponentRegistry] getComponent: Component for key "${key}" not in registry. Attempting to register.`
+    )
     try {
       const ref = this.registerDevice(deviceId, normalizedType) // Pass normalizedType
-      // console.log(`[DeviceComponentRegistry] getComponent: Successfully registered and returning new component for key "${key}"`);
+      log.info(
+        { deviceIds: [deviceId] },
+        `[DeviceComponentRegistry] getComponent: Successfully registered and returning new component for key "${key}"`
+      )
       return ref.component
     } catch (error) {
       // This catch is crucial. It happens if registerDevice throws (e.g., type not in componentMap after all checks).
       const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error(
+      log.error(
+        {
+          deviceIds: [deviceId],
+          errorMessage
+        },
         `[DeviceComponentRegistry] getComponent FAILED for key "${key}". Error during internal registerDevice call. Original deviceType: "${originalDeviceType}", Normalized: "${normalizedType}". Error:`,
         errorMessage
       )
@@ -223,7 +236,10 @@ class DeviceComponentRegistry {
     this.metrics.assignmentCount++
     this.metrics.averageAssignmentTime = this.metrics.totalAssignmentTime / this.metrics.assignmentCount
 
-    console.log(`[DeviceComponentRegistry] Assigned ${normalizedType}-${deviceId} to cell ${cellId} (took ${elapsedTime.toFixed(2)}ms)`)
+    log.info(
+      { deviceIds: [deviceId] },
+      `[DeviceComponentRegistry] Assigned ${normalizedType}-${deviceId} to cell ${cellId} (took ${elapsedTime.toFixed(2)}ms)`
+    )
   }
 
   /**
@@ -268,7 +284,7 @@ class DeviceComponentRegistry {
     if (this.registry.value[key]) {
       delete this.registry.value[key]
       this.metrics.unregisteredComponents++
-      console.log(`[DeviceComponentRegistry] Unregistered device component: ${normalizedType}-${deviceId}`)
+      log.info({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Unregistered device component: ${normalizedType}-${deviceId}`)
     }
   }
 
@@ -281,7 +297,7 @@ class DeviceComponentRegistry {
       ref.isVisible = false
     })
 
-    console.log('[DeviceComponentRegistry] Cleared all device assignments')
+    log.info('[DeviceComponentRegistry] Cleared all device assignments')
   }
 
   /**
@@ -297,20 +313,20 @@ class DeviceComponentRegistry {
    * Log performance metrics to console
    */
   logPerformanceMetrics(): void {
-    console.log('=== DeviceComponentRegistry Performance Metrics ===')
-    console.log(`Total components created: ${this.metrics.componentCreations}`)
-    console.log(`Total assignment changes: ${this.metrics.assignmentChanges}`)
-    console.log(`Components unregistered: ${this.metrics.unregisteredComponents}`)
-    console.log(`Average assignment time: ${this.metrics.averageAssignmentTime.toFixed(2)}ms`)
+    log.debug('=== DeviceComponentRegistry Performance Metrics ===')
+    log.debug(`Total components created: ${this.metrics.componentCreations}`)
+    log.debug(`Total assignment changes: ${this.metrics.assignmentChanges}`)
+    log.debug(`Components unregistered: ${this.metrics.unregisteredComponents}`)
+    log.debug(`Average assignment time: ${this.metrics.averageAssignmentTime.toFixed(2)}ms`)
 
     // Log devices with most assignments
     const sortedDevices = Object.entries(this.metrics.assignmentsPerDevice)
       .sort(([, aCount], [, bCount]) => bCount - aCount)
       .slice(0, 5)
 
-    console.log('Top devices by assignment count:')
+    log.debug('Top devices by assignment count:')
     sortedDevices.forEach(([device, count]) => {
-      console.log(`  ${device}: ${count} assignments`)
+      log.debug(`  ${device}: ${count} assignments`)
     })
 
     // Log components by age
@@ -318,13 +334,13 @@ class DeviceComponentRegistry {
       .sort((a, b) => a.createdAt - b.createdAt)
       .slice(0, 5)
 
-    console.log('Oldest components:')
+    log.debug('Oldest components:')
     componentsByAge.forEach((component) => {
       const ageInMinutes = (Date.now() - component.createdAt) / (1000 * 60)
-      console.log(`  ${component.type}-${component.id}: ${ageInMinutes.toFixed(1)} minutes old, assigned ${component.assignmentCount} times`)
+      log.debug(`  ${component.type}-${component.id}: ${ageInMinutes.toFixed(1)} minutes old, assigned ${component.assignmentCount} times`)
     })
 
-    console.log('=================================================')
+    log.debug('=================================================')
   }
 
   /**
@@ -347,7 +363,7 @@ class DeviceComponentRegistry {
 
     if (this.registry.value[key]) {
       this.registry.value[key].isMaximized = isMaximized
-      console.log(`[DeviceComponentRegistry] Set maximized state for ${normalizedType}-${deviceId}: ${isMaximized}`)
+      log.debug({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Set maximized state for ${normalizedType}-${deviceId}: ${isMaximized}`)
     }
   }
 

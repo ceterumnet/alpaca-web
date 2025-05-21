@@ -5,6 +5,7 @@
  * UI components to consume. It implements the IDeviceDiscoveryService interface.
  */
 
+import log from '@/plugins/logger'
 import axios from 'axios'
 import { debugLog } from '@/utils/debugUtils'
 import type { DiscoveredDevice } from '@/types/DiscoveredDevice'
@@ -86,12 +87,12 @@ export class ProxiedDiscoveryService implements IDeviceDiscoveryService {
         error: null
       }
 
-      console.log('[ProxiedDiscoveryService] Final discovery results before returning:', JSON.parse(JSON.stringify(this._discoveryResults)))
+      log.debug('[ProxiedDiscoveryService] Final discovery results before returning:', JSON.parse(JSON.stringify(this._discoveryResults)))
 
       this._setStatus('success')
       return this._discoveryResults
     } catch (error) {
-      console.error('Error discovering devices:', error)
+      log.error('Error discovering devices:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during discovery'
       this._lastError = errorMessage
 
@@ -152,7 +153,7 @@ export class ProxiedDiscoveryService implements IDeviceDiscoveryService {
 
       return server
     } catch (error) {
-      console.error('Error adding manual device:', error)
+      log.error('Error adding manual device:', error)
       throw new Error('Could not connect to device at the specified address and port')
     }
   }
@@ -265,7 +266,7 @@ export class ProxiedDiscoveryService implements IDeviceDiscoveryService {
   private async processDiscoveredDevice(device: DiscoveredDevice): Promise<DeviceServer> {
     const server: DeviceServer = this.convertLegacyDevice(device)
     server.devices = await this.fetchServerDevices(server)
-    console.log(`[ProxiedDiscoveryService] Devices processed for server ${server.id}:`, JSON.parse(JSON.stringify(server.devices)))
+    log.debug(`[ProxiedDiscoveryService] Devices processed for server ${server.id}:`, JSON.parse(JSON.stringify(server.devices)))
     return server
   }
 
@@ -276,12 +277,12 @@ export class ProxiedDiscoveryService implements IDeviceDiscoveryService {
    */
   private async fetchServerDevices(server: DeviceServer): Promise<DeviceServerDevice[]> {
     const proxyUrl = this.getProxyUrl(server)
-    console.log(
+    log.debug(
       `[ProxiedDiscoveryService] Attempting to fetch configured devices for server: ${server.id} via ${proxyUrl}/management/v1/configureddevices`
     )
     try {
       const response = await axios.get<{ Value: ConfiguredAlpacaDevice[] }>(`${proxyUrl}/management/v1/configureddevices`)
-      console.log(`[ProxiedDiscoveryService] Raw configured devices response for ${server.id}:`, response.data)
+      log.debug(`[ProxiedDiscoveryService] Raw configured devices response for ${server.id}:`, response.data)
       return (
         response.data.Value?.map((dev: ConfiguredAlpacaDevice) => ({
           id: `${server.id}-${dev.DeviceType}-${dev.DeviceNumber}`,
@@ -293,7 +294,7 @@ export class ProxiedDiscoveryService implements IDeviceDiscoveryService {
         })) || []
       )
     } catch (error) {
-      console.warn(`Failed to fetch configured devices for ${server.serverName} (${server.address}:${server.port}):`, error)
+      log.warn(`Failed to fetch configured devices for ${server.serverName} (${server.address}:${server.port}):`, error)
       return [] // Return empty array if fetching fails
     }
   }

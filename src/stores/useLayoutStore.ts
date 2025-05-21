@@ -6,6 +6,7 @@
 // - Supports responsive layouts
 // - Maintains layout persistence
 
+import log from '@/plugins/logger'
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type {
@@ -97,21 +98,12 @@ export const useLayoutStore = defineStore('layout', () => {
 
   // Function to convert a grid layout to position-based layout
   function gridToPositionLayout(gridLayout: GridLayoutDefinition): LayoutDefinition {
-    // console.log('Converting grid layout to position layout:', gridLayout.id, gridLayout.name)
+    log.debug('Converting grid layout to position layout:', gridLayout.id, gridLayout.name)
 
     const deviceLayouts: DeviceLayout[] = []
 
     for (const [viewportType, gridLayoutObj] of Object.entries(gridLayout.layouts)) {
       const viewport = viewportType as Viewport
-      // console.log(`Processing viewport: ${viewport} with ${gridLayoutObj.rows.length} rows`)
-
-      // Debugging: Log the structure of each row and cell
-      // gridLayoutObj.rows.forEach((row, rowIndex) => {
-      //   console.log(`Row ${rowIndex + 1}: ${row.cells.length} cells`)
-      //   row.cells.forEach((cell, cellIndex) => {
-      //     console.log(`  Cell ${cellIndex + 1}: id=${cell.id}, width=${cell.width}%, rowSpan=${(cell as any).rowSpan || 1}`)
-      //   })
-      // })
 
       const positions: PanelPosition[] = []
 
@@ -129,13 +121,9 @@ export const useLayoutStore = defineStore('layout', () => {
           // Special case for the second row in a hybrid layout
           if (rowIndex === 1 && row.cells.length === 1) {
             // This might be the special case for hybrid layout bottom row
-            // console.log(`  Found potential bottom row cell: ${cell.id}`)
-
             // Check if the cell id is cell-3 (typical for hybrid layouts)
             if (cell.id === 'cell-3') {
               // This is the bottom right cell in a hybrid layout
-              // console.log(`  Detected bottom right cell in hybrid layout: ${cell.id}`)
-
               // Force it to position correctly in the grid
               const cellWidth = Math.round((cell.width / 100) * 12)
 
@@ -147,7 +135,6 @@ export const useLayoutStore = defineStore('layout', () => {
                 height: 1
               })
 
-              // console.log(`  Added special position for bottom right cell: x=${12 - cellWidth}, y=1, width=${cellWidth}, height=1`)
               continue
             }
           }
@@ -155,7 +142,6 @@ export const useLayoutStore = defineStore('layout', () => {
           // Skip cells that have already been processed
           const posKey = `${xPos},${yPos}`
           if (occupiedPositions.has(posKey)) {
-            console.log(`  Skipping position ${posKey} (already occupied)`)
             xPos += Math.round((cell.width / 100) * 12) // Still advance the xPos
             continue
           }
@@ -176,8 +162,6 @@ export const useLayoutStore = defineStore('layout', () => {
             ? deviceType // Use device type as panel ID for known types
             : cell.id // Use cell ID for custom panels
 
-          // console.log(`  Adding position for cell ${cell.id}: x=${xPos}, y=${yPos}, width=${cellWidth}, height=${rowSpan}`)
-
           // Add the position
           positions.push({
             panelId,
@@ -192,7 +176,6 @@ export const useLayoutStore = defineStore('layout', () => {
             for (let c = 0; c < cellWidth; c++) {
               const posToMark = `${xPos + c},${yPos + r}`
               occupiedPositions.set(posToMark, true)
-              // console.log(`    Marking position ${posToMark} as occupied`)
             }
           }
 
@@ -204,10 +187,10 @@ export const useLayoutStore = defineStore('layout', () => {
         yPos += 1
       }
 
-      // console.log(`Created ${positions.length} positions for viewport ${viewport}`)
-      // positions.forEach((pos, index) => {
-      //   console.log(`  Position ${index + 1}: panelId=${pos.panelId}, x=${pos.x}, y=${pos.y}, width=${pos.width}, height=${pos.height}`)
-      // })
+      log.debug(`Created ${positions.length} positions for viewport ${viewport}`)
+      positions.forEach((pos, index) => {
+        log.debug(`  Position ${index + 1}: panelId=${pos.panelId}, x=${pos.x}, y=${pos.y}, width=${pos.width}, height=${pos.height}`)
+      })
 
       deviceLayouts.push({
         deviceType: viewport,
@@ -273,18 +256,18 @@ export const useLayoutStore = defineStore('layout', () => {
     if (savedGridLayouts) {
       try {
         gridLayouts.value = JSON.parse(savedGridLayouts)
-        console.log(
+        log.debug(
           'Loaded grid layouts:',
           gridLayouts.value.map((l) => l.id)
         )
       } catch (e) {
-        console.error('Failed to parse saved grid layouts:', e)
+        log.error('Failed to parse saved grid layouts:', e)
       }
     }
 
     // If no grid layouts, create a default one from the first static template
     if (gridLayouts.value.length === 0) {
-      console.log('No layouts found, creating default layout from static template')
+      log.debug('No layouts found, creating default layout from static template')
       // Use the 2x2 grid as the default layout
       const defaultTemplate = staticLayouts.find((l) => l.id === '2x2') || staticLayouts[0]
       const defaultLayout = createLayoutFromTemplate('default', defaultTemplate, true)
@@ -306,7 +289,7 @@ export const useLayoutStore = defineStore('layout', () => {
       try {
         return JSON.parse(savedLayout)
       } catch (e) {
-        console.error('Failed to parse saved layout:', e)
+        log.error('Failed to parse saved layout:', e)
       }
     }
     return []
@@ -328,35 +311,35 @@ export const useLayoutStore = defineStore('layout', () => {
 
   // New layout system actions
   function addLayout(layoutDef: LayoutDefinition) {
-    console.warn('addLayout is deprecated. Use addGridLayout instead.')
+    log.warn('addLayout is deprecated. Use addGridLayout instead.')
     // For backward compatibility, try to find existing grid layout with same ID
     const existingGridLayout = gridLayouts.value.find((gl) => gl.id === layoutDef.id)
     if (existingGridLayout) {
-      console.log(`Found existing grid layout with ID: ${layoutDef.id}, updating it instead of adding converted layout`)
+      log.debug(`Found existing grid layout with ID: ${layoutDef.id}, updating it instead of adding converted layout`)
       return
     }
 
     // TODO: Convert LayoutDefinition to GridLayoutDefinition if needed
-    console.log(`Layout with ID ${layoutDef.id} not added - direct LayoutDefinition storage is deprecated`)
+    log.debug(`Layout with ID ${layoutDef.id} not added - direct LayoutDefinition storage is deprecated`)
   }
 
   function addGridLayout(layout: GridLayoutDefinition) {
     // Check if layout with this ID already exists and remove it
     const existingIndex = gridLayouts.value.findIndex((l) => l.id === layout.id)
     if (existingIndex >= 0) {
-      console.log(`Replacing existing grid layout with ID: ${layout.id}`)
+      log.debug(`Replacing existing grid layout with ID: ${layout.id}`)
       gridLayouts.value.splice(existingIndex, 1)
     }
     gridLayouts.value.push(layout)
-    console.log(`Added/updated grid layout: ${layout.id}`)
-    console.log(
+    log.debug(`Added/updated grid layout: ${layout.id}`)
+    log.debug(
       'Current grid layouts:',
       gridLayouts.value.map((l) => l.id)
     )
   }
 
   function updateLayoutById(id: string, updates: Partial<LayoutDefinition>) {
-    console.warn('updateLayoutById is deprecated. Use updateGridLayout instead.')
+    log.warn('updateLayoutById is deprecated. Use updateGridLayout instead.')
     // Find the corresponding grid layout and update it
     const gridLayout = gridLayouts.value.find((gl) => gl.id === id)
     if (gridLayout) {
@@ -392,17 +375,17 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   function setCurrentLayout(id: string) {
-    console.log(`Setting current layout ID to: ${id}`)
+    log.debug(`Setting current layout ID to: ${id}`)
 
     // Only change if layout exists or ID is empty (for reset)
     if (id === '' || gridLayouts.value.some((l) => l.id === id)) {
       currentLayoutId.value = id
-      console.log(`Current layout ID set to: ${id}`)
+      log.debug(`Current layout ID set to: ${id}`)
 
       // Force reactive update by creating a shallow copy
       gridLayouts.value = [...gridLayouts.value]
     } else {
-      console.warn(`Attempted to set layout to non-existent ID: ${id}`)
+      log.warn(`Attempted to set layout to non-existent ID: ${id}`)
     }
   }
 
@@ -497,7 +480,7 @@ export const useLayoutStore = defineStore('layout', () => {
     const bottomRightCell = template.cells.find((cell) => cell.row === 1 && cell.col === 1)
 
     if (!spanningCell || !topRightCell || !bottomRightCell) {
-      console.error('Invalid hybrid layout structure')
+      log.error('Invalid hybrid layout structure')
       return {
         rows: convertStaticToRows(template),
         panelIds: template.cells.map((cell) => cell.id)
