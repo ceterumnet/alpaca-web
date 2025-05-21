@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { LogLevel as VueLoggerLogLevel } from 'vue-logger-plugin' // Renaming to avoid clash
+// import type { LogLevel as VueLoggerLogLevel } from 'vue-logger-plugin' // Renaming to avoid clash
 
 // Define more specific log levels if needed, or use VueLoggerLogLevel directly
 export type LogLevel = 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'

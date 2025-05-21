@@ -390,6 +390,7 @@ export interface RotatorDeviceProperties {
   targetPosition?: number
   canReverse?: boolean | null
   reverse?: boolean | null
+  _rt_isPollingStatus?: boolean // Internal flag for UI/polling logic
   // Add any other rotator-specific properties here as needed
 }
 

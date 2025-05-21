@@ -192,7 +192,7 @@ const handleExposureComplete = () => {
 const handleImageDownloaded = () => {
   log.warn({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: handleImageDownloaded called. This might be from a legacy path or an event without data. Image data should primarily come from store watcher.');
   // imageData.value = data // Commenting out to prefer store-driven updates
-  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Image downloaded (via event): ${data.byteLength} bytes`)
+  // log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Image downloaded (via event): ${data.byteLength} bytes`)
 }
 
 const handleExposureError = (error: string) => {

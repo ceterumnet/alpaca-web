@@ -59,8 +59,8 @@ export type IconType =
   | 'alert-circle' // IconAlertCircle
   | 'info-circle' // IconInfoCircle
   | 'check' // IconCheck
-  | 'x' // IconX (already used for close, but good to have explicitly for general cross mark)
   | 'layout-grid' // IconLayoutGrid
+  | 'external-link' // IconExternalLink
   // Keep old names for CSS compatibility, but map them in setup or use new names in templates
   // Retaining old names for simpler CSS class matching for now.
   // The mapping to Tabler components will handle the new names.
@@ -100,7 +100,7 @@ export default defineComponent({
           'history', 'bell', 'refresh', 'sliders-horizontal', 'parking-circle',
           'player-play', 'alert-triangle',
           'temperature', 'shield', 'rotate-clockwise', 'toggle-left', 'highlight', 'package',
-          'trash', 'alert-circle', 'info-circle', 'check', 'x', 'layout-grid',
+          'trash', 'alert-circle', 'info-circle', 'check', 'layout-grid', 'external-link',
           // Old names for compatibility, these will be mapped
           'device-unknown', 'gear', 'close', 'expand', 'collapse', 'compact',
           'detailed', 'fullscreen', 'disconnected', 'stop', 'tracking-on',

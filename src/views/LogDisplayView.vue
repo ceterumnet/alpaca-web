@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useLogStore } from '@/stores/useLogStore';
-import type { LogEntry, LogLevel } from '@/stores/useLogStore';
+import type { LogLevel } from '@/stores/useLogStore';
 import { useLogger } from 'vue-logger-plugin';
+
+// Define the log levels supported by vue-logger-plugin
+type VueLoggerLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'log';
 
 const logStore = useLogStore();
 const logger = useLogger(); // For changing global log level
@@ -30,10 +33,47 @@ watch(filterDeviceIdsInput, (newVal) => {
 
 
 const availableLogLevels = ref<Array<LogLevel | 'ALL'>>(['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL']);
-const globalLogLevel = ref<LogLevel>(logger.level as LogLevel); // Assuming logger.level is available and correct
 
-watch(globalLogLevel, (newLevel) => {
-  logger.apply({ level: newLevel });
+// Initialize globalLogLevel. Assume logger.level is a property access.
+// If it were a function, logger.level() would be used.
+// The result is cast through unknown to VueLoggerLogLevel, then to LogLevel via toUpperCase.
+const pluginCurrentLevel = logger.level as unknown as VueLoggerLogLevel;
+const globalLogLevel = ref<LogLevel | 'ALL'>(pluginCurrentLevel.toUpperCase() as LogLevel);
+
+watch(globalLogLevel, (newVal) => {
+  // Map LogLevel to VueLoggerLogLevel before applying
+  // 'ALL' should not change the plugin's level; it's for filtering in this component
+  if (newVal === 'ALL') return;
+
+  let pluginLevel: VueLoggerLogLevel;
+  // newLevel here is guaranteed to be LogLevel, not 'ALL'
+  switch (newVal as LogLevel) { // Added cast here for clarity within switch
+    case 'TRACE':
+      pluginLevel = 'debug';
+      break;
+    case 'DEBUG':
+      pluginLevel = 'debug';
+      break;
+    case 'INFO':
+      pluginLevel = 'info';
+      break;
+    case 'WARN':
+      pluginLevel = 'warn';
+      break;
+    case 'ERROR':
+      pluginLevel = 'error';
+      break;
+    case 'FATAL':
+      pluginLevel = 'error'; // Map FATAL to error for the plugin
+      break;
+    default:
+      // This case should ideally not be reached if all LogLevel variants are handled above.
+      // If it is, it implies newVal is a LogLevel not explicitly cased.
+      // Fallback to lowercase, assuming it might match a VueLoggerLogLevel.
+      pluginLevel = (newVal as string).toLowerCase() as VueLoggerLogLevel;
+      break;
+  }
+  logger.apply({ level: pluginLevel });
 });
 
 const copyLogsToClipboard = () => {

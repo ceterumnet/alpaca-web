@@ -121,12 +121,11 @@ export function createRotatorActions(): {
 
       const initialProps: Partial<RotatorDeviceProperties> = {
         canReverse: undefined,
-        ismoving: undefined,
-        mechanicalposition: undefined,
+        isMoving: undefined,
+        mechanicalPosition: undefined,
         position: undefined,
         reverse: undefined,
-        stepsize: undefined,
-        targetposition: undefined,
+        targetPosition: undefined,
         _rt_isPollingStatus: false // Internal flag for UI/polling logic
       }
       this.updateDeviceProperties(deviceId, initialProps)
@@ -150,13 +149,12 @@ export function createRotatorActions(): {
       this.stopRotatorPolling(deviceId) // Centralized place to stop polling and clear timers
 
       const clearedProps: Partial<RotatorDeviceProperties> = {
-        canreverse: undefined,
-        ismoving: undefined,
-        mechanicalposition: undefined,
+        canReverse: undefined,
+        isMoving: undefined,
+        mechanicalPosition: undefined,
         position: undefined,
         reverse: undefined,
-        stepsize: undefined,
-        targetposition: undefined,
+        targetPosition: undefined,
         _rt_isPollingStatus: undefined // Explicitly clear the internal polling flag
       }
       this.updateDeviceProperties(deviceId, clearedProps)
@@ -202,7 +200,7 @@ export function createRotatorActions(): {
         const canReverse = (await client.get('canreverse')) as boolean | undefined
 
         this.updateDeviceProperties(deviceId, {
-          canreverse: canReverse
+          canReverse: canReverse
         })
         // No specific event for "capabilities fetched", changes are emitted by updateDeviceProperties
       } catch (error) {
@@ -252,10 +250,10 @@ export function createRotatorActions(): {
 
         const newProperties: Partial<RotatorDeviceProperties> = {
           position,
-          ismoving,
-          mechanicalposition,
+          isMoving: ismoving,
+          mechanicalPosition: mechanicalposition,
           reverse,
-          targetposition,
+          targetPosition: targetposition,
           _rt_isPollingStatus: currentRotatorProps._rt_isPollingStatus ?? false // Preserve polling status
         }
 
@@ -295,8 +293,8 @@ export function createRotatorActions(): {
       try {
         await client.put('moveabsolute', { Position: position })
         this.updateDeviceProperties(deviceId, {
-          targetposition: position,
-          ismoving: true
+          targetPosition: position,
+          isMoving: true
         })
         this._emitEvent({
           type: 'deviceMethodCalled',
@@ -313,7 +311,7 @@ export function createRotatorActions(): {
           deviceId,
           error: `Failed to moveAbsolute to ${position}: ${errorMessage}`
         })
-        this.updateDeviceProperties(deviceId, { ismoving: false })
+        this.updateDeviceProperties(deviceId, { isMoving: false })
       }
     },
 
@@ -347,7 +345,7 @@ export function createRotatorActions(): {
         // ismoving should ideally become true. targetposition is less certain without knowing current position.
         // For now, just set ismoving. A subsequent fetchRotatorStatus or polling will update accurately.
         this.updateDeviceProperties(deviceId, {
-          ismoving: true // Optimistically set ismoving
+          isMoving: true // Optimistically set ismoving
         })
         this._emitEvent({
           type: 'deviceMethodCalled',
@@ -364,7 +362,7 @@ export function createRotatorActions(): {
           deviceId,
           error: `Failed to moveRelative by ${offset}: ${errorMessage}`
         })
-        this.updateDeviceProperties(deviceId, { ismoving: false }) // Revert optimistic ismoving
+        this.updateDeviceProperties(deviceId, { isMoving: false }) // Revert optimistic ismoving
       }
     },
 
@@ -396,8 +394,8 @@ export function createRotatorActions(): {
         await client.put('halt', {}) // Empty object for no parameters
         // After successfully halting, ismoving should become false.
         this.updateDeviceProperties(deviceId, {
-          ismoving: false,
-          targetposition: undefined // A halted rotator might not have a defined target
+          isMoving: false,
+          targetPosition: undefined // A halted rotator might not have a defined target
         })
         this._emitEvent({
           type: 'deviceMethodCalled',
@@ -447,8 +445,8 @@ export function createRotatorActions(): {
         // After successfully syncing, update relevant properties
         this.updateDeviceProperties(deviceId, {
           position: position, // The current position is now the synced position
-          targetposition: position, // Target is also the current position
-          ismoving: false // Syncing implies the rotator is now at this position and not moving
+          targetPosition: position, // Target is also the current position
+          isMoving: false // Syncing implies the rotator is now at this position and not moving
         })
         this._emitEvent({
           type: 'deviceMethodCalled',

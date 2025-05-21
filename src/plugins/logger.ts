@@ -84,7 +84,7 @@ const UiLogCaptureHook: LoggerHook = {
           try {
             // Simple stringify for UI display. Avoid overly complex objects.
             return JSON.stringify(arg, null, 2) // Pretty print slightly
-          } catch (e) {
+          } catch (_e) {
             return '[Unserializable Object]'
           }
         }
