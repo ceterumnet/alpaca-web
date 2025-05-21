@@ -64,5 +64,5 @@ FUTURE:
 ## General System
 
 - [ ] Need to implement the devicestate notes that were made
-- [ ] Do systemwide audit of logging patterns
-- [ ] Based on audit result, define consistent logging methodology
+- [x] Do systemwide audit of logging patterns
+- [x] Based on audit result, define consistent logging methodology

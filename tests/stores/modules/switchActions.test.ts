@@ -67,6 +67,9 @@ describe('switchActions', () => {
   let mockUpdateDevice: MockInstance<(deviceId: string, updates: Partial<Device>, options?: StoreOptions) => boolean>
   let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>
   let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
+  let mockFetchDeviceState: MockInstance<
+    (deviceId: string, options?: { cacheTtlMs?: number; forceRefresh?: boolean }) => Promise<Record<string, unknown> | null>
+  >
 
   // Declare pollStatusSpy here
   //   let pollStatusSpy: MockInstance<(this: UnifiedStoreType, deviceId: string) => Promise<void>>
@@ -86,6 +89,7 @@ describe('switchActions', () => {
     mockUpdateDevice = vi.spyOn(store, 'updateDevice')
     mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
     mockGetSwitchClient = vi.spyOn(store, '_getSwitchClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+    mockFetchDeviceState = vi.spyOn(store, 'fetchDeviceState').mockResolvedValue(null) // Default mock
 
     // let mockedIsSwitchFn: MockInstance<(device: UnifiedDevice) => device is CoreSwitchDevice>
     // pollStatusSpy is NOT assigned here, but in the Polling Actions beforeEach
@@ -212,6 +216,9 @@ describe('switchActions', () => {
     beforeEach(() => {
       vi.mocked(mockSwitchClientInstance.maxSwitch).mockReset()
       vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockReset()
+      mockFetchDeviceState.mockReset() // Reset fetchDeviceState mock
+      store._sw_deviceStateAvailableProps.clear()
+      store._sw_deviceStateUnsupported.clear()
 
       vi.spyOn(store, 'getDeviceById').mockReturnValue({
         id: deviceId,
@@ -228,27 +235,206 @@ describe('switchActions', () => {
 
       mockedIsSwitch.mockReturnValue(true)
       mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+      // Default behavior for fetchDeviceState in these tests unless overridden
+      mockFetchDeviceState.mockResolvedValue(null)
     })
 
-    it('should fetch maxSwitch and all switch details, then update device and emit event on success', async () => {
+    it('should fetch maxSwitch and all switch details, then update device and emit event on success (no devicestate)', async () => {
+      mockFetchDeviceState.mockResolvedValue(null) // Explicitly no devicestate
       vi.mocked(mockSwitchClientInstance.maxSwitch).mockResolvedValue(mockMaxSwitchValue)
       vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockResolvedValue(mockSwitchDetails)
 
       await store.fetchSwitchDetails(deviceId)
 
       expect(mockGetSwitchClient).toHaveBeenCalledWith(deviceId)
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true })
       expect(mockSwitchClientInstance.maxSwitch).toHaveBeenCalledTimes(1)
       expect(mockSwitchClientInstance.getAllSwitchDetails).toHaveBeenCalledTimes(1)
 
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, {
+      // When fetchDeviceState returns null, _sw_deviceStateAvailableProps should not be updated for this device yet.
+      // The first call to updateDevice will be for sw_usingDeviceState.
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(1, deviceId, {
+        sw_usingDeviceState: false
+      })
+      // The second call will be for the main switch properties.
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(2, deviceId, {
         sw_maxSwitch: mockMaxSwitchValue,
         sw_switches: mockSwitchDetails
       })
+
+      // Check the internal module state: it should have an entry for the deviceId, initialized to an empty Set.
+      expect(store._sw_deviceStateAvailableProps.has(deviceId)).toBe(true)
+      expect(store._sw_deviceStateAvailableProps.get(deviceId)).toEqual(new Set<string>())
+
+      // Critically, ensure that the device itself in the store was NOT updated with sw_deviceStateAvailableProps
+      // because fetchDeviceState returned null.
+      const updateCalls = mockUpdateDevice.mock.calls
+      const wasDeviceStatePropsUpdatedOnDevice = updateCalls.some(
+        (call) => call[0] === deviceId && call[1] && Object.prototype.hasOwnProperty.call(call[1], 'sw_deviceStateAvailableProps')
+      )
+      expect(wasDeviceStatePropsUpdatedOnDevice).toBe(false)
+
       expect(mockEmitEvent).toHaveBeenCalledWith({
         type: 'devicePropertyChanged',
         deviceId,
         property: 'switchDetails',
         value: { maxSwitch: mockMaxSwitchValue, switches: mockSwitchDetails }
+      } as DeviceEvent)
+    })
+
+    it('should use maxSwitch from devicestate if available and valid', async () => {
+      const deviceStateWithMaxSwitch = { maxswitch: mockMaxSwitchValue, otherprop: 'test' }
+      mockFetchDeviceState.mockResolvedValue(deviceStateWithMaxSwitch)
+      vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockResolvedValue(mockSwitchDetails)
+      // client.maxSwitch() should NOT be called
+
+      await store.fetchSwitchDetails(deviceId)
+
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true })
+      expect(mockSwitchClientInstance.maxSwitch).not.toHaveBeenCalled()
+      expect(mockSwitchClientInstance.getAllSwitchDetails).toHaveBeenCalledTimes(1)
+
+      const expectedAvailableProps = new Set(['maxswitch', 'otherprop'])
+      // The first call to updateDevice will be for sw_deviceStateAvailableProps.
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(1, deviceId, {
+        sw_deviceStateAvailableProps: expectedAvailableProps
+      })
+      // The second call will be for sw_usingDeviceState
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(2, deviceId, {
+        sw_usingDeviceState: true
+      })
+      // The third call will be for the main switch properties.
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(3, deviceId, {
+        sw_maxSwitch: mockMaxSwitchValue,
+        sw_switches: mockSwitchDetails
+      })
+    })
+
+    it('should fallback to client.maxSwitch if devicestate provides invalid maxswitch (NaN)', async () => {
+      const deviceStateWithInvalidMaxSwitch = { maxswitch: 'not-a-number' }
+      mockFetchDeviceState.mockResolvedValue(deviceStateWithInvalidMaxSwitch)
+      vi.mocked(mockSwitchClientInstance.maxSwitch).mockResolvedValue(mockMaxSwitchValue) // Fallback call
+      vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockResolvedValue(mockSwitchDetails)
+
+      await store.fetchSwitchDetails(deviceId)
+
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true })
+      expect(mockSwitchClientInstance.maxSwitch).toHaveBeenCalledTimes(1) // Fallback was used
+      expect(mockSwitchClientInstance.getAllSwitchDetails).toHaveBeenCalledTimes(1)
+
+      const expectedAvailableProps = new Set(['maxswitch'])
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(1, deviceId, {
+        sw_deviceStateAvailableProps: expectedAvailableProps
+      })
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(2, deviceId, {
+        sw_usingDeviceState: false // maxswitch was invalid from devicestate, so fetchedViaDeviceState is false
+      })
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(3, deviceId, {
+        sw_maxSwitch: mockMaxSwitchValue,
+        sw_switches: mockSwitchDetails
+      })
+    })
+
+    it('should fallback to client.maxSwitch if devicestate does not provide maxswitch', async () => {
+      const deviceStateWithoutMaxSwitch = { otherprop: 'test' }
+      mockFetchDeviceState.mockResolvedValue(deviceStateWithoutMaxSwitch)
+      vi.mocked(mockSwitchClientInstance.maxSwitch).mockResolvedValue(mockMaxSwitchValue) // Fallback call
+      vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockResolvedValue(mockSwitchDetails)
+
+      await store.fetchSwitchDetails(deviceId)
+
+      expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true })
+      expect(mockSwitchClientInstance.maxSwitch).toHaveBeenCalledTimes(1) // Fallback was used
+      const expectedAvailableProps = new Set(['otherprop'])
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(1, deviceId, {
+        sw_deviceStateAvailableProps: expectedAvailableProps
+      })
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(2, deviceId, {
+        sw_usingDeviceState: false // maxswitch was not in devicestate, so fetchedViaDeviceState is false
+      })
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(3, deviceId, {
+        sw_maxSwitch: mockMaxSwitchValue,
+        sw_switches: mockSwitchDetails
+      })
+    })
+
+    it('should not call fetchDeviceState if device is in _sw_deviceStateUnsupported', async () => {
+      store._sw_deviceStateUnsupported.add(deviceId)
+      vi.mocked(mockSwitchClientInstance.maxSwitch).mockResolvedValue(mockMaxSwitchValue)
+      vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockResolvedValue(mockSwitchDetails)
+
+      await store.fetchSwitchDetails(deviceId)
+
+      expect(mockFetchDeviceState).not.toHaveBeenCalled()
+      expect(mockSwitchClientInstance.maxSwitch).toHaveBeenCalledTimes(1)
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(1, deviceId, {
+        sw_usingDeviceState: false
+      })
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(2, deviceId, {
+        sw_maxSwitch: mockMaxSwitchValue,
+        sw_switches: mockSwitchDetails
+      })
+    })
+
+    it('should update device with nulls and emit deviceApiError if client.maxSwitch() fails (after devicestate tried and failed to provide it)', async () => {
+      mockFetchDeviceState.mockResolvedValue({ someprop: 'test' }) // devicestate doesn't have maxswitch
+      const error = new Error('Failed to get maxSwitch')
+      vi.mocked(mockSwitchClientInstance.maxSwitch).mockRejectedValue(error)
+
+      await store.fetchSwitchDetails(deviceId)
+
+      expect(mockFetchDeviceState).toHaveBeenCalledTimes(1)
+      expect(mockSwitchClientInstance.maxSwitch).toHaveBeenCalledTimes(1)
+      expect(mockSwitchClientInstance.getAllSwitchDetails).not.toHaveBeenCalled()
+
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(1, deviceId, {
+        sw_deviceStateAvailableProps: new Set(['someprop'])
+      })
+      // This assertion needs to be split if sw_usingDeviceState is updated in a separate call
+      expect(mockUpdateDevice).toHaveBeenCalledWith(
+        deviceId,
+        expect.objectContaining({
+          sw_maxSwitch: null,
+          sw_switches: null,
+          sw_usingDeviceState: false // fetchedViaDeviceState is false as maxSwitch didn't come from devicestate
+        })
+      )
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: `Failed to fetch switch details: ${error}`
+      } as DeviceEvent)
+    })
+
+    it('should update device with nulls and emit deviceApiError if client.getAllSwitchDetails() fails', async () => {
+      mockFetchDeviceState.mockResolvedValue({ maxswitch: mockMaxSwitchValue }) // devicestate provides maxswitch
+      const error = new Error('Failed to get all switch details')
+      vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockRejectedValue(error)
+
+      await store.fetchSwitchDetails(deviceId)
+
+      expect(mockFetchDeviceState).toHaveBeenCalledTimes(1)
+      expect(mockSwitchClientInstance.maxSwitch).not.toHaveBeenCalled() // Should use from devicestate
+      expect(mockSwitchClientInstance.getAllSwitchDetails).toHaveBeenCalledTimes(1)
+
+      // The first call updates sw_deviceStateAvailableProps
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(1, deviceId, {
+        sw_deviceStateAvailableProps: new Set(['maxswitch'])
+      })
+      // The second call updates sw_usingDeviceState (true as maxSwitch came from devicestate)
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(2, deviceId, {
+        sw_usingDeviceState: true
+      })
+      // The third call updates the main properties, including sw_usingDeviceState to false due to error
+      expect(mockUpdateDevice).toHaveBeenNthCalledWith(3, deviceId, {
+        sw_maxSwitch: null,
+        sw_switches: null,
+        sw_usingDeviceState: false // This is the final state due to error handling path
+      })
+      expect(mockEmitEvent).toHaveBeenCalledWith({
+        type: 'deviceApiError',
+        deviceId,
+        error: `Failed to fetch switch details: ${error}`
       } as DeviceEvent)
     })
 
@@ -261,47 +447,6 @@ describe('switchActions', () => {
       expect(mockSwitchClientInstance.getAllSwitchDetails).not.toHaveBeenCalled()
       expect(mockUpdateDevice).not.toHaveBeenCalled()
       expect(mockEmitEvent).not.toHaveBeenCalled()
-    })
-
-    it('should update device with nulls and emit deviceApiError if client.maxSwitch() fails', async () => {
-      const error = new Error('Failed to get maxSwitch')
-      vi.mocked(mockSwitchClientInstance.maxSwitch).mockRejectedValue(error)
-
-      await store.fetchSwitchDetails(deviceId)
-
-      expect(mockSwitchClientInstance.maxSwitch).toHaveBeenCalledTimes(1)
-      expect(mockSwitchClientInstance.getAllSwitchDetails).not.toHaveBeenCalled()
-
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, {
-        sw_maxSwitch: null,
-        sw_switches: null
-      })
-      expect(mockEmitEvent).toHaveBeenCalledWith({
-        type: 'deviceApiError',
-        deviceId,
-        error: `Failed to fetch switch details: ${error}`
-      } as DeviceEvent)
-    })
-
-    it('should update device with nulls and emit deviceApiError if client.getAllSwitchDetails() fails', async () => {
-      const error = new Error('Failed to get all switch details')
-      vi.mocked(mockSwitchClientInstance.maxSwitch).mockResolvedValue(mockMaxSwitchValue)
-      vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockRejectedValue(error)
-
-      await store.fetchSwitchDetails(deviceId)
-
-      expect(mockSwitchClientInstance.maxSwitch).toHaveBeenCalledTimes(1)
-      expect(mockSwitchClientInstance.getAllSwitchDetails).toHaveBeenCalledTimes(1)
-
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, {
-        sw_maxSwitch: null,
-        sw_switches: null
-      })
-      expect(mockEmitEvent).toHaveBeenCalledWith({
-        type: 'deviceApiError',
-        deviceId,
-        error: `Failed to fetch switch details: ${error}`
-      } as DeviceEvent)
     })
   })
 
@@ -695,7 +840,7 @@ describe('switchActions', () => {
         type: 'deviceApiError',
         deviceId,
         error: `Failed to check state change completion: ${error}`
-      })
+      } as DeviceEvent)
     })
 
     it('should return null and not call client or emit if _getSwitchClient returns null', async () => {
@@ -710,8 +855,6 @@ describe('switchActions', () => {
   })
 
   describe('Polling Actions', () => {
-    // vi.useFakeTimers(); // REMOVED from top of Polling Actions
-
     const deviceId = 'switch-poll-test'
     const mockSwitchesDetails: ISwitchDetail[] = [
       { name: 'S0', description: 'D0', value: false, canWrite: true, min: 0, max: 0, step: 0 },
@@ -740,7 +883,6 @@ describe('switchActions', () => {
       telemetry: {},
       lastSeen: Date.now(),
       firmwareVersion: '1.0',
-      // deviceNum: 0, // already above
       idx: 0,
       capabilities: {},
       deviceAttributes: {},
@@ -748,19 +890,13 @@ describe('switchActions', () => {
     }
 
     let getDeviceByIdSpy: MockInstance<(id: string) => Device | null>
-    // mockedIsSwitch is already declared in the outer scope and set up in the main beforeEach
-    // pollStatusSpy will be set up within the describe blocks that need it
 
     beforeEach(() => {
-      // For ALL tests within Polling Actions
-      // DO NOT call vi.useFakeTimers() here
-
       getDeviceByIdSpy = vi.spyOn(store, 'getDeviceById')
-      mockedIsSwitch.mockReturnValue(true) // Default for polling tests
-      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient) // Default for polling tests
+      mockedIsSwitch.mockReturnValue(true)
+      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
 
-      // Reset device state and mocks
-      getDeviceByIdSpy.mockReturnValue(JSON.parse(JSON.stringify(switchDeviceMock))) // Return a fresh copy
+      getDeviceByIdSpy.mockReturnValue(JSON.parse(JSON.stringify(switchDeviceMock)))
 
       mockSwitchClientInstance.getSwitchValue.mockReset()
       mockSwitchClientInstance.getSwitchDetails.mockReset()
@@ -769,22 +905,18 @@ describe('switchActions', () => {
       mockEmitEvent.mockClear()
       vi.spyOn(store, 'fetchSwitchDetails').mockClear()
 
-      // Clear polling state and ALL timers thoroughly
       store._sw_pollingTimers.forEach((timerId) => clearInterval(timerId))
       store._sw_pollingTimers.clear()
       store._sw_isPolling.clear()
-      vi.clearAllTimers() // Vitest's own timer cleanup
+      vi.clearAllTimers()
     })
 
     afterEach(() => {
-      // For ALL tests within Polling Actions
-      // DO NOT call vi.useRealTimers() or vi.runOnlyPendingTimers() here
-      vi.clearAllTimers() // Clean up any timers that might have been set
+      vi.clearAllTimers()
 
       if (getDeviceByIdSpy && typeof getDeviceByIdSpy.mockRestore === 'function') {
         getDeviceByIdSpy.mockRestore()
       }
-      // Spies created within specific describe blocks will be handled there
     })
 
     describe('startSwitchPolling', () => {
@@ -806,17 +938,17 @@ describe('switchActions', () => {
       }
 
       beforeEach(() => {
-        vi.useFakeTimers() // ADDED for this specific suite
+        vi.useFakeTimers()
         mockedIsSwitch.mockReturnValue(true)
         pollStatusSpyForStart = vi.spyOn(store as UnifiedStoreType, '_pollSwitchStatus')
         store._sw_pollingTimers.delete(startPollDeviceId)
         store._sw_isPolling.delete(startPollDeviceId)
-        vi.clearAllTimers() // Clear any timers before starting tests in this suite
+        vi.clearAllTimers()
       })
 
       afterEach(() => {
-        vi.clearAllTimers() // Clear timers used in this suite
-        vi.useRealTimers() // ADDED for this specific suite
+        vi.clearAllTimers()
+        vi.useRealTimers()
         if (pollStatusSpyForStart && typeof pollStatusSpyForStart.mockRestore === 'function') {
           pollStatusSpyForStart.mockRestore()
         }
@@ -900,7 +1032,7 @@ describe('switchActions', () => {
       let pollStatusSpyForStop: MockInstance<(this: UnifiedStoreType, deviceId: string) => Promise<void>>
 
       beforeEach(() => {
-        vi.useFakeTimers() // ADDED for this specific suite
+        vi.useFakeTimers()
         pollStatusSpyForStop = vi.spyOn(store as UnifiedStoreType, '_pollSwitchStatus')
         getDeviceByIdSpy.mockReturnValue({
           ...switchDeviceMock,
@@ -908,12 +1040,12 @@ describe('switchActions', () => {
           properties: { propertyPollIntervalMs: 100 }
         } as CoreSwitchDevice)
         mockedIsSwitch.mockReturnValue(true)
-        vi.clearAllTimers() // Clear any timers before starting tests in this suite
+        vi.clearAllTimers()
       })
 
       afterEach(() => {
-        vi.clearAllTimers() // Clear timers used in this suite
-        vi.useRealTimers() // ADDED for this specific suite
+        vi.clearAllTimers()
+        vi.useRealTimers()
         if (pollStatusSpyForStop && typeof pollStatusSpyForStop.mockRestore === 'function') {
           pollStatusSpyForStop.mockRestore()
         }
@@ -936,12 +1068,24 @@ describe('switchActions', () => {
 
     describe('_pollSwitchStatus', () => {
       let fetchSwitchDetailsSpy: MockInstance<(deviceId: string) => Promise<void>>
+      let mockDevice: Device & SwitchDeviceProperties
 
       beforeEach(() => {
         store._sw_isPolling.set(deviceId, true)
         mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
-        getDeviceByIdSpy.mockReturnValue(JSON.parse(JSON.stringify(switchDeviceMock)))
+
+        mockDevice = {
+          ...JSON.parse(JSON.stringify(switchDeviceMock)),
+          sw_maxSwitch: mockSwitchesDetails.length,
+          sw_switches: JSON.parse(JSON.stringify(mockSwitchesDetails)),
+          properties: { propertyPollIntervalMs: 100 } // Default for these tests
+        }
+        getDeviceByIdSpy.mockReturnValue(mockDevice as Device)
+
         mockedIsSwitch.mockReturnValue(true)
+        mockFetchDeviceState.mockReset().mockResolvedValue(null) // Default for poll tests
+        store._sw_deviceStateAvailableProps.clear()
+        store._sw_deviceStateUnsupported.clear()
 
         fetchSwitchDetailsSpy = vi.spyOn(store, 'fetchSwitchDetails').mockResolvedValue(undefined)
         mockSwitchClientInstance.getSwitchValue.mockReset()
@@ -953,27 +1097,50 @@ describe('switchActions', () => {
         }
       })
 
-      it('should call client.getSwitchValue for each switch and update if changed', async () => {
-        mockSwitchClientInstance.getSwitchValue.mockResolvedValueOnce(true).mockResolvedValueOnce(true)
+      it('should call client.getSwitchValue for each switch and update if changed (devicestate success)', async () => {
+        const deviceStateData = { polledProp: 'polledValue' }
+        mockFetchDeviceState.mockResolvedValue(deviceStateData)
+        mockSwitchClientInstance.getSwitchValue.mockResolvedValueOnce(true).mockResolvedValueOnce(true) // S0 changes to true, S1 no change
 
         await store._pollSwitchStatus(deviceId)
+
+        const expectedPollInterval = mockDevice.properties!.propertyPollIntervalMs as number
+        const expectedCacheTtl = expectedPollInterval / 2
+
+        expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true, cacheTtlMs: expectedCacheTtl })
+        // 1. sw_deviceStateAvailableProps updated from polling
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { sw_deviceStateAvailableProps: new Set(['polledprop']) })
+        // 2. sw_usingDeviceState updated from polling
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { sw_usingDeviceState: true })
 
         expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenCalledTimes(2)
         expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenNthCalledWith(1, 0)
         expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenNthCalledWith(2, 1)
 
-        expect(mockUpdateDevice).toHaveBeenCalledTimes(1)
-        const updatedDeviceArg = mockUpdateDevice.mock.calls[0][1] as Partial<Device & SwitchDeviceProperties>
-        const updatedSwitches = updatedDeviceArg.sw_switches
+        expect(mockUpdateDevice).toHaveBeenCalledTimes(3) // Total calls: props, usingDeviceState, switches
+
+        // Ensure we are checking the correct call for sw_switches
+        const updateDeviceCallForSwitches = mockUpdateDevice.mock.calls.find(
+          (call) => call[1] && Object.prototype.hasOwnProperty.call(call[1], 'sw_switches')
+        )
+        expect(updateDeviceCallForSwitches).toBeDefined()
+        const updatedSwitches = updateDeviceCallForSwitches
+          ? (updateDeviceCallForSwitches[1] as Partial<Device & SwitchDeviceProperties>).sw_switches
+          : undefined
 
         expect(Array.isArray(updatedSwitches)).toBe(true)
         if (Array.isArray(updatedSwitches)) {
           expect(updatedSwitches.length).toBeGreaterThanOrEqual(2)
-          expect(updatedSwitches[0]?.value).toBe(true)
-          expect(updatedSwitches[1]?.value).toBe(true)
+          expect(updatedSwitches[0]?.value).toBe(true) // Changed from false to true
+          expect(updatedSwitches[1]?.value).toBe(true) // Original value, also true in this call
         } else {
           throw new Error('updatedSwitches is not an array or is too short')
         }
+
+        // 3. sw_switches updated due to value change
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, {
+          sw_switches: updatedSwitches
+        })
 
         expect(mockEmitEvent).toHaveBeenCalledTimes(1)
         expect(mockEmitEvent).toHaveBeenCalledWith(
@@ -985,14 +1152,159 @@ describe('switchActions', () => {
         )
       })
 
-      it('should not update or emit if no values changed', async () => {
-        mockSwitchClientInstance.getSwitchValue.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+      it('should call client.getSwitchValue when devicestate returns null', async () => {
+        mockFetchDeviceState.mockResolvedValue(null) // fetchDeviceState fails softly
+        // Initial state: S0=false, S1=true. Polled values: S0=false, S1=false. So S1 changes.
+        mockSwitchClientInstance.getSwitchValue.mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(false)
 
         await store._pollSwitchStatus(deviceId)
 
+        const expectedPollInterval = mockDevice.properties!.propertyPollIntervalMs as number
+        const expectedCacheTtl = expectedPollInterval / 2
+        expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true, cacheTtlMs: expectedCacheTtl })
+
+        // Check updateDevice calls related to deviceState
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { sw_usingDeviceState: false })
+
         expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenCalledTimes(2)
-        expect(mockUpdateDevice).not.toHaveBeenCalled()
+        // S1 changes from true to false, so sw_switches should be updated and event emitted
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, expect.objectContaining({ sw_switches: expect.any(Array) }))
+        const updatedSwitchesCallWhenNull = mockUpdateDevice.mock.calls.find(
+          (call) => call[1] && Object.prototype.hasOwnProperty.call(call[1], 'sw_switches')
+        )
+        expect(updatedSwitchesCallWhenNull).toBeDefined()
+
+        let polledSwitchesWhenDeviceStateNull: ISwitchDetail[] | undefined
+        if (updatedSwitchesCallWhenNull && updatedSwitchesCallWhenNull[1]) {
+          const updates = updatedSwitchesCallWhenNull[1] as Partial<Device & SwitchDeviceProperties>
+          // Ensure sw_switches is an array before assigning
+          if (Array.isArray(updates.sw_switches)) {
+            polledSwitchesWhenDeviceStateNull = updates.sw_switches
+          } else {
+            polledSwitchesWhenDeviceStateNull = undefined // If null, undefined, or not an array
+          }
+        }
+        expect(polledSwitchesWhenDeviceStateNull?.[1]?.value).toBe(false)
+
+        expect(mockEmitEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'devicePropertyChanged',
+            property: 'switchValue_1', // S1 changed
+            value: false
+          })
+        )
+      })
+
+      it('should call client.getSwitchValue when devicestate throws error', async () => {
+        mockFetchDeviceState.mockRejectedValue(new Error('DeviceState exploded'))
+        // Initial state from mockDevice: S0=false, S1=true.
+        // Polled values: S0=false, S1=false. So S1 changes.
+        mockSwitchClientInstance.getSwitchValue.mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(false)
+
+        await store._pollSwitchStatus(deviceId)
+
+        const expectedPollInterval = mockDevice.properties!.propertyPollIntervalMs as number
+        const expectedCacheTtl = expectedPollInterval / 2
+        expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true, cacheTtlMs: expectedCacheTtl })
+
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { sw_usingDeviceState: false })
+
+        expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenCalledTimes(2)
+        // S1 changes from true to false, so sw_switches should be updated and event emitted
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, expect.objectContaining({ sw_switches: expect.any(Array) }))
+        const updatedSwitchesCallWhenError = mockUpdateDevice.mock.calls.find(
+          (call) => call[1] && Object.prototype.hasOwnProperty.call(call[1], 'sw_switches')
+        )
+        expect(updatedSwitchesCallWhenError).toBeDefined()
+
+        let polledSwitchesWhenDeviceStateError: ISwitchDetail[] | undefined
+        if (updatedSwitchesCallWhenError && updatedSwitchesCallWhenError[1]) {
+          const updates = updatedSwitchesCallWhenError[1] as Partial<Device & SwitchDeviceProperties>
+          if (Array.isArray(updates.sw_switches)) {
+            polledSwitchesWhenDeviceStateError = updates.sw_switches
+          } else {
+            polledSwitchesWhenDeviceStateError = undefined
+          }
+        }
+        expect(polledSwitchesWhenDeviceStateError?.[1]?.value).toBe(false)
+
+        expect(mockEmitEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'devicePropertyChanged',
+            property: 'switchValue_1', // S1 changed
+            value: false
+          })
+        )
+      })
+
+      it('should not call fetchDeviceState if device is in _sw_deviceStateUnsupported', async () => {
+        store._sw_deviceStateUnsupported.add(deviceId)
+        mockSwitchClientInstance.getSwitchValue.mockResolvedValueOnce(false).mockResolvedValueOnce(false)
+
+        await store._pollSwitchStatus(deviceId)
+
+        expect(mockFetchDeviceState).not.toHaveBeenCalled()
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { sw_usingDeviceState: false })
+        expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenCalledTimes(2)
+      })
+
+      it('should not update or emit if no values changed', async () => {
+        // Initial state from mockDevice: S0=false, S1=true.
+        // Polled values should also be S0=false, S1=true for no change.
+        mockSwitchClientInstance.getSwitchValue.mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+
+        await store._pollSwitchStatus(deviceId)
+
+        expect(mockFetchDeviceState).toHaveBeenCalled() // It will be called
+        // 1. sw_usingDeviceState updated
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { sw_usingDeviceState: false }) // Called due to devicestate returning null
+
+        expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenCalledTimes(2)
+        // Values S0=false, S1=true don't change from mockDevice initial state.
+        // So changedOverall should be false.
+
+        // Only the sw_usingDeviceState update should occur.
+        expect(mockUpdateDevice).toHaveBeenCalledTimes(1)
+        expect(mockUpdateDevice).not.toHaveBeenCalledWith(deviceId, { sw_switches: expect.any(Array) })
+        // When fetchDeviceState is null, sw_deviceStateAvailableProps is not updated directly in _pollSwitchStatus
+        // (it would have been initialized in fetchSwitchDetails, but not re-updated here with an empty set from polling a null devicestate)
+        // However, the test for `sw_deviceStateAvailableProps` in `_pollSwitchStatus` when devicestate *succeeds* is separate.
+        // Here, we just ensure it's not updated with sw_deviceStateAvailableProps if devicestate was null.
+        expect(mockUpdateDevice).not.toHaveBeenCalledWith(deviceId, expect.objectContaining({ sw_deviceStateAvailableProps: expect.any(Set) }))
         expect(mockEmitEvent).not.toHaveBeenCalled()
+      })
+
+      it('should use polling interval from _propertyPollingIntervals map for cacheTtlMs', async () => {
+        const intervalMapKey = 'switchStatus' // Or 'switch', depends on your actual implementation
+        const intervalFromMap = 4000
+        store._propertyPollingIntervals.set(intervalMapKey, intervalFromMap)
+        // Remove from device properties to ensure map is used
+        delete mockDevice.properties!.propertyPollIntervalMs
+        getDeviceByIdSpy.mockReturnValue(mockDevice as Device)
+
+        mockFetchDeviceState.mockResolvedValue({})
+        mockSwitchClientInstance.getSwitchValue.mockResolvedValue(false)
+
+        await store._pollSwitchStatus(deviceId)
+
+        const expectedCacheTtl = intervalFromMap / 2
+        expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true, cacheTtlMs: expectedCacheTtl })
+      })
+
+      it('should use default polling interval for cacheTtlMs if not in properties or map', async () => {
+        // Remove from device properties and ensure not in map
+        delete mockDevice.properties!.propertyPollIntervalMs
+        store._propertyPollingIntervals.clear()
+        getDeviceByIdSpy.mockReturnValue(mockDevice as Device)
+
+        mockFetchDeviceState.mockResolvedValue({})
+        mockSwitchClientInstance.getSwitchValue.mockResolvedValue(false)
+
+        await store._pollSwitchStatus(deviceId)
+
+        const defaultPollInterval = 2000 // From switchActions.ts
+        const expectedCacheTtl = defaultPollInterval / 2
+        expect(mockFetchDeviceState).toHaveBeenCalledWith(deviceId, { forceRefresh: true, cacheTtlMs: expectedCacheTtl })
       })
 
       it('should stop polling if device becomes disconnected during poll', async () => {
@@ -1005,58 +1317,6 @@ describe('switchActions', () => {
         expect(stopPollingSpy).toHaveBeenCalledWith(deviceId)
         expect(mockSwitchClientInstance.getSwitchValue).not.toHaveBeenCalled()
         stopPollingSpy.mockRestore()
-      })
-
-      it('should call fetchSwitchDetails if sw_switches is not on device', async () => {
-        const deviceWithoutSwitches = { ...JSON.parse(JSON.stringify(switchDeviceMock)), sw_switches: undefined }
-        getDeviceByIdSpy.mockReturnValueOnce(deviceWithoutSwitches as Device)
-
-        await store._pollSwitchStatus(deviceId)
-
-        expect(fetchSwitchDetailsSpy).toHaveBeenCalledWith(deviceId)
-        expect(mockSwitchClientInstance.getSwitchValue).not.toHaveBeenCalled()
-      })
-
-      it('should log warning if client.getSwitchValue fails for one switch but continue for others', async () => {
-        const consoleWarnSpy = vi.spyOn(log, 'warn').mockImplementation(() => {})
-        mockSwitchClientInstance.getSwitchValue.mockRejectedValueOnce(new Error('Poll fail for S0')).mockResolvedValueOnce(false)
-
-        await store._pollSwitchStatus(deviceId)
-
-        expect(consoleWarnSpy).toHaveBeenCalledWith(
-          { deviceIds: [deviceId] },
-          expect.stringContaining(`[SwitchStore] Error polling value for switch 0 on ${deviceId}.`),
-          expect.any(Error)
-        )
-        expect(mockSwitchClientInstance.getSwitchValue).toHaveBeenCalledTimes(2)
-
-        expect(mockUpdateDevice).toHaveBeenCalledTimes(1)
-        const updatedDeviceArg = mockUpdateDevice.mock.calls[0][1] as Partial<Device & SwitchDeviceProperties>
-        const updatedSwitches = updatedDeviceArg.sw_switches
-
-        expect(Array.isArray(updatedSwitches)).toBe(true)
-        if (Array.isArray(updatedSwitches)) {
-          expect(updatedSwitches.length).toBeGreaterThanOrEqual(2)
-          expect(updatedSwitches[1]?.value).toBe(false)
-        } else {
-          throw new Error('updatedSwitches is not an array or is too short')
-        }
-
-        expect(mockEmitEvent).toHaveBeenCalledTimes(1)
-        expect(mockEmitEvent).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'devicePropertyChanged',
-            property: 'switchValue_1',
-            value: false
-          })
-        )
-        consoleWarnSpy.mockRestore()
-      })
-
-      it('should not proceed if _getSwitchClient returns null', async () => {
-        mockGetSwitchClient.mockReturnValueOnce(null)
-        await store._pollSwitchStatus(deviceId)
-        expect(mockSwitchClientInstance.getSwitchValue).not.toHaveBeenCalled()
       })
     })
 

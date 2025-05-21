@@ -15,6 +15,8 @@ import { isSwitch } from '@/types/device.types'
 export interface SwitchDeviceProperties {
   sw_switches?: ISwitchDetail[] | null // Array of switch details
   sw_maxSwitch?: number | null
+  sw_deviceStateAvailableProps?: Set<string> // Properties confirmed available via deviceState
+  sw_usingDeviceState?: boolean // Flag to indicate if deviceState is being used for polling
   [key: string]: unknown // Index signature for UnifiedDevice compatibility
 }
 
@@ -22,6 +24,8 @@ export interface SwitchDeviceProperties {
 export interface SwitchModuleState {
   _sw_pollingTimers: Map<string, number>
   _sw_isPolling: Map<string, boolean>
+  _sw_deviceStateAvailableProps: Map<string, Set<string>> // Tracks props confirmed from deviceState
+  _sw_deviceStateUnsupported: Set<string> // Tracks devices where deviceState failed
 }
 
 // Signatures of actions in this module
@@ -55,7 +59,9 @@ export function createSwitchActions(): {
   return {
     state: (): SwitchModuleState => ({
       _sw_pollingTimers: new Map(),
-      _sw_isPolling: new Map()
+      _sw_isPolling: new Map(),
+      _sw_deviceStateAvailableProps: new Map(),
+      _sw_deviceStateUnsupported: new Set()
     }),
 
     actions: {
@@ -81,14 +87,74 @@ export function createSwitchActions(): {
       async fetchSwitchDetails(this: UnifiedStoreType, deviceId: string): Promise<void> {
         const client = this._getSwitchClient(deviceId)
         if (!client) return
+
+        let maxSwitch: number | null = null
+        let deviceStateResult: Record<string, unknown> | null = null
+        let fetchedViaDeviceState = false
+
+        // Initialize device state tracking if not present
+        if (!this._sw_deviceStateAvailableProps.has(deviceId)) {
+          this._sw_deviceStateAvailableProps.set(deviceId, new Set<string>())
+        }
+        const deviceStateProps = this._sw_deviceStateAvailableProps.get(deviceId)!
+
+        if (!this._sw_deviceStateUnsupported.has(deviceId)) {
+          try {
+            log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Attempting fetchDeviceState for ${deviceId}`)
+            deviceStateResult = await this.fetchDeviceState(deviceId, { forceRefresh: true })
+
+            if (deviceStateResult) {
+              log.debug({ deviceIds: [deviceId] }, `[SwitchStore] fetchDeviceState successful for ${deviceId}`, deviceStateResult)
+              Object.keys(deviceStateResult).forEach((key) => deviceStateProps.add(key.toLowerCase()))
+              this.updateDevice(deviceId, { sw_deviceStateAvailableProps: new Set(deviceStateProps) })
+
+              if (deviceStateProps.has('maxswitch')) {
+                maxSwitch = Number(deviceStateResult.maxswitch)
+                if (isNaN(maxSwitch)) {
+                  log.warn({ deviceIds: [deviceId] }, `[SwitchStore] maxswitch from deviceState for ${deviceId} is NaN. Will fetch individually.`)
+                  maxSwitch = null
+                } else {
+                  fetchedViaDeviceState = true
+                }
+              }
+            } else {
+              log.warn({ deviceIds: [deviceId] }, `[SwitchStore] fetchDeviceState returned null for ${deviceId}. Will attempt individual fetch.`)
+              // Consider adding to _sw_deviceStateUnsupported after N failures - for now, proceed to individual.
+            }
+          } catch (error) {
+            log.error(
+              { deviceIds: [deviceId] },
+              `[SwitchStore] Error calling fetchDeviceState for ${deviceId}. Will attempt individual fetch.`,
+              error
+            )
+            // Consider adding to _sw_deviceStateUnsupported - for now, proceed to individual.
+          }
+        }
+
         try {
-          const maxSwitch = await client.maxSwitch()
-          const switches = await client.getAllSwitchDetails()
+          if (maxSwitch === null) {
+            log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Fetching maxswitch individually for ${deviceId}`)
+            maxSwitch = await client.maxSwitch()
+          }
+
+          if (typeof maxSwitch !== 'number') {
+            log.error({ deviceIds: [deviceId] }, `[SwitchStore] Could not determine maxSwitch for ${deviceId}.`)
+            this.updateDevice(deviceId, { sw_maxSwitch: null, sw_switches: null, sw_usingDeviceState: fetchedViaDeviceState })
+            this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Failed to determine maxSwitch' } as DeviceEvent)
+            return
+          }
+
+          this.updateDevice(deviceId, { sw_usingDeviceState: fetchedViaDeviceState })
+
+          // Even with deviceState, we typically need to fetch individual switch details
+          log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Fetching all switch details individually for ${deviceId} (maxSwitch: ${maxSwitch})`)
+          const switches = await client.getAllSwitchDetails() // This method iterates from 0 to maxSwitch-1
+
           this.updateDevice(deviceId, { sw_maxSwitch: maxSwitch, sw_switches: switches })
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'switchDetails', value: { maxSwitch, switches } } as DeviceEvent)
         } catch (error) {
           log.error({ deviceIds: [deviceId] }, `[SwitchStore] Error fetching switch details for ${deviceId}.`, error)
-          this.updateDevice(deviceId, { sw_maxSwitch: null, sw_switches: null })
+          this.updateDevice(deviceId, { sw_maxSwitch: null, sw_switches: null, sw_usingDeviceState: false })
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to fetch switch details: ${error}` } as DeviceEvent)
         }
       },
@@ -221,29 +287,91 @@ export function createSwitchActions(): {
         const client = this._getSwitchClient(deviceId)
         if (!client) return
 
+        const currentMaxSwitch = device.sw_maxSwitch
         const oldSwitches = device.sw_switches as ISwitchDetail[] | undefined
-        if (!oldSwitches || oldSwitches.length === 0) {
-          // Also check if oldSwitches is empty
-          // Consider if fetching all details is appropriate or if it should just skip this poll cycle
-          log.warn({ deviceIds: [deviceId] }, `[SwitchStore] No switch details available for ${deviceId} during poll, attempting to fetch.`)
+
+        if (typeof currentMaxSwitch !== 'number' || !oldSwitches || oldSwitches.length === 0) {
+          log.warn(
+            { deviceIds: [deviceId] },
+            `[SwitchStore] No switch details/maxSwitch available for ${deviceId} during poll, attempting to fetch all details.`
+          )
           await this.fetchSwitchDetails(deviceId)
           return
         }
 
-        const newSwitches = [...oldSwitches.map((sw) => ({ ...sw }))] // Deep copy to avoid mutating original store objects directly before updateDevice
+        let deviceStateResult: Record<string, unknown> | null = null
+        const deviceStateProps = this._sw_deviceStateAvailableProps.get(deviceId) || new Set<string>()
+        let usingDeviceStateInPoll = false
+
+        if (!this._sw_deviceStateUnsupported.has(deviceId)) {
+          try {
+            const pollIntervalSetting =
+              (device.properties?.propertyPollIntervalMs as number) ||
+              this._propertyPollingIntervals.get('switchStatus') ||
+              this._propertyPollingIntervals.get('switch') ||
+              2000 // Default polling interval for switch
+            const cacheTtl = pollIntervalSetting / 2
+
+            // log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Polling: Attempting fetchDeviceState for ${deviceId}`)
+            deviceStateResult = await this.fetchDeviceState(deviceId, { forceRefresh: true, cacheTtlMs: cacheTtl })
+            if (deviceStateResult) {
+              // log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Polling: fetchDeviceState successful for ${deviceId}`)
+              const oldSize = deviceStateProps.size
+              Object.keys(deviceStateResult).forEach((key) => deviceStateProps.add(key.toLowerCase()))
+              if (deviceStateProps.size > oldSize) {
+                this._sw_deviceStateAvailableProps.set(deviceId, new Set(deviceStateProps))
+                this.updateDevice(deviceId, { sw_deviceStateAvailableProps: new Set(deviceStateProps) })
+              }
+              usingDeviceStateInPoll = true
+            } else {
+              // log.warn({ deviceIds: [deviceId] }, `[SwitchStore] Polling: fetchDeviceState returned null for ${deviceId}.`)
+              // Consider adding to _sw_deviceStateUnsupported. For now, will proceed to individual polling.
+            }
+          } catch (error) {
+            log.warn(
+              { deviceIds: [deviceId] },
+              `[SwitchStore] Polling: Error calling fetchDeviceState for ${deviceId}. Marking as unsupported for this poll.`,
+              error
+            )
+            // For now, treat as unsupported for this poll cycle. Persistent marking needs more logic (e.g. N retries)
+            // this._sw_deviceStateUnsupported.add(deviceId);
+            // this.updateDevice(deviceId, { error: `DeviceState failed for ${deviceId}` });
+          }
+        }
+
+        this.updateDevice(deviceId, { sw_usingDeviceState: usingDeviceStateInPoll && !this._sw_deviceStateUnsupported.has(deviceId) })
+
+        const newSwitches = [...oldSwitches.map((sw) => ({ ...sw }))]
         let changedOverall = false
 
         for (let i = 0; i < newSwitches.length; i++) {
-          try {
-            const newValue = await client.getSwitchValue(i)
-            if (newSwitches[i].value !== newValue) {
-              newSwitches[i].value = newValue // Update the copied switch detail
-              changedOverall = true
-              this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: `switchValue_${i}`, value: newValue } as DeviceEvent)
+          let fetchedValue: number | boolean | undefined = undefined
+          const individualFetchRequired = true
+
+          if (usingDeviceStateInPoll && deviceStateResult) {
+            // Alpaca spec for devicestate does not typically include individual switch values.
+            // It *might* return something like "switchvalue0", "switchvalue1" but this is non-standard.
+            // We'll assume for now it does NOT, and individual polling for values is always needed.
+            // If a device *did* provide this, logic could be added here to parse deviceStateResult.
+            // e.g. if (deviceStateProps.has(`switchvalue${i}`)) { fetchedValue = deviceStateResult[`switchvalue${i}`]; individualFetchRequired = false; }
+          }
+
+          if (individualFetchRequired) {
+            try {
+              const val = await client.getSwitchValue(i)
+              // getSwitchValue is defined to return number. Boolean switches are handled by setSwitch(id, bool)
+              // and their values are typically 0 or 1.
+              fetchedValue = val
+            } catch (error) {
+              log.warn({ deviceIds: [deviceId] }, `[SwitchStore] Error polling value for switch ${i} on ${deviceId}.`, error)
+              continue // Skip this switch if value fetch fails
             }
-          } catch (error) {
-            log.warn({ deviceIds: [deviceId] }, `[SwitchStore] Error polling value for switch ${i} on ${deviceId}.`, error)
-            // Continue to the next switch in the loop
+          }
+
+          if (fetchedValue !== undefined && newSwitches[i].value !== fetchedValue) {
+            newSwitches[i].value = fetchedValue
+            changedOverall = true
+            this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: `switchValue_${i}`, value: fetchedValue } as DeviceEvent)
           }
         }
 
