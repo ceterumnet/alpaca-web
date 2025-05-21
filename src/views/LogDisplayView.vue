@@ -120,14 +120,16 @@ const toggleRawArgs = (id: string) => {
       </div>
       <div v-else class="log-entry-list">
         <div v-for="entry in logStore.filteredLogEntries" :key="entry.id" class="log-entry" :class="getLogLevelClass(entry.level)">
-          <div class="log-meta">
-            <span class="timestamp">{{ entry.timestamp }}</span>
-            <span class="level">[{{ entry.level }}]</span>
-            <span v-if="entry.source" class="source">[{{ entry.source }}]</span>
-            <span v-if="entry.deviceIds && entry.deviceIds.length" class="device-ids">[Dev: {{ entry.deviceIds.join(', ') }}]</span>
-          </div>
-          <div class="log-message" title="Click to toggle raw arguments" @click="toggleRawArgs(entry.id)">
-            {{ entry.message }}
+          <div class="log-entry-main-line">
+            <div class="log-meta">
+              <span class="timestamp">{{ entry.timestamp }}</span>
+              <span class="level">[{{ entry.level }}]</span>
+              <span v-if="entry.source" class="source">[{{ entry.source }}]</span>
+              <span v-if="entry.deviceIds && entry.deviceIds.length" class="device-ids">[Dev: {{ entry.deviceIds.join(', ') }}]</span>
+            </div>
+            <div class="log-message" title="Click to toggle raw arguments" @click="toggleRawArgs(entry.id)">
+              {{ entry.message }}
+            </div>
           </div>
           <pre v-if="expandedEntryId === entry.id" class="raw-args">{{ JSON.stringify(entry.rawArgs, null, 2) }}</pre>
         </div>
@@ -150,32 +152,34 @@ const toggleRawArgs = (id: string) => {
 .log-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  padding-bottom: 1rem;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--aw-border-color);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   align-items: center;
 }
 
 .filter-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .filter-group label {
   font-weight: 500;
   color: var(--aw-text-color-secondary);
+  font-size: 0.8rem;
 }
 
 .filter-group input[type="text"],
 .filter-group select {
-  padding: 0.4rem 0.6rem;
+  padding: 0.3rem 0.5rem;
   border-radius: var(--border-radius-md);
   border: 1px solid var(--aw-border-color);
   background-color: var(--aw-input-bg-color);
   color: var(--aw-input-text-color);
-  min-width: 150px;
+  min-width: 120px;
+  font-size: 0.8rem;
 }
 .filter-group input[type="text"]:focus,
 .filter-group select:focus {
@@ -187,18 +191,19 @@ const toggleRawArgs = (id: string) => {
 
 .action-buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.35rem;
   margin-left: auto;
 }
 
 .action-buttons button {
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.8rem;
   border: none;
   border-radius: var(--border-radius-md);
   background-color: var(--aw-button-secondary-bg);
   color: var(--aw-button-secondary-text);
   cursor: pointer;
   transition: background-color 0.2s;
+  font-size: 0.8rem;
 }
 
 .action-buttons button:hover {
@@ -233,24 +238,31 @@ const toggleRawArgs = (id: string) => {
 }
 
 .log-entry {
-  padding: 0.6rem 0.8rem;
+  padding: 0.3rem 0.6rem;
   border-bottom: 1px solid var(--aw-border-color-light);
-  line-height: 1.6;
-  background-color: var(--aw-color-neutral-400);
+  line-height: 1.4;
 }
 
 .log-entry:last-child {
   border-bottom: none;
 }
 
+.log-entry-main-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+}
+
 .log-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  font-size: 0.8rem;
+  gap: 0.5rem;
+  font-size: 0.75rem;
   color: var(--aw-text-color-muted);
-  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
+
 .timestamp {
   font-weight: 500;
 }
@@ -262,9 +274,10 @@ const toggleRawArgs = (id: string) => {
   word-break: break-all;
   cursor: pointer;
   color: var(--aw-text-color-primary);
+  flex-grow: 1;
 }
 .log-message:hover {
-  text-decoration: underline;
+  /* text-decoration: underline; */
 }
 
 
@@ -284,15 +297,23 @@ const toggleRawArgs = (id: string) => {
 
 /* Log level specific styling */
 .log-level-error { 
-  background-color: var(--aw-error-bg-color-light);
+  background-color: var(--aw-error-muted); /* Use muted for less harsh bg */
   border-left: 4px solid var(--aw-error-color);
+  color: var(--aw-error-text-color);
+}
+.log-level-error .log-entry-main-line,
+.log-level-error .log-message {
   color: var(--aw-error-text-color);
 }
 .log-level-error .level { color: var(--aw-error-color); font-weight: bold; }
 
 .log-level-warn {
-  background-color: var(--aw-warning-bg-color-light);
+  background-color: var(--aw-warning-muted); /* Use muted for less harsh bg */
   border-left: 4px solid var(--aw-warning-color);
+  color: var(--aw-warning-text-color);
+}
+.log-level-warn .log-entry-main-line,
+.log-level-warn .log-message {
   color: var(--aw-warning-text-color);
 }
 .log-level-warn .level { color: var(--aw-warning-color); font-weight: bold; }
@@ -300,32 +321,44 @@ const toggleRawArgs = (id: string) => {
 .log-level-info {
   background-color: var(--aw-info-bg-color-light);
   border-left: 4px solid var(--aw-info-color);
+}
+.log-level-info .log-entry-main-line,
+.log-level-info .log-message {
   color: var(--aw-info-text-color);
 }
 .log-level-info .level { color: var(--aw-info-color); font-weight: bold; }
 
 .log-level-debug {
   background-color: var(--aw-bg-color-subtle);
-  border-left: 4px solid var(--aw-border-color);
-  color: var(--aw-text-color-secondary);
+  border-left: 4px solid var(--aw-text-color-muted); /* Using a muted color for border */
+}
+.log-level-debug .log-entry-main-line,
+.log-level-debug .log-message {
+  color: var(--aw-text-secondary-color);
 }
 .log-level-debug .level { color: var(--aw-text-color-muted); font-weight: bold; }
 
 .log-level-trace {
   background-color: var(--aw-bg-color-extra-subtle);
-  border-left: 4px solid var(--aw-border-color);
-  color: var(--aw-text-color-tertiary);
+  border-left: 4px solid var(--aw-text-color-tertiary); /* Using a tertiary color for border */
   font-style: italic;
 }
-.log-level-trace .level { color: var(--aw-border-color); font-weight: bold; }
+.log-level-trace .log-entry-main-line,
+.log-level-trace .log-message {
+  color: var(--aw-text-color-tertiary);
+}
+.log-level-trace .level { color: var(--aw-text-color-tertiary); font-weight: bold; }
 
 
 .log-level-fatal {
   background-color: var(--aw-fatal-bg-color);
   border-left: 4px solid var(--aw-fatal-color);
-  color: var(--aw-fatal-text-color);
 }
-.log-level-fatal .level { color: var(--aw-fatal-text-color); font-weight: bold; }
+.log-level-fatal .log-entry-main-line,
+.log-level-fatal .log-message {
+ color: var(--aw-fatal-text-color);
+}
+.log-level-fatal .level { color: var(--aw-fatal-color); font-weight: bold; }
 
 
 .log-level-default {}

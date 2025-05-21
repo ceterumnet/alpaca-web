@@ -77,6 +77,15 @@
   /* RGB variants for alpha operations (box-shadows, etc) */
   --aw-color-error-rgb: 244, 67, 54; /* --aw-color-error-500 */
 
+  /* Info colors - blue palette for informational messages */
+  --aw-color-info-50: #e6f7ff;
+  --aw-color-info-100: #bae7ff;
+  --aw-color-info-300: #69c0ff;
+  --aw-color-info-500: #1890ff;
+  --aw-color-info-700: #096dd9;
+  --aw-color-info-900: #003a8c;
+  --aw-color-info-rgb: 24, 144, 255;
+
   /* ============================================================
      SEMANTIC COLOR TOKENS - map base colors to UI concepts
      ============================================================ */
@@ -85,9 +94,14 @@
   --aw-bg-color: var(--aw-color-neutral-100);
   --aw-color: var(--aw-color-neutral-800);
 
+  --aw-bg-color-subtle: var(--aw-color-neutral-50); /* For DEBUG logs bg */
+  --aw-bg-color-extra-subtle: var(--aw-color-neutral-50); /* For TRACE logs bg, can be same as subtle, differentiated by text */
+
   /* Text colors */
   --aw-text-color: var(--aw-color-neutral-800);
   --aw-text-secondary-color: var(--aw-color-neutral-600);
+  --aw-text-color-muted: var(--aw-color-neutral-500); /* For DEBUG logs level text */
+  --aw-text-color-tertiary: var(--aw-color-neutral-400); /* For TRACE logs text */
   --aw-link-color: var(--aw-color-primary-500);
 
   /* Panel colors */
@@ -153,8 +167,22 @@
   --aw-error-muted: rgba(244, 67, 54, 0.1);
   --aw-error-muted-hover: rgba(244, 67, 54, 0.2);
 
+  /* Info Status */
+  --aw-info-color: var(--aw-color-info-500);
+  --aw-info-bg-color-light: var(--aw-color-info-50);
+  --aw-info-text-color: var(--aw-color-info-700);
+  --aw-info-muted: rgba(var(--aw-color-info-rgb), 0.1);
+  --aw-info-muted-hover: rgba(var(--aw-color-info-rgb), 0.2);
+
+  /* Fatal Status (based on error but potentially more intense) */
+  --aw-fatal-color: var(--aw-color-error-700);
+  --aw-fatal-bg-color: var(--aw-color-error-100); /* Can be same as error bg, with stronger border/text */
+  --aw-fatal-text-color: var(--aw-color-error-900);
+
   /* Status indicator text colors (add new) */
   --aw-status-indicator-success-text-color: var(--aw-color-success-700);
+  --aw-error-text-color: var(--aw-color-error-700);
+  --aw-warning-text-color: var(--aw-color-warning-700);
 
   /* Icon Colors */
   --aw-device-camera-color: var(--aw-color-success-500);
@@ -275,12 +303,26 @@ html.dark-theme {
   /* RGB variants for alpha operations (box-shadows, etc) */
   --aw-color-error-rgb: 158, 43, 43; /* --aw-color-error-500 */
 
+  /* Info colors - for dark theme, RED ALIGNED */
+  --aw-color-info-50: #301c1c; /* Dark, desaturated red for background */
+  --aw-color-info-100: #402525;
+  --aw-color-info-300: #603535; /* Muted red for borders/accents */
+  --aw-color-info-500: #804545; /* Mid-tone red for main info color (e.g., level text) */
+  --aw-color-info-700: #e0c0c0; /* Light, slightly reddish tint for message text */
+  --aw-color-info-900: #f0d8d8;
+  --aw-color-info-rgb: 128, 69, 69; /* from --aw-color-info-500 */
+
   /* Semantic colors for dark theme */
   --aw-bg-color: var(--aw-color-neutral-100);
   --aw-color: var(--aw-color-neutral-800);
 
+  --aw-bg-color-subtle: var(--aw-color-neutral-50); /* For DEBUG logs bg in dark theme */
+  --aw-bg-color-extra-subtle: var(--aw-color-neutral-50); /* For TRACE logs bg in dark theme */
+
   --aw-text-color: var(--aw-color-neutral-800);
   --aw-text-secondary-color: var(--aw-color-neutral-600);
+  --aw-text-color-muted: var(--aw-color-neutral-500); /* For DEBUG logs level text in dark theme */
+  --aw-text-color-tertiary: var(--aw-color-neutral-400); /* For TRACE logs text in dark theme */
 
   --aw-panel-bg-color: var(--aw-color-neutral-200);
   --aw-panels-bg-color: var(--aw-color-neutral-200);
@@ -331,8 +373,22 @@ html.dark-theme {
   --aw-error-muted: rgba(158, 43, 43, 0.2);
   --aw-error-muted-hover: rgba(158, 43, 43, 0.3);
 
+  /* Info Status for Dark Theme - RED ALIGNED */
+  --aw-info-color: var(--aw-color-info-500);
+  --aw-info-bg-color-light: var(--aw-color-info-50);
+  --aw-info-text-color: var(--aw-color-info-700);
+  --aw-info-muted: rgba(var(--aw-color-info-rgb), 0.2);
+  --aw-info-muted-hover: rgba(var(--aw-color-info-rgb), 0.3);
+
+  /* Fatal Status for Dark Theme */
+  --aw-fatal-color: var(--aw-color-error-700); /* #8b1010 */
+  --aw-fatal-bg-color: #401010; /* Darker red background */
+  --aw-fatal-text-color: var(--aw-color-neutral-800); /* Light text (e.g. #f0d0d0) for contrast */
+
   /* Status indicator text colors (add new) */
   --aw-status-indicator-success-text-color: var(--aw-color-neutral-800);
+  --aw-error-text-color: var(--aw-color-neutral-800); /* Light text on dark error backgrounds */
+  --aw-warning-text-color: var(--aw-color-neutral-800); /* Light text on dark warning backgrounds */
 
   /* Icon Colors */
   --aw-device-camera-color: var(--aw-color-success-500);
