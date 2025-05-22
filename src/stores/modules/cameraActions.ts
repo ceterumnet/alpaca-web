@@ -765,11 +765,14 @@ export function createCameraActions() {
 
           // Determine cam_gainMode
           let gainMode: 'list' | 'value' | 'unknown' = 'unknown'
+          log.debug({ deviceIds: [deviceId] }, `gainMode: ${gainMode} before evaluation`)
           if (gains && gains.length > 0) {
             gainMode = 'list'
           } else if (typeof gainmin === 'number' && typeof gainmax === 'number') {
             gainMode = 'value'
           }
+          log.debug({ deviceIds: [deviceId] }, `gainMode: ${gainMode} after evaluation`)
+
           // Store internal mode representation (can be on propertiesFromClient or a separate var)
           const internalGainMode = gainMode
 
@@ -828,6 +831,10 @@ export function createCameraActions() {
             friendlyProperties.offsetMode = internalOffsetMode
             if (offsets && offsets.length > 0) friendlyProperties.offsets = offsets
           }
+
+          // After determining gainMode and offsetMode, always set them as cam_gainMode and cam_offsetMode
+          friendlyProperties.cam_gainMode = internalGainMode
+          friendlyProperties.cam_offsetMode = internalOffsetMode
 
           // Add any non-undefined properties to the device
           if (Object.keys(friendlyProperties).length > 0) {

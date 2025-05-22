@@ -689,7 +689,22 @@ const getPanelTypeName = (panelId: string): string => {
               <div class="panel-title">
                 <h3 v-if="!cellDeviceAssignments[position.panelId]">{{ getPanelTypeName(position.panelId) }}</h3>
                 <template v-else>
-                  <h3>{{ getDeviceTitle(position.panelId) }}</h3>
+                  <div style="display: flex; align-items: center; gap: 0.5em;">
+                    <!-- Live status indicator -->
+                    <span
+                      :title="cellConnectionStatus[position.panelId] ? 'Connected' : 'Disconnected'"
+                      :aria-label="cellConnectionStatus[position.panelId] ? 'Device connected' : 'Device disconnected'"
+                      :style="{
+                        display: 'inline-block',
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        backgroundColor: cellConnectionStatus[position.panelId] ? 'var(--aw-success-color)' : 'var(--aw-error-color)',
+                        border: '1px solid var(--aw-panel-border-color)'
+                      }"
+                    ></span>
+                    <h3 style="margin: 0;">{{ getDeviceTitle(position.panelId) }}</h3>
+                  </div>
                   <div v-if="getDeviceConnectionInfo(position.panelId)" class="connection-info">
                     {{ getDeviceConnectionInfo(position.panelId) }}
                   </div>
@@ -701,6 +716,7 @@ const getPanelTypeName = (panelId: string): string => {
                 <button 
                   class="maximize-panel-btn" 
                   :title="isPanelMaximized(position.panelId) ? 'Restore panel' : 'Maximize panel'"
+                  :aria-label="isPanelMaximized(position.panelId) ? 'Restore panel' : 'Maximize panel'"
                   @click="toggleMaximizePanel(position.panelId)"
                 >
                   <Icon :type="isPanelMaximized(position.panelId) ? 'arrows-minimize' : 'arrows-maximize'" size="16" />
@@ -716,6 +732,8 @@ const getPanelTypeName = (panelId: string): string => {
                     'connecting': cellConnectionAttemptStatus[position.panelId]
                   }"
                   :disabled="cellConnectionAttemptStatus[position.panelId]"
+                  :title="cellConnectionStatus[position.panelId] ? 'Disconnect device' : 'Connect device'"
+                  :aria-label="cellConnectionStatus[position.panelId] ? 'Disconnect device' : 'Connect device'"
                   @click="toggleCellConnection(position.panelId)"
                 >
                   {{ cellConnectionAttemptStatus[position.panelId] ? '...' : (cellConnectionStatus[position.panelId] ? 'Disconnect' : 'Connect') }}
@@ -725,6 +743,8 @@ const getPanelTypeName = (panelId: string): string => {
                 <select 
                   :value="cellDeviceAssignments[position.panelId]" 
                   class="device-selector-dropdown"
+                  :title="'Select device for this panel'"
+                  aria-label="Select device for this panel"
                   @change="(e) => assignDeviceToCell(position.panelId, (e.target as HTMLSelectElement).value)"
                 >
                   <option value="">Select Device</option>
@@ -1103,5 +1123,21 @@ const getPanelTypeName = (panelId: string): string => {
   background-color: var(--aw-panel-content-bg-color);
   color: var(--aw-text-secondary-color);
   cursor: wait;
+}
+
+@media (max-width: 600px) {
+  .panel-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .header-controls {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px 4px;
+  }
+  .panel-title {
+    margin-bottom: 4px;
+  }
 }
 </style>

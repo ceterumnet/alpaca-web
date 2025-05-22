@@ -9,6 +9,7 @@ import CameraExposureControl from '@/components/panels/features/CameraExposureCo
 import { setAlpacaProperty, getAlpacaProperties, getDeviceCapabilities } from '@/utils/alpacaPropertyAccess'
 import Icon from '@/components/ui/Icon.vue'
 import type { BayerPattern } from '@/lib/ASCOMImageBytes';
+import '@/assets/components/forms.css'
 
 const props = defineProps({
   deviceId: {
@@ -405,6 +406,39 @@ onUnmounted(() => {
   }
 })
 
+// Computed properties for gain/offset modes and ranges
+const gainMode = computed(() => {
+  return currentDevice.value?.properties?.cam_gainMode || 'unknown';
+});
+
+const gainMin = computed(() => {
+  const val = currentDevice.value?.properties?.gainmin
+  return typeof val === 'number' && !isNaN(val) ? val : 0
+})
+
+const gainMax = computed(() => {
+  const val = currentDevice.value?.properties?.gainmax
+  return typeof val === 'number' && !isNaN(val) ? val : 100
+})
+
+const gainList = computed(() => currentDevice.value?.properties?.gains ?? [])
+
+const offsetMode = computed(() => {
+  return currentDevice.value?.properties?.cam_offsetMode || 'unknown';
+});
+
+const offsetMin = computed(() => {
+  const val = currentDevice.value?.properties?.offsetmin
+  return typeof val === 'number' && !isNaN(val) ? val : 0
+})
+
+const offsetMax = computed(() => {
+  const val = currentDevice.value?.properties?.offsetmax
+  return typeof val === 'number' && !isNaN(val) ? val : 100
+})
+
+const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? [])
+
 </script>
 
 <template>
@@ -468,24 +502,104 @@ onUnmounted(() => {
             <div class="panel-section">
               <h3>Settings</h3>
               <div class="camera-settings">
-                <div class="setting-row">
+                <!-- Gain Control -->
+                <div class="setting-row slider-row">
                   <label for="gain-input">Gain:</label>
-                  <div class="input-with-spinner">
-                    <input id="gain-input" v-model.number="gain" type="number" min="0" max="100" step="1" :disabled="isLoadingGain" @change="updateGain">
+                  <div class="input-with-spinner slider-group">
+                    <template v-if="gainMode === 'value'">
+                      <input
+                        id="gain-slider"
+                        v-model.number="gain"
+                        class="themed-slider"
+                        type="range"
+                        :min="Number(gainMin)"
+                        :max="Number(gainMax)"
+                        step="1"
+                        :disabled="isLoadingGain"
+                        aria-label="Gain slider"
+                        @change="updateGain"
+                      >
+                      <input
+                        id="gain-input"
+                        v-model.number="gain"
+                        type="number"
+                        :min="Number(gainMin)"
+                        :max="Number(gainMax)"
+                        step="1"
+                        :disabled="isLoadingGain"
+                        aria-label="Gain value"
+                        class="aw-input aw-input--sm"
+                        @change="updateGain"
+                      >
+                    </template>
+                    <template v-else-if="gainMode === 'list'">
+                      <select
+                        id="gain-select"
+                        v-model="gain"
+                        :disabled="isLoadingGain"
+                        aria-label="Gain preset selector"
+                        class="aw-select aw-select--sm"
+                        @change="updateGain"
+                      >
+                        <option v-for="(name, idx) in gainList" :key="name" :value="idx">{{ name }}</option>
+                      </select>
+                    </template>
                     <Icon v-if="isLoadingGain" type="refresh" class="spinner-icon" animation="spin" />
                   </div>
+                  <span v-if="gainMode === 'value'" class="slider-minmax">{{ gainMin }}</span>
+                  <span v-if="gainMode === 'value'" class="slider-minmax">{{ gainMax }}</span>
                 </div>
-                <div class="setting-row">
+                <!-- Offset Control -->
+                <div class="setting-row slider-row">
                   <label for="offset-input">Offset:</label>
-                  <div class="input-with-spinner">
-                    <input id="offset-input" v-model.number="offset" type="number" min="0" max="100" step="1" :disabled="isLoadingOffset" @change="updateOffset">
+                  <div class="input-with-spinner slider-group">
+                    <template v-if="offsetMode === 'value'">
+                      <input
+                        id="offset-slider"
+                        v-model.number="offset"
+                        class="themed-slider"
+                        type="range"
+                        :min="Number(offsetMin)"
+                        :max="Number(offsetMax)"
+                        step="1"
+                        :disabled="isLoadingOffset"
+                        aria-label="Offset slider"
+                        @change="updateOffset"
+                      >
+                      <input
+                        id="offset-input"
+                        v-model.number="offset"
+                        type="number"
+                        :min="Number(offsetMin)"
+                        :max="Number(offsetMax)"
+                        step="1"
+                        :disabled="isLoadingOffset"
+                        aria-label="Offset value"
+                        class="aw-input aw-input--sm"
+                        @change="updateOffset"
+                      >
+                    </template>
+                    <template v-else-if="offsetMode === 'list'">
+                      <select
+                        id="offset-select"
+                        v-model="offset"
+                        :disabled="isLoadingOffset"
+                        aria-label="Offset preset selector"
+                        class="aw-select aw-select--sm"
+                        @change="updateOffset"
+                      >
+                        <option v-for="(name, idx) in offsetList" :key="name" :value="idx">{{ name }}</option>
+                      </select>
+                    </template>
                     <Icon v-if="isLoadingOffset" type="refresh" class="spinner-icon" animation="spin" />
                   </div>
+                  <span v-if="offsetMode === 'value'" class="slider-minmax">{{ offsetMin }}</span>
+                  <span v-if="offsetMode === 'value'" class="slider-minmax">{{ offsetMax }}</span>
                 </div>
                 <div class="setting-row">
                   <label for="binning-input">Binning:</label>
                   <div class="input-with-spinner">
-                    <input id="binning-input" v-model.number="binning" type="number" min="1" max="4" step="1" :disabled="isLoadingBinning" @change="updateBinning">
+                    <input id="binning-input" v-model.number="binning" type="number" min="1" max="4" step="1" :disabled="isLoadingBinning" class="aw-input aw-input--sm" @change="updateBinning">
                     <Icon v-if="isLoadingBinning" type="refresh" class="spinner-icon" animation="spin" />
                   </div>
                 </div>
@@ -513,7 +627,7 @@ onUnmounted(() => {
                 <div v-if="capabilities.canSetCCDTemperature" class="temperature-target setting-row">
                   <label for="target-temp-input">Target Temp (°C):</label>
                   <div class="input-with-spinner">
-                    <input id="target-temp-input" v-model.number="targetTemp" type="number" min="-50" max="50" step="1" :disabled="isLoadingTargetTemp" @change="updateTargetTemp">
+                    <input id="target-temp-input" v-model.number="targetTemp" type="number" min="-50" max="50" step="1" :disabled="isLoadingTargetTemp" class="aw-input aw-input--sm" @change="updateTargetTemp">
                     <Icon v-if="isLoadingTargetTemp" type="refresh" class="spinner-icon" animation="spin" />
                   </div>
                 </div>
@@ -972,5 +1086,45 @@ input:checked + .slider:before {
     width: 100%;
     min-width: unset; /* Remove min-width for stacked layout */
   }
+}
+
+/* Add styles for slider-row, slider-group, themed-slider, and slider-minmax */
+.slider-row {
+  align-items: center;
+  gap: 8px;
+}
+.slider-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+}
+.themed-slider {
+  flex: 1 1 80px;
+  min-width: 60px;
+  max-width: 140px;
+  accent-color: var(--aw-primary-color, #0077cc);
+  background: transparent;
+  height: 2px;
+  margin: 0 4px;
+}
+.themed-slider::-webkit-slider-thumb {
+  background: var(--aw-primary-color, #0077cc);
+  border: 1px solid var(--aw-panel-border-color);
+}
+.themed-slider::-moz-range-thumb {
+  background: var(--aw-primary-color, #0077cc);
+  border: 1px solid var(--aw-panel-border-color);
+}
+.themed-slider::-ms-thumb {
+  background: var(--aw-primary-color, #0077cc);
+  border: 1px solid var(--aw-panel-border-color);
+}
+.slider-minmax {
+  font-size: 0.8rem;
+  color: var(--aw-text-secondary-color);
+  min-width: 24px;
+  text-align: center;
 }
 </style> 
