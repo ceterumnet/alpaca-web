@@ -706,23 +706,20 @@ const cameraInfoProps = computed(() => {
                 </div>
               </div>
             </div>
+            <!-- Camera Info Section -->
+            <div v-if="currentDevice && cameraInfoProps.length" class="panel-section camera-info-section">
+              <h3>Camera Info</h3>
+              <dl class="camera-info-list">
+                <template v-for="([label, value]) in cameraInfoProps" :key="label">
+                  <dt class="camera-info-label">{{ label }}</dt>
+                  <dd class="camera-info-value">{{ value }}</dd>
+                </template>
+              </dl>
+            </div>
           </div>
         </div>
       </template>
     </div>
-    <!-- Camera Info Collapsible Section at Bottom -->
-    <details v-if="currentDevice && cameraInfoProps.length" class="camera-info-collapsible">
-      <summary>
-        <Icon type="info-circle" class="camera-info-summary-icon" />
-        <span>Show Camera Info</span>
-      </summary>
-      <dl class="camera-info-list">
-        <template v-for="([label, value]) in cameraInfoProps" :key="label">
-          <dt class="camera-info-label">{{ label }}</dt>
-          <dd class="camera-info-value">{{ value }}</dd>
-        </template>
-      </dl>
-    </details>
   </div>
 </template>
 
@@ -1252,6 +1249,7 @@ input:checked + .slider:before {
   color: var(--aw-text-secondary-color);
   text-align: left;
   padding-right: var(--aw-spacing-sm);
+  font-size: 0.92rem;
 }
 
 .camera-info-value {
@@ -1259,6 +1257,7 @@ input:checked + .slider:before {
   text-align: right;
   font-variant-numeric: tabular-nums;
   word-break: break-all;
+  font-size: 0.92rem;
 }
 
 @media (max-width: 600px) {
