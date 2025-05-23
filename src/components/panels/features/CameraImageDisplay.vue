@@ -14,6 +14,7 @@ import {
 } from '@/lib/ASCOMImageBytes'
 import type { ProcessedImageData, BayerPattern } from '@/lib/ASCOMImageBytes'
 import Icon from '@/components/ui/Icon.vue' // Import the Icon component
+import VueSlider from 'vue-3-slider-component'
 
 const props = defineProps({
   imageData: {
@@ -648,6 +649,35 @@ function resetStretch() {
   robustPercentile.value = 98;
   applyStretch();
 }
+
+// --- Add new refs for levels-style slider ---
+const levels = ref<[number, number, number]>([0, 128, 255]); // [black, mid, white]
+
+// Sync levels with minPixelValue, gamma, maxPixelValue
+watch([
+  minPixelValue, gamma, maxPixelValue
+], ([min, g, max]) => {
+  if (!autoStretch.value) {
+    const mid = min + (max - min) * Math.pow(0.5, 1 / g);
+    levels.value = [min, Math.round(mid), max];
+  }
+});
+
+watch(levels, ([black, mid, white]) => {
+  if (!autoStretch.value) {
+    // Prevent handles from crossing
+    if (black >= mid) levels.value[1] = black + 1;
+    if (mid >= white) levels.value[1] = white - 1;
+    if (black >= white) levels.value[2] = black + 1;
+    minPixelValue.value = black;
+    maxPixelValue.value = white;
+    const norm = (mid - black) / (white - black);
+    if (norm > 0 && norm < 1) {
+      gamma.value = Math.log(0.5) / Math.log(norm);
+    }
+    applyStretch();
+  }
+});
 </script>
 
 <template>
@@ -661,22 +691,30 @@ function resetStretch() {
     <div v-if="props.imageData.byteLength > 0" class="stretch-controls astronomy-stretch-ui">
       <div class="histogram-row">
         <div class="histogram-label">Histogram</div>
-        <canvas ref="histogramCanvas" class="histogram-canvas"></canvas>
-      </div>
-      <div class="stretch-row">
-        <label class="stretch-label" for="min-slider">Black Point</label>
-        <input id="min-slider" v-model.number="minPixelValue" type="range" min="0" :max="maxPixelValue-1" :disabled="autoStretch" class="stretch-slider" @input="applyStretch" />
-        <input v-model.number="minPixelValue" type="number" min="0" :max="maxPixelValue-1" :disabled="autoStretch" class="stretch-input" @change="applyStretch" />
-      </div>
-      <div class="stretch-row">
-        <label class="stretch-label" for="max-slider">White Point</label>
-        <input id="max-slider" v-model.number="maxPixelValue" type="range" :min="minPixelValue+1" max="65535" :disabled="autoStretch" class="stretch-slider" @input="applyStretch" />
-        <input v-model.number="maxPixelValue" type="number" :min="minPixelValue+1" max="65535" :disabled="autoStretch" class="stretch-input" @change="applyStretch" />
-      </div>
-      <div class="stretch-row">
-        <label class="stretch-label" for="gamma-slider">Gamma</label>
-        <input id="gamma-slider" v-model.number="gamma" type="range" min="0.1" max="3" step="0.01" :disabled="autoStretch" class="stretch-slider" @input="applyStretch" />
-        <input v-model.number="gamma" type="number" min="0.1" max="3" step="0.01" :disabled="autoStretch" class="stretch-input" @change="applyStretch" />
+        <div class="levels-slider-wrapper">
+          <canvas ref="histogramCanvas" class="histogram-canvas"></canvas>
+          <VueSlider
+            v-model="levels"
+            :min="0"
+            :max="65535"
+            :interval="1"
+            :disabled="autoStretch"
+            :marks="{0: 'Black', 65535: 'White'}"
+            :dot-num="3"
+            :order="true"
+            :contained="true"
+            :lazy="true"
+            :height="6"
+            class="levels-vue-slider"
+            @change="applyStretch"
+          />
+          <div class="levels-values">
+            <span>Black: {{ levels[0] }}</span>
+            <span>Mid: {{ levels[1] }}</span>
+            <span>White: {{ levels[2] }}</span>
+            <span>Gamma: {{ gamma.toFixed(2) }}</span>
+          </div>
+        </div>
       </div>
       <div class="stretch-row stretch-row-options stretch-auto-row" aria-label="Auto stretch controls">
         <label class="stretch-label" for="stretch-method">Method</label>
@@ -922,5 +960,26 @@ function resetStretch() {
 }
 .stretch-auto-row input[type="checkbox"], .stretch-robust-row input[type="checkbox"] {
   accent-color: var(--aw-accent-color);
+}
+
+.levels-vue-slider {
+  margin: 10px 0 10px 0;
+  z-index: 1;
+  position: static;
+}
+.levels-slider-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.levels-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  margin-top: 0.2rem;
+  color: var(--aw-color-text-secondary);
 }
 </style>

@@ -25,6 +25,7 @@
     "primeicons": "^7.0.0",
     "primevue": "^4.0.4",
     "vue": "^3.4.29",
+    "vue-3-slider-component": "^1.0.2",
     "vue-logger-plugin": "^2.2.3",
     "vue-router": "^4.5.1"
   },
