@@ -440,6 +440,7 @@ export class AlpacaClient {
     const params: Record<string, unknown> = {}
     params[toParamFormat(propertyName)] = ascomValue
 
+    log.debug(`AlpacaClient: Setting property ${propertyName} to ${ascomValue}`)
     // Use property mapping to ensure consistent URL formatting
     return this.put(toUrlFormat(propertyName), params, options)
   }

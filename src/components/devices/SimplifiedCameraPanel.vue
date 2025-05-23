@@ -565,6 +565,76 @@ const binningOptions = computed(() => {
   return opts;
 });
 
+// Subframe/ROI state
+const subframe = ref({
+  startX: 0,
+  startY: 0,
+  numX: computedImageWidth.value,
+  numY: computedImageHeight.value
+});
+
+// Watch for sensor size changes to reset subframe
+watch([computedImageWidth, computedImageHeight], ([w, h]) => {
+  if (w > 0 && h > 0) {
+    subframe.value.numX = w;
+    subframe.value.numY = h;
+  }
+});
+
+// Auto-reset subframe if resolution changes and subframe is currently full frame
+watch([computedImageWidth, computedImageHeight], ([w, h]) => {
+  if (
+    subframe.value.startX === 0 &&
+    subframe.value.startY === 0 &&
+    (subframe.value.numX !== w || subframe.value.numY !== h)
+  ) {
+    resetSubframe();
+  }
+});
+
+// Subframe controls
+const applySubframe = async () => {
+  try {
+    await store.setCameraSubframe(props.deviceId, subframe.value.startX, subframe.value.startY, subframe.value.numX, subframe.value.numY);
+  } catch (error) {
+    settingsError.value = `Failed to set subframe: ${error instanceof Error ? error.message : String(error)}`;
+  }
+};
+
+// Sensor max size and binning
+const sensorWidth = computed(() => {
+  const w = Number(currentDevice.value?.properties?.cameraXSize ?? currentDevice.value?.properties?.cameraxsize);
+  return isNaN(w) ? 0 : w;
+});
+const sensorHeight = computed(() => {
+  const h = Number(currentDevice.value?.properties?.cameraYSize ?? currentDevice.value?.properties?.cameraysize);
+  return isNaN(h) ? 0 : h;
+});
+const binX = computed(() => Number(currentDevice.value?.properties?.binX ?? 1));
+const binY = computed(() => Number(currentDevice.value?.properties?.binY ?? 1));
+
+const resetSubframe = () => {
+  const w = sensorWidth.value > 0 ? Math.floor(sensorWidth.value / (binX.value > 0 ? binX.value : 1)) : 1;
+  const h = sensorHeight.value > 0 ? Math.floor(sensorHeight.value / (binY.value > 0 ? binY.value : 1)) : 1;
+  subframe.value.startX = 0;
+  subframe.value.startY = 0;
+  subframe.value.numX = w;
+  subframe.value.numY = h;
+};
+
+// Auto-reset subframe if resolution changes and subframe is currently full frame
+watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
+  const fullW = w > 0 ? Math.floor(w / (bx > 0 ? bx : 1)) : 1;
+  const fullH = h > 0 ? Math.floor(h / (by > 0 ? by : 1)) : 1;
+  if (
+    subframe.value.startX === 0 &&
+    subframe.value.startY === 0 &&
+    (subframe.value.numX !== fullW || subframe.value.numY !== fullH)
+  ) {
+    resetSubframe();
+  }
+});
+
 </script>
 
 <template>
@@ -600,6 +670,7 @@ const binningOptions = computed(() => {
               :height="computedImageHeight"
               :sensor-type="cameraSensorType === null ? undefined : cameraSensorType" 
               :detected-bayer-pattern="detectedBayerPatternFromSensorType"
+              :subframe="subframe"
               @histogram-generated="handleHistogramGenerated"
             />
           </div>
@@ -784,6 +855,19 @@ const binningOptions = computed(() => {
                   <dd class="camera-info-value">{{ value }}</dd>
                 </template>
               </dl>
+            </div>
+            <!-- Subframe Section -->
+            <div class="panel-section subframe-section">
+              <h3>Subframe (ROI)</h3>
+              <div class="subframe-controls">
+                <label>Start X: <input v-model.number="subframe.startX" type="number" :min="0" :max="computedImageWidth-1" class="aw-input aw-input--sm" /></label>
+                <label>Start Y: <input v-model.number="subframe.startY" type="number" :min="0" :max="computedImageHeight-1" class="aw-input aw-input--sm" /></label>
+                <label>Width: <input v-model.number="subframe.numX" type="number" :min="1" :max="computedImageWidth-subframe.startX" class="aw-input aw-input--sm" /></label>
+                <label>Height: <input v-model.number="subframe.numY" type="number" :min="1" :max="computedImageHeight-subframe.startY" class="aw-input aw-input--sm" /></label>
+                <button class="aw-btn aw-btn--primary aw-btn--sm" @click="applySubframe">Apply</button>
+                <button class="aw-btn aw-btn--secondary aw-btn--sm" @click="resetSubframe">Reset</button>
+              </div>
+              <div class="subframe-hint">Set the region of interest for image capture. Reset for full frame.</div>
             </div>
           </div>
         </div>
@@ -1332,5 +1416,52 @@ input:checked + .slider:before {
   .camera-info-list {
     grid-template-columns: 1fr;
   }
+}
+
+.subframe-section {
+  margin-top: var(--aw-spacing-md);
+  background: var(--aw-panel-content-bg-color);
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  padding: var(--aw-spacing-sm);
+}
+
+.subframe-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--aw-spacing-sm);
+}
+
+.subframe-controls label {
+  display: flex;
+  flex-direction: column;
+}
+
+.subframe-controls input {
+  width: 100%;
+  padding: var(--aw-spacing-xs);
+  background-color: var(--aw-input-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
+}
+
+.subframe-controls button {
+  width: 100%;
+  padding: var(--aw-spacing-xs) 0;
+  background-color: var(--aw-button-primary-bg);
+  color: var(--aw-button-primary-text);
+  border: none;
+  border-radius: var(--aw-border-radius-sm);
+  cursor: pointer;
+}
+
+.subframe-controls button:hover {
+  background-color: var(--aw-button-primary-hover-bg);
+}
+
+.subframe-hint {
+  font-size: 0.8rem;
+  color: var(--aw-text-secondary-color);
 }
 </style> 

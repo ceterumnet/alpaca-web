@@ -35,6 +35,10 @@ const props = defineProps({
   detectedBayerPattern: {
     type: String as () => BayerPattern | null,
     default: null
+  },
+  subframe: {
+    type: Object as () => { startX: number, startY: number, numX: number, numY: number } | undefined,
+    default: undefined
   }
 })
 
@@ -91,22 +95,42 @@ const drawImage = async () => {
     imageData: props.imageData,
     width: props.width,
     height: props.height,
-    sensorType: props.sensorType
-  }, 'CameraImageDisplay: drawImage called. Props:')
-  
-  if (!canvasRef.value || props.imageData.byteLength === 0) {
-    log.warn('CameraImageDisplay: drawImage aborted - no canvas or no image data.');
-    return
+    sensorType: props.sensorType,
+    subframe: props.subframe
+  }, 'CameraImageDisplay: drawImage called. Props:');
+
+  if (!canvasRef.value) {
+    log.warn('CameraImageDisplay: drawImage aborted - no canvas.');
+    return;
   }
 
-  if (!props.width || !props.height) {
-    log.error('CameraImageDisplay: drawImage aborted - width or height is zero or invalid.');
-    // Optionally, clear the canvas or show a message
-    const canvas = canvasRef.value;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // ctx.fillText("Invalid image dimensions", 10, 50);
+  const canvas = canvasRef.value;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // If no image data, draw placeholder
+  if (props.imageData.byteLength === 0) {
+    canvas.width = props.width;
+    canvas.height = props.height;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    // Draw subframe overlay if present
+    if (props.subframe && props.subframe.numX > 0 && props.subframe.numY > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#ff9800';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(
+        props.subframe.startX,
+        props.subframe.startY,
+        props.subframe.numX,
+        props.subframe.numY
+      );
+      ctx.restore();
+      console.log('Subframe overlay (placeholder):', props.subframe);
     }
     return;
   }
@@ -129,21 +153,12 @@ const drawImage = async () => {
       return;
   }
 
-  const canvas = canvasRef.value
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
+  const imageWidth = processedImage.value.width;
+  const imageHeight = processedImage.value.height;
+  console.log('drawImage: imageWidth', imageWidth, 'imageHeight', imageHeight, 'subframe', props.subframe);
 
-  // Set canvas dimensions to match image
-  const imageWidth = processedImage.value.width
-  const imageHeight = processedImage.value.height
-
-  if (!imageWidth || !imageHeight) {
-    log.warn('Invalid image dimensions:', imageWidth, 'x', imageHeight)
-    return
-  }
-
-  canvas.width = imageWidth
-  canvas.height = imageHeight
+  canvas.width = imageWidth;
+  canvas.height = imageHeight;
 
   // Create a lookup table for efficient conversion
   let minToUse = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value
@@ -204,6 +219,22 @@ const drawImage = async () => {
 
   // Put the image data to canvas
   ctx.putImageData(imgData, 0, 0)
+
+  // Draw subframe overlay if present and valid
+  if (props.subframe && props.subframe.numX > 0 && props.subframe.numY > 0 && (props.subframe.numX < imageWidth || props.subframe.numY < imageHeight)) {
+    ctx.save();
+    ctx.strokeStyle = '#ff9800';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(
+      props.subframe.startX,
+      props.subframe.startY,
+      props.subframe.numX,
+      props.subframe.numY
+    );
+    ctx.restore();
+    console.log('Subframe overlay:', props.subframe);
+  }
 
   // If full screen is active, update its source too
   if (isFullScreen.value) {
@@ -570,6 +601,14 @@ watch(
   { immediate: false } // Set to false, applyStretch will be called onMount if needed
 )
 
+// Watch for subframe prop changes and redraw overlay
+watch(() => props.subframe, () => { drawImage(); }, { deep: true });
+
+// Watch for width/height changes and redraw
+watch([() => props.width, () => props.height], () => {
+  drawImage();
+});
+
 // Initialize on mount
 onMounted(() => {
   // 2. Set initial theme and observe document.documentElement for class changes
@@ -701,11 +740,12 @@ onBeforeUnmount(() => {
 }
 
 .image-canvas {
-  display: block; /* Removes extra space below canvas */
+  display: block;
   max-width: 100%;
-  max-height: 100%; /* Canvas should not exceed the container's max-height */
-  object-fit: contain; /* Ensures aspect ratio is maintained within bounds */
-  background-color: black; /* Default background for the image itself */
+  max-height: 100%;
+  object-fit: contain;
+  background-color: black;
+  border: 2px solid #888; /* For debugging */
 }
 
 .controls {

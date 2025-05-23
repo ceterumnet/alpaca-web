@@ -525,6 +525,16 @@ export const propertyNameFormats: Record<string, Record<PropertyNameFormat, stri
     [PropertyNameFormat.PARAM]: 'MinY',
     [PropertyNameFormat.TS]: 'minY'
   },
+  numx: {
+    [PropertyNameFormat.URL]: 'numx',
+    [PropertyNameFormat.PARAM]: 'NumX',
+    [PropertyNameFormat.TS]: 'numX'
+  },
+  numy: {
+    [PropertyNameFormat.URL]: 'numy',
+    [PropertyNameFormat.PARAM]: 'NumY',
+    [PropertyNameFormat.TS]: 'numY'
+  },
   numports: {
     [PropertyNameFormat.URL]: 'numports',
     [PropertyNameFormat.PARAM]: 'NumPorts',
