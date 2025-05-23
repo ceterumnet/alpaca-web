@@ -162,8 +162,8 @@
 
 .aw-checkbox-container input:checked ~ .aw-checkbox,
 .aw-radio-container input:checked ~ .aw-radio {
-  background-color: var(--aw-color-primary-500);
-  border-color: var(--aw-color-primary-500);
+  background-color: var(--aw-accent-color);
+  border-color: var(--aw-accent-color);
 }
 
 .aw-checkbox-container input:disabled ~ .aw-checkbox,
@@ -247,8 +247,8 @@
 /* ============================================================
    DARK THEME SPECIFIC OVERRIDES (if needed)
    ============================================================ */
-:root .dark-theme .aw-checkbox:after,
-:root .dark-theme .aw-radio:after {
+.dark-theme .aw-checkbox:after,
+.dark-theme .aw-radio:after {
   /* Ensure checkbox/radio marks are visible in dark theme */
   border-color: var(--aw-color-neutral-900);
   background-color: var(--aw-color-neutral-900);

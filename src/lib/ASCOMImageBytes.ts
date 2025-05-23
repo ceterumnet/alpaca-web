@@ -790,7 +790,13 @@ function calculateImageStatistics(
  * Create an efficient lookup table for converting pixel values to display values
  * This is much more efficient than calculating conversions for each pixel
  */
-export function createStretchLUT(min: number, max: number, method: 'linear' | 'log' | 'none' = 'linear', bitsPerPixel: number = 16): Uint8Array {
+export function createStretchLUT(
+  min: number,
+  max: number,
+  method: 'linear' | 'log' | 'none' = 'linear',
+  bitsPerPixel: number = 16,
+  gamma: number = 1.0
+): Uint8Array {
   // Determine size of the LUT based on bit depth
   const lutSize = Math.min(65536, Math.pow(2, bitsPerPixel))
   const lut = new Uint8Array(lutSize)
@@ -809,28 +815,29 @@ export function createStretchLUT(min: number, max: number, method: 'linear' | 'l
 
     // Calculate display value based on stretch method
     let displayValue = 0
-
+    let norm = (value - min) / range
+    norm = Math.max(0, Math.min(1, norm))
     if (method === 'linear') {
-      // Linear stretch
-      displayValue = Math.round(((value - min) / range) * 255)
+      // Linear stretch with gamma
+      displayValue = Math.round(Math.pow(norm, 1 / gamma) * 255)
     } else if (method === 'log') {
-      // Logarithmic stretch
+      // Logarithmic stretch with gamma
       if (value <= 0) {
         displayValue = 0
       } else {
         const logMin = Math.log(Math.max(1, min))
         const logMax = Math.log(Math.max(2, max))
         const logRange = logMax - logMin
-
         if (logRange > 0) {
-          displayValue = Math.round(((Math.log(Math.max(1, value)) - logMin) / logRange) * 255)
+          let logNorm = (Math.log(Math.max(1, value)) - logMin) / logRange
+          logNorm = Math.max(0, Math.min(1, logNorm))
+          displayValue = Math.round(Math.pow(logNorm, 1 / gamma) * 255)
         }
       }
     } else {
       // No stretch - just scale to 8-bit
       displayValue = Math.round((value / (lutSize - 1)) * 255)
     }
-
     // Ensure value is in valid range
     lut[i] = Math.max(0, Math.min(255, displayValue))
   }

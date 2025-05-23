@@ -55,6 +55,7 @@ const autoStretch = ref(true)
 // Add robust stretch settings to avoid outliers making everything black
 const useRobustStretch = ref(true)
 const robustPercentile = ref(98) // Exclude top 2% of pixels as outliers
+const gamma = ref(1.0)
 
 // Debayering state
 const enableDebayer = ref(false)
@@ -203,7 +204,7 @@ const drawImage = async () => {
   } // Else, they are used directly from processedImage or robust calc for rendering this pass.
 
   // Create an efficient lookup table for the stretch method
-  const lut = createStretchLUT(minToUse, maxToUse, stretchMethod.value, processedImage.value.bitsPerPixel)
+  const lut = createStretchLUT(minToUse, maxToUse, stretchMethod.value, processedImage.value.bitsPerPixel, gamma.value)
 
   // Generate display image data efficiently
   const imageData = generateDisplayImage(
@@ -588,7 +589,8 @@ watch(
     robustPercentile.value,
     currentThemeRef.value,
     enableDebayer.value, // Add debayer enable
-    selectedBayerPattern.value // Add selected bayer pattern
+    selectedBayerPattern.value, // Add selected bayer pattern
+    gamma.value
   ],
   () => {
     // When these settings change, we need to re-process the image from raw data
@@ -636,6 +638,16 @@ onBeforeUnmount(() => {
     themeObserver.disconnect()
   }
 })
+
+function resetStretch() {
+  autoStretch.value = true;
+  minPixelValue.value = 0;
+  maxPixelValue.value = 255;
+  gamma.value = 1.0;
+  useRobustStretch.value = true;
+  robustPercentile.value = 98;
+  applyStretch();
+}
 </script>
 
 <template>
@@ -646,64 +658,52 @@ onBeforeUnmount(() => {
         <Icon type="search" size="18" />
       </button>
     </div>
-    <div v-if="props.imageData.byteLength > 0" class="controls">
-      <div class="control-group">
-        <label for="stretch-method">Stretch:</label>
-        <select id="stretch-method" v-model="stretchMethod" @change="applyStretch">
+    <div v-if="props.imageData.byteLength > 0" class="stretch-controls astronomy-stretch-ui">
+      <div class="histogram-row">
+        <div class="histogram-label">Histogram</div>
+        <canvas ref="histogramCanvas" class="histogram-canvas"></canvas>
+      </div>
+      <div class="stretch-row">
+        <label class="stretch-label" for="min-slider">Black Point</label>
+        <input id="min-slider" v-model.number="minPixelValue" type="range" min="0" :max="maxPixelValue-1" :disabled="autoStretch" class="stretch-slider" @input="applyStretch" />
+        <input v-model.number="minPixelValue" type="number" min="0" :max="maxPixelValue-1" :disabled="autoStretch" class="stretch-input" @change="applyStretch" />
+      </div>
+      <div class="stretch-row">
+        <label class="stretch-label" for="max-slider">White Point</label>
+        <input id="max-slider" v-model.number="maxPixelValue" type="range" :min="minPixelValue+1" max="65535" :disabled="autoStretch" class="stretch-slider" @input="applyStretch" />
+        <input v-model.number="maxPixelValue" type="number" :min="minPixelValue+1" max="65535" :disabled="autoStretch" class="stretch-input" @change="applyStretch" />
+      </div>
+      <div class="stretch-row">
+        <label class="stretch-label" for="gamma-slider">Gamma</label>
+        <input id="gamma-slider" v-model.number="gamma" type="range" min="0.1" max="3" step="0.01" :disabled="autoStretch" class="stretch-slider" @input="applyStretch" />
+        <input v-model.number="gamma" type="number" min="0.1" max="3" step="0.01" :disabled="autoStretch" class="stretch-input" @change="applyStretch" />
+      </div>
+      <div class="stretch-row stretch-row-options stretch-auto-row" aria-label="Auto stretch controls">
+        <label class="stretch-label" for="stretch-method">Method</label>
+        <select id="stretch-method" v-model="stretchMethod" class="stretch-select" @change="applyStretch">
           <option value="none">None</option>
           <option value="linear">Linear</option>
           <option value="log">Logarithmic</option>
         </select>
+        <label class="stretch-label" for="auto-stretch">Auto</label>
+        <input id="auto-stretch" v-model="autoStretch" type="checkbox" class="stretch-checkbox" :aria-checked="autoStretch ? 'true' : 'false'" aria-label="Enable auto stretch" @change="applyStretch" />
+        <button class="stretch-reset-btn" title="Reset stretch to auto/defaults" aria-label="Reset stretch to defaults" @click="resetStretch"><Icon type="refresh" /></button>
       </div>
-      <div class="control-group">
-        <label for="auto-stretch">Auto Stretch:</label>
-        <input id="auto-stretch" v-model="autoStretch" type="checkbox" @change="applyStretch">
+      <div class="stretch-row stretch-row-robust stretch-robust-row" aria-label="Robust stretch controls">
+        <label class="stretch-label" for="robust-stretch">Robust</label>
+        <input id="robust-stretch" v-model="useRobustStretch" type="checkbox" class="stretch-checkbox" :aria-checked="useRobustStretch ? 'true' : 'false'" aria-label="Enable robust stretch" @change="applyStretch" />
+        <label class="stretch-label" for="robust-percentile">Percentile</label>
+        <input id="robust-percentile" v-model.number="robustPercentile" type="number" min="80" max="100" class="stretch-input stretch-input-small" aria-label="Robust percentile" @change="applyStretch" />
       </div>
-      <div v-if="!autoStretch" class="control-group">
-        <label for="min-pixel">Min:</label>
-        <input id="min-pixel" v-model.number="minPixelValue" type="number" @change="applyStretch">
-        <label for="max-pixel">Max:</label>
-        <input id="max-pixel" v-model.number="maxPixelValue" type="number" @change="applyStretch">
-      </div>
-      <div class="control-group">
-        <label for="robust-stretch">Robust Stretch:</label>
-        <input id="robust-stretch" v-model="useRobustStretch" type="checkbox" @change="applyStretch">
-      </div>
-      <div v-if="useRobustStretch" class="control-group">
-        <label for="robust-percentile">Percentile:</label>
-        <input id="robust-percentile" v-model.number="robustPercentile" type="number" min="80" max="100" @change="applyStretch">
-      </div>
-      
-      <!-- Debayer Controls - Conditionally shown -->
-      <template v-if="!isMonochromeOrUnknown">
-        <div class="control-group">
-          <label for="enable-debayer">Debayer Image:</label>
-          <input id="enable-debayer" v-model="enableDebayer" type="checkbox" @change="applyStretch">
-        </div>
-        <div v-if="enableDebayer" class="control-group">
-          <label for="bayer-pattern">Bayer Pattern:</label>
-          <select id="bayer-pattern" v-model="selectedBayerPattern" @change="applyStretch">
-            <option v-for="pattern in bayerPatternOptions" :key="pattern" :value="pattern">
-              {{ pattern }}{{ pattern === autoDetectedPatternDisplay ? ' (detected)' : '' }}
-            </option>
-          </select>
-        </div>
-      </template>
-      <!-- End Debayer Controls -->
-
-    </div>
-    <div v-if="props.imageData.byteLength > 0 && histogram.length > 0" class="histogram-container">
-      <canvas ref="histogramCanvas" class="histogram-canvas"></canvas>
     </div>
     <div v-if="props.imageData.byteLength === 0" class="no-image-message">
       No image data to display.
     </div>
-
     <!-- Full Screen Modal -->
     <div v-if="isFullScreen" class="fullscreen-modal" @click.self="toggleFullScreen">
       <img :src="fullScreenImageSrc" alt="Full screen image" class="fullscreen-modal-image" />
       <button class="close-fullscreen-button" @click="toggleFullScreen">
-        <Icon type="close" /> <!-- Assuming 'close' is available -->
+        <Icon type="close" />
       </button>
     </div>
   </div>
@@ -718,25 +718,21 @@ onBeforeUnmount(() => {
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   background-color: var(--aw-panel-content-bg-color);
-  /* Ensure it doesn't grow indefinitely */
   max-width: 100%;
-  overflow: hidden; /* Contain child elements */
-  position: relative; /* For positioning the fullscreen button and modal */
+  overflow: hidden;
+  position: relative;
 }
 
 .image-container {
   width: 100%;
-  /* Define a max-height for the image container. 
-     Adjust this value as needed for your layout. 
-     Using aspect-ratio can also be a good alternative if you want to maintain a specific shape. */
-  max-height: 400px; /* Example: Max height of 400px */
-  display: flex; /* For centering canvas if it's smaller than container */
+  max-height: 400px;
+  display: flex;
   justify-content: center;
   align-items: center;
-  background-color: var(--aw-color-neutral-100, #f0f0f0); /* Background for the image area */
+  background-color: var(--aw-color-neutral-100);
   border-radius: var(--aw-border-radius-sm);
-  overflow: hidden; /* Important if canvas tries to overflow */
-  position: relative; /* For positioning the fullscreen button */
+  overflow: hidden;
+  position: relative;
 }
 
 .image-canvas {
@@ -744,65 +740,108 @@ onBeforeUnmount(() => {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  background-color: black;
-  border: 2px solid #888; /* For debugging */
+  background-color: var(--aw-color-background);
+  border: 2px solid var(--aw-color-border);
 }
 
-.controls {
+.stretch-controls.astronomy-stretch-ui {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--aw-spacing-md);
-  padding: var(--aw-spacing-xs) 0;
-  border-top: 1px solid var(--aw-panel-border-color);
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  margin-top: var(--aw-spacing-sm);
-  padding-top: var(--aw-spacing-sm);
-  padding-bottom: var(--aw-spacing-sm);
+  flex-direction: column;
+  gap: var(--aw-spacing-sm);
+  background: var(--aw-panel-content-bg-color);
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  padding: var(--aw-spacing-md);
+  margin-bottom: var(--aw-spacing-md);
 }
 
-.control-group {
+.histogram-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: var(--aw-spacing-xs);
+}
+.histogram-label {
+  font-size: 0.9rem;
+  color: var(--aw-color-text-secondary);
+  margin-bottom: 0.2rem;
+}
+.stretch-row {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-xs);
+  margin-bottom: 0.2rem;
 }
-
-.control-group label {
-  font-size: 0.85rem;
-  color: var(--aw-text-secondary-color);
+.stretch-label {
+  min-width: 80px;
+  font-size: 0.9rem;
+  color: var(--aw-color-text-secondary);
 }
-
-.control-group select,
-.control-group input[type="number"],
-.control-group input[type="checkbox"] {
-  padding: var(--aw-spacing-xxs);
-  border: 1px solid var(--aw-panel-border-color);
+.stretch-slider {
+  flex: 1 1 120px;
+  min-width: 80px;
+  max-width: 200px;
+  accent-color: var(--aw-accent-color);
+}
+.stretch-input {
+  width: 70px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.95rem;
   border-radius: var(--aw-border-radius-sm);
-  background-color: var(--aw-input-bg-color);
-  color: var(--aw-text-color);
-  font-size: 0.85rem;
+  border: 1px solid var(--aw-panel-border-color);
+  background: var(--aw-input-bg-color);
+  color: var(--aw-color-text-primary);
 }
-
-.control-group input[type="number"] {
-  width: 60px;
+.stretch-input-small {
+  width: 50px;
 }
-
-.histogram-container {
-  width: 100%;
-  height: 100px; /* Fixed height for histogram */
-  padding-top: var(--aw-spacing-sm);
+.stretch-select {
+  min-width: 100px;
+  font-size: 0.95rem;
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  background: var(--aw-input-bg-color);
+  color: var(--aw-color-text-primary);
+}
+.stretch-checkbox {
+  margin-left: var(--aw-spacing-xs);
+  margin-right: var(--aw-spacing-xs);
+  accent-color: var(--aw-accent-color);
+}
+.stretch-reset-btn {
+  background: none;
+  border: none;
+  color: var(--aw-accent-color);
+  cursor: pointer;
+  margin-left: var(--aw-spacing-xs);
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+}
+.stretch-reset-btn:hover {
+  color: var(--aw-color-primary-700);
+}
+.stretch-row-options {
+  margin-top: var(--aw-spacing-xs);
+}
+.stretch-row-robust {
+  margin-top: var(--aw-spacing-xs);
 }
 
 .histogram-canvas {
   width: 100%;
-  height: 100%;
+  height: 100px;
+  background: var(--aw-color-background);
+  border-radius: var(--aw-border-radius-xs);
+  border: 1px solid var(--aw-panel-border-color);
 }
 
 .no-image-message {
   text-align: center;
   padding: var(--aw-spacing-lg);
-  color: var(--aw-text-secondary-color);
+  color: var(--aw-color-text-secondary);
   font-style: italic;
-  min-height: 100px; /* Ensure it takes some space */
+  min-height: 100px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -813,19 +852,17 @@ onBeforeUnmount(() => {
   top: var(--aw-spacing-xs);
   right: var(--aw-spacing-xs);
   background-color: rgba(0, 0, 0, 0.4);
-  color: white;
+  color: var(--aw-color-text-on-primary);
   border: none;
   border-radius: var(--aw-border-radius-sm);
-  /* padding: var(--aw-spacing-xs) var(--aw-spacing-sm); */ /* Adjusted padding for icon-only */
   padding: var(--aw-spacing-xs);
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center; /* Center the icon */
-  /* gap: var(--aw-spacing-xs); */ /* No gap needed for single icon */
+  justify-content: center;
   z-index: 10;
-  width: calc(18px + 2 * var(--aw-spacing-xs)); /* Adjust width to content */
-  height: calc(18px + 2 * var(--aw-spacing-xs)); /* Adjust height to content */
+  width: calc(18px + 2 * var(--aw-spacing-xs));
+  height: calc(18px + 2 * var(--aw-spacing-xs));
   line-height: 1;
 }
 
@@ -833,11 +870,6 @@ onBeforeUnmount(() => {
   background-color: rgba(0, 0, 0, 0.6);
 }
 
-/* .fullscreen-button .icon { */ /* Size is now passed as a prop to Icon component */
-  /* font-size: 1rem; */ /* Adjust as needed */
-/* } */
-
-/* Full Screen Modal Styles */
 .fullscreen-modal {
   position: fixed;
   top: 0;
@@ -848,17 +880,17 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000; /* Ensure it's on top of everything */
-  padding: var(--aw-spacing-lg); /* Add some padding around the image */
+  z-index: 1000;
+  padding: var(--aw-spacing-lg);
   box-sizing: border-box;
 }
 
 .fullscreen-modal-image {
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain; /* Preserve aspect ratio */
-  border-radius: var(--aw-border-radius-md); /* Optional: rounded corners for the image */
-  box-shadow: 0 0 30px rgba(0,0,0,0.5); /* Optional: some shadow */
+  object-fit: contain;
+  border-radius: var(--aw-border-radius-md);
+  box-shadow: 0 0 30px rgba(0,0,0,0.5);
 }
 
 .close-fullscreen-button {
@@ -867,14 +899,28 @@ onBeforeUnmount(() => {
   right: var(--aw-spacing-md);
   background: none;
   border: none;
-  color: white;
-  font-size: 1.8rem; /* Make close icon larger */
+  color: var(--aw-color-text-on-primary);
+  font-size: 1.8rem;
   cursor: pointer;
   padding: var(--aw-spacing-sm);
   line-height: 1;
 }
 
 .close-fullscreen-button:hover {
-  color: var(--aw-color-neutral-300, #ccc);
+  color: var(--aw-color-neutral-300);
+}
+
+.stretch-auto-row, .stretch-robust-row {
+  background: var(--aw-panel-hover-bg-color);
+  border-radius: var(--aw-border-radius-xs);
+  border: 1px solid var(--aw-panel-border-color);
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  margin-top: var(--aw-spacing-xs);
+}
+.stretch-auto-row label, .stretch-robust-row label {
+  color: var(--aw-color-text-secondary);
+}
+.stretch-auto-row input[type="checkbox"], .stretch-robust-row input[type="checkbox"] {
+  accent-color: var(--aw-accent-color);
 }
 </style>
