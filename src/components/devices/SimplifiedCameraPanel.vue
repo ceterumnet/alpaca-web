@@ -439,6 +439,86 @@ const offsetMax = computed(() => {
 
 const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? [])
 
+// Debug: Log all available camera properties for troubleshooting
+watch(currentDevice, (val) => {
+  if (val) {
+     
+    console.log('Camera properties:', val.properties)
+  }
+}, { immediate: true })
+
+const cameraInfoProps = computed(() => {
+  if (!currentDevice.value) return []
+  const props = currentDevice.value.properties || {}
+  // Map of label: [camelCaseKey, alpacaKey]
+  const infoMap = [
+    ['Sensor Name', ['sensorName', 'sensorname']],
+    ['Image Width (px)', ['imageWidth', 'cameraxsize']],
+    ['Image Height (px)', ['imageHeight', 'cameraysize']],
+    ['Full Well Capacity (e-)', ['fullWellCapacity', 'fullwellcapacity']],
+    ['Gain Min', ['gainMin', 'gainmin']],
+    ['Gain Max', ['gainMax', 'gainmax']],
+    ['Offset Min', ['offsetMin', 'offsetmin']],
+    ['Offset Max', ['offsetMax', 'offsetmax']],
+    ['Bin X', ['binX', 'binx']],
+    ['Bin Y', ['binY', 'biny']],
+    ['Pixel Size X (μm)', ['pixelSizeX', 'pixelsizex']],
+    ['Pixel Size Y (μm)', ['pixelSizeY', 'pixelsizey']],
+    ['CCD Temperature (°C)', ['ccdTemperature', 'ccdtemperature']],
+    ['Cooler Enabled', ['coolerEnabled', 'cooleron']],
+    ['Target Temperature (°C)', ['targetTemperature', 'setccdtemperature']],
+    ['Cooler Power (%)', ['coolerPower', 'coolerpower']],
+    ['Readout Mode', ['readoutMode', 'readoutmode']],
+    ['Sensor Type', ['sensorType', 'sensortype']],
+    ['Exposure Min (s)', ['exposureMin', 'exposuremin']],
+    ['Exposure Max (s)', ['exposureMax', 'exposuremax']],
+    ['Exposure Resolution (s)', ['exposureResolution', 'exposureresolution']],
+    ['Electrons/ADU', ['electronsPerADU', 'electronsperadu']],
+    ['Max ADU', ['maxADU', 'maxadu']],
+    ['Max Bin X', ['maxBinX', 'maxbinx']],
+    ['Max Bin Y', ['maxBinY', 'maxbiny']],
+    ['Num X', ['numX', 'numx']],
+    ['Num Y', ['numY', 'numy']],
+    ['Percent Completed', ['percentCompleted', 'percentcompleted']],
+    ['Has Shutter', ['hasShutter', 'hasshutter']],
+    ['Is Pulse Guiding', ['isPulseGuiding', 'ispulseguiding']],
+    ['Last Exposure Duration', ['lastExposureDuration', 'lastexposureduration']],
+    ['Last Exposure Start Time', ['lastExposureStartTime', 'lastexposurestarttime']],
+    ['Bayer Offset X', ['bayerOffsetX', 'bayeroffsetx']],
+    ['Bayer Offset Y', ['bayerOffsetY', 'bayeroffsety']],
+    ['Sub Exposure Duration', ['subExposureDuration', 'subexposureduration']],
+    ['Firmware Version', ['firmwareVersion']], // device root only
+  ]
+  // Only include properties that exist and are not null/undefined
+  const result = infoMap.reduce((acc, [label, keys]) => {
+    let val
+    for (const key of keys) {
+      if (key === 'firmwareVersion' && currentDevice.value && currentDevice.value.firmwareVersion) {
+        val = currentDevice.value.firmwareVersion
+        break
+      }
+      if (props[key] !== undefined && props[key] !== null && props[key] !== '') {
+        val = props[key]
+        break
+      }
+    }
+    if (val !== undefined && val !== null && val !== '') {
+      // Ensure the value is always a string
+      let displayVal: string
+      if (Array.isArray(val)) {
+        displayVal = val.join(', ')
+      } else if (typeof val === 'object') {
+        displayVal = JSON.stringify(val)
+      } else {
+        displayVal = String(val)
+      }
+      acc.push([String(label), displayVal])
+    }
+    return acc
+  }, [] as Array<[string, string]>) 
+  return result
+})
+
 </script>
 
 <template>
@@ -449,13 +529,11 @@ const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? []
       <div v-if="!currentDevice" class="connection-notice">
         <div class="connection-message">No camera selected or available</div>
       </div>
-      
       <!-- Connection status -->
       <div v-else-if="!isConnected" class="connection-notice">
         <div class="connection-message">Camera ({{ currentDevice.name }}) not connected.</div>
         <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
-      
       <template v-else>
         <!-- Settings Error Display -->
         <div v-if="settingsError" class="panel-section panel-error-display">
@@ -467,11 +545,9 @@ const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? []
             <Icon type="close" />
           </button>
         </div>
-
         <div class="main-layout-grid">
           <!-- Left Column: Camera Image Display -->
           <div class="camera-controls-column">
-            <!-- CameraImageDisplay is already styled as a panel, so no extra .panel-section needed -->
             <CameraImageDisplay 
               :image-data="imageData"
               :width="computedImageWidth"
@@ -481,7 +557,6 @@ const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? []
               @histogram-generated="handleHistogramGenerated"
             />
           </div>
-
           <!-- Right Column: Settings, Cooling & Exposure -->
           <div class="settings-cooling-column">
             <!-- Exposure Control Section -->
@@ -497,7 +572,6 @@ const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? []
                 @error="handleExposureError"
               />
             </div>
-
             <!-- Camera Settings Section -->
             <div class="panel-section">
               <h3>Settings</h3>
@@ -605,7 +679,6 @@ const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? []
                 </div>
               </div>
             </div>
-            
             <!-- Cooling Section -->
             <div class="panel-section">
               <h3>Cooling</h3>
@@ -637,6 +710,19 @@ const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? []
         </div>
       </template>
     </div>
+    <!-- Camera Info Collapsible Section at Bottom -->
+    <details v-if="currentDevice && cameraInfoProps.length" class="camera-info-collapsible">
+      <summary>
+        <Icon type="info-circle" class="camera-info-summary-icon" />
+        <span>Show Camera Info</span>
+      </summary>
+      <dl class="camera-info-list">
+        <template v-for="([label, value]) in cameraInfoProps" :key="label">
+          <dt class="camera-info-label">{{ label }}</dt>
+          <dd class="camera-info-value">{{ value }}</dd>
+        </template>
+      </dl>
+    </details>
   </div>
 </template>
 
@@ -1126,5 +1212,58 @@ input:checked + .slider:before {
   color: var(--aw-text-secondary-color);
   min-width: 24px;
   text-align: center;
+}
+
+.camera-info-collapsible {
+  margin-top: var(--aw-spacing-md);
+  background: var(--aw-panel-content-bg-color);
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  box-shadow: var(--aw-shadow-sm);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-lg);
+}
+
+.camera-info-collapsible summary {
+  cursor: pointer;
+  font-weight: var(--aw-font-weight-medium, 500);
+  color: var(--aw-text-secondary-color);
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-xs);
+  font-size: 1rem;
+}
+
+.camera-info-summary-icon {
+  font-size: 1.1rem;
+  color: var(--aw-device-camera-color);
+}
+
+.camera-info-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  row-gap: var(--aw-spacing-xs);
+  column-gap: var(--aw-spacing-lg);
+  margin: 0;
+  padding: 0;
+}
+
+.camera-info-label {
+  font-weight: var(--aw-font-weight-medium, 500);
+  color: var(--aw-text-secondary-color);
+  text-align: left;
+  padding-right: var(--aw-spacing-sm);
+}
+
+.camera-info-value {
+  color: var(--aw-text-color);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+@media (max-width: 600px) {
+  .camera-info-list {
+    grid-template-columns: 1fr;
+  }
 }
 </style> 
