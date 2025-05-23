@@ -36,14 +36,14 @@ const currentDevice = computed(() => {
 
 // Computed properties for image dimensions with logging
 const computedImageWidth = computed(() => {
-  const width = Number(currentDevice.value?.properties?.imageWidth);
-  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel (${props.deviceId}): computedImageWidth is ${width}, raw value was: ${currentDevice.value?.properties?.imageWidth}`);
+  const width = Number(currentDevice.value?.properties?.numX);
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel (${props.deviceId}): computedImageWidth is ${width}, raw value was: ${currentDevice.value?.properties?.numX}`);
   return isNaN(width) ? 0 : width; // Default to 0 if not a number
 });
 
 const computedImageHeight = computed(() => {
-  const height = Number(currentDevice.value?.properties?.imageHeight);
-  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel (${props.deviceId}): computedImageHeight is ${height}, raw value was: ${currentDevice.value?.properties?.imageHeight}`);
+  const height = Number(currentDevice.value?.properties?.numY);
+  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel (${props.deviceId}): computedImageHeight is ${height}, raw value was: ${currentDevice.value?.properties?.numY}`);
   return isNaN(height) ? 0 : height; // Default to 0 if not a number
 });
 
@@ -73,6 +73,7 @@ const isLoadingOffset = ref(false)
 const isLoadingBinning = ref(false)
 const isTogglingCooler = ref(false)
 const isLoadingTargetTemp = ref(false)
+const isLoadingReadoutMode = ref(false)
 
 // Error message for settings
 const settingsError = ref<string | null>(null)
@@ -453,8 +454,10 @@ const cameraInfoProps = computed(() => {
   // Map of label: [camelCaseKey, alpacaKey]
   const infoMap = [
     ['Sensor Name', ['sensorName', 'sensorname']],
-    ['Image Width (px)', ['imageWidth', 'cameraxsize']],
-    ['Image Height (px)', ['imageHeight', 'cameraysize']],
+    ['Camera X Size (px)', ['cameraXSize', 'cameraxsize']],
+    ['Camera Y Size (px)', ['cameraYSize', 'cameraysize']],
+    ['Start X', ['startX', 'startx']],
+    ['Start Y', ['startY', 'starty']],
     ['Full Well Capacity (e-)', ['fullWellCapacity', 'fullwellcapacity']],
     ['Gain Min', ['gainMin', 'gainmin']],
     ['Gain Max', ['gainMax', 'gainmax']],
@@ -469,6 +472,7 @@ const cameraInfoProps = computed(() => {
     ['Target Temperature (°C)', ['targetTemperature', 'setccdtemperature']],
     ['Cooler Power (%)', ['coolerPower', 'coolerpower']],
     ['Readout Mode', ['readoutMode', 'readoutmode']],
+    ['Readout Modes', ['readoutModes', 'readoutmodes']],
     ['Sensor Type', ['sensorType', 'sensortype']],
     ['Exposure Min (s)', ['exposureMin', 'exposuremin']],
     ['Exposure Max (s)', ['exposureMax', 'exposuremax']],
@@ -518,6 +522,48 @@ const cameraInfoProps = computed(() => {
   }, [] as Array<[string, string]>) 
   return result
 })
+
+const readoutModes = computed<string[]>(() => {
+  const modes = currentDevice.value?.properties?.readoutModes;
+  return Array.isArray(modes) ? modes : [];
+})
+
+const currentReadoutModeIndex = computed({
+  get() {
+    const modes = readoutModes.value
+    const current = currentDevice.value?.properties?.readoutMode
+    if (!modes.length || current === undefined || current === null) return 0
+    // If current is a string, find its index; if it's a number, use as index
+    if (typeof current === 'number') return current
+    const idx = modes.indexOf(current as string)
+    return idx !== -1 ? idx : 0
+  },
+  set(idx: number) {
+    updateReadoutMode(idx)
+  }
+})
+
+async function updateReadoutMode(idx: number) {
+  isLoadingReadoutMode.value = true
+  settingsError.value = null
+  try {
+    await store.setCameraReadoutMode(props.deviceId, idx)
+  } catch (error) {
+    log.error({deviceIds:[props.deviceId]}, 'Error setting readout mode:', error)
+    settingsError.value = `Failed to set readout mode: ${error instanceof Error ? error.message : String(error)}`
+  } finally {
+    isLoadingReadoutMode.value = false
+  }
+}
+
+const binningOptions = computed(() => {
+  const min = currentDevice.value?.properties?.minBinX ?? 1;
+  const max = currentDevice.value?.properties?.maxBinX ?? 4;
+  if (typeof min !== 'number' || typeof max !== 'number' || min > max) return [1];
+  const opts = [];
+  for (let i = min; i <= max; i++) opts.push(i);
+  return opts;
+});
 
 </script>
 
@@ -671,10 +717,33 @@ const cameraInfoProps = computed(() => {
                   <span v-if="offsetMode === 'value'" class="slider-minmax">{{ offsetMax }}</span>
                 </div>
                 <div class="setting-row">
-                  <label for="binning-input">Binning:</label>
+                  <label for="binning-input">Bin:</label>
                   <div class="input-with-spinner">
-                    <input id="binning-input" v-model.number="binning" type="number" min="1" max="4" step="1" :disabled="isLoadingBinning" class="aw-input aw-input--sm" @change="updateBinning">
+                    <select
+                      id="binning-input"
+                      v-model.number="binning"
+                      :disabled="isLoadingBinning"
+                      class="aw-select aw-select--sm"
+                      @change="updateBinning"
+                    >
+                      <option v-for="opt in binningOptions" :key="opt" :value="opt">{{ opt }}x{{ opt }}</option>
+                    </select>
                     <Icon v-if="isLoadingBinning" type="refresh" class="spinner-icon" animation="spin" />
+                  </div>
+                </div>
+                <div v-if="readoutModes.length" class="setting-row">
+                  <label for="readout-mode-select">Readout Mode:</label>
+                  <div class="input-with-spinner">
+                    <select
+                      id="readout-mode-select"
+                      v-model.number="currentReadoutModeIndex"
+                      :disabled="isLoadingReadoutMode"
+                      aria-label="Readout mode selector"
+                      class="aw-select aw-select--sm"
+                    >
+                      <option v-for="(mode, idx) in readoutModes" :key="mode" :value="idx">{{ mode }}</option>
+                    </select>
+                    <Icon v-if="isLoadingReadoutMode" type="refresh" class="spinner-icon" animation="spin" />
                   </div>
                 </div>
               </div>
@@ -1242,6 +1311,7 @@ input:checked + .slider:before {
   column-gap: var(--aw-spacing-lg);
   margin: 0;
   padding: 0;
+  font-size: 0.7rem;
 }
 
 .camera-info-label {
@@ -1249,7 +1319,6 @@ input:checked + .slider:before {
   color: var(--aw-text-secondary-color);
   text-align: left;
   padding-right: var(--aw-spacing-sm);
-  font-size: 0.92rem;
 }
 
 .camera-info-value {
@@ -1257,7 +1326,6 @@ input:checked + .slider:before {
   text-align: right;
   font-variant-numeric: tabular-nums;
   word-break: break-all;
-  font-size: 0.92rem;
 }
 
 @media (max-width: 600px) {

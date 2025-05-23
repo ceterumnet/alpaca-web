@@ -798,15 +798,27 @@ export function createCameraActions() {
           }
 
           if (propertiesFromClient.cameraxsize !== undefined) {
-            friendlyProperties.imageWidth = propertiesFromClient.cameraxsize
+            friendlyProperties.cameraXSize = propertiesFromClient.cameraxsize
           }
 
           if (propertiesFromClient.cameraysize !== undefined) {
-            friendlyProperties.imageHeight = propertiesFromClient.cameraysize
+            friendlyProperties.cameraYSize = propertiesFromClient.cameraysize
           }
 
           if (propertiesFromClient.sensorname !== undefined) {
             friendlyProperties.sensorName = propertiesFromClient.sensorname
+          }
+
+          if (propertiesFromClient.readoutmodes !== undefined) {
+            friendlyProperties.readoutModes = propertiesFromClient.readoutmodes
+          }
+
+          if (propertiesFromClient.maxbinx !== undefined) {
+            friendlyProperties.maxBinX = propertiesFromClient.maxbinx
+          }
+
+          if (propertiesFromClient.maxbiny !== undefined) {
+            friendlyProperties.maxBinY = propertiesFromClient.maxbiny
           }
 
           // This block must remain to map subExposureDuration
@@ -1045,7 +1057,10 @@ export function createCameraActions() {
               if (properties.ccdtemperature !== undefined) friendlyProperties.temperature = properties.ccdtemperature
               if (properties.setccdtemperature !== undefined) friendlyProperties.targetTemperature = properties.setccdtemperature
               if (properties.coolerpower !== undefined) friendlyProperties.coolerPower = properties.coolerpower
-
+              if (properties.numx !== undefined) friendlyProperties.numX = properties.numx
+              if (properties.numy !== undefined) friendlyProperties.numY = properties.numy
+              if (properties.startx !== undefined) friendlyProperties.startX = properties.startx
+              if (properties.starty !== undefined) friendlyProperties.startY = properties.starty
               // Add any non-undefined properties
               if (Object.keys(friendlyProperties).length > 0) {
                 this.updateDeviceProperties(deviceId, friendlyProperties)

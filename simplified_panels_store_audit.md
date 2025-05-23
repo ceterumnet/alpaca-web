@@ -80,7 +80,7 @@ _These improvements are implemented in `PanelLayoutView.vue` and `SimplifiedCame
 | Gain/Offset/Binning | ✔️ | ✔️ | [cameraActions.ts](src/stores/modules/cameraActions.ts), [SimplifiedCameraPanel.vue](src/components/devices/SimplifiedCameraPanel.vue) |
 | Cooler/Temp | ✔️ | ✔️ | [cameraActions.ts](src/stores/modules/cameraActions.ts), [SimplifiedCameraPanel.vue](src/components/devices/SimplifiedCameraPanel.vue) |
 | Subframe/ROI | ✔️ | ❌ | [cameraActions.ts](src/stores/modules/cameraActions.ts) only |
-| Readout Mode | ✔️ | ❌ | [cameraActions.ts](src/stores/modules/cameraActions.ts) only |
+| Readout Mode | ✔️ | ✔️ | [cameraActions.ts](src/stores/modules/cameraActions.ts) only |
 | Pulse Guide | ✔️ | ❌ | [cameraActions.ts](src/stores/modules/cameraActions.ts) only |
 | Preferred Alpaca Image Download (binary/JSON) | ✔️ | ❌ | [cameraActions.ts](src/stores/modules/cameraActions.ts) only |
 | Error/Status Details | ✔️ | Partial | [cameraActions.ts](src/stores/modules/cameraActions.ts), [SimplifiedCameraPanel.vue](src/components/devices/SimplifiedCameraPanel.vue) |
