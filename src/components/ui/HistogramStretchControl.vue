@@ -14,9 +14,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:levels', levels: { input: [number, number, number], output: [number, number] }): void;
-  (e: 'update:livePreview', value: boolean): void;
-  (e: 'autoWindow'): void;
   (e: 'autoStretch'): void;
+  (e: 'resetStretch'): void;
   (e: 'applyStretch'): void;
 }>();
 
@@ -24,9 +23,12 @@ const emit = defineEmits<{
 const inputLevels = ref<Levels>(Array.isArray(props.initialLevels) && props.initialLevels.length === 3 ? props.initialLevels : [0, 32768, 65535]);
 const livePreview = ref(props.livePreview ?? true);
 const dragging = ref<null | 'inBlack' | 'inMid' | 'inWhite'>(null);
-const dragOffset = ref(0);
 const hoverHandle = ref<null | 'inBlack' | 'inMid' | 'inWhite'>(null);
 const focusHandle = ref<null | 'inBlack' | 'inMid' | 'inWhite'>(null);
+const handleHeight = 20;
+const handleWidth = 28;
+const hitboxWidth = 36;
+const svgRef = ref<SVGSVGElement | null>(null);
 
 // Derived
 const svgWidth = computed(() => props.width || 400);
@@ -59,11 +61,45 @@ const histPath = computed(() => {
   return d;
 });
 
+// Helper to update handle value from mouse/touch event
+function getSvgXFromEvent(e: MouseEvent | TouchEvent) {
+  if (!svgRef.value) return 0;
+  const svg = svgRef.value;
+  let clientX, clientY;
+  if ('touches' in e && e.touches.length > 0) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = (e as MouseEvent).clientX;
+    clientY = (e as MouseEvent).clientY;
+  }
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return 0;
+  const svgP = pt.matrixTransform(ctm.inverse());
+  return svgP.x;
+}
+
+function updateHandleValueFromEvent(type: typeof dragging.value, e: MouseEvent | TouchEvent) {
+  const x = Math.max(handleRadius, Math.min(svgWidth.value - handleRadius, getSvgXFromEvent(e)));
+  const val = Math.max(0, Math.min(65535, xToValue(x)));
+  if (type === 'inBlack') {
+    inputLevels.value[0] = Math.min(val, inputLevels.value[1] - 1);
+  } else if (type === 'inMid') {
+    inputLevels.value[1] = Math.max(inputLevels.value[0] + 1, Math.min(val, inputLevels.value[2] - 1));
+  } else if (type === 'inWhite') {
+    inputLevels.value[2] = Math.max(inputLevels.value[1] + 1, val);
+  }
+  emit('update:levels', { input: [...inputLevels.value], output: [0, 65535] });
+  if (livePreview.value) emit('applyStretch');
+}
+
 // Handle drag logic
 function onHandleDown(type: typeof dragging.value, e: MouseEvent | TouchEvent) {
   dragging.value = type;
-  const clientX = (e as MouseEvent).clientX ?? (e as TouchEvent).touches[0].clientX;
-  dragOffset.value = clientX - valueToX(getHandleValue(type));
+  updateHandleValueFromEvent(type, e); // Set value immediately
   window.addEventListener('mousemove', onHandleMove);
   window.addEventListener('touchmove', onHandleMove);
   window.addEventListener('mouseup', onHandleUp);
@@ -71,20 +107,7 @@ function onHandleDown(type: typeof dragging.value, e: MouseEvent | TouchEvent) {
 }
 function onHandleMove(e: MouseEvent | TouchEvent) {
   if (!dragging.value) return;
-  const clientX = (e as MouseEvent).clientX ?? (e as TouchEvent).touches[0].clientX;
-  let x = clientX - dragOffset.value;
-  x = Math.max(handleRadius, Math.min(svgWidth.value - handleRadius, x));
-  const val = Math.max(0, Math.min(65535, xToValue(x)));
-  // Clamp and update
-  if (dragging.value === 'inBlack') {
-    inputLevels.value[0] = Math.min(val, inputLevels.value[1] - 1);
-  } else if (dragging.value === 'inMid') {
-    inputLevels.value[1] = Math.max(inputLevels.value[0] + 1, Math.min(val, inputLevels.value[2] - 1));
-  } else if (dragging.value === 'inWhite') {
-    inputLevels.value[2] = Math.max(inputLevels.value[1] + 1, val);
-  }
-  emit('update:levels', { input: [...inputLevels.value], output: [0, 65535] });
-  if (livePreview.value) emit('applyStretch');
+  updateHandleValueFromEvent(dragging.value, e);
 }
 function onHandleUp() {
   if (!dragging.value) return;
@@ -95,12 +118,6 @@ function onHandleUp() {
   window.removeEventListener('touchend', onHandleUp);
   emit('update:levels', { input: [...inputLevels.value], output: [0, 65535] });
   emit('applyStretch');
-}
-function getHandleValue(type: typeof dragging.value) {
-  if (type === 'inBlack') return inputLevels.value[0];
-  if (type === 'inMid') return inputLevels.value[1];
-  if (type === 'inWhite') return inputLevels.value[2];
-  return 0;
 }
 
 // Numeric entry handlers
@@ -125,15 +142,10 @@ function onHandleKeydown(e: KeyboardEvent, type: typeof dragging.value) {
   if (livePreview.value) emit('applyStretch');
 }
 
-// Live preview toggle
-function toggleLivePreview() {
-  livePreview.value = !livePreview.value;
-  emit('update:livePreview', livePreview.value);
-}
 
 // Auto buttons
-function onAutoWindow() { emit('autoWindow'); }
 function onAutoStretch() { emit('autoStretch'); }
+function onResetStretch() { emit('resetStretch'); }
 
 // Watch for prop changes
 watch(() => props.initialLevels, (val) => {
@@ -142,54 +154,131 @@ watch(() => props.initialLevels, (val) => {
   }
 });
 
+// Restore getHandleValue for template use
+function getHandleValue(type: typeof dragging.value | null) {
+  if (type === 'inBlack') return inputLevels.value[0];
+  if (type === 'inMid') return inputLevels.value[1];
+  if (type === 'inWhite') return inputLevels.value[2];
+  return 0;
+}
+
 </script>
 
 <template>
   <div class="histogram-stretch-control">
-    <svg :width="svgWidth" :height="svgHeight" tabindex="0">
+    <svg
+      ref="svgRef"
+      :viewBox="`0 0 ${svgWidth} ${svgHeight}`"
+      width="100%"
+      height="auto"
+      tabindex="0"
+    >
       <!-- Histogram -->
       <path :d="histPath" fill="#888" fill-opacity="0.5" stroke="#444" stroke-width="1" />
-      <!-- Input handles -->
-      <circle
-        :cx="valueToX(inputLevels[0])" :cy="histY + histHeight" :r="handleRadius"
-        fill="#222" stroke="#fff" stroke-width="2"
-        :class="{ handle: true, active: dragging==='inBlack' || hoverHandle==='inBlack' }" :tabindex="0"
-        @mousedown="e => onHandleDown('inBlack', e)" @touchstart="e => onHandleDown('inBlack', e)"
+      <!-- Stretch lines -->
+      <!-- Black point line -->
+      <line
+        :x1="valueToX(inputLevels[0])" :x2="valueToX(inputLevels[0])"
+        :y1="histY" :y2="histY + histHeight"
+        stroke="#111" stroke-width="3" />
+      <!-- Mid point line (dashed, blue) -->
+      <line
+        :x1="valueToX(inputLevels[1])" :x2="valueToX(inputLevels[1])"
+        :y1="histY" :y2="histY + histHeight"
+        stroke="#0af" stroke-width="3" stroke-dasharray="7,6" />
+      <!-- White point line -->
+      <line
+        :x1="valueToX(inputLevels[2])" :x2="valueToX(inputLevels[2])"
+        :y1="histY" :y2="histY + histHeight"
+        stroke="#fff" stroke-width="3" />
+      <!-- Handles (modern pill/rect) using <g> for centering and scaling -->
+      <!-- Black handle group -->
+      <g
+        :transform="`translate(${valueToX(inputLevels[0])}, ${histY + histHeight/2}) scale(${(dragging==='inBlack'||hoverHandle==='inBlack') ? 1.18 : 1})`"
+        style="cursor: pointer;"
+        tabindex="0"
+        @mousedown="e => onHandleDown('inBlack', e)"
+        @touchstart="e => onHandleDown('inBlack', e)"
         @mouseenter="hoverHandle='inBlack'"
-        @mouseleave="hoverHandle=null" @keydown="e => onHandleKeydown(e, 'inBlack')"
-      />
-      <circle
-        :cx="valueToX(inputLevels[1])" :cy="histY + histHeight - 20" :r="handleRadius"
-        fill="#0af" stroke="#fff" stroke-width="2"
-        :class="{ handle: true, active: dragging==='inMid' || hoverHandle==='inMid' }" :tabindex="0"
-        @mousedown="e => onHandleDown('inMid', e)" @touchstart="e => onHandleDown('inMid', e)"
-        @mouseenter="hoverHandle='inMid'"
-        @mouseleave="hoverHandle=null" @keydown="e => onHandleKeydown(e, 'inMid')"
-      />
-      <circle
-        :cx="valueToX(inputLevels[2])" :cy="histY + histHeight" :r="handleRadius"
-        fill="#fff" stroke="#222" stroke-width="2"
-        :class="{ handle: true, active: dragging==='inWhite' || hoverHandle==='inWhite' }" :tabindex="0"
-        @mousedown="e => onHandleDown('inWhite', e)" @touchstart="e => onHandleDown('inWhite', e)"
-        @mouseenter="hoverHandle='inWhite'"
-        @mouseleave="hoverHandle=null" @keydown="e => onHandleKeydown(e, 'inWhite')"
-      />
-      <!-- Tooltips -->
-      <g v-if="hoverHandle">
+        @mouseleave="hoverHandle=null"
+        @keydown="e => onHandleKeydown(e, 'inBlack')"
+      >
+        <!-- Hitbox -->
         <rect
-          :x="valueToX(getHandleValue(hoverHandle)) - 30"
-          :y="histY + histHeight - 40"
-          width="60" height="22" rx="4" fill="#222" fill-opacity="0.9" />
-        <text
-          :x="valueToX(getHandleValue(hoverHandle))"
-          :y="histY + histHeight - 25"
-          text-anchor="middle" fill="#fff" font-size="14">
-          {{
-            hoverHandle === 'inBlack' ? `Black: ${inputLevels[0]}` :
-            hoverHandle === 'inMid' ? `Mid: ${inputLevels[1]}` :
-            hoverHandle === 'inWhite' ? `White: ${inputLevels[2]}` : ''
-          }}
-        </text>
+          :x="-hitboxWidth/2"
+          :y="-18"
+          :width="hitboxWidth"
+          height="36"
+          fill="rgba(0,0,0,0.01)"
+          class="handle-hitbox"
+        />
+        <!-- Handle -->
+        <rect
+          :x="-handleWidth/2"
+          :y="-handleHeight/2"
+          :width="handleWidth" :height="handleHeight" rx="10"
+          fill="#111" stroke="#fff" stroke-width="2"
+          class="handle-pill black"
+          style="pointer-events: none;"
+        />
+      </g>
+      <!-- Mid handle group -->
+      <g
+        :transform="`translate(${valueToX(inputLevels[1])}, ${histY + histHeight/2}) scale(${(dragging==='inMid'||hoverHandle==='inMid') ? 1.18 : 1})`"
+        style="cursor: pointer;"
+        tabindex="0"
+        @mousedown="e => onHandleDown('inMid', e)"
+        @touchstart="e => onHandleDown('inMid', e)"
+        @mouseenter="hoverHandle='inMid'"
+        @mouseleave="hoverHandle=null"
+        @keydown="e => onHandleKeydown(e, 'inMid')"
+      >
+        <!-- Hitbox -->
+        <rect
+          :x="-hitboxWidth/2"
+          :y="-18"
+          :width="hitboxWidth"
+          height="36"
+          fill="rgba(0,0,0,0.01)"
+          class="handle-hitbox"
+        />
+        <rect
+          :x="-handleWidth/2"
+          :y="-handleHeight/2"
+          :width="handleWidth" :height="handleHeight" rx="10"
+          fill="#0af" stroke="#fff" stroke-width="2"
+          class="handle-pill mid"
+          style="pointer-events: none;"
+        />
+      </g>
+      <!-- White handle group -->
+      <g
+        :transform="`translate(${valueToX(inputLevels[2])}, ${histY + histHeight/2}) scale(${(dragging==='inWhite'||hoverHandle==='inWhite') ? 1.18 : 1})`"
+        style="cursor: pointer;"
+        tabindex="0"
+        @mousedown="e => onHandleDown('inWhite', e)"
+        @touchstart="e => onHandleDown('inWhite', e)"
+        @mouseenter="hoverHandle='inWhite'"
+        @mouseleave="hoverHandle=null"
+        @keydown="e => onHandleKeydown(e, 'inWhite')"
+      >
+        <!-- Hitbox -->
+        <rect
+          :x="-hitboxWidth/2"
+          :y="-18"
+          :width="hitboxWidth"
+          height="36"
+          fill="rgba(0,0,0,0.01)"
+          class="handle-hitbox"
+        />
+        <rect
+          :x="-handleWidth/2"
+          :y="-handleHeight/2"
+          :width="handleWidth" :height="handleHeight" rx="10"
+          fill="#fff" stroke="#222" stroke-width="2"
+          class="handle-pill white"
+          style="pointer-events: none;"
+        />
       </g>
     </svg>
     <div class="levels-numeric-row">
@@ -197,7 +286,7 @@ watch(() => props.initialLevels, (val) => {
       <label>Mid: <input v-model.number="inputLevels[1]" type="number" :min="inputLevels[0]+1" :max="inputLevels[2]-1" @change="onInputLevelChange(1, inputLevels[1])" /></label>
       <label>White: <input v-model.number="inputLevels[2]" type="number" :min="inputLevels[1]+1" max="65535" @change="onInputLevelChange(2, inputLevels[2])" /></label>
       <button @click="onAutoStretch">Auto Stretch</button>
-      <label><input v-model="livePreview" type="checkbox" @change="toggleLivePreview" /> Live Preview</label>
+      <button @click="onResetStretch">Reset Stretch</button>
     </div>
   </div>
 </template>
@@ -212,19 +301,37 @@ watch(() => props.initialLevels, (val) => {
 }
 svg {
   width: 100%;
+  height: auto;
+  aspect-ratio: 400 / 120;
   user-select: none;
   cursor: pointer;
   background: var(--aw-panel-content-bg-color, #222);
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
-.handle {
+.handle-pill {
   cursor: pointer;
-  transition: r 0.1s, stroke-width 0.1s;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.10));
+  transition: transform 0.12s, stroke-width 0.12s;
+  stroke-width: 2;
+  transform-origin: 50% 50%;
 }
-.handle.active {
-  r: 13 !important;
-  stroke-width: 3 !important;
+.handle-pill.active {
+  transform: scale(1.18);
+  stroke-width: 3;
+  z-index: 2;
+}
+.handle-pill.black {
+  fill: #111;
+  stroke: #fff;
+}
+.handle-pill.mid {
+  fill: #0af;
+  stroke: #fff;
+}
+.handle-pill.white {
+  fill: #fff;
+  stroke: #222;
 }
 .levels-numeric-row {
   display: flex;

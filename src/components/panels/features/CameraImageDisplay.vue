@@ -584,30 +584,33 @@ watch(enableDebayer, (newValue, oldValue) => {
     }
 });
 
-// 4. Add currentThemeRef to the watch dependencies for applyStretch
+// --- REFACTOR: Watchers for performance ---
+// Only re-decode/process image when image data or debayer settings change
 watch(
-  () => [
-    stretchMethod.value,
-    minPixelValue.value, // Manual min
-    maxPixelValue.value, // Manual max
-    autoStretch.value,
-    useRobustStretch.value,
-    robustPercentile.value,
-    currentThemeRef.value,
-    enableDebayer.value, // Add debayer enable
-    selectedBayerPattern.value, // Add selected bayer pattern
-    gamma.value
+  [() => props.imageData, enableDebayer, selectedBayerPattern, () => props.width, () => props.height],
+  () => {
+    processedImage.value = null;
+    calculateHistogram();
+    drawImage();
+  }
+);
+
+// For stretch/gamma/levels, just redraw using cached processedImage
+watch(
+  [
+    stretchMethod,
+    minPixelValue,
+    maxPixelValue,
+    autoStretch,
+    useRobustStretch,
+    robustPercentile,
+    currentThemeRef,
+    gamma
   ],
   () => {
-    // When these settings change, we need to re-process the image from raw data
-    // because bayer pattern or robust stretch source data might change.
-    if (props.imageData.byteLength > 0) {
-        processedImage.value = null; // Force re-processing in applyStretch
-    }
-    applyStretch();
-  },
-  { immediate: false } // Set to false, applyStretch will be called onMount if needed
-)
+    drawImage();
+  }
+);
 
 // Watch for subframe prop changes and redraw overlay
 watch(() => props.subframe, () => { drawImage(); }, { deep: true });
@@ -665,24 +668,42 @@ const livePreview = ref(true);
 // Watch for updates from the control
 function onUpdateLevels(levels: { input: [number, number, number], output: [number, number] }) {
   stretchLevels.value = levels;
-  // Update min/max/gamma for image processing as needed
-  // (You may need to adapt this to your image processing logic)
   minPixelValue.value = levels.input[0];
   maxPixelValue.value = levels.input[2];
-  // Calculate gamma from mid
   const norm = (levels.input[1] - levels.input[0]) / (levels.input[2] - levels.input[0]);
   if (norm > 0 && norm < 1) {
     gamma.value = Math.log(0.5) / Math.log(norm);
   }
-  // Output levels: levels.output[0], levels.output[1]
+  // No need to set processedImage.value = null here
 }
 function onUpdateLivePreview(val: boolean) {
   livePreview.value = val;
 }
 
 function onAutoStretch() {
+  autoStretch.value = true;
+  // If processedImage is available, use its robust/auto min/max for UI
+  if (processedImage.value) {
+    minPixelValue.value = processedImage.value.minPixelValue;
+    maxPixelValue.value = processedImage.value.maxPixelValue;
+    // Set gamma to 1.0 for auto-stretch (or recalculate if needed)
+    gamma.value = 1.0;
+    // Update stretchLevels to match
+    stretchLevels.value = {
+      input: [minPixelValue.value, Math.round((processedImage.value.minPixelValue + processedImage.value.maxPixelValue) / 2), maxPixelValue.value],
+      output: [0, 65535]
+    };
+    applyStretch();
+  } else {
+    // If not available, trigger processing and stretch
+    applyStretch();
+  }
+}
+
+function onResetStretch() {
   resetStretch();
 }
+
 function onApplyStretch() {
   applyStretch();
 }
@@ -707,6 +728,7 @@ function onApplyStretch() {
         @update:live-preview="onUpdateLivePreview"
         @auto-stretch="onAutoStretch"
         @apply-stretch="onApplyStretch"
+        @reset-stretch="onResetStretch"
       />
     </div>
     <div v-if="props.imageData.byteLength === 0" class="no-image-message">
