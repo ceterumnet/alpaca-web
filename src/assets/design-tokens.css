@@ -120,6 +120,9 @@
   --aw-panel-resize-color: #ffffff;
   --aw-panel-button-hover-bg: var(--aw-color-neutral-200);
 
+  /* Histogram background for contrast (light theme) */
+  --aw-histogram-bg: var(--aw-color-neutral-200);
+
   /* log entry colors */
   --aw-log-entry-bg-color: var(--aw-color-neutral-400);
   --aw-log-entry-text-color: var(--aw-color-neutral-900);
@@ -333,6 +336,9 @@ html.dark-theme {
   --aw-panel-header-text-color: var(--aw-color-neutral-900);
   --aw-panel-menu-bar-bg-color: #4d1818;
   --aw-panel-menu-bar-color: var(--aw-color-neutral-900);
+
+  /* Histogram background for contrast (dark theme) */
+  --aw-histogram-bg: var(--aw-color-neutral-200);
 
   --aw-form-bg-color: var(--aw-color-neutral-50);
   --aw-input-bg-color: #3a1818;

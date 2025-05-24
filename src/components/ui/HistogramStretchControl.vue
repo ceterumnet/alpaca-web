@@ -203,28 +203,28 @@ function getHandleValue(type: typeof dragging.value | null) {
       tabindex="0"
     >
       <!-- Raw histogram as filled area (background) -->
-      <path v-if="props.rawHistogram && props.rawHistogram.length > 0" :d="rawHistPath" fill="#3a6ed8" fill-opacity="0.22" stroke="none" />
+      <path v-if="props.rawHistogram && props.rawHistogram.length > 0" :d="rawHistPath" fill="var(--aw-accent-color, #3a6ed8)" fill-opacity="0.18" stroke="none" />
       <!-- Display histogram as line overlay -->
-      <path v-if="props.displayHistogram && props.displayHistogram.length > 0" :d="displayHistPath" fill="none" stroke="#ff9800" stroke-width="2" />
+      <path v-if="props.displayHistogram && props.displayHistogram.length > 0" :d="displayHistPath" fill="none" stroke="var(--aw-histogram-line-color, var(--aw-accent-color, #ff9800))" stroke-width="1.2" />
       <!-- Main histogram (fallback, legacy) -->
-      <path v-if="!props.rawHistogram && props.histogram && props.histogram.length > 0" :d="histPath" fill="#888" fill-opacity="0.5" stroke="#444" stroke-width="1" />
+      <path v-if="!props.rawHistogram && props.histogram && props.histogram.length > 0" :d="histPath" fill="var(--aw-histogram-bg, #888)" fill-opacity="0.5" stroke="var(--aw-histogram-fg, #444)" stroke-width="1" />
       <!-- Stretch lines -->
       <!-- Black point line -->
       <line
         :x1="valueToX(inputLevels[0])" :x2="valueToX(inputLevels[0])"
         :y1="histY" :y2="histY + histHeight"
-        stroke="#111" stroke-width="3" />
+        stroke="var(--aw-histogram-black, #111)" stroke-width="2.2" />
       <!-- Mid point line (dashed, blue) -->
       <line
         :x1="valueToX(inputLevels[1])" :x2="valueToX(inputLevels[1])"
         :y1="histY" :y2="histY + histHeight"
-        stroke="#0af" stroke-width="3" stroke-dasharray="7,6" />
+        stroke="var(--aw-histogram-mid, #0af)" stroke-width="2.2" stroke-dasharray="7,6" />
       <!-- White point line -->
       <line
         :x1="valueToX(inputLevels[2])" :x2="valueToX(inputLevels[2])"
         :y1="histY" :y2="histY + histHeight"
-        stroke="#fff" stroke-width="3" />
-      <!-- Handles (modern pill/rect) using <g> for centering and scaling -->
+        stroke="var(--aw-histogram-white, #fff)" stroke-width="2.2" />
+      <!-- Handles (modern rect) using <g> for centering and scaling -->
       <!-- Black handle group -->
       <g
         :transform="`translate(${valueToX(inputLevels[0])}, ${histY + histHeight/2}) scale(${(dragging==='inBlack'||hoverHandle==='inBlack') ? 1.18 : 1})`"
@@ -245,15 +245,20 @@ function getHandleValue(type: typeof dragging.value | null) {
           fill="rgba(0,0,0,0.01)"
           class="handle-hitbox"
         />
-        <!-- Handle -->
+        <!-- Handle (more squared, with vertical lines) -->
         <rect
           :x="-handleWidth/2"
           :y="-handleHeight/2"
-          :width="handleWidth" :height="handleHeight" rx="10"
-          fill="#111" stroke="#fff" stroke-width="2"
+          :width="handleWidth" :height="handleHeight" rx="2"
+          fill="var(--aw-histogram-black, #111)"
+          stroke="none"
           class="handle-pill black"
           style="pointer-events: none;"
         />
+        <!-- Draggable lines -->
+        <g class="handle-grip-lines">
+          <line v-for="i in 3" :key="i" :x1="-6 + (i-1)*6" y1="-7" :x2="-6 + (i-1)*6" y2="7" stroke="var(--aw-histogram-handle-grip, #bbb)" stroke-width="1" stroke-linecap="round" />
+        </g>
       </g>
       <!-- Mid handle group -->
       <g
@@ -278,11 +283,15 @@ function getHandleValue(type: typeof dragging.value | null) {
         <rect
           :x="-handleWidth/2"
           :y="-handleHeight/2"
-          :width="handleWidth" :height="handleHeight" rx="10"
-          fill="#0af" stroke="#fff" stroke-width="2"
+          :width="handleWidth" :height="handleHeight" rx="2"
+          fill="var(--aw-histogram-mid, #0af)"
+          stroke="none"
           class="handle-pill mid"
           style="pointer-events: none;"
         />
+        <g class="handle-grip-lines">
+          <line v-for="i in 3" :key="i" :x1="-6 + (i-1)*6" y1="-7" :x2="-6 + (i-1)*6" y2="7" stroke="var(--aw-histogram-handle-grip, #fff)" stroke-width="1" stroke-linecap="round" />
+        </g>
       </g>
       <!-- White handle group -->
       <g
@@ -307,11 +316,15 @@ function getHandleValue(type: typeof dragging.value | null) {
         <rect
           :x="-handleWidth/2"
           :y="-handleHeight/2"
-          :width="handleWidth" :height="handleHeight" rx="10"
-          fill="#fff" stroke="#222" stroke-width="2"
+          :width="handleWidth" :height="handleHeight" rx="2"
+          fill="var(--aw-histogram-white, #fff)"
+          stroke="none"
           class="handle-pill white"
           style="pointer-events: none;"
         />
+        <g class="handle-grip-lines">
+          <line v-for="i in 3" :key="i" :x1="-6 + (i-1)*6" y1="-7" :x2="-6 + (i-1)*6" y2="7" stroke="var(--aw-histogram-handle-grip, #888)" stroke-width="1" stroke-linecap="round" />
+        </g>
       </g>
     </svg>
     <div class="levels-numeric-row">
@@ -344,9 +357,10 @@ svg {
   aspect-ratio: 400 / 120;
   user-select: none;
   cursor: pointer;
-  background: var(--aw-panel-content-bg-color, #222);
+  background: var(--aw-histogram-bg);
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  color: var(--aw-histogram-svg-color, var(--aw-color-text-primary, #222));
 }
 .handle-pill {
   cursor: pointer;
@@ -361,16 +375,19 @@ svg {
   z-index: 2;
 }
 .handle-pill.black {
-  fill: #111;
-  stroke: #fff;
+  fill: var(--aw-histogram-black, #111);
+  stroke: none;
 }
 .handle-pill.mid {
-  fill: #0af;
-  stroke: #fff;
+  fill: var(--aw-histogram-mid, #0af);
+  stroke: none;
 }
 .handle-pill.white {
-  fill: #fff;
-  stroke: #222;
+  fill: var(--aw-histogram-white, #fff);
+  stroke: none;
+}
+.handle-grip-lines line {
+  opacity: 0.7;
 }
 .levels-numeric-row {
   display: grid;
