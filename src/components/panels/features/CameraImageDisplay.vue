@@ -830,7 +830,7 @@ function resetStretch() {
   <div class="aw-camera-image-display">
     <div ref="imageContainerRef" class="image-container">
       <canvas
-ref="canvasRef" class="image-canvas"
+        ref="canvasRef" class="image-canvas"
         @mousemove="onCanvasMouseMove"
         @mouseleave="onCanvasMouseLeave"
       ></canvas>
@@ -846,16 +846,17 @@ ref="canvasRef" class="image-canvas"
         <div v-else>Display: R {{ hoverPixel.display[0] }}, G {{ hoverPixel.display[1] }}, B {{ hoverPixel.display[2] }}</div>
       </div>
     </div>
-    <!-- Pixel statistics panel -->
-    <div v-if="processedImage" class="pixel-stats">
-      <span>Size: {{ processedImage.width }} × {{ processedImage.height }}</span>
-      <span> | Bit depth: {{ processedImage.bitsPerPixel }}</span>
-      <span> | Channels: {{ processedImage.channels }}</span>
-      <span> | Min: {{ processedImage.minPixelValue }}</span>
-      <span> | Max: {{ processedImage.maxPixelValue }}</span>
-      <span> | Mean: {{ Math.round(processedImage.meanPixelValue) }}</span>
-      <span v-if="useRobustStretch && (processedImage.minPixelValue !== minPixelValue || processedImage.maxPixelValue !== maxPixelValue)">
-        | Robust min/max: {{ minPixelValue }}–{{ maxPixelValue }}
+    <!-- Dense, clean pixel stats bar -->
+    <div v-if="processedImage" class="pixel-stats-bar compact">
+      <span class="stats-group stats-left">
+        <b>{{ processedImage.width }}×{{ processedImage.height }}</b>,
+        <b>{{ processedImage.bitsPerPixel }}</b>-bit,
+        {{ processedImage.channels === 1 ? 'Mono' : 'RGB' }}
+      </span>
+      <span class="stats-group stats-right">
+        Min: <b>{{ processedImage.minPixelValue }}</b>,
+        Max: <b>{{ processedImage.maxPixelValue }}</b>,
+        Mean: <b>{{ Math.round(processedImage.meanPixelValue) }}</b>
       </span>
     </div>
     <div v-if="props.imageData.byteLength > 0" class="stretch-controls astronomy-stretch-ui">
@@ -1205,18 +1206,29 @@ ref="canvasRef" class="image-canvas"
   margin-left: 0.5rem;
 }
 
-.pixel-stats {
+.pixel-stats-bar.compact {
+  font-size: 0.85em;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.7em;
-  font-size: 0.98em;
-  color: var(--aw-color-text-secondary);
-  margin: 0.2em 0 0.5em 0;
-  padding: 0.2em 0.5em;
-  background: var(--aw-panel-hover-bg-color);
-  border-radius: var(--aw-border-radius-xs);
-  border: 1px solid var(--aw-panel-border-color);
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.05em 0.1em;
+  margin: 0.1em 0 0.1em 0;
 }
+.stats-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3em;
+}
+.stats-left {
+  justify-content: flex-start;
+}
+.stats-right {
+  justify-content: flex-end;
+}
+
 .pixel-tooltip {
   position: fixed;
   z-index: 10000;
