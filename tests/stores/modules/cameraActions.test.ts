@@ -227,9 +227,11 @@ describe('cameraActions', () => {
       // Now expect the correctly mapped properties
       expect(updatedProps).toEqual(
         expect.objectContaining({
+          cam_gainMode: 'list',
+          cam_offsetMode: 'unknown',
+          cameraXSize: 2048,
+          cameraYSize: 1536,
           sensorName: 'TestSensorXYZ',
-          imageWidth: 2048,
-          imageHeight: 1536,
           canCool: true,
           canGetCoolerPower: true,
           gains: ['HighGain', 'MediumGain', 'LowGain'],

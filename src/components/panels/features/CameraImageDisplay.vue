@@ -55,7 +55,7 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 const histogramCanvas = ref<HTMLCanvasElement | null>(null)
 const histogram = ref<number[]>([])
 const minPixelValue = ref(0)
-const maxPixelValue = ref(255)
+const maxPixelValue = ref(65535)
 const stretchMethod = ref<'none' | 'linear' | 'log'>('linear')
 const autoStretch = ref(true)
 // Add robust stretch settings to avoid outliers making everything black
@@ -648,10 +648,12 @@ onBeforeUnmount(() => {
 function resetStretch() {
   autoStretch.value = true;
   minPixelValue.value = 0;
-  maxPixelValue.value = 255;
+  maxPixelValue.value = 65535;
   gamma.value = 1.0;
   useRobustStretch.value = true;
   robustPercentile.value = 98;
+  stretchLevels.value = { input: [minPixelValue.value, 32768, maxPixelValue.value], output: [0, 65535] }; // set these to the new auto-stretch values
+
   applyStretch();
 }
 
@@ -661,7 +663,7 @@ const stretchLevels = ref({ input: [0, 32768, 65535], output: [0, 65535] });
 const livePreview = ref(true);
 
 // Watch for updates from the control
-function onUpdateLevels(levels) {
+function onUpdateLevels(levels: { input: [number, number, number], output: [number, number] }) {
   stretchLevels.value = levels;
   // Update min/max/gamma for image processing as needed
   // (You may need to adapt this to your image processing logic)
@@ -674,12 +676,10 @@ function onUpdateLevels(levels) {
   }
   // Output levels: levels.output[0], levels.output[1]
 }
-function onUpdateLivePreview(val) {
+function onUpdateLivePreview(val: boolean) {
   livePreview.value = val;
 }
-function onAutoWindow() {
-  autoWindowToData();
-}
+
 function onAutoStretch() {
   resetStretch();
 }
@@ -701,11 +701,10 @@ function onApplyStretch() {
         :histogram="histogram"
         :width="400"
         :height="120"
-        :initial-levels="stretchLevels.input"
+        :initial-levels="stretchLevels.input as [number, number, number]"
         :live-preview="livePreview"
         @update:levels="onUpdateLevels"
         @update:live-preview="onUpdateLivePreview"
-        @auto-window="onAutoWindow"
         @auto-stretch="onAutoStretch"
         @apply-stretch="onApplyStretch"
       />

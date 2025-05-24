@@ -949,8 +949,8 @@ describe('CameraClient', () => {
       const paramsToTest = [
         { name: 'StartX', value: startX, urlPath: 'startx' },
         { name: 'StartY', value: startY, urlPath: 'starty' },
-        { name: 'Numx', value: numX, urlPath: 'numx' },
-        { name: 'Numy', value: numY, urlPath: 'numy' }
+        { name: 'NumX', value: numX, urlPath: 'numx' },
+        { name: 'NumY', value: numY, urlPath: 'numy' }
       ]
 
       for (let i = 0; i < paramsToTest.length; i++) {

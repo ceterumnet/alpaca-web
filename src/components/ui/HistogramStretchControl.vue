@@ -196,7 +196,6 @@ watch(() => props.initialLevels, (val) => {
       <label>Black: <input v-model.number="inputLevels[0]" type="number" min="0" :max="inputLevels[1]-1" @change="onInputLevelChange(0, inputLevels[0])" /></label>
       <label>Mid: <input v-model.number="inputLevels[1]" type="number" :min="inputLevels[0]+1" :max="inputLevels[2]-1" @change="onInputLevelChange(1, inputLevels[1])" /></label>
       <label>White: <input v-model.number="inputLevels[2]" type="number" :min="inputLevels[1]+1" max="65535" @change="onInputLevelChange(2, inputLevels[2])" /></label>
-      <button @click="onAutoWindow">Auto Window</button>
       <button @click="onAutoStretch">Auto Stretch</button>
       <label><input v-model="livePreview" type="checkbox" @change="toggleLivePreview" /> Live Preview</label>
     </div>
