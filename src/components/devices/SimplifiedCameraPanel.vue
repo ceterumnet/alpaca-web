@@ -689,6 +689,19 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                 @error="handleExposureError"
               />
             </div>
+                        <!-- Subframe Section -->
+                        <div class="panel-section subframe-section">
+              <h3>Subframe (ROI)</h3>
+              <div class="subframe-controls">
+                <label>Start X: <input v-model.number="subframe.startX" type="number" :min="0" :max="computedImageWidth-1" class="aw-input aw-input--sm" /></label>
+                <label>Start Y: <input v-model.number="subframe.startY" type="number" :min="0" :max="computedImageHeight-1" class="aw-input aw-input--sm" /></label>
+                <label>Width: <input v-model.number="subframe.numX" type="number" :min="1" :max="computedImageWidth-subframe.startX" class="aw-input aw-input--sm" /></label>
+                <label>Height: <input v-model.number="subframe.numY" type="number" :min="1" :max="computedImageHeight-subframe.startY" class="aw-input aw-input--sm" /></label>
+                <button class="aw-btn aw-btn--primary aw-btn--sm" @click="applySubframe">Apply</button>
+                <button class="aw-btn aw-btn--secondary aw-btn--sm" @click="resetSubframe">Reset</button>
+              </div>
+              <div class="subframe-hint">Set the region of interest for image capture. Reset for full frame.</div>
+            </div>
             <!-- Camera Settings Section -->
             <div class="panel-section">
               <h3>Settings</h3>
@@ -855,19 +868,6 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                   <dd class="camera-info-value">{{ value }}</dd>
                 </template>
               </dl>
-            </div>
-            <!-- Subframe Section -->
-            <div class="panel-section subframe-section">
-              <h3>Subframe (ROI)</h3>
-              <div class="subframe-controls">
-                <label>Start X: <input v-model.number="subframe.startX" type="number" :min="0" :max="computedImageWidth-1" class="aw-input aw-input--sm" /></label>
-                <label>Start Y: <input v-model.number="subframe.startY" type="number" :min="0" :max="computedImageHeight-1" class="aw-input aw-input--sm" /></label>
-                <label>Width: <input v-model.number="subframe.numX" type="number" :min="1" :max="computedImageWidth-subframe.startX" class="aw-input aw-input--sm" /></label>
-                <label>Height: <input v-model.number="subframe.numY" type="number" :min="1" :max="computedImageHeight-subframe.startY" class="aw-input aw-input--sm" /></label>
-                <button class="aw-btn aw-btn--primary aw-btn--sm" @click="applySubframe">Apply</button>
-                <button class="aw-btn aw-btn--secondary aw-btn--sm" @click="resetSubframe">Reset</button>
-              </div>
-              <div class="subframe-hint">Set the region of interest for image capture. Reset for full frame.</div>
             </div>
           </div>
         </div>
@@ -1365,7 +1365,7 @@ input:checked + .slider:before {
 }
 
 .camera-info-collapsible {
-  margin-top: var(--aw-spacing-md);
+  /* margin-top: var(--aw-spacing-md); */
   background: var(--aw-panel-content-bg-color);
   border-radius: var(--aw-border-radius-sm);
   border: 1px solid var(--aw-panel-border-color);
@@ -1419,7 +1419,7 @@ input:checked + .slider:before {
 }
 
 .subframe-section {
-  margin-top: var(--aw-spacing-md);
+  /* margin-top: var(--aw-spacing-md); */
   background: var(--aw-panel-content-bg-color);
   border-radius: var(--aw-border-radius-sm);
   border: 1px solid var(--aw-panel-border-color);
