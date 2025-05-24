@@ -253,3 +253,44 @@
   border-color: var(--aw-color-neutral-900);
   background-color: var(--aw-color-neutral-900);
 }
+
+/* ============================================================
+   BUTTON STYLES
+   ============================================================ */
+.aw-btn {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: var(--aw-font-weight-medium, 500);
+  border-radius: var(--aw-border-radius-sm);
+  border: none;
+  padding: var(--aw-spacing-xs) var(--aw-spacing-md);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  background: var(--aw-button-secondary-bg, var(--aw-panel-bg-color));
+  color: var(--aw-button-secondary-text, var(--aw-text-color));
+}
+
+.aw-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.aw-btn--primary {
+  background: var(--aw-button-primary-bg, var(--aw-primary-color));
+  color: var(--aw-button-primary-text, #fff);
+}
+
+.aw-btn--primary:hover:not(:disabled) {
+  background: var(--aw-button-primary-hover-bg, var(--aw-primary-color-dark));
+}
+
+.aw-btn--secondary {
+  background: var(--aw-button-secondary-bg, var(--aw-panel-bg-color));
+  color: var(--aw-button-secondary-text, var(--aw-text-color));
+}
+
+.aw-btn--secondary:hover:not(:disabled) {
+  background: var(--aw-button-secondary-hover-bg, var(--aw-panel-hover-bg-color));
+}

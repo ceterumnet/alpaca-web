@@ -1460,4 +1460,6 @@ input:checked + .slider:before {
   font-size: 0.8rem;
   color: var(--aw-text-secondary-color);
 }
+
 </style> 
+
