@@ -1,7 +1,10 @@
-// Status: Good - Part of new panel system // This component handles image display and processing
-with advanced features: // - ASCOM Alpaca image format support // - Image stretching and enhancement
-// - Histogram generation and display // - Robust stretch handling for outlier rejection // -
-Real-time image updates
+// Status: Good - Part of new panel system 
+// This component handles image display and processing with advanced features:
+// - ASCOM Alpaca image format support
+// - Image stretching and enhancement
+// - Histogram generation and display
+// - Robust stretch handling for outlier rejection
+// - Real-time image updates
 
 <script setup lang="ts">
 import log from '@/plugins/logger'
@@ -15,6 +18,8 @@ import {
 import type { ProcessedImageData, BayerPattern } from '@/lib/ASCOMImageBytes'
 import Icon from '@/components/ui/Icon.vue' // Import the Icon component
 import VueSlider from 'vue-3-slider-component'
+import { debounce } from 'lodash-es'
+import HistogramStretchControl from '@/components/ui/HistogramStretchControl.vue'
 
 const props = defineProps({
   imageData: {
@@ -650,34 +655,37 @@ function resetStretch() {
   applyStretch();
 }
 
-// --- Add new refs for levels-style slider ---
-const levels = ref<[number, number, number]>([0, 128, 255]); // [black, mid, white]
+// Remove all old slider/levels/stretch control logic and state
+// Add state for histogram stretch control
+const stretchLevels = ref({ input: [0, 32768, 65535], output: [0, 65535] });
+const livePreview = ref(true);
 
-// Sync levels with minPixelValue, gamma, maxPixelValue
-watch([
-  minPixelValue, gamma, maxPixelValue
-], ([min, g, max]) => {
-  if (!autoStretch.value) {
-    const mid = min + (max - min) * Math.pow(0.5, 1 / g);
-    levels.value = [min, Math.round(mid), max];
+// Watch for updates from the control
+function onUpdateLevels(levels) {
+  stretchLevels.value = levels;
+  // Update min/max/gamma for image processing as needed
+  // (You may need to adapt this to your image processing logic)
+  minPixelValue.value = levels.input[0];
+  maxPixelValue.value = levels.input[2];
+  // Calculate gamma from mid
+  const norm = (levels.input[1] - levels.input[0]) / (levels.input[2] - levels.input[0]);
+  if (norm > 0 && norm < 1) {
+    gamma.value = Math.log(0.5) / Math.log(norm);
   }
-});
-
-watch(levels, ([black, mid, white]) => {
-  if (!autoStretch.value) {
-    // Prevent handles from crossing
-    if (black >= mid) levels.value[1] = black + 1;
-    if (mid >= white) levels.value[1] = white - 1;
-    if (black >= white) levels.value[2] = black + 1;
-    minPixelValue.value = black;
-    maxPixelValue.value = white;
-    const norm = (mid - black) / (white - black);
-    if (norm > 0 && norm < 1) {
-      gamma.value = Math.log(0.5) / Math.log(norm);
-    }
-    applyStretch();
-  }
-});
+  // Output levels: levels.output[0], levels.output[1]
+}
+function onUpdateLivePreview(val) {
+  livePreview.value = val;
+}
+function onAutoWindow() {
+  autoWindowToData();
+}
+function onAutoStretch() {
+  resetStretch();
+}
+function onApplyStretch() {
+  applyStretch();
+}
 </script>
 
 <template>
@@ -689,50 +697,18 @@ watch(levels, ([black, mid, white]) => {
       </button>
     </div>
     <div v-if="props.imageData.byteLength > 0" class="stretch-controls astronomy-stretch-ui">
-      <div class="histogram-row">
-        <div class="histogram-label">Histogram</div>
-        <div class="levels-slider-wrapper">
-          <canvas ref="histogramCanvas" class="histogram-canvas"></canvas>
-          <VueSlider
-            v-model="levels"
-            :min="0"
-            :max="65535"
-            :interval="1"
-            :disabled="autoStretch"
-            :marks="{0: 'Black', 65535: 'White'}"
-            :dot-num="3"
-            :order="true"
-            :contained="true"
-            :lazy="true"
-            :height="6"
-            class="levels-vue-slider"
-            @change="applyStretch"
-          />
-          <div class="levels-values">
-            <span>Black: {{ levels[0] }}</span>
-            <span>Mid: {{ levels[1] }}</span>
-            <span>White: {{ levels[2] }}</span>
-            <span>Gamma: {{ gamma.toFixed(2) }}</span>
-          </div>
-        </div>
-      </div>
-      <div class="stretch-row stretch-row-options stretch-auto-row" aria-label="Auto stretch controls">
-        <label class="stretch-label" for="stretch-method">Method</label>
-        <select id="stretch-method" v-model="stretchMethod" class="stretch-select" @change="applyStretch">
-          <option value="none">None</option>
-          <option value="linear">Linear</option>
-          <option value="log">Logarithmic</option>
-        </select>
-        <label class="stretch-label" for="auto-stretch">Auto</label>
-        <input id="auto-stretch" v-model="autoStretch" type="checkbox" class="stretch-checkbox" :aria-checked="autoStretch ? 'true' : 'false'" aria-label="Enable auto stretch" @change="applyStretch" />
-        <button class="stretch-reset-btn" title="Reset stretch to auto/defaults" aria-label="Reset stretch to defaults" @click="resetStretch"><Icon type="refresh" /></button>
-      </div>
-      <div class="stretch-row stretch-row-robust stretch-robust-row" aria-label="Robust stretch controls">
-        <label class="stretch-label" for="robust-stretch">Robust</label>
-        <input id="robust-stretch" v-model="useRobustStretch" type="checkbox" class="stretch-checkbox" :aria-checked="useRobustStretch ? 'true' : 'false'" aria-label="Enable robust stretch" @change="applyStretch" />
-        <label class="stretch-label" for="robust-percentile">Percentile</label>
-        <input id="robust-percentile" v-model.number="robustPercentile" type="number" min="80" max="100" class="stretch-input stretch-input-small" aria-label="Robust percentile" @change="applyStretch" />
-      </div>
+      <HistogramStretchControl
+        :histogram="histogram"
+        :width="400"
+        :height="120"
+        :initial-levels="stretchLevels.input"
+        :live-preview="livePreview"
+        @update:levels="onUpdateLevels"
+        @update:live-preview="onUpdateLivePreview"
+        @auto-window="onAutoWindow"
+        @auto-stretch="onAutoStretch"
+        @apply-stretch="onApplyStretch"
+      />
     </div>
     <div v-if="props.imageData.byteLength === 0" class="no-image-message">
       No image data to display.
@@ -967,19 +943,83 @@ watch(levels, ([black, mid, white]) => {
   z-index: 1;
   position: static;
 }
-.levels-slider-wrapper {
-  position: relative;
+.levels-slider-histogram-stack {
   width: 100%;
   margin-bottom: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+}
+.histogram-stack-container {
+  position: relative;
+  width: 100%;
+  height: 100px;
+}
+.histogram-canvas {
+  width: 100%;
+  height: 100px;
+  background: var(--aw-color-background);
+  border-radius: var(--aw-border-radius-xs);
+  border: 1px solid var(--aw-panel-border-color);
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+}
+.levels-vue-slider-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100px;
+  background: transparent !important;
+  z-index: 2;
+  pointer-events: auto;
+}
+.levels-vue-slider-output {
+  position: absolute;
+  left: 0;
+  top: 60px;
+  width: 100%;
+  height: 40px;
+  background: transparent !important;
+  z-index: 3;
+  pointer-events: auto;
 }
 .levels-values {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
   font-size: 0.9rem;
   margin-top: 0.2rem;
   color: var(--aw-color-text-secondary);
+}
+.levels-values label {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.levels-values input[type="number"] {
+  width: 70px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.95rem;
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  background: var(--aw-input-bg-color);
+  color: var(--aw-color-text-primary);
+}
+.levels-values button {
+  padding: 0.2rem 0.8rem;
+  font-size: 0.95rem;
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  background: var(--aw-button-primary-bg);
+  color: var(--aw-button-primary-text);
+  cursor: pointer;
+}
+.levels-values button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.levels-values input[type="checkbox"] {
+  margin-left: 0.5rem;
 }
 </style>
