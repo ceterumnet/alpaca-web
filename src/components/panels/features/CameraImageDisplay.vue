@@ -383,49 +383,101 @@ function getRawHistKey() {
   return [props.imageData, props.width, props.height, enableDebayer.value, selectedBayerPattern.value].join(':');
 }
 
+// --- Fast display histogram: remap rawHistogram bins using LUT ---
+const fastDisplayHistogram = () => {
+  if (!processedImage.value) return [];
+  const bits = processedImage.value.bitsPerPixel;
+  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bits, gamma.value);
+  const displayBins = 256;
+  const displayHist = new Array(displayBins).fill(0);
+  const rawMin = 0;
+  const rawMax = Math.pow(2, bits) - 1;
+  for (let i = 0; i < rawHistogram.value.length; i++) {
+    const rawValue = rawMin + ((rawMax - rawMin) * (i + 0.5)) / rawHistogram.value.length;
+    const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(rawValue)))];
+    const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)));
+    displayHist[displayBin] += rawHistogram.value[i];
+  }
+  return displayHist;
+};
+
+// --- Full-fidelity display histogram: map every pixel through LUT ---
+const fullDisplayHistogram = () => {
+  if (!processedImage.value) return [];
+  const { pixelData, width, height, bitsPerPixel, channels, isDebayered } = processedImage.value;
+  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bitsPerPixel, gamma.value);
+  const displayBins = 256;
+  const displayHist = new Array(displayBins).fill(0);
+  if (channels === 1) {
+    // Column-major
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        const idx = x * height + y;
+        const value = pixelData[idx];
+        const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(value)))];
+        const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)));
+        displayHist[displayBin]++;
+      }
+    }
+  } else {
+    // Row-major RGB: use luminance
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const baseIdx = (y * width + x) * 3;
+        const r = pixelData[baseIdx];
+        const g = pixelData[baseIdx + 1];
+        const b = pixelData[baseIdx + 2];
+        const luminance = (r + g + b) / 3;
+        const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(luminance)))];
+        const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)));
+        displayHist[displayBin]++;
+      }
+    }
+  }
+  return displayHist;
+};
+
+// --- Use fast histogram during drag, full after drag ---
+let isDragging = false;
+
+// Listen for drag events globally to set isDragging
+function setDraggingTrue() { isDragging = true; calculateHistogram(); }
+function setDraggingFalse() { isDragging = false; calculateHistogram(); }
+
 const calculateHistogram = () => {
   if (props.imageData.byteLength === 0) {
     histogram.value = [];
     rawHistogram.value = [];
     displayHistogram.value = [];
-    // If canvas exists, clear it
     if (histogramCanvas.value) {
       const canvas = histogramCanvas.value;
       const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     return [];
   }
-
-  // --- Only recalc rawHistogram if image data or debayering changed ---
   const rawHistKey = getRawHistKey();
   let recalcRaw = false;
   if (rawHistKey !== lastRawHistKey.value) {
     recalcRaw = true;
     lastRawHistKey.value = rawHistKey;
   }
-
-  // If processedImage.value is not available, it implies it needs reprocessing.
   if (!processedImage.value) {
-     let bayerPatternToUse: BayerPattern | undefined = undefined;
-     if (!isMonochromeOrUnknown.value && enableDebayer.value) {
-       bayerPatternToUse = selectedBayerPattern.value;
-     }
-     processedImage.value = processImageBytes(
-        props.imageData,
-        props.width,
-        props.height,
-        bayerPatternToUse
-      )
-      if (!processedImage.value) {
-          log.error("Image processing failed in calculateHistogram");
-          return [];
-      }
+    let bayerPatternToUse;
+    if (!isMonochromeOrUnknown.value && enableDebayer.value) {
+      bayerPatternToUse = selectedBayerPattern.value;
+    }
+    processedImage.value = processImageBytes(
+      props.imageData,
+      props.width,
+      props.height,
+      bayerPatternToUse
+    );
+    if (!processedImage.value) {
+      log.error('Image processing failed in calculateHistogram');
+      return [];
+    }
   }
-
-  // Verify we have valid data
   if (!processedImage.value || processedImage.value.pixelData.length === 0) {
     log.error('No valid image data for histogram calculation');
     histogram.value = [];
@@ -434,13 +486,10 @@ const calculateHistogram = () => {
     if (histogramCanvas.value) {
       const canvas = histogramCanvas.value;
       const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     return [];
   }
-
   const imageWidth = processedImage.value.width;
   const imageHeight = processedImage.value.height;
   const bits = processedImage.value.bitsPerPixel;
@@ -454,8 +503,6 @@ const calculateHistogram = () => {
     rawChannels = 1;
     rawOrder = 'column-major';
   }
-
-  // --- Only recalc rawHistogram if needed ---
   if (recalcRaw || !rawHistogram.value.length) {
     rawHistogram.value = calculateLibHistogram(
       rawData,
@@ -468,34 +515,23 @@ const calculateHistogram = () => {
       rawOrder
     );
   }
-
-  // --- Fast display histogram: remap rawHistogram bins using LUT ---
-  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bits, gamma.value);
-  const displayBins = 256;
-  const displayHist = new Array(displayBins).fill(0);
-  // For each raw bin, map its value through the LUT to a display bin
-  for (let i = 0; i < rawHistogram.value.length; i++) {
-    // Map the center of the raw bin to a display value
-    const rawValue = rawMin + ((rawMax - rawMin) * (i + 0.5)) / rawHistogram.value.length;
-    const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(rawValue)))];
-    // displayValue is 0-255
-    const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)));
-    displayHist[displayBin] += rawHistogram.value[i];
+  // Use fast or full display histogram depending on drag state
+  if (isDragging) {
+    displayHistogram.value = fastDisplayHistogram();
+  } else {
+    displayHistogram.value = fullDisplayHistogram();
   }
-  displayHistogram.value = displayHist;
   histogram.value = displayHistogram.value;
   emit('histogram-generated', histogram.value);
-
   if (histogram.value.length > 0) {
     nextTick(() => {
-      if (histogramCanvas.value) { 
+      if (histogramCanvas.value) {
         drawHistogram(histogram.value);
       } else {
         log.warn('[Histogram] drawHistogram skipped: histogramCanvas ref not available even after nextTick.');
       }
     });
   }
-
   return histogram.value;
 };
 
@@ -708,6 +744,11 @@ onMounted(() => {
     calculateHistogram()
     drawImage()
   }
+
+  window.addEventListener('mousedown', setDraggingTrue);
+  window.addEventListener('touchstart', setDraggingTrue);
+  window.addEventListener('mouseup', setDraggingFalse);
+  window.addEventListener('touchend', setDraggingFalse);
 })
 
 // 3. Clean up observer
@@ -715,6 +756,11 @@ onBeforeUnmount(() => {
   if (themeObserver) {
     themeObserver.disconnect()
   }
+
+  window.removeEventListener('mousedown', setDraggingTrue);
+  window.removeEventListener('touchstart', setDraggingTrue);
+  window.removeEventListener('mouseup', setDraggingFalse);
+  window.removeEventListener('touchend', setDraggingFalse);
 })
 
 // function resetStretch() {
@@ -739,15 +785,12 @@ function onUpdateLevels(levels: { input: [number, number, number], output: [numb
   stretchLevels.value = levels;
   minPixelValue.value = levels.input[0];
   maxPixelValue.value = levels.input[2];
-  // Invert the mid slider direction for more intuitive UX
-  // norm: 0 (left) to 1 (right); right = brighter, left = darker
   const norm = (levels.input[1] - levels.input[0]) / (levels.input[2] - levels.input[0]);
   if (norm > 0 && norm < 1) {
-    // Invert: right = brighter (gamma < 1), left = darker (gamma > 1)
     const invertedNorm = 1 - norm;
     gamma.value = Math.log(0.5) / Math.log(invertedNorm);
   }
-  // No need to set processedImage.value = null here
+  calculateHistogram();
 }
 function onUpdateLivePreview(val: boolean) {
   livePreview.value = val;
@@ -778,6 +821,7 @@ function onResetStretch() {
 }
 
 function onApplyStretch() {
+  calculateHistogram();
   applyStretch();
 }
 
