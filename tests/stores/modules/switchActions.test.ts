@@ -4,7 +4,7 @@ import { useUnifiedStore, type UnifiedStoreType } from '@/stores/UnifiedStore'
 import type { SwitchDeviceProperties, Device, UnifiedDevice, DeviceEvent, StoreOptions } from '@/stores/types/device-store.types'
 import { SwitchClient, type ISwitchDetail } from '@/api/alpaca/switch-client'
 import { type SwitchDevice as CoreSwitchDevice } from '@/types/device.types'
-import log from '@/plugins/logger'
+
 // Define a type for the mocked SwitchClient methods
 type MockedSwitchClientMethods = {
   getProperty: MockInstance<(...args: unknown[]) => Promise<unknown>>

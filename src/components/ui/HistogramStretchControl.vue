@@ -26,7 +26,7 @@ const inputLevels = ref<Levels>(Array.isArray(props.initialLevels) && props.init
 const livePreview = ref(props.livePreview ?? true);
 const dragging = ref<null | 'inBlack' | 'inMid' | 'inWhite'>(null);
 const hoverHandle = ref<null | 'inBlack' | 'inMid' | 'inWhite'>(null);
-const focusHandle = ref<null | 'inBlack' | 'inMid' | 'inWhite'>(null);
+// const focusHandle = ref<null | 'inBlack' | 'inMid' | 'inWhite'>(null);
 const handleHeight = 20;
 const handleWidth = 28;
 const hitboxWidth = 36;
@@ -52,7 +52,7 @@ const svgHeight = computed(() => props.height || 120);
 const histHeight = computed(() => svgHeight.value - 40);
 const histY = 10;
 const handleRadius = 9;
-const outputHandleRadius = 7;
+// const outputHandleRadius = 7;
 
 // Utility: map value to X pixel
 function valueToX(val: number) {
@@ -202,14 +202,6 @@ watch(() => props.initialLevels, (val) => {
     inputLevels.value = [...val];
   }
 });
-
-// Restore getHandleValue for template use
-function getHandleValue(type: typeof dragging.value | null) {
-  if (type === 'inBlack') return inputLevels.value[0];
-  if (type === 'inMid') return inputLevels.value[1];
-  if (type === 'inWhite') return inputLevels.value[2];
-  return 0;
-}
 
 </script>
 

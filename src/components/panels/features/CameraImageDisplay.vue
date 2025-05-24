@@ -17,8 +17,6 @@ import {
 } from '@/lib/ASCOMImageBytes'
 import type { ProcessedImageData, BayerPattern } from '@/lib/ASCOMImageBytes'
 import Icon from '@/components/ui/Icon.vue' // Import the Icon component
-import VueSlider from 'vue-3-slider-component'
-import { debounce } from 'lodash-es'
 import HistogramStretchControl from '@/components/ui/HistogramStretchControl.vue'
 
 const props = defineProps({
@@ -102,21 +100,11 @@ const hoverPixel = ref<{ x: number; y: number; avg: number[]; display: number[] 
 const showPixelTooltip = ref(false);
 const pixelTooltipPos = ref({ x: 0, y: 0 });
 
-// Refactor LUT argument logic: always use sliders for min/max/gamma, dropdown for transfer function
-const lutArgs = computed(() => {
-  return {
-    min: minPixelValue.value,
-    max: maxPixelValue.value,
-    method: stretchMethod.value,
-    bitsPerPixel: processedImage.value ? processedImage.value.bitsPerPixel : 16,
-    gamma: gamma.value
-  };
-});
 
 // Helper to get 3x3 average at (x, y)
 function get3x3Average(x: number, y: number): number[] {
   if (!processedImage.value) return [0];
-  const { pixelData, width, height, channels, isDebayered } = processedImage.value;
+  const { pixelData, width, height, channels } = processedImage.value;
   const avg: number[] = channels === 3 ? [0, 0, 0] : [0];
   let count = 0;
   for (let dy = -1; dy <= 1; dy++) {
@@ -298,82 +286,6 @@ const drawImage = async () => {
   }
 }
 
-// Calculate robust percentiles for stretch
-const calculateRobustPercentiles = (
-  data: Uint8Array | Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array | Float64Array | number[],
-  width: number,
-  height: number,
-  upperPercentile: number = 98,
-  order: 'column-major' | 'row-major' = 'column-major', // New parameter for data order
-  channels: 1 | 3 = 1 // New parameter for channels
-) => {
-  // Sample values for percentile calculation
-  const validValues = []
-  const pixelCount = width * height
-  const sampleStep = Math.max(1, Math.floor(Math.sqrt(pixelCount / 10))) // Reduced sample size for perf
-
-  if (channels === 1) {
-    // Monochrome data processing
-    for (let y = 0; y < height; y += sampleStep) {
-      for (let x = 0; x < width; x += sampleStep) {
-        const idx = order === 'column-major' ? x * height + y : y * width + x;
-        if (idx < data.length) {
-          const pixel = Number(data[idx])
-          if (isFinite(pixel) && !isNaN(pixel)) {
-            validValues.push(pixel)
-          }
-        }
-      }
-    }
-  } else { // RGB data, calculate based on luminance
-      for (let y = 0; y < height; y += sampleStep) {
-        for (let x = 0; x < width; x += sampleStep) {
-            // Assuming RGB data is row-major [R,G,B,R,G,B...] if channels === 3
-            const baseIdx = (y * width + x) * 3; 
-            if (baseIdx + 2 < data.length) {
-                const r = Number(data[baseIdx]);
-                const g = Number(data[baseIdx + 1]);
-                const b = Number(data[baseIdx + 2]);
-                if (isFinite(r) && !isNaN(r) && isFinite(g) && !isNaN(g) && isFinite(b) && !isNaN(b)) {
-                    const luminance = (r + g + b) / 3; // Simple average luminance
-                    validValues.push(luminance);
-                }
-            }
-        }
-    }
-  }
-
-
-  if (validValues.length === 0) {
-    // Try to get a sensible default max based on typical data type ranges
-    let defaultMax = 65535; // Default for 16-bit
-    if (data instanceof Uint8Array) defaultMax = 255;
-    else if (data instanceof Uint32Array) defaultMax = Math.pow(2,32)-1;
-    return { min: 0, max: defaultMax }
-  }
-
-  // Sort values for percentile calculation
-  validValues.sort((a, b) => a - b)
-
-  // Use lower percentile for min (1st percentile to ignore extreme dark pixels)
-  const lowerIndex = Math.floor(validValues.length * 0.01)
-
-  // Use robust percentile for max (to exclude extreme bright pixels)
-  const upperIndex = Math.min(
-    validValues.length - 1,
-    Math.floor(validValues.length * (upperPercentile / 100))
-  )
-
-  const robustMin = validValues[lowerIndex];
-  const robustMax = validValues[upperIndex];
-
-  // Ensure min is not greater than max, can happen with very flat data or small samples
-  return {
-    min: Math.min(robustMin, robustMax),
-    max: robustMax
-  }
-}
-
 // Calculate histogram from the image data
 // --- OPTIMIZED: Only recalc rawHistogram when image data changes; remap for displayHistogram ---
 const lastRawHistKey = ref(''); // To track when image data changes
@@ -404,7 +316,7 @@ const fastDisplayHistogram = () => {
 // --- Full-fidelity display histogram: map every pixel through LUT ---
 const fullDisplayHistogram = () => {
   if (!processedImage.value) return [];
-  const { pixelData, width, height, bitsPerPixel, channels, isDebayered } = processedImage.value;
+  const { pixelData, width, height, bitsPerPixel, channels } = processedImage.value;
   const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bitsPerPixel, gamma.value);
   const displayBins = 256;
   const displayHist = new Array(displayBins).fill(0);
@@ -846,28 +758,6 @@ function setTrueLinear() {
     output: [0, 65535]
   };
   applyStretch();
-}
-
-function setAutoStretch() {
-  if (processedImage.value) {
-    const robust = calculateRobustPercentiles(
-      processedImage.value.pixelData,
-      processedImage.value.width,
-      processedImage.value.height,
-      robustPercentile.value,
-      processedImage.value.isDebayered ? 'row-major' : 'column-major',
-      processedImage.value.channels
-    );
-    minPixelValue.value = robust.min;
-    maxPixelValue.value = robust.max;
-    gamma.value = 1.0;
-    stretchMethod.value = 'linear';
-    stretchLevels.value = {
-      input: [minPixelValue.value, Math.round((robust.min + robust.max) / 2), maxPixelValue.value],
-      output: [0, 65535]
-    };
-    applyStretch();
-  }
 }
 
 function resetStretch() {
