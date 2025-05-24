@@ -925,22 +925,14 @@ export function generateDisplayImage(
   if (width === 0 || height === 0 || data.length === 0) return outputData
 
   if (channels === 1) {
-    // Monochrome: data is column-major
+    // Monochrome: data is column-major, output is row-major RGBA
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const sourceIdx = x * height + y // Column-major source index
-        const targetIdx = (y * width + x) * 4 // Row-major target index
-
-        if (sourceIdx >= data.length || targetIdx + 3 >= outputData.length) continue
-
-        const value = Number(data[sourceIdx])
-        let displayValue = 0
-        if (!isFinite(value) || isNaN(value)) {
-          displayValue = 0
-        } else {
-          const lutIndex = Math.min(lut.length - 1, Math.max(0, Math.round(value)))
-          displayValue = lut[lutIndex]
-        }
+        const sourceIdx = x * height + y // column-major
+        const targetIdx = (y * width + x) * 4 // row-major
+        const value = data[sourceIdx]
+        const lutIndex = Math.min(lut.length - 1, Math.max(0, value))
+        const displayValue = lut[lutIndex]
         outputData[targetIdx] = displayValue // R
         outputData[targetIdx + 1] = displayValue // G
         outputData[targetIdx + 2] = displayValue // B
@@ -948,29 +940,14 @@ export function generateDisplayImage(
       }
     }
   } else {
-    // RGB: data is row-major [R,G,B,R,G,B...]
-    // The 'channels' parameter indicates this structure.
-    for (let y_coord = 0; y_coord < height; y_coord++) {
-      for (let x_coord = 0; x_coord < width; x_coord++) {
-        const sourceBaseIdx = (y_coord * width + x_coord) * 3 // Row-major source index for R
-        const targetIdx = (y_coord * width + x_coord) * 4 // Row-major target index for RGBA
-
-        if (sourceBaseIdx + 2 >= data.length || targetIdx + 3 >= outputData.length) continue
-
-        const r_raw = Number(data[sourceBaseIdx])
-        const g_raw = Number(data[sourceBaseIdx + 1])
-        const b_raw = Number(data[sourceBaseIdx + 2])
-
-        // Apply LUT to each channel. Assumes LUT is appropriate for the range of r_raw, g_raw, b_raw.
-        const display_r = isNaN(r_raw) || !isFinite(r_raw) ? 0 : lut[Math.min(lut.length - 1, Math.max(0, Math.round(r_raw)))]
-        const display_g = isNaN(g_raw) || !isFinite(g_raw) ? 0 : lut[Math.min(lut.length - 1, Math.max(0, Math.round(g_raw)))]
-        const display_b = isNaN(b_raw) || !isFinite(b_raw) ? 0 : lut[Math.min(lut.length - 1, Math.max(0, Math.round(b_raw)))]
-
-        outputData[targetIdx] = display_r
-        outputData[targetIdx + 1] = display_g
-        outputData[targetIdx + 2] = display_b
-        outputData[targetIdx + 3] = 255 // Alpha
-      }
+    // Optimized: flatten loop for RGB
+    const numPixels = width * height
+    for (let idx = 0, outIdx = 0; idx < numPixels; idx++, outIdx += 4) {
+      const base = idx * 3
+      outputData[outIdx] = lut[Math.min(lut.length - 1, Math.max(0, data[base]))]
+      outputData[outIdx + 1] = lut[Math.min(lut.length - 1, Math.max(0, data[base + 1]))]
+      outputData[outIdx + 2] = lut[Math.min(lut.length - 1, Math.max(0, data[base + 2]))]
+      outputData[outIdx + 3] = 255
     }
   }
   return outputData

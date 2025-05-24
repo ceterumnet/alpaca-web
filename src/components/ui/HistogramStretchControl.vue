@@ -32,6 +32,20 @@ const handleWidth = 28;
 const hitboxWidth = 36;
 const svgRef = ref<SVGSVGElement | null>(null);
 
+// --- rAF throttling for applyStretch ---
+let rAFId: number | null = null;
+let pendingApply = false;
+function rAFEmitApplyStretch() {
+  if (rAFId !== null) return; // already scheduled
+  rAFId = requestAnimationFrame(() => {
+    rAFId = null;
+    if (pendingApply) {
+      emit('applyStretch');
+      pendingApply = false;
+    }
+  });
+}
+
 // Derived
 const svgWidth = computed(() => props.width || 400);
 const svgHeight = computed(() => props.height || 120);
@@ -122,7 +136,10 @@ function updateHandleValueFromEvent(type: typeof dragging.value, e: MouseEvent |
     inputLevels.value[2] = Math.max(inputLevels.value[1] + 1, val);
   }
   emit('update:levels', { input: [...inputLevels.value], output: [0, 65535] });
-  if (livePreview.value) emit('applyStretch');
+  if (livePreview.value) {
+    pendingApply = true;
+    rAFEmitApplyStretch();
+  }
 }
 
 // Handle drag logic
@@ -146,7 +163,7 @@ function onHandleUp() {
   window.removeEventListener('mouseup', onHandleUp);
   window.removeEventListener('touchend', onHandleUp);
   emit('update:levels', { input: [...inputLevels.value], output: [0, 65535] });
-  emit('applyStretch');
+  emit('applyStretch'); // Always emit one final time on drag end
 }
 
 // Numeric entry handlers
@@ -168,7 +185,10 @@ function onHandleKeydown(e: KeyboardEvent, type: typeof dragging.value) {
   if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') arr[idx] = Math.max(min, arr[idx] - step);
   if (e.key === 'ArrowRight' || e.key === 'ArrowUp') arr[idx] = Math.min(max, arr[idx] + step);
   emit('update:levels', { input: [...inputLevels.value], output: [0, 65535] });
-  if (livePreview.value) emit('applyStretch');
+  if (livePreview.value) {
+    pendingApply = true;
+    rAFEmitApplyStretch();
+  }
 }
 
 

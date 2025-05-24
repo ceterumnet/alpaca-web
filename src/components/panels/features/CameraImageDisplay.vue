@@ -375,6 +375,14 @@ const calculateRobustPercentiles = (
 }
 
 // Calculate histogram from the image data
+// --- OPTIMIZED: Only recalc rawHistogram when image data changes; remap for displayHistogram ---
+const lastRawHistKey = ref(''); // To track when image data changes
+
+function getRawHistKey() {
+  // Use a string key based on imageData, width, height, debayering
+  return [props.imageData, props.width, props.height, enableDebayer.value, selectedBayerPattern.value].join(':');
+}
+
 const calculateHistogram = () => {
   if (props.imageData.byteLength === 0) {
     histogram.value = [];
@@ -391,9 +399,15 @@ const calculateHistogram = () => {
     return [];
   }
 
+  // --- Only recalc rawHistogram if image data or debayering changed ---
+  const rawHistKey = getRawHistKey();
+  let recalcRaw = false;
+  if (rawHistKey !== lastRawHistKey.value) {
+    recalcRaw = true;
+    lastRawHistKey.value = rawHistKey;
+  }
+
   // If processedImage.value is not available, it implies it needs reprocessing.
-  // This is typically handled by the watcher for props.imageData or bayer settings.
-  // However, if called directly and processedImage is null, we should try to process.
   if (!processedImage.value) {
      let bayerPatternToUse: BayerPattern | undefined = undefined;
      if (!isMonochromeOrUnknown.value && enableDebayer.value) {
@@ -410,7 +424,6 @@ const calculateHistogram = () => {
           return [];
       }
   }
-
 
   // Verify we have valid data
   if (!processedImage.value || processedImage.value.pixelData.length === 0) {
@@ -430,10 +443,9 @@ const calculateHistogram = () => {
 
   const imageWidth = processedImage.value.width;
   const imageHeight = processedImage.value.height;
-
-  // Calculate raw histogram (from original data, full bit depth range)
+  const bits = processedImage.value.bitsPerPixel;
   const rawMin = 0;
-  const rawMax = Math.pow(2, processedImage.value.bitsPerPixel) - 1;
+  const rawMax = Math.pow(2, bits) - 1;
   let rawData = processedImage.value.pixelData;
   let rawChannels = processedImage.value.channels;
   let rawOrder: 'column-major' | 'row-major' = processedImage.value.isDebayered ? 'row-major' : 'column-major';
@@ -442,42 +454,35 @@ const calculateHistogram = () => {
     rawChannels = 1;
     rawOrder = 'column-major';
   }
-  rawHistogram.value = calculateLibHistogram(
-    rawData,
-    imageWidth,
-    imageHeight,
-    rawMin,
-    rawMax,
-    256,
-    rawChannels,
-    rawOrder
-  );
-  // Calculate display histogram (from stretched data, using LUT)
-  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, processedImage.value.bitsPerPixel, gamma.value);
-  // Map raw data to display values for histogram
-  let displayData;
-  if (rawChannels === 1) {
-    displayData = Array.from(rawData, v => lut[Math.min(lut.length - 1, Math.max(0, Math.round(Number(v))))]);
-  } else {
-    displayData = [];
-    for (let i = 0; i < rawData.length; i += 3) {
-      const r = lut[Math.min(lut.length - 1, Math.max(0, Math.round(Number(rawData[i]))))];
-      const g = lut[Math.min(lut.length - 1, Math.max(0, Math.round(Number(rawData[i+1]))))];
-      const b = lut[Math.min(lut.length - 1, Math.max(0, Math.round(Number(rawData[i+2]))))];
-      displayData.push((r + g + b) / 3);
-    }
+
+  // --- Only recalc rawHistogram if needed ---
+  if (recalcRaw || !rawHistogram.value.length) {
+    rawHistogram.value = calculateLibHistogram(
+      rawData,
+      imageWidth,
+      imageHeight,
+      rawMin,
+      rawMax,
+      256,
+      rawChannels,
+      rawOrder
+    );
   }
-  displayHistogram.value = calculateLibHistogram(
-    displayData,
-    imageWidth,
-    imageHeight,
-    0,
-    255,
-    256,
-    1,
-    'row-major'
-  );
-  // The main histogram (for legacy/compatibility) is the display histogram
+
+  // --- Fast display histogram: remap rawHistogram bins using LUT ---
+  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bits, gamma.value);
+  const displayBins = 256;
+  const displayHist = new Array(displayBins).fill(0);
+  // For each raw bin, map its value through the LUT to a display bin
+  for (let i = 0; i < rawHistogram.value.length; i++) {
+    // Map the center of the raw bin to a display value
+    const rawValue = rawMin + ((rawMax - rawMin) * (i + 0.5)) / rawHistogram.value.length;
+    const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(rawValue)))];
+    // displayValue is 0-255
+    const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)));
+    displayHist[displayBin] += rawHistogram.value[i];
+  }
+  displayHistogram.value = displayHist;
   histogram.value = displayHistogram.value;
   emit('histogram-generated', histogram.value);
 
@@ -490,7 +495,7 @@ const calculateHistogram = () => {
       }
     });
   }
-  
+
   return histogram.value;
 };
 
