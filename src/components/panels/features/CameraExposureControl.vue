@@ -393,8 +393,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--aw-spacing-sm);
-  padding: var(--aw-spacing-sm);
-  border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   background-color: var(--aw-panel-content-bg-color);
 }

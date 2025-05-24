@@ -10,6 +10,7 @@ import { setAlpacaProperty, getAlpacaProperties, getDeviceCapabilities } from '@
 import Icon from '@/components/ui/Icon.vue'
 import type { BayerPattern } from '@/lib/ASCOMImageBytes';
 import '@/assets/components/forms.css'
+import CollapsibleSection from '@/components/ui/CollapsibleSection.vue'
 
 const props = defineProps({
   deviceId: {
@@ -677,8 +678,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
           <!-- Right Column: Settings, Cooling & Exposure -->
           <div class="settings-cooling-column">
             <!-- Exposure Control Section -->
-            <div class="panel-section exposure-controls-section">
-              <h3>Exposure</h3>
+            <CollapsibleSection title="Exposure" :default-open="true">
               <CameraExposureControl
                 :device-id="deviceId"
                 :exposure-min="exposureMin"
@@ -688,10 +688,9 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                 @image-downloaded="handleImageDownloaded"
                 @error="handleExposureError"
               />
-            </div>
-                        <!-- Subframe Section -->
-                        <div class="panel-section subframe-section">
-              <h3>Subframe (ROI)</h3>
+            </CollapsibleSection>
+            <!-- Subframe Section -->
+            <CollapsibleSection title="Subframe (ROI)" :default-open="false">
               <div class="subframe-controls">
                 <label>Start X: <input v-model.number="subframe.startX" type="number" :min="0" :max="computedImageWidth-1" class="aw-input aw-input--sm" /></label>
                 <label>Start Y: <input v-model.number="subframe.startY" type="number" :min="0" :max="computedImageHeight-1" class="aw-input aw-input--sm" /></label>
@@ -701,10 +700,9 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                 <button class="aw-btn aw-btn--secondary aw-btn--sm" @click="resetSubframe">Reset</button>
               </div>
               <div class="subframe-hint">Set the region of interest for image capture. Reset for full frame.</div>
-            </div>
+            </CollapsibleSection>
             <!-- Camera Settings Section -->
-            <div class="panel-section">
-              <h3>Settings</h3>
+            <CollapsibleSection title="Settings" :default-open="false">
               <div class="camera-settings">
                 <!-- Gain Control -->
                 <div class="setting-row slider-row">
@@ -831,10 +829,9 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                   </div>
                 </div>
               </div>
-            </div>
+            </CollapsibleSection>
             <!-- Cooling Section -->
-            <div class="panel-section">
-              <h3>Cooling</h3>
+            <CollapsibleSection title="Cooling" :default-open="false">
               <div class="cooling-controls">
                 <div class="cooling-status setting-row">
                   <span class="temperature-label">Current Temp:</span>
@@ -858,17 +855,16 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                   </div>
                 </div>
               </div>
-            </div>
+            </CollapsibleSection>
             <!-- Camera Info Section -->
-            <div v-if="currentDevice && cameraInfoProps.length" class="panel-section camera-info-section">
-              <h3>Camera Info</h3>
+            <CollapsibleSection v-if="currentDevice && cameraInfoProps.length" title="Camera Info" :default-open="false">
               <dl class="camera-info-list">
                 <template v-for="([label, value]) in cameraInfoProps" :key="label">
                   <dt class="camera-info-label">{{ label }}</dt>
                   <dd class="camera-info-value">{{ value }}</dd>
                 </template>
               </dl>
-            </div>
+            </CollapsibleSection>
           </div>
         </div>
       </template>
