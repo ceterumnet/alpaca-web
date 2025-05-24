@@ -318,8 +318,14 @@ function getHandleValue(type: typeof dragging.value | null) {
       <label>Black: <input v-model.number="inputLevels[0]" type="number" min="0" :max="inputLevels[1]-1" @change="onInputLevelChange(0, inputLevels[0])" /></label>
       <label>Mid: <input v-model.number="inputLevels[1]" type="number" :min="inputLevels[0]+1" :max="inputLevels[2]-1" @change="onInputLevelChange(1, inputLevels[1])" /></label>
       <label>White: <input v-model.number="inputLevels[2]" type="number" :min="inputLevels[1]+1" max="65535" @change="onInputLevelChange(2, inputLevels[2])" /></label>
-      <button @click="onAutoStretch">Auto Stretch</button>
-      <button @click="onResetStretch">Reset Stretch</button>
+    </div>
+    <div class="levels-button-row">
+      <div class="button-left">
+        <button @click="onAutoStretch">Auto Stretch</button>
+      </div>
+      <div class="button-right">
+        <button @click="onResetStretch">Reset Stretch</button>
+      </div>
     </div>
   </div>
 </template>
@@ -367,40 +373,58 @@ svg {
   stroke: #222;
 }
 .levels-numeric-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.3rem 0.7rem;
+  align-items: center;
+  font-size: 0.88em;
+  margin-top: 0.2em;
+}
+.levels-button-row {
   display: flex;
+  justify-content: space-between;
+  gap: 0.7em;
+  margin-top: 0.3em;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.95rem;
+  width: 100%;
 }
-.levels-numeric-row label {
+.button-left {
+  flex: 1 1 0;
   display: flex;
-  align-items: center;
-  gap: 0.2rem;
+  justify-content: flex-start;
 }
-.levels-numeric-row input[type="number"] {
-  width: 70px;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.95rem;
-  border-radius: 4px;
-  border: 1px solid var(--aw-panel-border-color, #444);
-  background: var(--aw-input-bg-color, #222);
-  color: var(--aw-color-text-primary, #fff);
+.button-right {
+  flex: 1 1 0;
+  display: flex;
+  justify-content: flex-end;
 }
-.levels-numeric-row button {
-  padding: 0.2rem 0.8rem;
-  font-size: 0.95rem;
+.levels-button-row button {
+  padding: 0.18rem 0.7rem;
+  font-size: 0.95em;
   border-radius: 4px;
   border: 1px solid var(--aw-panel-border-color, #444);
   background: var(--aw-button-primary-bg, #0af);
   color: var(--aw-button-primary-text, #fff);
   cursor: pointer;
 }
-.levels-numeric-row button:disabled {
+.levels-button-row button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.levels-numeric-row input[type="checkbox"] {
-  margin-left: 0.5rem;
+.levels-numeric-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  justify-content: flex-end;
+  font-size: 0.95em;
+}
+.levels-numeric-row input[type="number"] {
+  width: 60px;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.95em;
+  border-radius: 4px;
+  border: 1px solid var(--aw-panel-border-color, #444);
+  background: var(--aw-input-bg-color, #222);
+  color: var(--aw-color-text-primary, #fff);
 }
 </style> 

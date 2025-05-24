@@ -884,14 +884,6 @@ function resetStretch() {
         @apply-stretch="onApplyStretch"
         @reset-stretch="onResetStretch"
       />
-      <div class="lut-args-indicator">
-        <strong>LUT Arguments:</strong>
-        <span>min: {{ lutArgs.min }}</span>
-        <span>max: {{ lutArgs.max }}</span>
-        <span>method: {{ lutArgs.method }}</span>
-        <span>bitsPerPixel: {{ lutArgs.bitsPerPixel }}</span>
-        <span>gamma: {{ lutArgs.gamma }}</span>
-      </div>
     </div>
     <div v-if="props.imageData.byteLength === 0" class="no-image-message">
       No image data to display.
