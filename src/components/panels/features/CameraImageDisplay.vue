@@ -54,6 +54,8 @@ const emit = defineEmits(['histogram-generated'])
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const histogramCanvas = ref<HTMLCanvasElement | null>(null)
 const histogram = ref<number[]>([])
+const rawHistogram = ref<number[]>([])
+const displayHistogram = ref<number[]>([])
 const minPixelValue = ref(0)
 const maxPixelValue = ref(65535)
 const stretchMethod = ref<'none' | 'linear' | 'log'>('linear')
@@ -94,6 +96,87 @@ const updateThemeRef = () => {
 }
 
 let themeObserver: MutationObserver | null = null
+
+// State for pixel hover readout
+const hoverPixel = ref<{ x: number; y: number; avg: number[]; display: number[] } | null>(null);
+const showPixelTooltip = ref(false);
+const pixelTooltipPos = ref({ x: 0, y: 0 });
+
+// Refactor LUT argument logic: always use sliders for min/max/gamma, dropdown for transfer function
+const lutArgs = computed(() => {
+  return {
+    min: minPixelValue.value,
+    max: maxPixelValue.value,
+    method: stretchMethod.value,
+    bitsPerPixel: processedImage.value ? processedImage.value.bitsPerPixel : 16,
+    gamma: gamma.value
+  };
+});
+
+// Helper to get 3x3 average at (x, y)
+function get3x3Average(x: number, y: number): number[] {
+  if (!processedImage.value) return [0];
+  const { pixelData, width, height, channels, isDebayered } = processedImage.value;
+  const avg: number[] = channels === 3 ? [0, 0, 0] : [0];
+  let count = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const px = Math.min(width - 1, Math.max(0, x + dx));
+      const py = Math.min(height - 1, Math.max(0, y + dy));
+      if (channels === 1) {
+        // Column-major for mono
+        const idx = px * height + py;
+        avg[0] += Number(pixelData[idx]);
+      } else {
+        // Row-major for RGB
+        const baseIdx = (py * width + px) * 3;
+        avg[0] += Number(pixelData[baseIdx]);
+        avg[1] += Number(pixelData[baseIdx + 1]);
+        avg[2] += Number(pixelData[baseIdx + 2]);
+      }
+      count++;
+    }
+  }
+  for (let i = 0; i < avg.length; i++) avg[i] = Math.round(avg[i] / count);
+  return avg;
+}
+
+// Helper to map raw value(s) to display value(s) using current LUT
+function mapToDisplay(raw: number[]): number[] {
+  if (!processedImage.value) return [0];
+  const { bitsPerPixel, channels } = processedImage.value;
+  const minToUse = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value;
+  const maxToUse = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value;
+  const lut = createStretchLUT(minToUse, maxToUse, stretchMethod.value, bitsPerPixel, gamma.value);
+  if (channels === 1) {
+    return [lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[0])))] ];
+  } else {
+    return [
+      lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[0])))],
+      lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[1])))],
+      lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[2])))]
+    ];
+  }
+}
+
+function onCanvasMouseMove(e: MouseEvent) {
+  if (!canvasRef.value || !processedImage.value) return;
+  const rect = canvasRef.value.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) * processedImage.value.width / rect.width);
+  const y = Math.floor((e.clientY - rect.top) * processedImage.value.height / rect.height);
+  if (x < 0 || y < 0 || x >= processedImage.value.width || y >= processedImage.value.height) {
+    showPixelTooltip.value = false;
+    return;
+  }
+  const avg = get3x3Average(x, y);
+  const display = mapToDisplay(avg);
+  hoverPixel.value = { x, y, avg, display };
+  showPixelTooltip.value = true;
+  pixelTooltipPos.value = { x: e.clientX, y: e.clientY };
+}
+function onCanvasMouseLeave() {
+  showPixelTooltip.value = false;
+}
 
 // Draw the image on canvas
 const drawImage = async () => {
@@ -167,50 +250,13 @@ const drawImage = async () => {
   canvas.width = imageWidth;
   canvas.height = imageHeight;
 
-  // Create a lookup table for efficient conversion
-  let minToUse = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value
-  let maxToUse = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value
-
-  // Apply robust stretch if enabled
-  if (autoStretch.value && useRobustStretch.value && processedImage.value.pixelData.length > 100) {
-    let dataForRobustCalc: Uint8Array | Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array | Float64Array | number[] = processedImage.value.pixelData;
-    const robustWidth = imageWidth;
-    const robustHeight = imageHeight;
-    let orderForRobust: 'column-major' | 'row-major' = processedImage.value.isDebayered ? 'row-major' : 'column-major';
-
-    if (processedImage.value.isDebayered && processedImage.value.originalPixelData) {
-        // Convert to number[] to simplify type compatibility for calculateRobustPercentiles
-        dataForRobustCalc = Array.from(processedImage.value.originalPixelData);
-        orderForRobust = 'column-major'; 
-    }
-
-    const robustValues = calculateRobustPercentiles(
-      dataForRobustCalc, // Use potentially original data
-      robustWidth,
-      robustHeight,
-      robustPercentile.value,
-      orderForRobust, // Pass data order
-      processedImage.value.isDebayered ? 3 : 1 // Pass channels
-    )
-
-    if (robustValues.max > robustValues.min) {
-      minToUse = robustValues.min // Use for current rendering
-      maxToUse = robustValues.max // Use for current rendering
-      log.debug(`Applied robust stretch: min=${minToUse}, max=${maxToUse}`)
-      // DO NOT update minPixelValue.value and maxPixelValue.value here if autoStretch is true, as it causes a loop.
-      // These refs are for manual control or for reflecting the auto values once, not continuously.
-    }
-  }
-
-  // Store min/max for user interface only if autoStretch is OFF or if we want to reflect the initial auto-values.
-  // To prevent loops, don't update these if autoStretch is on and they are part of a watcher dependency.
-  if (!autoStretch.value) {
-    minPixelValue.value = minToUse;
-    maxPixelValue.value = maxToUse;
-  } // Else, they are used directly from processedImage or robust calc for rendering this pass.
+  const minToUse = minPixelValue.value;
+  const maxToUse = maxPixelValue.value;
+  const gammaToUse = gamma.value;
+  const methodToUse = stretchMethod.value;
 
   // Create an efficient lookup table for the stretch method
-  const lut = createStretchLUT(minToUse, maxToUse, stretchMethod.value, processedImage.value.bitsPerPixel, gamma.value)
+  const lut = createStretchLUT(minToUse, maxToUse, methodToUse, processedImage.value.bitsPerPixel, gammaToUse)
 
   // Generate display image data efficiently
   const imageData = generateDisplayImage(
@@ -330,8 +376,10 @@ const calculateRobustPercentiles = (
 
 // Calculate histogram from the image data
 const calculateHistogram = () => {
-  if (props.imageData.byteLength === 0) { // Removed !processedImage.value check here, it's re-checked or processed below
-    histogram.value = []; 
+  if (props.imageData.byteLength === 0) {
+    histogram.value = [];
+    rawHistogram.value = [];
+    displayHistogram.value = [];
     // If canvas exists, clear it
     if (histogramCanvas.value) {
       const canvas = histogramCanvas.value;
@@ -367,7 +415,9 @@ const calculateHistogram = () => {
   // Verify we have valid data
   if (!processedImage.value || processedImage.value.pixelData.length === 0) {
     log.error('No valid image data for histogram calculation');
-    histogram.value = []; // Clear histogram data
+    histogram.value = [];
+    rawHistogram.value = [];
+    displayHistogram.value = [];
     if (histogramCanvas.value) {
       const canvas = histogramCanvas.value;
       const ctx = canvas.getContext('2d');
@@ -381,55 +431,67 @@ const calculateHistogram = () => {
   const imageWidth = processedImage.value.width;
   const imageHeight = processedImage.value.height;
 
-  // Calculate range for histogram
-  const min = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value;
-  const max = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value;
-
-  // Apply robust stretch if enabled (using already calculated min/max from drawImage if autoStretch is on)
-  // The min/maxPixelValue on processedImage are ALREADY robustly calculated if autoStretch was on.
-  // So, for histogram, we use these values directly if autoStretch is on.
-  // Manual stretch values (minPixelValue.value, maxPixelValue.value) are set by user or by auto-stretch application.
-
-  // Store min/max for stretching and UI (already done in drawImage, this is for consistency if called separately)
-  // This was also a source of the loop. Only update if autoStretch is false.
-  if (autoStretch.value) {
-    // If auto-stretching, minPixelValue and maxPixelValue should ideally reflect the *result* of auto-stretch
-    // but not be set during the reactive calculation that *uses* them as a dependency.
-    // The actual min/max for the histogram should come from processedImage.value or robust calculation directly.
-    // minPixelValue.value = min; // OLD: Cause of loop
-    // maxPixelValue.value = max; // OLD: Cause of loop
-  } else {
-    // If manual stretch is on, then min/maxPixelValue are the source of truth.
-    minPixelValue.value = min;
-    maxPixelValue.value = max;
+  // Calculate raw histogram (from original data, full bit depth range)
+  const rawMin = 0;
+  const rawMax = Math.pow(2, processedImage.value.bitsPerPixel) - 1;
+  let rawData = processedImage.value.pixelData;
+  let rawChannels = processedImage.value.channels;
+  let rawOrder: 'column-major' | 'row-major' = processedImage.value.isDebayered ? 'row-major' : 'column-major';
+  if (processedImage.value.isDebayered && processedImage.value.originalPixelData) {
+    rawData = Array.from(processedImage.value.originalPixelData);
+    rawChannels = 1;
+    rawOrder = 'column-major';
   }
-  
-  // Use library function to calculate histogram efficiently
-  const hist = calculateLibHistogram(
-    processedImage.value.pixelData,
+  rawHistogram.value = calculateLibHistogram(
+    rawData,
     imageWidth,
     imageHeight,
-    min, // Use the min (possibly robustly calculated from processedImage or actual minPixelValue.value if manual)
-    max, // Use the max (similarly)
+    rawMin,
+    rawMax,
     256,
-    processedImage.value.channels, // Pass channels
-    processedImage.value.isDebayered ? 'row-major' : 'column-major' // Pass order
+    rawChannels,
+    rawOrder
   );
+  // Calculate display histogram (from stretched data, using LUT)
+  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, processedImage.value.bitsPerPixel, gamma.value);
+  // Map raw data to display values for histogram
+  let displayData;
+  if (rawChannels === 1) {
+    displayData = Array.from(rawData, v => lut[Math.min(lut.length - 1, Math.max(0, Math.round(Number(v))))]);
+  } else {
+    displayData = [];
+    for (let i = 0; i < rawData.length; i += 3) {
+      const r = lut[Math.min(lut.length - 1, Math.max(0, Math.round(Number(rawData[i]))))];
+      const g = lut[Math.min(lut.length - 1, Math.max(0, Math.round(Number(rawData[i+1]))))];
+      const b = lut[Math.min(lut.length - 1, Math.max(0, Math.round(Number(rawData[i+2]))))];
+      displayData.push((r + g + b) / 3);
+    }
+  }
+  displayHistogram.value = calculateLibHistogram(
+    displayData,
+    imageWidth,
+    imageHeight,
+    0,
+    255,
+    256,
+    1,
+    'row-major'
+  );
+  // The main histogram (for legacy/compatibility) is the display histogram
+  histogram.value = displayHistogram.value;
+  emit('histogram-generated', histogram.value);
 
-  histogram.value = hist; 
-  emit('histogram-generated', hist);
-
-  if (hist.length > 0) {
+  if (histogram.value.length > 0) {
     nextTick(() => {
       if (histogramCanvas.value) { 
-        drawHistogram(hist);
+        drawHistogram(histogram.value);
       } else {
         log.warn('[Histogram] drawHistogram skipped: histogramCanvas ref not available even after nextTick.');
       }
     });
   }
   
-  return hist;
+  return histogram.value;
 };
 
 // Draw the histogram on canvas
@@ -522,6 +584,8 @@ watch(
     } else {
         processedImage.value = null;
         histogram.value = [];
+        rawHistogram.value = [];
+        displayHistogram.value = [];
         minPixelValue.value = 0; // Reset manual stretch values
         maxPixelValue.value = 255;
         if (canvasRef.value) {
@@ -648,17 +712,17 @@ onBeforeUnmount(() => {
   }
 })
 
-function resetStretch() {
-  autoStretch.value = true;
-  minPixelValue.value = 0;
-  maxPixelValue.value = 65535;
-  gamma.value = 1.0;
-  useRobustStretch.value = true;
-  robustPercentile.value = 98;
-  stretchLevels.value = { input: [minPixelValue.value, 32768, maxPixelValue.value], output: [0, 65535] }; // set these to the new auto-stretch values
+// function resetStretch() {
+//   autoStretch.value = true;
+//   minPixelValue.value = 0;
+//   maxPixelValue.value = 65535;
+//   gamma.value = 1.0;
+//   useRobustStretch.value = true;
+//   robustPercentile.value = 98;
+//   stretchLevels.value = { input: [minPixelValue.value, 32768, maxPixelValue.value], output: [0, 65535] }; // set these to the new auto-stretch values
 
-  applyStretch();
-}
+//   applyStretch();
+// }
 
 // Remove all old slider/levels/stretch control logic and state
 // Add state for histogram stretch control
@@ -670,9 +734,13 @@ function onUpdateLevels(levels: { input: [number, number, number], output: [numb
   stretchLevels.value = levels;
   minPixelValue.value = levels.input[0];
   maxPixelValue.value = levels.input[2];
+  // Invert the mid slider direction for more intuitive UX
+  // norm: 0 (left) to 1 (right); right = brighter, left = darker
   const norm = (levels.input[1] - levels.input[0]) / (levels.input[2] - levels.input[0]);
   if (norm > 0 && norm < 1) {
-    gamma.value = Math.log(0.5) / Math.log(norm);
+    // Invert: right = brighter (gamma < 1), left = darker (gamma > 1)
+    const invertedNorm = 1 - norm;
+    gamma.value = Math.log(0.5) / Math.log(invertedNorm);
   }
   // No need to set processedImage.value = null here
 }
@@ -707,29 +775,122 @@ function onResetStretch() {
 function onApplyStretch() {
   applyStretch();
 }
+
+// On image load, initialize sliders to True Linear
+watch(
+  () => props.imageData,
+  (newValue) => {
+    if (newValue.byteLength > 0 && processedImage.value) {
+      setTrueLinear();
+    }
+  }
+)
+
+function setTrueLinear() {
+  if (!processedImage.value) return;
+  minPixelValue.value = 0;
+  maxPixelValue.value = Math.pow(2, processedImage.value.bitsPerPixel) - 1;
+  gamma.value = 1.0;
+  stretchMethod.value = 'linear';
+  stretchLevels.value = {
+    input: [minPixelValue.value, Math.round((minPixelValue.value + maxPixelValue.value) / 2), maxPixelValue.value],
+    output: [0, 65535]
+  };
+  applyStretch();
+}
+
+function setAutoStretch() {
+  if (processedImage.value) {
+    const robust = calculateRobustPercentiles(
+      processedImage.value.pixelData,
+      processedImage.value.width,
+      processedImage.value.height,
+      robustPercentile.value,
+      processedImage.value.isDebayered ? 'row-major' : 'column-major',
+      processedImage.value.channels
+    );
+    minPixelValue.value = robust.min;
+    maxPixelValue.value = robust.max;
+    gamma.value = 1.0;
+    stretchMethod.value = 'linear';
+    stretchLevels.value = {
+      input: [minPixelValue.value, Math.round((robust.min + robust.max) / 2), maxPixelValue.value],
+      output: [0, 65535]
+    };
+    applyStretch();
+  }
+}
+
+function resetStretch() {
+  setTrueLinear();
+}
 </script>
 
 <template>
   <div class="aw-camera-image-display">
     <div ref="imageContainerRef" class="image-container">
-      <canvas ref="canvasRef" class="image-canvas"></canvas>
+      <canvas
+ref="canvasRef" class="image-canvas"
+        @mousemove="onCanvasMouseMove"
+        @mouseleave="onCanvasMouseLeave"
+      ></canvas>
       <button v-if="props.imageData.byteLength > 0" class="fullscreen-button" title="View Full Screen" @click="toggleFullScreen">
         <Icon type="search" size="18" />
       </button>
+      <!-- Pixel hover tooltip -->
+      <div v-if="showPixelTooltip && hoverPixel" class="pixel-tooltip" :style="{ left: pixelTooltipPos.x + 12 + 'px', top: pixelTooltipPos.y + 12 + 'px' }">
+        <div><strong>Pixel ({{ hoverPixel.x }}, {{ hoverPixel.y }})</strong></div>
+        <div v-if="hoverPixel.avg.length === 1">Raw: {{ hoverPixel.avg[0] }}</div>
+        <div v-else>Raw: R {{ hoverPixel.avg[0] }}, G {{ hoverPixel.avg[1] }}, B {{ hoverPixel.avg[2] }}</div>
+        <div v-if="hoverPixel.display.length === 1">Display: {{ hoverPixel.display[0] }}</div>
+        <div v-else>Display: R {{ hoverPixel.display[0] }}, G {{ hoverPixel.display[1] }}, B {{ hoverPixel.display[2] }}</div>
+      </div>
+    </div>
+    <!-- Pixel statistics panel -->
+    <div v-if="processedImage" class="pixel-stats">
+      <span>Size: {{ processedImage.width }} × {{ processedImage.height }}</span>
+      <span> | Bit depth: {{ processedImage.bitsPerPixel }}</span>
+      <span> | Channels: {{ processedImage.channels }}</span>
+      <span> | Min: {{ processedImage.minPixelValue }}</span>
+      <span> | Max: {{ processedImage.maxPixelValue }}</span>
+      <span> | Mean: {{ Math.round(processedImage.meanPixelValue) }}</span>
+      <span v-if="useRobustStretch && (processedImage.minPixelValue !== minPixelValue || processedImage.maxPixelValue !== maxPixelValue)">
+        | Robust min/max: {{ minPixelValue }}–{{ maxPixelValue }}
+      </span>
     </div>
     <div v-if="props.imageData.byteLength > 0" class="stretch-controls astronomy-stretch-ui">
+      <div class="stretch-mode-row">
+        <label>Stretch Mode:
+          <select v-model="stretchMethod" class="stretch-select">
+            <option value="linear">True Linear</option>
+            <option value="log">Log</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+      </div>
       <HistogramStretchControl
         :histogram="histogram"
         :width="400"
         :height="120"
         :initial-levels="stretchLevels.input as [number, number, number]"
         :live-preview="livePreview"
+        :raw-histogram="rawHistogram"
+        :display-histogram="displayHistogram"
+        :disabled="stretchMethod === 'linear'"
         @update:levels="onUpdateLevels"
         @update:live-preview="onUpdateLivePreview"
         @auto-stretch="onAutoStretch"
         @apply-stretch="onApplyStretch"
         @reset-stretch="onResetStretch"
       />
+      <div class="lut-args-indicator">
+        <strong>LUT Arguments:</strong>
+        <span>min: {{ lutArgs.min }}</span>
+        <span>max: {{ lutArgs.max }}</span>
+        <span>method: {{ lutArgs.method }}</span>
+        <span>bitsPerPixel: {{ lutArgs.bitsPerPixel }}</span>
+        <span>gamma: {{ lutArgs.gamma }}</span>
+      </div>
     </div>
     <div v-if="props.imageData.byteLength === 0" class="no-image-message">
       No image data to display.
@@ -1042,5 +1203,45 @@ function onApplyStretch() {
 }
 .levels-values input[type="checkbox"] {
   margin-left: 0.5rem;
+}
+
+.pixel-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7em;
+  font-size: 0.98em;
+  color: var(--aw-color-text-secondary);
+  margin: 0.2em 0 0.5em 0;
+  padding: 0.2em 0.5em;
+  background: var(--aw-panel-hover-bg-color);
+  border-radius: var(--aw-border-radius-xs);
+  border: 1px solid var(--aw-panel-border-color);
+}
+.pixel-tooltip {
+  position: fixed;
+  z-index: 10000;
+  background: #222;
+  color: #fff;
+  font-size: 0.95em;
+  padding: 0.4em 0.7em;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0.97;
+}
+
+.lut-args-indicator {
+  margin-top: 0.5em;
+  font-size: 0.97em;
+  color: var(--aw-color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2em;
+  align-items: center;
+}
+.lut-args-indicator strong {
+  color: var(--aw-accent-color);
+  margin-right: 0.7em;
 }
 </style>

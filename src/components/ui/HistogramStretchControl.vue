@@ -10,6 +10,8 @@ const props = defineProps<{
   height: number;
   initialLevels?: Levels;
   livePreview?: boolean;
+  rawHistogram?: number[];
+  displayHistogram?: number[];
 }>();
 
 const emit = defineEmits<{
@@ -58,6 +60,33 @@ const histPath = computed(() => {
     d += ` L ${x} ${y}`;
   }
   d += ` L ${svgWidth.value - handleRadius} ${histY + histHeight.value} Z`;
+  return d;
+});
+
+// Dual histogram paths
+const rawHistPath = computed(() => {
+  if (!props.rawHistogram || props.rawHistogram.length === 0) return '';
+  const max = Math.max(...props.rawHistogram);
+  const scaleY = max > 0 ? histHeight.value / max : 1;
+  let d = `M ${handleRadius} ${histY + histHeight.value}`;
+  for (let i = 0; i < props.rawHistogram.length; i++) {
+    const x = valueToX((i / (props.rawHistogram.length - 1)) * 65535);
+    const y = histY + histHeight.value - props.rawHistogram[i] * scaleY;
+    d += ` L ${x} ${y}`;
+  }
+  d += ` L ${svgWidth.value - handleRadius} ${histY + histHeight.value} Z`;
+  return d;
+});
+const displayHistPath = computed(() => {
+  if (!props.displayHistogram || props.displayHistogram.length === 0) return '';
+  const max = Math.max(...props.displayHistogram);
+  const scaleY = max > 0 ? histHeight.value / max : 1;
+  let d = '';
+  for (let i = 0; i < props.displayHistogram.length; i++) {
+    const x = valueToX((i / (props.displayHistogram.length - 1)) * 65535);
+    const y = histY + histHeight.value - props.displayHistogram[i] * scaleY;
+    d += i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`;
+  }
   return d;
 });
 
@@ -173,8 +202,12 @@ function getHandleValue(type: typeof dragging.value | null) {
       height="auto"
       tabindex="0"
     >
-      <!-- Histogram -->
-      <path :d="histPath" fill="#888" fill-opacity="0.5" stroke="#444" stroke-width="1" />
+      <!-- Raw histogram as filled area (background) -->
+      <path v-if="props.rawHistogram && props.rawHistogram.length > 0" :d="rawHistPath" fill="#3a6ed8" fill-opacity="0.22" stroke="none" />
+      <!-- Display histogram as line overlay -->
+      <path v-if="props.displayHistogram && props.displayHistogram.length > 0" :d="displayHistPath" fill="none" stroke="#ff9800" stroke-width="2" />
+      <!-- Main histogram (fallback, legacy) -->
+      <path v-if="!props.rawHistogram && props.histogram && props.histogram.length > 0" :d="histPath" fill="#888" fill-opacity="0.5" stroke="#444" stroke-width="1" />
       <!-- Stretch lines -->
       <!-- Black point line -->
       <line
