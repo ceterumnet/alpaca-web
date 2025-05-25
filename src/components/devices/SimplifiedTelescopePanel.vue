@@ -7,6 +7,7 @@ import { setAlpacaProperty, callAlpacaMethod } from '@/utils/alpacaPropertyAcces
 import { formatRaNumber, formatDecNumber, parseRaString, parseDecString } from '@/utils/astroCoordinates'
 import CollapsibleSection from '@/components/ui/CollapsibleSection.vue'
 import { useNotificationStore } from '@/stores/useNotificationStore'
+import DeviceInfo from '@/components/ui/DeviceInfo.vue'
 
 const props = defineProps({
   deviceId: {
@@ -72,6 +73,8 @@ const notificationStore = useNotificationStore()
 const isSlewingFlag = computed(() => {
   return !!currentDevice.value?.properties?.slewing
 })
+// Add a local ref for UI state during slew
+const isSlewingLocal = ref(false)
 async function handleSlew() {
   raInputError.value = ''
   decInputError.value = ''
@@ -87,7 +90,7 @@ async function handleSlew() {
     valid = false
   }
   if (!valid) return
-  isSlewingFlag.value = true
+  isSlewingLocal.value = true
   try {
     // Only call if both are numbers
     if (typeof ra === 'number' && typeof dec === 'number') {
@@ -98,7 +101,7 @@ async function handleSlew() {
     notificationStore.showError('Slew failed: ' + (error instanceof Error ? error.message : String(error)))
     log.error({deviceIds:[props.deviceId]}, 'Slew failed:', error)
   } finally {
-    isSlewingFlag.value = false
+    isSlewingLocal.value = false
   }
 }
 
@@ -274,11 +277,18 @@ const telescopeInfo = computed(() => {
   const props = currentDevice.value?.properties || {}
   return {
     model: props.model || '--',
-    firmware: props.firmware || '--',
-    aperture: props.aperture || '--',
-    focalLength: props.focalLength || '--',
+    firmwareVersion: props.firmwareVersion || props.firmware || '--',
+    alignmentMode: props.alignmentMode ?? props.alignmentmode ?? '--',
+    equatorialSystem: props.equatorialSystem ?? props.equatorialsystem ?? '--',
+    apertureArea: props.apertureArea ?? props.aperturearea ?? '--',
+    apertureDiameter: props.apertureDiameter ?? props.aperturediameter ?? '--',
+    focalLength: props.focalLength ?? props.focallength ?? '--',
+    siteLatitude: props.siteLatitude ?? props.sitelatitude ?? '--',
+    siteLongitude: props.siteLongitude ?? props.sitelongitude ?? '--',
+    siteElevation: props.siteElevation ?? props.siteelevation ?? '--',
+    doesRefraction: typeof props.doesRefraction !== 'undefined' ? String(props.doesRefraction) : (typeof props.doesrefraction !== 'undefined' ? String(props.doesrefraction) : '--'),
+    trackingRates: Array.isArray(props.trackingRates) ? props.trackingRates : (Array.isArray(props.trackingrates) ? props.trackingrates : undefined),
     mountType: props.mountType || '--',
-    site: props.site || '--'
   }
 })
 
@@ -342,6 +352,30 @@ function clearError() {
 
 // TODO: Add notification and logging hooks for all actions
 
+const telescopeInfoArray = computed(() => {
+  const t = telescopeInfo.value
+  function toStr(val: unknown) {
+    if (val === null || val === undefined) return '--'
+    if (Array.isArray(val)) return val.join(', ')
+    return String(val)
+  }
+  return [
+    ['Model', toStr(t.model)],
+    ['Firmware Version', toStr(t.firmwareVersion)],
+    ['Alignment Mode', toStr(t.alignmentMode)],
+    ['Equatorial System', toStr(t.equatorialSystem)],
+    ['Aperture Area', toStr(t.apertureArea)],
+    ['Aperture Diameter', toStr(t.apertureDiameter)],
+    ['Focal Length', toStr(t.focalLength)],
+    ['Site Latitude', toStr(t.siteLatitude)],
+    ['Site Longitude', toStr(t.siteLongitude)],
+    ['Site Elevation', toStr(t.siteElevation)],
+    ['Does Refraction', toStr(t.doesRefraction)],
+    ['Tracking Rates', toStr(t.trackingRates)],
+    ['Mount Type', toStr(t.mountType)],
+  ] as [string, string][]
+})
+
 </script>
 
 <template>
@@ -383,9 +417,19 @@ function clearError() {
               <span class="aw-value">--</span>
             </div>
             <div class="status-flags">
-              <span v-if="isSlewingFlag" class="status-badge">Slewing</span>
+              <span v-if="isSlewingLocal" class="status-badge">Slewing</span>
               <span v-if="isParked" class="status-badge">Parked</span>
               <span v-if="isTracking" class="status-badge">Tracking</span>
+            </div>
+            <div class="tracking-controls" style="margin-top: 8px;">
+              <label class="aw-label" for="tracking-toggle">Tracking:</label>
+              <input id="tracking-toggle" v-model="tracking" type="checkbox" class="aw-input" aria-label="Tracking toggle" />
+              <label class="aw-label" for="tracking-rate-select">Rate:</label>
+              <select id="tracking-rate-select" v-model="selectedTrackingRate" class="aw-select aw-select--sm" aria-label="Tracking rate">
+                <option v-for="rate in trackingRates" :key="rate.value" :value="rate.value">
+                  {{ rate.label }}
+                </option>
+              </select>
             </div>
           </div>
         </CollapsibleSection>
@@ -397,17 +441,17 @@ function clearError() {
               <label for="ra-input" class="aw-label">RA</label>
               <input
 id="ra-input" v-model="raInput" type="text" class="aw-input aw-input--sm" aria-label="Target RA"
-                :disabled="isSlewingFlag" :class="{ 'input-error': raInputError }" placeholder="e.g. 12:34:56 or 12.58" />
+                :disabled="isSlewingLocal" :class="{ 'input-error': raInputError }" placeholder="e.g. 12:34:56 or 12.58" />
               <span class="input-hint">(HH:MM:SS or decimal hours)</span>
               <span v-if="raInputError" class="input-error-message">{{ raInputError }}</span>
               <label for="dec-input" class="aw-label">Dec</label>
               <input
 id="dec-input" v-model="decInput" type="text" class="aw-input aw-input--sm" aria-label="Target Dec"
-                :disabled="isSlewingFlag" :class="{ 'input-error': decInputError }" placeholder="e.g. +12:34:56 or 12.58" />
+                :disabled="isSlewingLocal" :class="{ 'input-error': decInputError }" placeholder="e.g. +12:34:56 or 12.58" />
               <span class="input-hint">(±DD:MM:SS or decimal degrees)</span>
               <span v-if="decInputError" class="input-error-message">{{ decInputError }}</span>
-              <button class="aw-btn aw-btn--primary aw-btn--sm" aria-label="Slew to coordinates" :disabled="isSlewingFlag" @click="handleSlew">Slew</button>
-              <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Reset coordinates" :disabled="isSlewingFlag" @click="resetTelescopeState">Reset</button>
+              <button class="aw-btn aw-btn--primary aw-btn--sm" aria-label="Slew to coordinates" :disabled="isSlewingLocal" @click="handleSlew">Slew</button>
+              <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Reset coordinates" :disabled="isSlewingLocal" @click="resetTelescopeState">Reset</button>
             </div>
             <div class="sync-coords">
               <!-- Sync to Coordinates button removed -->
@@ -424,42 +468,17 @@ id="dec-input" v-model="decInput" type="text" class="aw-input aw-input--sm" aria
             <div class="pulse-guide">
               <!-- TODO: Add Pulse Guiding controls if supported -->
             </div>
-          </div>
-        </CollapsibleSection>
-
-        <!-- Tracking Section -->
-        <CollapsibleSection title="Tracking" :default-open="false">
-          <div class="tracking-controls">
-            <label class="aw-label" for="tracking-toggle">Tracking:</label>
-            <input id="tracking-toggle" v-model="tracking" type="checkbox" class="aw-input" aria-label="Tracking toggle" />
-            <label class="aw-label" for="tracking-rate-select">Rate:</label>
-            <select id="tracking-rate-select" v-model="selectedTrackingRate" class="aw-select aw-select--sm" aria-label="Tracking rate">
-              <option v-for="rate in trackingRates" :key="rate.value" :value="rate.value">
-                {{ rate.label }}
-              </option>
-            </select>
-          </div>
-        </CollapsibleSection>
-
-        <!-- Advanced Section -->
-        <CollapsibleSection title="Advanced" :default-open="false">
-          <div class="advanced-controls">
-            <button class="aw-btn aw-btn--primary aw-btn--sm" aria-label="Park telescope" :disabled="isParking" @click="parkTelescope">Park</button>
-            <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Unpark telescope" :disabled="isUnparking" @click="unparkTelescope">Unpark</button>
-            <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Find home" :disabled="isFindingHome" @click="findHome">Find Home</button>
+            <div class="advanced-controls" style="margin-top: 8px;">
+              <button class="aw-btn aw-btn--primary aw-btn--sm" aria-label="Park telescope" :disabled="isParking" @click="parkTelescope">Park</button>
+              <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Unpark telescope" :disabled="isUnparking" @click="unparkTelescope">Unpark</button>
+              <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Find home" :disabled="isFindingHome" @click="findHome">Find Home</button>
+            </div>
           </div>
         </CollapsibleSection>
 
         <!-- Telescope Info Section -->
         <CollapsibleSection title="Telescope Info" :default-open="false">
-          <dl class="telescope-info-list">
-            <div class="info-row"><dt>Model</dt><dd>{{ telescopeInfo.model }}</dd></div>
-            <div class="info-row"><dt>Firmware</dt><dd>{{ telescopeInfo.firmware }}</dd></div>
-            <div class="info-row"><dt>Aperture</dt><dd>{{ telescopeInfo.aperture }}</dd></div>
-            <div class="info-row"><dt>Focal Length</dt><dd>{{ telescopeInfo.focalLength }}</dd></div>
-            <div class="info-row"><dt>Mount Type</dt><dd>{{ telescopeInfo.mountType }}</dd></div>
-            <div class="info-row"><dt>Site (Lat/Lon/Elev)</dt><dd>{{ telescopeInfo.site }}</dd></div>
-          </dl>
+          <DeviceInfo :info="telescopeInfoArray" title="Telescope Info" />
         </CollapsibleSection>
       </div>
     </div>
@@ -476,6 +495,7 @@ id="dec-input" v-model="decInput" type="text" class="aw-input aw-input--sm" aria
   display: flex;
   flex-direction: column;
   height: 100%;
+  container-type: inline-size;
 }
 .panel-header {
   display: flex;
@@ -609,6 +629,10 @@ id="dec-input" v-model="decInput" type="text" class="aw-input aw-input--sm" aria
   align-items: center;
   gap: var(--aw-spacing-sm);
 }
+.tracking-controls .aw-select {
+  min-width: 120px;
+  flex: 1 1 0;
+}
 .advanced-controls {
   display: flex;
   gap: var(--aw-spacing-sm);
@@ -617,45 +641,60 @@ id="dec-input" v-model="decInput" type="text" class="aw-input aw-input--sm" aria
 .telescope-info-list {
   display: grid;
   grid-template-columns: max-content 1fr;
-  row-gap: var(--aw-spacing-xs);
+  row-gap: 0;
   column-gap: var(--aw-spacing-lg);
   margin: 0;
   padding: 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  background: var(--aw-panel-bg-color);
+  border-radius: var(--aw-border-radius-sm);
+  box-shadow: none;
+  border: 1px solid var(--aw-panel-border-color);
+  overflow: hidden;
 }
-.info-row dt {
-  font-weight: 500;
+.info-row {
+  display: contents;
+}
+.telescope-info-list dt {
   color: var(--aw-text-secondary-color);
+  font-weight: 500;
   text-align: left;
-  padding-right: var(--aw-spacing-sm);
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  font-size: 0.85em;
+  background: none;
 }
-.info-row dd {
+.telescope-info-list dd {
   color: var(--aw-text-color);
+  font-weight: 600;
   text-align: right;
   font-variant-numeric: tabular-nums;
   word-break: break-all;
+  padding: 8px 0 8px 12px;
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  background: none;
+}
+.telescope-info-list dt:last-child,
+.telescope-info-list dd:last-child {
+  border-bottom: none;
 }
 @media (max-width: 600px) {
-  .panel-content {
-    padding: var(--aw-spacing-sm);
-  }
-  .position-grid, .telescope-info-list {
+  .telescope-info-list {
+    font-size: 0.8rem;
     grid-template-columns: 1fr;
+  }
+  .telescope-info-list dt, .telescope-info-list dd {
+    padding: 6px 8px;
   }
 }
 .sections-grid {
   display: grid;
   gap: var(--aw-spacing-md);
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
 }
-@media (min-width: 700px) {
+@container (max-width: 600px) {
   .sections-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-@media (min-width: 1100px) {
-  .sections-grid {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 }
 .input-hint {

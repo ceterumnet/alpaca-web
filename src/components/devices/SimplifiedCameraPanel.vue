@@ -11,6 +11,7 @@ import Icon from '@/components/ui/Icon.vue'
 import type { BayerPattern } from '@/lib/ASCOMImageBytes';
 import '@/assets/components/forms.css'
 import CollapsibleSection from '@/components/ui/CollapsibleSection.vue'
+import DeviceInfo from '@/components/ui/DeviceInfo.vue'
 
 const props = defineProps({
   deviceId: {
@@ -453,7 +454,7 @@ const cameraInfoProps = computed(() => {
   if (!currentDevice.value) return []
   const props = currentDevice.value.properties || {}
   // Map of label: [camelCaseKey, alpacaKey]
-  const infoMap = [
+  const infoMap: Array<[string, string[]]> = [
     ['Sensor Name', ['sensorName', 'sensorname']],
     ['Camera X Size (px)', ['cameraXSize', 'cameraxsize']],
     ['Camera Y Size (px)', ['cameraYSize', 'cameraysize']],
@@ -494,9 +495,15 @@ const cameraInfoProps = computed(() => {
     ['Sub Exposure Duration', ['subExposureDuration', 'subexposureduration']],
     ['Firmware Version', ['firmwareVersion']], // device root only
   ]
-  // Only include properties that exist and are not null/undefined
-  const result = infoMap.reduce((acc, [label, keys]) => {
-    let val
+  function toStr(val: unknown): string {
+    if (val === undefined || val === null || val === '') return '--'
+    if (Array.isArray(val)) return val.join(', ')
+    if (typeof val === 'object') return JSON.stringify(val)
+    return String(val)
+  }
+  const result: Array<[string, string]> = []
+  for (const [label, keys] of infoMap) {
+    let val: unknown = undefined
     for (const key of keys) {
       if (key === 'firmwareVersion' && currentDevice.value && currentDevice.value.firmwareVersion) {
         val = currentDevice.value.firmwareVersion
@@ -507,21 +514,9 @@ const cameraInfoProps = computed(() => {
         break
       }
     }
-    if (val !== undefined && val !== null && val !== '') {
-      // Ensure the value is always a string
-      let displayVal: string
-      if (Array.isArray(val)) {
-        displayVal = val.join(', ')
-      } else if (typeof val === 'object') {
-        displayVal = JSON.stringify(val)
-      } else {
-        displayVal = String(val)
-      }
-      acc.push([String(label), displayVal])
-    }
-    return acc
-  }, [] as Array<[string, string]>) 
-  return result
+    result.push([String(label), toStr(val)])
+  }
+  return result.filter(([label, value]) => typeof label === 'string' && typeof value === 'string')
 })
 
 const readoutModes = computed<string[]>(() => {
@@ -858,12 +853,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
             </CollapsibleSection>
             <!-- Camera Info Section -->
             <CollapsibleSection v-if="currentDevice && cameraInfoProps.length" title="Camera Info" :default-open="false">
-              <dl class="camera-info-list">
-                <template v-for="([label, value]) in cameraInfoProps" :key="label">
-                  <dt class="camera-info-label">{{ label }}</dt>
-                  <dd class="camera-info-value">{{ value }}</dd>
-                </template>
-              </dl>
+              <DeviceInfo :info="cameraInfoProps" title="Camera Info" />
             </CollapsibleSection>
           </div>
         </div>

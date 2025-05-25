@@ -41,43 +41,80 @@ _These improvements are implemented in `PanelLayoutView.vue` and `SimplifiedCame
 
 This section tracks the ongoing refactor and feature completion for the Telescope panel (`SimplifiedTelescopePanel.vue`).
 
-## Implementation Plan
+### Implementation Plan
 
-- [ ] **Collapsible, Responsive Sections**: Position, Movement, Tracking, Advanced, Info
-- [ ] **Live Device Data**: Show RA, Dec, Alt, Az, Side of Pier, status flags (slewing, parked, tracking)
-- [ ] **Human-Friendly RA/Dec Entry**: Allow entry in both decimal and sexagesimal (HH:MM:SS / ±DD:MM:SS) formats, with validation and feedback
-- [ ] **Slew to Coordinates**: Wire up to store action, with validation/loading/notifications
-- [ ] **Sync to Coordinates**: Show if supported, wire up to store action
-- [ ] **Direction Pad**: Wire up to moveAxis/abortSlew, disable when slewing
-- [ ] **Pulse Guiding**: Show if supported, wire up to store action
-- [ ] **Tracking Toggle/Rate**: Wire up to store, show available rates
-- [ ] **Park/Unpark/Find Home**: Wire up to store actions, show loading/feedback
-- [ ] **Telescope Info**: Show model, firmware, aperture, focal length, mount type, site info, etc.
-- [ ] **UX/Feedback**: Use notification and logging systems for all actions/errors
-- [ ] **Accessibility**: ARIA labels, keyboard navigation
-- [ ] **Theming**: Use aw-btn, aw-input, aw-select, etc.
-- [ ] **Remove Redundant Code/Styles**: Clean up as we go
+| Feature/Section                | Status          | Notes                                                            |
+| ------------------------------ | --------------- | ---------------------------------------------------------------- |
+| Collapsible, Responsive Layout | **Complete**    | Max 2 columns, collapses to 1 below 600px (container query).     |
+| Live Device Data               | **Complete**    | RA, Dec, Alt, Az, status flags (slewing, parked, tracking) shown |
+| Human-Friendly RA/Dec Entry    | **Complete**    | Accepts decimal and sexagesimal, with validation and feedback    |
+| Slew to Coordinates            | **Complete**    | Store-wired, with validation, loading, notifications             |
+| Sync to Coordinates            | **Not Present** | Not exposed in UI, but available in store                        |
+| Direction Pad                  | **Complete**    | MoveAxis/abortSlew wired, disables on slewing                    |
+| Pulse Guiding                  | **Not Present** | Not exposed in UI (per spec, handled by guiding software)        |
+| Tracking Toggle/Rate           | **Complete**    | Now in Position section, select control uses available space     |
+| Park/Unpark/Find Home          | **Complete**    | Now in Movement section, removed Advanced section                |
+| Telescope Info                 | **Complete**    | Uses reusable DeviceInfo component, consistent with Camera panel |
+| UX/Feedback                    | **Partial**     | Notifications for most actions, error/status bar present         |
+| Accessibility                  | **Partial**     | ARIA labels on most controls, but not fully audited              |
+| Theming                        | **Complete**    | Uses aw-btn, aw-input, aw-select, etc.                           |
+| Remove Redundant Code/Styles   | **In Progress** | Some legacy code remains, but much is cleaned up                 |
 
-## Progress Table
+#### Additional Implementation Notes
 
-| Feature/Section                | Status  | Notes |
-| ------------------------------ | ------- | ----- |
-| Collapsible, Responsive Layout | Planned |       |
-| Live Device Data               | Planned |       |
-| Human-Friendly RA/Dec Entry    | Planned |       |
-| Slew to Coordinates            | Planned |       |
-| Sync to Coordinates            | Planned |       |
-| Direction Pad                  | Planned |       |
-| Pulse Guiding                  | Planned |       |
-| Tracking Toggle/Rate           | Planned |       |
-| Park/Unpark/Find Home          | Planned |       |
-| Telescope Info                 | Planned |       |
-| UX/Feedback                    | Planned |       |
-| Accessibility                  | Planned |       |
-| Theming                        | Planned |       |
-| Remove Redundant Code/Styles   | Planned |       |
+- **Advanced Alpaca/ASCOM Capabilities**:
+  - All major Alpaca/ASCOM telescope actions are now available in the store and can be surfaced in the UI.
+  - Advanced properties (guide rates, axis rates, destination side of pier, slew settle time, etc.) are available in the store but not exposed in the UI.
+  - Pulse guiding is intentionally not exposed in the UI (per spec).
+- **Telescope Info Section**:
+  - Some info fields (model, firmware, aperture, etc.) are shown, but may be placeholders if not available from the device.
+- **Sync to Coordinates**:
+  - Supported in the store, but not currently exposed in the UI. Could be added for advanced users.
+- **Error/Status Reporting**:
+  - Partial in UI; more granular feedback could be added.
+- **Telescope Info section now displays all available Alpaca/ASCOM read-only info properties (firmware, alignment mode, equatorial system, aperture area/diameter, focal length, site lat/lon/elev, does refraction, tracking rates, etc.).**
+- Telescope Info and Camera Info now use a shared DeviceInfo component for consistent, compact info display.
+- The panel layout is responsive: max 2 columns, collapses to 1 column below 600px using a container query.
+- Tracking controls are now in the Position section; Park/Unpark/Find Home are in the Movement section. Tracking and Advanced sections have been removed for a cleaner UI.
+- The tracking rate select control now uses available space for better usability.
 
-_This table will be updated as each feature is implemented._
+### Summary Table
+
+| Capability | Store Exposed | Panel UI | Code Reference(s) |
+| --- | :-: | :-: | --- |
+| Slew to Coordinates (RA/Dec, Alt/Az) | ✔️ | ✔️ | [telescopeActions.ts](src/stores/modules/telescopeActions.ts), [SimplifiedTelescopePanel.vue](src/components/devices/SimplifiedTelescopePanel.vue) |
+| Slew to Target | ✔️ | ✔️ | same as above |
+| Park/Unpark | ✔️ | ✔️ | same as above |
+| Find Home | ✔️ | ✔️ | same as above |
+| Abort Slew | ✔️ | ✔️ | same as above |
+| Move Axis | ✔️ | ✔️ | same as above |
+| Tracking Toggle/Rate | ✔️ | ✔️ | same as above |
+| Sync to Coordinates (RA/Dec, Alt/Az) | ✔️ | ❌ | Store only |
+| Set/Get Target RA/Dec | ✔️ | ❌ | Store only |
+| Guide Rates | ✔️ | ❌ | Store only |
+| Axis Rates | ✔️ | ❌ | Store only |
+| Destination Side of Pier | ✔️ | ❌ | Store only |
+| Slew Settle Time | ✔️ | ❌ | Store only |
+| Pulse Guiding | ✔️ | ❌ | Store only (intentionally) |
+| Advanced Mount/Site Info | ✔️ | Partial | Info section, some fields may be placeholders |
+| Error/Status Details | ✔️ | Partial | Store and UI |
+
+### Recommendations / Gaps
+
+- **Expose more read-only info**: Consider surfacing all available mount/site info in the Telescope Info section.
+- **Sync to Coordinates**: Add a button for advanced users if needed.
+- **Guide/Axis rates, slew settle time**: Expose as advanced controls if user demand exists.
+- **Error/status**: Expand UI feedback for errors and status changes.
+- **Accessibility**: Audit and improve ARIA/keyboard support.
+
+---
+
+**Next Steps:**
+
+- Decide which advanced features (sync, guide/axis rates, etc.) should be exposed in the UI.
+- Complete the Telescope Info section with all available device properties.
+- Expand error/status feedback and accessibility coverage.
+- Continue code cleanup and theming consistency.
 
 ---
 
