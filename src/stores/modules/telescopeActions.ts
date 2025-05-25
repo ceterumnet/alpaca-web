@@ -15,6 +15,7 @@
 import type { Device } from '@/types/device.types'
 import type { DeviceEvent } from '../types/device-store.types'
 import type { AlpacaClient } from '@/api/AlpacaClient'
+import type { TelescopeClient } from '@/api/alpaca/telescope-client'
 import { formatSiderealTime, parseRaString, parseDecString } from '@/utils/astroCoordinates'
 import log from '@/plugins/logger'
 
@@ -635,7 +636,7 @@ export function createTelescopeActions() {
         rate: number
       ): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting guide rate declination for telescope ${deviceId} to ${rate}.`)
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
+        const client = this.getDeviceClient(deviceId) as TelescopeClient | null
         if (!client) {
           throw new Error(`No Telescope client available for device ${deviceId}`)
         }
@@ -669,7 +670,7 @@ export function createTelescopeActions() {
         rate: number
       ): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting guide rate right ascension for telescope ${deviceId} to ${rate}.`)
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
+        const client = this.getDeviceClient(deviceId) as TelescopeClient | null
         if (!client) {
           throw new Error(`No Telescope client available for device ${deviceId}`)
         }
@@ -703,7 +704,7 @@ export function createTelescopeActions() {
         time: number
       ): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting slew settle time for telescope ${deviceId} to ${time}.`)
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/telescope-client').TelescopeClient | null
+        const client = this.getDeviceClient(deviceId) as TelescopeClient | null
         if (!client) {
           throw new Error(`No Telescope client available for device ${deviceId}`)
         }
@@ -1012,6 +1013,537 @@ export function createTelescopeActions() {
             coordinates: {} // Pass empty object if coordinates are not applicable
           })
           return false
+        }
+      },
+
+      /**
+       * Find Home (ASCOM Alpaca)
+       */
+      async findHome(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Finding home for telescope ${deviceId}.`)
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          // Use deviceMethodCalled for start
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'findhome', args: [], result: undefined })
+          await this.callDeviceMethod(deviceId, 'findhome', [])
+          // Use devicePropertyChanged to indicate at home (if property exists)
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'athome', value: true })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error finding home for telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Sync to Coordinates (RA/Dec)
+       */
+      async syncToCoordinates(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string,
+        rightAscension: number,
+        declination: number
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Syncing telescope ${deviceId} to RA/Dec:`, { rightAscension, declination })
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'synctocoordinates',
+            args: [{ RightAscension: rightAscension, Declination: declination }],
+            result: undefined
+          })
+          await this.callDeviceMethod(deviceId, 'synctocoordinates', [{ RightAscension: rightAscension, Declination: declination }])
+          // Use devicePropertyChanged to indicate sync
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'lastSync', value: { rightAscension, declination } })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error syncing telescope ${deviceId} to coordinates:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Sync to Alt/Az
+       */
+      async syncToAltAz(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string,
+        altitude: number,
+        azimuth: number
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Syncing telescope ${deviceId} to Alt/Az:`, { altitude, azimuth })
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'synctoaltaz',
+            args: [{ Altitude: altitude, Azimuth: azimuth }],
+            result: undefined
+          })
+          await this.callDeviceMethod(deviceId, 'synctoaltaz', [{ Altitude: altitude, Azimuth: azimuth }])
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'lastSyncAltAz', value: { altitude, azimuth } })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error syncing telescope ${deviceId} to Alt/Az:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Sync to Target
+       */
+      async syncToTarget(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Syncing telescope ${deviceId} to target.`)
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'synctotarget', args: [], result: undefined })
+          await this.callDeviceMethod(deviceId, 'synctotarget', [])
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'lastSyncTarget', value: true })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error syncing telescope ${deviceId} to target:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Slew to Target (ASCOM Alpaca)
+       */
+      async slewToTarget(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Slewing telescope ${deviceId} to target.`)
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'slewtotarget', args: [], result: undefined })
+          await this.callDeviceMethod(deviceId, 'slewtotarget', [])
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'lastSlewToTarget', value: true })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error slewing telescope ${deviceId} to target:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Slew to Target Async (ASCOM Alpaca)
+       */
+      async slewToTargetAsync(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Slewing telescope ${deviceId} to target (async).`)
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'slewtotargetasync', args: [], result: undefined })
+          await this.callDeviceMethod(deviceId, 'slewtotargetasync', [])
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'lastSlewToTargetAsync', value: true })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error slewing telescope ${deviceId} to target (async):`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Move Axis (ASCOM Alpaca)
+       */
+      async moveAxis(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string,
+        axis: number,
+        rate: number
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Moving axis ${axis} at rate ${rate} for telescope ${deviceId}.`)
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'moveaxis', args: [axis, rate], result: undefined })
+          await this.callDeviceMethod(deviceId, 'moveaxis', [axis, rate])
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: `lastMoveAxis_${axis}`, value: rate })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error moving axis for telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Pulse Guide (ASCOM Alpaca)
+       */
+      async pulseGuide(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string,
+        direction: number,
+        duration: number
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Pulse guiding telescope ${deviceId} direction ${direction} for ${duration}ms.`)
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'pulseguide', args: [direction, duration], result: undefined })
+          await this.callDeviceMethod(deviceId, 'pulseguide', [direction, duration])
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'lastPulseGuide', value: { direction, duration } })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error pulse guiding telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Set Target Right Ascension (ASCOM Alpaca)
+       */
+      async setTargetRightAscension(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string,
+        rightAscension: number
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting target right ascension for telescope ${deviceId}: ${rightAscension}`)
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'targetrightascension',
+            args: [{ TargetRightAscension: rightAscension }],
+            result: undefined
+          })
+          await this.callDeviceMethod(deviceId, 'targetrightascension', [{ TargetRightAscension: rightAscension }])
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'targetRightAscension', value: rightAscension })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error setting target right ascension for telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Set Target Declination (ASCOM Alpaca)
+       */
+      async setTargetDeclination(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+          _emitEvent: (event: DeviceEvent) => void
+          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
+        },
+        deviceId: string,
+        declination: number
+      ): Promise<boolean> {
+        log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting target declination for telescope ${deviceId}: ${declination}`)
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        try {
+          this._emitEvent({
+            type: 'deviceMethodCalled',
+            deviceId,
+            method: 'targetdeclination',
+            args: [{ TargetDeclination: declination }],
+            result: undefined
+          })
+          await this.callDeviceMethod(deviceId, 'targetdeclination', [{ TargetDeclination: declination }])
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'targetDeclination', value: declination })
+          return true
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error setting target declination for telescope ${deviceId}:`, error)
+          this._emitEvent({ type: 'deviceApiError', deviceId, error: String(error) })
+          throw error
+        }
+      },
+
+      /**
+       * Get isPulseGuiding (ASCOM Alpaca)
+       * This is a getter, polled if not available via devicestate.
+       */
+      async getIsPulseGuiding(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+        },
+        deviceId: string
+      ): Promise<boolean | null> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        const client = this.getDeviceClient(deviceId)
+        if (!client) throw new Error(`No API client available for device ${deviceId}`)
+        try {
+          const value = await client.getProperty('ispulseguiding')
+          this.updateDeviceProperties(deviceId, { isPulseGuiding: value })
+          return Boolean(value)
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error getting isPulseGuiding for telescope ${deviceId}:`, error)
+          return null
+        }
+      },
+
+      /**
+       * Get Aperture Area (ASCOM Alpaca)
+       */
+      async getApertureArea(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+        },
+        deviceId: string
+      ): Promise<number | null> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        const client = this.getDeviceClient(deviceId)
+        if (!client) throw new Error(`No API client available for device ${deviceId}`)
+        try {
+          const value = await client.getProperty('aperturearea')
+          this.updateDeviceProperties(deviceId, { apertureArea: value })
+          return Number(value)
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error getting aperture area for telescope ${deviceId}:`, error)
+          return null
+        }
+      },
+
+      /**
+       * Get Aperture Diameter (ASCOM Alpaca)
+       */
+      async getApertureDiameter(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+        },
+        deviceId: string
+      ): Promise<number | null> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        const client = this.getDeviceClient(deviceId)
+        if (!client) throw new Error(`No API client available for device ${deviceId}`)
+        try {
+          const value = await client.getProperty('aperturediameter')
+          this.updateDeviceProperties(deviceId, { apertureDiameter: value })
+          return Number(value)
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error getting aperture diameter for telescope ${deviceId}:`, error)
+          return null
+        }
+      },
+
+      /**
+       * Get Axis Rates (ASCOM Alpaca)
+       */
+      async getAxisRates(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+        },
+        deviceId: string,
+        axis: number
+      ): Promise<object[] | null> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        const axisRatesClient = this.getDeviceClient(deviceId) as TelescopeClient | null
+        if (!axisRatesClient) throw new Error(`No API client available for device ${deviceId}`)
+        try {
+          // Use the client method, not getProperty
+          const value = await axisRatesClient.getAxisRates(axis)
+          this.updateDeviceProperties(deviceId, { [`axisRates_${axis}`]: value })
+          return Array.isArray(value) ? value : null
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error getting axis rates for telescope ${deviceId}:`, error)
+          return null
+        }
+      },
+
+      /**
+       * Get Destination Side Of Pier (ASCOM Alpaca)
+       */
+      async getDestinationSideOfPier(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+        },
+        deviceId: string,
+        rightAscension: number,
+        declination: number
+      ): Promise<number | null> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        const sideOfPierClient = this.getDeviceClient(deviceId) as TelescopeClient | null
+        if (!sideOfPierClient) throw new Error(`No API client available for device ${deviceId}`)
+        try {
+          // Use the client method, not getProperty
+          const value = await sideOfPierClient.getDestinationSideOfPier(rightAscension, declination)
+          this.updateDeviceProperties(deviceId, { destinationSideOfPier: value })
+          return typeof value === 'number' ? value : null
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error getting destination side of pier for telescope ${deviceId}:`, error)
+          return null
+        }
+      },
+
+      /**
+       * Get Guide Rate Declination (ASCOM Alpaca)
+       */
+      async getGuideRateDeclination(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+        },
+        deviceId: string
+      ): Promise<number | null> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        const client = this.getDeviceClient(deviceId)
+        if (!client) throw new Error(`No API client available for device ${deviceId}`)
+        try {
+          const value = await client.getProperty('guideratedeclination')
+          this.updateDeviceProperties(deviceId, { guideRateDeclination: value })
+          return Number(value)
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error getting guide rate declination for telescope ${deviceId}:`, error)
+          return null
+        }
+      },
+
+      /**
+       * Get Guide Rate Right Ascension (ASCOM Alpaca)
+       */
+      async getGuideRateRightAscension(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+        },
+        deviceId: string
+      ): Promise<number | null> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        const client = this.getDeviceClient(deviceId)
+        if (!client) throw new Error(`No API client available for device ${deviceId}`)
+        try {
+          const value = await client.getProperty('guideraterightascension')
+          this.updateDeviceProperties(deviceId, { guideRateRightAscension: value })
+          return Number(value)
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error getting guide rate right ascension for telescope ${deviceId}:`, error)
+          return null
+        }
+      },
+
+      /**
+       * Get Slew Settle Time (ASCOM Alpaca)
+       */
+      async getSlewSettleTime(
+        this: TelescopeState & {
+          getDeviceById: (id: string) => Device | null
+          getDeviceClient: (id: string) => AlpacaClient | null
+          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
+        },
+        deviceId: string
+      ): Promise<number | null> {
+        const device = this.getDeviceById(deviceId)
+        if (!device) throw new Error(`Device not found: ${deviceId}`)
+        if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
+        const client = this.getDeviceClient(deviceId)
+        if (!client) throw new Error(`No API client available for device ${deviceId}`)
+        try {
+          const value = await client.getProperty('slewsettletime')
+          this.updateDeviceProperties(deviceId, { slewSettleTime: value })
+          return Number(value)
+        } catch (error) {
+          log.error({ deviceIds: [deviceId] }, `[TelescopeActions] Error getting slew settle time for telescope ${deviceId}:`, error)
+          return null
         }
       }
     }

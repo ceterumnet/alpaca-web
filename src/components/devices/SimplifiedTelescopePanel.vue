@@ -4,7 +4,9 @@ import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { setAlpacaProperty, callAlpacaMethod } from '@/utils/alpacaPropertyAccess'
-import { formatRaNumber, formatDecNumber } from '@/utils/astroCoordinates'
+import { formatRaNumber, formatDecNumber, parseRaString, parseDecString } from '@/utils/astroCoordinates'
+import CollapsibleSection from '@/components/ui/CollapsibleSection.vue'
+import { useNotificationStore } from '@/stores/useNotificationStore'
 
 const props = defineProps({
   deviceId: {
@@ -21,7 +23,6 @@ const props = defineProps({
   }
 })
 
-
 // Get unified store for device interaction
 const store = useUnifiedStore()
 
@@ -33,6 +34,73 @@ const currentDevice = computed(() => {
 // Local refs for UI interaction (e.g., slew targets)
 const targetRA = ref(0)
 const targetDec = ref(0)
+
+// Add refs for human-friendly RA/Dec input
+const raInput = ref('')
+const decInput = ref('')
+const raInputError = ref('')
+const decInputError = ref('')
+
+// Helper: parse RA/Dec input (autodetect decimal or sexagesimal)
+function parseRaInput(val: string): number | null {
+  try {
+    if (val.trim() === '') return null
+    // Try sexagesimal first
+    return parseRaString(val)
+  } catch {
+    // Try decimal
+    const num = Number(val)
+    if (!isNaN(num) && num >= 0 && num < 24) return num
+    return null
+  }
+}
+function parseDecInput(val: string): number | null {
+  try {
+    if (val.trim() === '') return null
+    // Try sexagesimal first
+    return parseDecString(val)
+  } catch {
+    // Try decimal
+    const num = Number(val)
+    if (!isNaN(num) && num >= -90 && num <= 90) return num
+    return null
+  }
+}
+
+// Slew action with validation and notification
+const notificationStore = useNotificationStore()
+const isSlewingFlag = computed(() => {
+  return !!currentDevice.value?.properties?.slewing
+})
+async function handleSlew() {
+  raInputError.value = ''
+  decInputError.value = ''
+  const ra = parseRaInput(raInput.value)
+  const dec = parseDecInput(decInput.value)
+  let valid = true
+  if (ra === null) {
+    raInputError.value = 'Invalid RA (use HH:MM:SS or decimal hours)'
+    valid = false
+  }
+  if (dec === null) {
+    decInputError.value = 'Invalid Dec (use ±DD:MM:SS or decimal degrees)'
+    valid = false
+  }
+  if (!valid) return
+  isSlewingFlag.value = true
+  try {
+    // Only call if both are numbers
+    if (typeof ra === 'number' && typeof dec === 'number') {
+      await store.slewToCoordinates(props.deviceId, ra, dec)
+      notificationStore.showSuccess('Slew started.')
+    }
+  } catch (error) {
+    notificationStore.showError('Slew failed: ' + (error instanceof Error ? error.message : String(error)))
+    log.error({deviceIds:[props.deviceId]}, 'Slew failed:', error)
+  } finally {
+    isSlewingFlag.value = false
+  }
+}
 
 // Computed properties for display, derived from the store
 const rightAscension = computed(() => {
@@ -157,30 +225,62 @@ const moveDirection = async (direction: string) => {
   }
 }
 
-// Advanced functions
-const parkTelescope = async () => {
+// Add computed for sync support and live status flags
+const canSync = computed(() => {
+  // Check if the device supports syncToCoordinates (store or device property)
+  return typeof store.syncToCoordinates === 'function'
+})
+const isParked = computed(() => {
+  return !!currentDevice.value?.properties?.atpark
+})
+const isTracking = computed(() => {
+  return !!currentDevice.value?.properties?.tracking
+})
+
+// Update Park/Unpark/Find Home to use notifications
+const isParking = ref(false)
+const isUnparking = ref(false)
+const isFindingHome = ref(false)
+async function parkTelescope() {
+  isParking.value = true
   try {
-    await callAlpacaMethod(props.deviceId, 'park')
+    await store.parkTelescope(props.deviceId)
+    notificationStore.showSuccess('Telescope parked.')
   } catch (error) {
+    notificationStore.showError('Park failed: ' + (error instanceof Error ? error.message : String(error)))
     log.error({deviceIds:[props.deviceId]}, 'Error parking telescope:', error)
+  } finally {
+    isParking.value = false
   }
 }
-
-const unparkTelescope = async () => {
+async function unparkTelescope() {
+  isUnparking.value = true
   try {
-    await callAlpacaMethod(props.deviceId, 'unpark')
+    await store.unparkTelescope(props.deviceId)
+    notificationStore.showSuccess('Telescope unparked.')
   } catch (error) {
+    notificationStore.showError('Unpark failed: ' + (error instanceof Error ? error.message : String(error)))
     log.error({deviceIds:[props.deviceId]}, 'Error unparking telescope:', error)
+  } finally {
+    isUnparking.value = false
   }
+}
+async function findHome() {
+  notificationStore.showError('Find Home is not supported on this system.')
 }
 
-const findHome = async () => {
-  try {
-    await callAlpacaMethod(props.deviceId, 'findHome')
-  } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error finding home position:', error)
+// Telescope Info computed
+const telescopeInfo = computed(() => {
+  const props = currentDevice.value?.properties || {}
+  return {
+    model: props.model || '--',
+    firmware: props.firmware || '--',
+    aperture: props.aperture || '--',
+    focalLength: props.focalLength || '--',
+    mountType: props.mountType || '--',
+    site: props.site || '--'
   }
-}
+})
 
 // Setup polling when mounted
 onMounted(() => {
@@ -220,112 +320,148 @@ const trackingRates = [
   { value: 3, label: 'King' }
 ]
 
+// Error/status bar state
+const panelError = ref<string | null>(null)
+const panelStatus = ref<string>('Idle') // e.g., 'Slewing', 'Parked', etc.
+
+// Example: Watch for device status changes to update status bar
+watch(currentDevice, (dev) => {
+  // TODO: Update panelStatus based on device properties (slewing, parked, etc.)
+  // panelStatus.value = ...
+}, { immediate: true })
+
+// Example: Error handling (to be replaced with notification system integration)
+function showError(msg: string) {
+  panelError.value = msg
+  // TODO: Also send to notification system
+  log.error({deviceIds:[props.deviceId]}, msg)
+}
+function clearError() {
+  panelError.value = null
+}
+
+// TODO: Add notification and logging hooks for all actions
+
 </script>
 
 <template>
   <div class="simplified-panel">
-    <!-- Main panel content with sections -->
+    <!-- Error/Status Bar -->
+    <div v-if="panelError" class="panel-error-display">
+      <span class="error-message-content">{{ panelError }}</span>
+      <button class="dismiss-button" aria-label="Dismiss error" @click="clearError">×</button>
+    </div>
+    <div class="panel-status-bar">
+      <span class="status-label">Status:</span>
+      <span class="status-value">{{ panelStatus }}</span>
+      <!-- TODO: Add icons/colors for slewing, parked, etc. -->
+    </div>
+
     <div class="panel-content">
-      <!-- No device selected message -->
-      <div v-if="!currentDevice" class="connection-notice">
-        <div class="connection-message">No telescope selected or available</div>
+      <div class="sections-grid">
+        <!-- Position Section -->
+        <CollapsibleSection title="Position" :default-open="true">
+          <div class="position-grid">
+            <div class="coordinate-row">
+              <label class="aw-label" aria-label="Right Ascension">RA:</label>
+              <span class="aw-value">{{ formattedRA }}</span>
+            </div>
+            <div class="coordinate-row">
+              <label class="aw-label" aria-label="Declination">Dec:</label>
+              <span class="aw-value">{{ formattedDec }}</span>
+            </div>
+            <div class="coordinate-row">
+              <label class="aw-label" aria-label="Altitude">Alt:</label>
+              <span class="aw-value">{{ altitude.toFixed(2) }}°</span>
+            </div>
+            <div class="coordinate-row">
+              <label class="aw-label" aria-label="Azimuth">Az:</label>
+              <span class="aw-value">{{ azimuth.toFixed(2) }}°</span>
+            </div>
+            <div class="coordinate-row">
+              <label class="aw-label" aria-label="Side of Pier">Side of Pier:</label>
+              <span class="aw-value">--</span>
+            </div>
+            <div class="status-flags">
+              <span v-if="isSlewingFlag" class="status-badge">Slewing</span>
+              <span v-if="isParked" class="status-badge">Parked</span>
+              <span v-if="isTracking" class="status-badge">Tracking</span>
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        <!-- Movement Section -->
+        <CollapsibleSection title="Movement" :default-open="true">
+          <div class="movement-controls">
+            <div class="slew-coords">
+              <label for="ra-input" class="aw-label">RA</label>
+              <input
+id="ra-input" v-model="raInput" type="text" class="aw-input aw-input--sm" aria-label="Target RA"
+                :disabled="isSlewingFlag" :class="{ 'input-error': raInputError }" placeholder="e.g. 12:34:56 or 12.58" />
+              <span class="input-hint">(HH:MM:SS or decimal hours)</span>
+              <span v-if="raInputError" class="input-error-message">{{ raInputError }}</span>
+              <label for="dec-input" class="aw-label">Dec</label>
+              <input
+id="dec-input" v-model="decInput" type="text" class="aw-input aw-input--sm" aria-label="Target Dec"
+                :disabled="isSlewingFlag" :class="{ 'input-error': decInputError }" placeholder="e.g. +12:34:56 or 12.58" />
+              <span class="input-hint">(±DD:MM:SS or decimal degrees)</span>
+              <span v-if="decInputError" class="input-error-message">{{ decInputError }}</span>
+              <button class="aw-btn aw-btn--primary aw-btn--sm" aria-label="Slew to coordinates" :disabled="isSlewingFlag" @click="handleSlew">Slew</button>
+              <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Reset coordinates" :disabled="isSlewingFlag" @click="resetTelescopeState">Reset</button>
+            </div>
+            <div class="sync-coords">
+              <!-- Sync to Coordinates button removed -->
+            </div>
+            <div class="direction-pad">
+              <button class="direction-btn" aria-label="Move North" @click="moveDirection('up')">▲</button>
+              <div>
+                <button class="direction-btn" aria-label="Move West" @click="moveDirection('left')">◄</button>
+                <button class="direction-btn" aria-label="Stop" @click="moveDirection('stop')">■</button>
+                <button class="direction-btn" aria-label="Move East" @click="moveDirection('right')">►</button>
+              </div>
+              <button class="direction-btn" aria-label="Move South" @click="moveDirection('down')">▼</button>
+            </div>
+            <div class="pulse-guide">
+              <!-- TODO: Add Pulse Guiding controls if supported -->
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        <!-- Tracking Section -->
+        <CollapsibleSection title="Tracking" :default-open="false">
+          <div class="tracking-controls">
+            <label class="aw-label" for="tracking-toggle">Tracking:</label>
+            <input id="tracking-toggle" v-model="tracking" type="checkbox" class="aw-input" aria-label="Tracking toggle" />
+            <label class="aw-label" for="tracking-rate-select">Rate:</label>
+            <select id="tracking-rate-select" v-model="selectedTrackingRate" class="aw-select aw-select--sm" aria-label="Tracking rate">
+              <option v-for="rate in trackingRates" :key="rate.value" :value="rate.value">
+                {{ rate.label }}
+              </option>
+            </select>
+          </div>
+        </CollapsibleSection>
+
+        <!-- Advanced Section -->
+        <CollapsibleSection title="Advanced" :default-open="false">
+          <div class="advanced-controls">
+            <button class="aw-btn aw-btn--primary aw-btn--sm" aria-label="Park telescope" :disabled="isParking" @click="parkTelescope">Park</button>
+            <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Unpark telescope" :disabled="isUnparking" @click="unparkTelescope">Unpark</button>
+            <button class="aw-btn aw-btn--secondary aw-btn--sm" aria-label="Find home" :disabled="isFindingHome" @click="findHome">Find Home</button>
+          </div>
+        </CollapsibleSection>
+
+        <!-- Telescope Info Section -->
+        <CollapsibleSection title="Telescope Info" :default-open="false">
+          <dl class="telescope-info-list">
+            <div class="info-row"><dt>Model</dt><dd>{{ telescopeInfo.model }}</dd></div>
+            <div class="info-row"><dt>Firmware</dt><dd>{{ telescopeInfo.firmware }}</dd></div>
+            <div class="info-row"><dt>Aperture</dt><dd>{{ telescopeInfo.aperture }}</dd></div>
+            <div class="info-row"><dt>Focal Length</dt><dd>{{ telescopeInfo.focalLength }}</dd></div>
+            <div class="info-row"><dt>Mount Type</dt><dd>{{ telescopeInfo.mountType }}</dd></div>
+            <div class="info-row"><dt>Site (Lat/Lon/Elev)</dt><dd>{{ telescopeInfo.site }}</dd></div>
+          </dl>
+        </CollapsibleSection>
       </div>
-      
-      <!-- Connection status (now handled by parent, show message if not connected) -->
-      <div v-else-if="!isConnected" class="connection-notice">
-        <div class="connection-message">Telescope ({{ currentDevice.name }}) not connected.</div>
-        <div class="panel-tip">Use the connect button in the panel header.</div>
-      </div>
-      
-      <template v-else>
-        <!-- Position section -->
-        <div class="panel-section">
-          <h3>Position</h3>
-          <div class="coordinate-display">
-            <div class="coordinate">
-              <span class="label">RA:</span>
-              <span class="value">{{ formattedRA }}</span>
-            </div>
-            <div class="coordinate">
-              <span class="label">Dec:</span>
-              <span class="value">{{ formattedDec }}</span>
-            </div>
-          </div>
-          <div class="coordinate-display">
-            <div class="coordinate">
-              <span class="label">Alt:</span>
-              <span class="value">{{ altitude.toFixed(2) }}°</span>
-            </div>
-            <div class="coordinate">
-              <span class="label">Az:</span>
-              <span class="value">{{ azimuth.toFixed(2) }}°</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Movement section -->
-        <div class="panel-section">
-          <h3>Movement</h3>
-          <div class="slew-coordinates">
-            <div class="slew-input">
-              <label>Target RA:</label>
-              <input v-model="targetRA" type="number" min="0" max="24" step="0.01">
-            </div>
-            <div class="slew-input">
-              <label>Target Dec:</label>
-              <input v-model="targetDec" type="number" min="-90" max="90" step="0.01">
-            </div>
-            <button class="action-button" @click="slewToCoordinates">Slew</button>
-          </div>
-          
-          <!-- Direction control pad -->
-          <div class="direction-control">
-            <div class="direction-row">
-              <button class="direction-button" @click="moveDirection('up')">▲</button>
-            </div>
-            <div class="direction-row">
-              <button class="direction-button" @click="moveDirection('left')">◄</button>
-              <button class="direction-button" @click="moveDirection('stop')">■</button>
-              <button class="direction-button" @click="moveDirection('right')">►</button>
-            </div>
-            <div class="direction-row">
-              <button class="direction-button" @click="moveDirection('down')">▼</button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Tracking section -->
-        <div class="panel-section">
-          <h3>Tracking</h3>
-          <div class="tracking-control">
-            <div class="tracking-toggle">
-              <span class="label">Tracking:</span>
-              <label class="toggle">
-                <input v-model="tracking" type="checkbox">
-                <span class="slider"></span>
-              </label>
-            </div>
-            <div class="tracking-rate">
-              <span class="label">Rate:</span>
-              <select v-model="selectedTrackingRate">
-                <option v-for="rate in trackingRates" :key="rate.value" :value="rate.value">
-                  {{ rate.label }}
-                </option>
-              </select>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Advanced section -->
-        <div class="panel-section">
-          <h3>Advanced</h3>
-          <div class="advanced-buttons">
-            <button class="action-button" @click="parkTelescope">Park</button>
-            <button class="action-button" @click="unparkTelescope">Unpark</button>
-            <button class="action-button" @click="findHome">Find Home</button>
-          </div>
-        </div>
-      </template>
     </div>
   </div>
 </template>
@@ -341,355 +477,193 @@ const trackingRates = [
   flex-direction: column;
   height: 100%;
 }
-
 .panel-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 var(--aw-spacing-sm);
+  gap: var(--aw-spacing-md);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   border-bottom: 1px solid var(--aw-panel-border-color);
   background-color: var(--aw-panel-header-bg-color);
 }
-
-.panel-header h2 {
-  margin: 0;
-  font-size: 0.8rem;
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--aw-error-color);
+  display: inline-block;
 }
-
-/* Device selector styles */
-.device-selector {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: calc(var(--aw-spacing-xs) / 2) var(--aw-spacing-sm);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  cursor: pointer;
-  background-color: var(--aw-panel-content-bg-color);
-  margin: var(--aw-spacing-xs) 0;
-  min-width: 120px;
+.status-indicator.connected {
+  background: var(--aw-success-color);
 }
-
+.status-indicator.disconnected {
+  background: var(--aw-error-color);
+}
 .device-name {
-  font-size: 0.8rem;
-  margin-right: var(--aw-spacing-sm);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-}
-
-.device-toggle {
-  font-size: 0.6rem;
-  opacity: 0.7;
-}
-
-.device-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 200px;
-  background-color: var(--aw-panel-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  z-index: 100;
-  margin-top: var(--aw-spacing-xs);
-  box-shadow: var(--aw-shadow-md);
-}
-
-.device-list {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.device-item {
-  padding: var(--aw-spacing-sm);
-  cursor: pointer;
-  border-bottom: 1px solid var(--aw-panel-border-color);
-}
-
-.device-item:hover {
-  background-color: var(--aw-panel-hover-bg-color);
-}
-
-.device-selected {
-  background-color: var(--aw-primary-color-transparent);
-}
-
-.device-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.device-item-name {
-  font-weight: var(--aw-font-weight-medium);
-  margin-bottom: calc(var(--aw-spacing-xs) / 2);
-}
-
-.device-item-status {
-  font-size: 0.7rem;
-  opacity: 0.8;
-}
-
-.device-item-status.connected {
-  color: var(--aw-success-color);
-}
-
-.device-item-status.disconnected {
-  color: var(--aw-error-color);
-}
-
-.device-empty {
-  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)) var(--aw-spacing-sm);
-  text-align: center;
-  color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
+  color: var(--aw-text-secondary-color);
 }
-
-.device-actions {
+.panel-error-display {
+  background-color: var(--aw-color-error-muted);
+  color: var(--aw-color-error-700);
   padding: var(--aw-spacing-sm);
-  border-top: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--aw-color-error-border);
+  margin: var(--aw-spacing-sm) var(--aw-spacing-md);
 }
-
-.discover-button {
+.error-message-content {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: calc(var(--aw-spacing-xs) * 1.5);
-  width: 100%;
-  padding: calc(var(--aw-spacing-xs) * 1.5) 0;
-  background-color: var(--aw-button-primary-bg);
-  color: var(--aw-button-primary-text);
+  gap: var(--aw-spacing-sm);
+}
+.dismiss-button {
+  background: none;
   border: none;
-  border-radius: var(--aw-border-radius-sm);
+  color: var(--aw-color-error-700);
   cursor: pointer;
-  font-size: 0.8rem;
+  padding: var(--aw-spacing-xs);
+  font-size: 1.2rem;
 }
-
-.discover-button:hover {
-  background-color: var(--aw-button-primary-hover-bg);
+.panel-status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-sm);
+  padding: 0 var(--aw-spacing-md);
+  font-size: 0.95rem;
+  color: var(--aw-text-secondary-color);
 }
-
+.status-label {
+  font-weight: 500;
+}
+.status-value {
+  font-weight: 600;
+  color: var(--aw-text-color);
+}
 .panel-content {
   overflow-y: auto;
   flex: 1;
-}
-
-.panel-section {
-  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
-  background-color: var(--aw-panel-content-bg-color);
-  border-radius: calc(var(--aw-spacing-xs) * 1.5);
-  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-}
-
-.panel-section h3 {
-  margin-top: 0;
-  margin-bottom: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-  font-size: var(--aw-font-size-base);
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
-}
-
-.coordinate-display {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: var(--aw-spacing-sm);
-}
-
-.coordinate {
-  display: flex;
-  flex-direction: column;
-  width: 48%;
-}
-
-.label {
-  color: var(--aw-text-secondary-color);
-  font-size: 0.9rem;
-  margin-bottom: calc(var(--aw-spacing-xs) / 2);
-}
-
-.value {
-  font-size: 1.1rem;
-  font-weight: var(--aw-font-weight-medium);
-}
-
-.slew-coordinates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--aw-spacing-sm);
-  margin-bottom: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-}
-
-.slew-input {
-  flex: 1;
-  min-width: 120px;
-}
-
-.slew-input label {
-  display: block;
-  margin-bottom: var(--aw-spacing-xs);
-  color: var(--aw-text-secondary-color);
-  font-size: 0.9rem;
-}
-
-.slew-input input {
-  width: 100%;
-  background-color: var(--aw-panel-bg-color);
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
-}
-
-.action-button {
-  background-color: var(--aw-button-primary-bg);
-  color: var(--aw-button-primary-text);
-  border: none;
-  border-radius: var(--aw-border-radius-sm);
-  padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-  cursor: pointer;
-  font-weight: var(--aw-font-weight-medium);
-}
-
-.action-button:hover {
-  background-color: var(--aw-button-primary-hover-bg);
-}
-
-.direction-control {
-  margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.direction-row {
-  display: flex;
-  justify-content: center;
-  gap: var(--aw-spacing-xs);
-  margin: calc(var(--aw-spacing-xs) / 2) 0;
-}
-
-.direction-button {
-  width: 40px;
-  height: 40px;
-  background-color: var(--aw-panel-bg-color);
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-}
-
-.direction-button:hover {
-  background-color: var(--aw-panel-hover-bg-color);
-}
-
-.tracking-control {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-}
-
-.tracking-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.toggle {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-}
-
-.toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--aw-panel-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
-  transition: .4s;
-  border-radius: var(--aw-spacing-lg);
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--aw-text-secondary-color);
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: var(--aw-success-color);
-}
-
-input:checked + .slider:before {
-  transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
-  background-color: var(--aw-button-primary-text);
-}
-
-.tracking-rate {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.tracking-rate select {
-  background-color: var(--aw-panel-bg-color);
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
-  width: 120px;
-}
-
-.advanced-buttons {
-  display: flex;
-  gap: var(--aw-spacing-sm);
-  flex-wrap: wrap;
-}
-
-.connection-notice {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100px;
-  background-color: var(--aw-panel-content-bg-color);
-  border-radius: calc(var(--aw-spacing-xs) * 1.5);
-  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
-  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   padding: var(--aw-spacing-md);
 }
-
-.connection-message {
+.position-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--aw-spacing-sm);
+}
+.coordinate-row {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-xs);
+}
+.status-flags {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--aw-spacing-xs);
+  margin-top: var(--aw-spacing-xs);
+}
+.status-badge {
+  background: var(--aw-panel-header-bg-color);
   color: var(--aw-text-secondary-color);
-  font-size: 1.1rem;
+  border-radius: var(--aw-border-radius-sm);
+  padding: 2px 8px;
+  font-size: 0.8rem;
 }
-
-.connect-button {
-  min-width: 100px;
+.movement-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--aw-spacing-md);
 }
-
-.panel-tip {
+.slew-coords {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-xs);
+  flex-wrap: wrap;
+}
+.sync-coords {
+  margin-top: var(--aw-spacing-xs);
+}
+.direction-pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: var(--aw-spacing-sm);
+}
+.direction-btn {
+  width: 36px;
+  height: 36px;
+  background: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
+  font-size: 1.2rem;
+  margin: 1px;
+  cursor: pointer;
+}
+.direction-btn:hover {
+  background: var(--aw-panel-hover-bg-color);
+}
+.tracking-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-sm);
+}
+.advanced-controls {
+  display: flex;
+  gap: var(--aw-spacing-sm);
+  flex-wrap: wrap;
+}
+.telescope-info-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  row-gap: var(--aw-spacing-xs);
+  column-gap: var(--aw-spacing-lg);
+  margin: 0;
+  padding: 0;
+  font-size: 0.9rem;
+}
+.info-row dt {
+  font-weight: 500;
+  color: var(--aw-text-secondary-color);
+  text-align: left;
+  padding-right: var(--aw-spacing-sm);
+}
+.info-row dd {
+  color: var(--aw-text-color);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+@media (max-width: 600px) {
+  .panel-content {
+    padding: var(--aw-spacing-sm);
+  }
+  .position-grid, .telescope-info-list {
+    grid-template-columns: 1fr;
+  }
+}
+.sections-grid {
+  display: grid;
+  gap: var(--aw-spacing-md);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 700px) {
+  .sections-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 1100px) {
+  .sections-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+.input-hint {
   font-size: 0.8rem;
   color: var(--aw-text-secondary-color);
+}
+.input-error-message {
+  color: var(--aw-color-error-700);
+  font-size: 0.8rem;
 }
 </style> 

@@ -37,6 +37,50 @@ _These improvements are implemented in `PanelLayoutView.vue` and `SimplifiedCame
 
 ---
 
+## Telescope Panel Refactor Implementation Plan & Progress
+
+This section tracks the ongoing refactor and feature completion for the Telescope panel (`SimplifiedTelescopePanel.vue`).
+
+## Implementation Plan
+
+- [ ] **Collapsible, Responsive Sections**: Position, Movement, Tracking, Advanced, Info
+- [ ] **Live Device Data**: Show RA, Dec, Alt, Az, Side of Pier, status flags (slewing, parked, tracking)
+- [ ] **Human-Friendly RA/Dec Entry**: Allow entry in both decimal and sexagesimal (HH:MM:SS / ±DD:MM:SS) formats, with validation and feedback
+- [ ] **Slew to Coordinates**: Wire up to store action, with validation/loading/notifications
+- [ ] **Sync to Coordinates**: Show if supported, wire up to store action
+- [ ] **Direction Pad**: Wire up to moveAxis/abortSlew, disable when slewing
+- [ ] **Pulse Guiding**: Show if supported, wire up to store action
+- [ ] **Tracking Toggle/Rate**: Wire up to store, show available rates
+- [ ] **Park/Unpark/Find Home**: Wire up to store actions, show loading/feedback
+- [ ] **Telescope Info**: Show model, firmware, aperture, focal length, mount type, site info, etc.
+- [ ] **UX/Feedback**: Use notification and logging systems for all actions/errors
+- [ ] **Accessibility**: ARIA labels, keyboard navigation
+- [ ] **Theming**: Use aw-btn, aw-input, aw-select, etc.
+- [ ] **Remove Redundant Code/Styles**: Clean up as we go
+
+## Progress Table
+
+| Feature/Section                | Status  | Notes |
+| ------------------------------ | ------- | ----- |
+| Collapsible, Responsive Layout | Planned |       |
+| Live Device Data               | Planned |       |
+| Human-Friendly RA/Dec Entry    | Planned |       |
+| Slew to Coordinates            | Planned |       |
+| Sync to Coordinates            | Planned |       |
+| Direction Pad                  | Planned |       |
+| Pulse Guiding                  | Planned |       |
+| Tracking Toggle/Rate           | Planned |       |
+| Park/Unpark/Find Home          | Planned |       |
+| Telescope Info                 | Planned |       |
+| UX/Feedback                    | Planned |       |
+| Accessibility                  | Planned |       |
+| Theming                        | Planned |       |
+| Remove Redundant Code/Styles   | Planned |       |
+
+_This table will be updated as each feature is implemented._
+
+---
+
 ## Camera
 
 ### Panel: `SimplifiedCameraPanel.vue`
