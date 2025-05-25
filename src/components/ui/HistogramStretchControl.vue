@@ -363,6 +363,7 @@ watch(() => props.initialLevels, (val) => {
   gap: 0.5rem;
   width: 100%;
 }
+
 svg {
   width: 100%;
   height: auto;
@@ -371,36 +372,43 @@ svg {
   cursor: pointer;
   background: var(--aw-histogram-bg);
   border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
   color: var(--aw-histogram-svg-color, var(--aw-color-text-primary, #222));
 }
+
 .handle-pill {
   cursor: pointer;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.10));
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 10%));
   transition: transform 0.12s, stroke-width 0.12s;
   stroke-width: 2;
   transform-origin: 50% 50%;
 }
+
 .handle-pill.active {
   transform: scale(1.18);
   stroke-width: 3;
   z-index: 2;
 }
+
 .handle-pill.black {
   fill: var(--aw-histogram-black, #111);
   stroke: none;
 }
+
 .handle-pill.mid {
   fill: var(--aw-histogram-mid, #0af);
   stroke: none;
 }
+
 .handle-pill.white {
   fill: var(--aw-histogram-white, #fff);
   stroke: none;
 }
+
 .handle-grip-lines line {
   opacity: 0.7;
 }
+
 .levels-numeric-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -409,6 +417,7 @@ svg {
   font-size: 0.88em;
   margin-top: 0.2em;
 }
+
 .levels-button-row {
   display: flex;
   justify-content: space-between;
@@ -417,16 +426,19 @@ svg {
   flex-wrap: wrap;
   width: 100%;
 }
+
 .button-left {
   flex: 1 1 0;
   display: flex;
   justify-content: flex-start;
 }
+
 .button-right {
   flex: 1 1 0;
   display: flex;
   justify-content: flex-end;
 }
+
 .levels-button-row button {
   padding: 0.18rem 0.7rem;
   font-size: 0.95em;
@@ -436,10 +448,12 @@ svg {
   color: var(--aw-button-primary-text, #fff);
   cursor: pointer;
 }
+
 .levels-button-row button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .levels-numeric-row label {
   display: flex;
   align-items: center;
@@ -447,6 +461,7 @@ svg {
   justify-content: flex-end;
   font-size: 0.95em;
 }
+
 .levels-numeric-row input[type="number"] {
   width: 60px;
   padding: 0.15rem 0.3rem;

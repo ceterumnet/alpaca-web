@@ -38,9 +38,11 @@ function toggle() {
   background: var(--aw-panel-content-bg-color);
   border-radius: var(--aw-border-radius-sm);
   border: 1px solid var(--aw-panel-border-color);
+
   /* margin-bottom: var(--aw-spacing-md); */
   box-shadow: var(--aw-shadow-xs, none);
 }
+
 .collapsible-header {
   display: flex;
   align-items: center;
@@ -52,25 +54,31 @@ function toggle() {
   border-bottom: 1px solid var(--aw-panel-border-color);
   background: var(--aw-panel-header-bg-color, transparent);
 }
+
 .chevron {
   display: flex;
   align-items: center;
   margin-right: var(--aw-spacing-sm);
   transition: transform 0.2s;
 }
+
 .chevron.open {
   transform: rotate(0deg);
 }
+
 .chevron:not(.open) {
   transform: rotate(-90deg);
 }
+
 .collapsible-title {
   flex: 1;
   color: var(--aw-text-color);
 }
+
 .collapsible-content {
   padding: var(--aw-spacing-md);
 }
+
 .closed .collapsible-content {
   display: none;
 }

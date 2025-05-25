@@ -307,7 +307,7 @@ p {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgb(0 0 0 / 50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -321,7 +321,7 @@ p {
   max-height: 800px;
   background-color: var(--aw-panel-bg-color);
   border-radius: var(--border-radius-lg);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 20%);
   display: flex;
   flex-direction: column;
   overflow: hidden;

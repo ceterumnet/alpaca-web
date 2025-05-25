@@ -98,7 +98,7 @@ const isManualAttemptError = computed(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgb(0 0 0 / 50%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -109,7 +109,7 @@ const isManualAttemptError = computed(() => {
   background-color: white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgb(0 0 0 / 10%);
   width: 90%;
   max-width: 500px;
   color: #333; /* Ensuring text is readable on white background */

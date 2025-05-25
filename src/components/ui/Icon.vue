@@ -189,12 +189,17 @@ export default defineComponent({
 
 <style scoped>
 /* Base styles for .aw-icon container */
+
 /* The sizing and flex properties are now primarily handled by inline styles in the render function */
+
 /* This class is kept for potential generic .aw-icon styling and for the type-specific color overrides below */
 .aw-icon {
   /* display: inline-flex; align-items: center; justify-content: center; */
+
   /* width: var(--aw-icon-size, 24px); height: var(--aw-icon-size, 24px); */
+
   /* These can be uncommented if a CSS-driven default is preferred over inline styles, */
+
   /* but inline styles from props provide more direct control. */
 }
 
@@ -202,20 +207,25 @@ export default defineComponent({
 .aw-icon--camera {
   color: var(--aw-device-camera-color, var(--aw-color-success-500));
 }
+
 .aw-icon--dome,
 .aw-icon--building-observatory {
   color: var(--aw-device-dome-color, var(--aw-color-primary-500));
 }
+
 .aw-icon--telescope {
   color: var(--aw-device-telescope-color, var(--aw-color-primary-700));
 }
+
 .aw-icon--filter {
   color: var(--aw-device-filter-color, var(--aw-color-warning-700));
 }
+
 .aw-icon--focus,
 .aw-icon--focus-2 {
   color: var(--aw-device-focus-color, var(--aw-color-primary-300));
 }
+
 .aw-icon--device-unknown,
 .aw-icon--question-mark {
   color: var(--aw-device-unknown-color, var(--aw-color-neutral-500));
@@ -225,9 +235,11 @@ export default defineComponent({
 .aw-icon--sun {
   color: var(--aw-celestial-sun-color, var(--aw-color-warning-500));
 }
+
 .aw-icon--moon {
   color: var(--aw-celestial-moon-color, var(--aw-color-neutral-400));
 }
+
 .aw-icon--cloud {
   color: var(--aw-celestial-cloud-color, var(--aw-color-primary-300));
 }
@@ -241,6 +253,7 @@ export default defineComponent({
 .aw-icon--arrow-right {
   color: var(--aw-navigation-icon-color, var(--aw-color-neutral-600));
 }
+
 .aw-icon--home {
   color: var(--aw-navigation-home-color, var(--aw-color-primary-500));
 }
@@ -250,9 +263,11 @@ export default defineComponent({
 .aw-icon--settings {
   color: var(--aw-control-gear-color, var(--aw-color-neutral-600));
 }
+
 .aw-icon--exposure {
   color: var(--aw-control-exposure-color, var(--aw-color-error-500));
 }
+
 .aw-icon--close,
 .aw-icon--x {
   color: var(--aw-control-ui-color, var(--aw-color-neutral-600));
@@ -263,22 +278,27 @@ export default defineComponent({
 .aw-icon--plug-connected {
   color: var(--aw-status-connected-color, var(--aw-color-success-500));
 }
+
 .aw-icon--disconnected,
 .aw-icon--plug-x {
   color: var(--aw-status-disconnected-color, var(--aw-color-error-500));
 }
+
 .aw-icon--alert-triangle {
     color: var(--aw-status-warning-color, var(--aw-color-warning-500));
 }
+
 .aw-icon--info-circle {
     color: var(--aw-status-info-color, var(--aw-color-info-500));
 }
+
 .aw-icon--check {
     color: var(--aw-status-success-color, var(--aw-color-success-500));
 }
 
 
 /* Add more type-specific color rules here as needed, matching your IconType definitions */
+
 /* and the --aw-color-* design tokens. */
 
 </style>

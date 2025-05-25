@@ -93,7 +93,6 @@
   /* Background colors */
   --aw-bg-color: var(--aw-color-neutral-100);
   --aw-color: var(--aw-color-neutral-800);
-
   --aw-bg-color-subtle: var(--aw-color-neutral-50); /* For DEBUG logs bg */
   --aw-bg-color-extra-subtle: var(--aw-color-neutral-50); /* For TRACE logs bg, can be same as subtle, differentiated by text */
 
@@ -115,9 +114,9 @@
   --aw-panel-content-color: var(--aw-text-color);
   --aw-panel-content-secondary-color: var(--aw-text-secondary-color);
   --aw-panel-menu-bar-bg-color: var(--aw-color-primary-500);
-  --aw-panel-menu-bar-color: #ffffff;
+  --aw-panel-menu-bar-color: #fff;
   --aw-panel-resize-bg-color: var(--aw-color-primary-500);
-  --aw-panel-resize-color: #ffffff;
+  --aw-panel-resize-color: #fff;
   --aw-panel-button-hover-bg: var(--aw-color-neutral-200);
 
   /* Histogram background for contrast (light theme) */
@@ -130,52 +129,47 @@
   --aw-log-entry-source-color: var(--aw-color-neutral-900);
   --aw-log-entries-bg-color: var(--aw-color-neutral-400);
   --aw-log-entry-list-bg-color: var(--aw-color-neutral-400);
+
   /* Form colors */
-  --aw-form-bg-color: #ffffff;
-  --aw-input-bg-color: #ffffff;
+  --aw-form-bg-color: #fff;
+  --aw-input-bg-color: #fff;
   --aw-input-border-color: var(--aw-color-neutral-300);
   --aw-accent-color: var(--aw-color-primary-500);
 
   /* Button colors */
   --aw-button-primary-bg: var(--aw-color-primary-500);
-  --aw-button-primary-text: #ffffff;
+  --aw-button-primary-text: #fff;
   --aw-button-primary-hover-bg: var(--aw-color-primary-700);
-
   --aw-button-secondary-bg: var(--aw-color-neutral-200);
   --aw-button-secondary-text: var(--aw-color-neutral-700);
   --aw-button-secondary-hover-bg: var(--aw-color-neutral-300);
-
   --aw-button-success-bg: var(--aw-color-success-500);
-  --aw-button-success-text: #ffffff;
+  --aw-button-success-text: #fff;
   --aw-button-success-hover-bg: var(--aw-color-success-700);
-
   --aw-button-warning-bg: var(--aw-color-warning-500);
-  --aw-button-warning-text: #ffffff;
+  --aw-button-warning-text: #fff;
   --aw-button-warning-hover-bg: var(--aw-color-warning-700);
-
   --aw-button-danger-bg: var(--aw-color-error-500);
-  --aw-button-danger-text: #ffffff;
+  --aw-button-danger-text: #fff;
   --aw-button-danger-hover-bg: var(--aw-color-error-700);
 
   /* Status indicators */
   --aw-success-color: var(--aw-color-success-500);
-  --aw-success-muted: rgba(76, 175, 80, 0.1);
-  --aw-success-muted-hover: rgba(76, 175, 80, 0.2);
-
+  --aw-success-muted: rgb(76 175 80 / 10%);
+  --aw-success-muted-hover: rgb(76 175 80 / 20%);
   --aw-warning-color: var(--aw-color-warning-500);
-  --aw-warning-muted: rgba(255, 152, 0, 0.1);
-  --aw-warning-muted-hover: rgba(255, 152, 0, 0.2);
-
+  --aw-warning-muted: rgb(255 152 0 / 10%);
+  --aw-warning-muted-hover: rgb(255 152 0 / 20%);
   --aw-error-color: var(--aw-color-error-500);
-  --aw-error-muted: rgba(244, 67, 54, 0.1);
-  --aw-error-muted-hover: rgba(244, 67, 54, 0.2);
+  --aw-error-muted: rgb(244 67 54 / 10%);
+  --aw-error-muted-hover: rgb(244 67 54 / 20%);
 
   /* Info Status */
   --aw-info-color: var(--aw-color-info-500);
   --aw-info-bg-color-light: var(--aw-color-info-50);
   --aw-info-text-color: var(--aw-color-info-700);
-  --aw-info-muted: rgba(var(--aw-color-info-rgb), 0.1);
-  --aw-info-muted-hover: rgba(var(--aw-color-info-rgb), 0.2);
+  --aw-info-muted: rgb(var(--aw-color-info-rgb), 0.1);
+  --aw-info-muted-hover: rgb(var(--aw-color-info-rgb), 0.2);
 
   /* Fatal Status (based on error but potentially more intense) */
   --aw-fatal-color: var(--aw-color-error-700);
@@ -194,17 +188,14 @@
   --aw-device-filter-color: var(--aw-color-warning-700);
   --aw-device-focus-color: var(--aw-color-primary-300);
   --aw-device-unknown-color: var(--aw-color-neutral-500);
-
   --aw-celestial-sun-color: var(--aw-color-warning-500);
   --aw-celestial-moon-color: var(--aw-color-neutral-400);
   --aw-celestial-cloud-color: var(--aw-color-primary-300);
-
   --aw-navigation-icon-color: var(--aw-color-neutral-600);
   --aw-navigation-home-color: var(--aw-color-primary-500);
   --aw-navigation-search-color: var(--aw-color-neutral-600);
   --aw-navigation-files-color: var(--aw-color-warning-500);
   --aw-navigation-history-color: var(--aw-color-neutral-500);
-
   --aw-control-gear-color: var(--aw-color-neutral-600);
   --aw-control-exposure-color: var(--aw-color-error-500);
   --aw-control-ui-color: var(--aw-color-neutral-600);
@@ -214,12 +205,10 @@
   --aw-control-sliders-color: var(--aw-color-neutral-600);
   --aw-control-park-color: var(--aw-color-neutral-700);
   --aw-control-unpark-color: var(--aw-color-success-500);
-
   --aw-status-connected-color: var(--aw-color-success-500);
   --aw-status-disconnected-color: var(--aw-color-error-500);
   --aw-status-tracking-on-color: var(--aw-color-success-500);
   --aw-status-tracking-off-color: var(--aw-color-error-500);
-
   --aw-notification-bell-color: var(--aw-color-warning-500);
 
   /* Scrollbar colors */
@@ -242,10 +231,9 @@
   --aw-border-radius-sm: 4px;
   --aw-border-radius-md: 8px;
   --aw-border-radius-lg: 12px;
-
-  --aw-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-  --aw-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
-  --aw-shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15), 0 3px 6px rgba(0, 0, 0, 0.1);
+  --aw-shadow-sm: 0 1px 3px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 24%);
+  --aw-shadow-md: 0 3px 6px rgb(0 0 0 / 15%), 0 2px 4px rgb(0 0 0 / 12%);
+  --aw-shadow-lg: 0 10px 20px rgb(0 0 0 / 15%), 0 3px 6px rgb(0 0 0 / 10%);
 
   /* THEME PRIMARY COLOR - Used for general purpose primary elements like histogram bars */
   --aw-primary-color: var(--aw-color-primary-500);
@@ -318,15 +306,12 @@ html.dark-theme {
   /* Semantic colors for dark theme */
   --aw-bg-color: var(--aw-color-neutral-100);
   --aw-color: var(--aw-color-neutral-800);
-
   --aw-bg-color-subtle: var(--aw-color-neutral-50); /* For DEBUG logs bg in dark theme */
   --aw-bg-color-extra-subtle: var(--aw-color-neutral-50); /* For TRACE logs bg in dark theme */
-
   --aw-text-color: var(--aw-color-neutral-800);
   --aw-text-secondary-color: var(--aw-color-neutral-600);
   --aw-text-color-muted: var(--aw-color-neutral-500); /* For DEBUG logs level text in dark theme */
   --aw-text-color-tertiary: var(--aw-color-neutral-400); /* For TRACE logs text in dark theme */
-
   --aw-panel-bg-color: var(--aw-color-neutral-200);
   --aw-panels-bg-color: var(--aw-color-neutral-200);
   --aw-panel-border-color: var(--aw-color-neutral-300);
@@ -339,7 +324,6 @@ html.dark-theme {
 
   /* Histogram background for contrast (dark theme) */
   --aw-histogram-bg: var(--aw-color-neutral-200);
-
   --aw-form-bg-color: var(--aw-color-neutral-50);
   --aw-input-bg-color: #3a1818;
   --aw-input-border-color: var(--aw-color-neutral-300);
@@ -349,42 +333,36 @@ html.dark-theme {
   --aw-button-primary-bg: #7a2020;
   --aw-button-primary-text: var(--aw-color-neutral-900);
   --aw-button-primary-hover-bg: #8b2020;
-
   --aw-button-secondary-bg: #3a1818;
   --aw-button-secondary-text: var(--aw-color-neutral-600);
   --aw-button-secondary-hover-bg: #4d1818;
-
   --aw-button-success-bg: #7a3020;
   --aw-button-success-text: var(--aw-color-neutral-900);
   --aw-button-success-hover-bg: #8b3020;
-
   --aw-button-warning-bg: #7a3820;
   --aw-button-warning-text: var(--aw-color-neutral-900);
   --aw-button-warning-hover-bg: #8b3820;
-
   --aw-button-danger-bg: #8b1010;
   --aw-button-danger-text: var(--aw-color-neutral-900);
   --aw-button-danger-hover-bg: #9e1010;
 
   /* Status indicators */
   --aw-success-color: #a04030;
-  --aw-success-muted: rgba(160, 64, 48, 0.2);
-  --aw-success-muted-hover: rgba(160, 64, 48, 0.3);
-
+  --aw-success-muted: rgb(160 64 48 / 20%);
+  --aw-success-muted-hover: rgb(160 64 48 / 30%);
   --aw-warning-color: #b55030;
-  --aw-warning-muted: rgba(181, 80, 48, 0.2);
-  --aw-warning-muted-hover: rgba(181, 80, 48, 0.3);
-
+  --aw-warning-muted: rgb(181 80 48 / 20%);
+  --aw-warning-muted-hover: rgb(181 80 48 / 30%);
   --aw-error-color: #9e2b2b;
-  --aw-error-muted: rgba(158, 43, 43, 0.2);
-  --aw-error-muted-hover: rgba(158, 43, 43, 0.3);
+  --aw-error-muted: rgb(158 43 43 / 20%);
+  --aw-error-muted-hover: rgb(158 43 43 / 30%);
 
   /* Info Status for Dark Theme - RED ALIGNED */
   --aw-info-color: var(--aw-color-info-500);
   --aw-info-bg-color-light: var(--aw-color-info-50);
   --aw-info-text-color: var(--aw-color-info-700);
-  --aw-info-muted: rgba(var(--aw-color-info-rgb), 0.2);
-  --aw-info-muted-hover: rgba(var(--aw-color-info-rgb), 0.3);
+  --aw-info-muted: rgb(var(--aw-color-info-rgb), 0.2);
+  --aw-info-muted-hover: rgb(var(--aw-color-info-rgb), 0.3);
 
   /* Fatal Status for Dark Theme */
   --aw-fatal-color: var(--aw-color-error-700); /* #8b1010 */
@@ -403,17 +381,14 @@ html.dark-theme {
   --aw-device-filter-color: var(--aw-color-warning-700);
   --aw-device-focus-color: var(--aw-color-primary-300);
   --aw-device-unknown-color: var(--aw-color-neutral-500);
-
   --aw-celestial-sun-color: var(--aw-color-warning-500);
   --aw-celestial-moon-color: var(--aw-color-neutral-400);
   --aw-celestial-cloud-color: var(--aw-color-primary-300);
-
   --aw-navigation-icon-color: var(--aw-color-neutral-600);
   --aw-navigation-home-color: var(--aw-color-primary-500);
   --aw-navigation-search-color: var(--aw-color-neutral-600);
   --aw-navigation-files-color: var(--aw-color-warning-500);
   --aw-navigation-history-color: var(--aw-color-neutral-500);
-
   --aw-control-gear-color: var(--aw-color-neutral-600);
   --aw-control-exposure-color: var(--aw-color-error-500);
   --aw-control-ui-color: var(--aw-color-neutral-600);
@@ -423,12 +398,10 @@ html.dark-theme {
   --aw-control-sliders-color: var(--aw-color-neutral-600);
   --aw-control-park-color: var(--aw-color-neutral-700);
   --aw-control-unpark-color: var(--aw-color-success-500);
-
   --aw-status-connected-color: var(--aw-color-success-500);
   --aw-status-disconnected-color: var(--aw-color-error-500);
   --aw-status-tracking-on-color: var(--aw-color-success-500);
   --aw-status-tracking-off-color: var(--aw-color-error-500);
-
   --aw-notification-bell-color: var(--aw-color-warning-500);
 
   /* Scrollbar colors */

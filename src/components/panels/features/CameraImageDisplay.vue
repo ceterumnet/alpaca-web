@@ -889,28 +889,33 @@ function resetStretch() {
   align-items: flex-start;
   margin-bottom: var(--aw-spacing-xs);
 }
+
 .histogram-label {
   font-size: 0.9rem;
   color: var(--aw-color-text-secondary);
   margin-bottom: 0.2rem;
 }
+
 .stretch-row {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-xs);
   margin-bottom: 0.2rem;
 }
+
 .stretch-label {
   min-width: 80px;
   font-size: 0.9rem;
   color: var(--aw-color-text-secondary);
 }
+
 .stretch-slider {
   flex: 1 1 120px;
   min-width: 80px;
   max-width: 200px;
   accent-color: var(--aw-accent-color);
 }
+
 .stretch-input {
   width: 70px;
   padding: 0.2rem 0.4rem;
@@ -920,9 +925,11 @@ function resetStretch() {
   background: var(--aw-input-bg-color);
   color: var(--aw-color-text-primary);
 }
+
 .stretch-input-small {
   width: 50px;
 }
+
 .stretch-select {
   min-width: 100px;
   font-size: 0.95rem;
@@ -931,11 +938,13 @@ function resetStretch() {
   background: var(--aw-input-bg-color);
   color: var(--aw-color-text-primary);
 }
+
 .stretch-checkbox {
   margin-left: var(--aw-spacing-xs);
   margin-right: var(--aw-spacing-xs);
   accent-color: var(--aw-accent-color);
 }
+
 .stretch-reset-btn {
   background: none;
   border: none;
@@ -946,12 +955,15 @@ function resetStretch() {
   display: flex;
   align-items: center;
 }
+
 .stretch-reset-btn:hover {
   color: var(--aw-color-primary-700);
 }
+
 .stretch-row-options {
   margin-top: var(--aw-spacing-xs);
 }
+
 .stretch-row-robust {
   margin-top: var(--aw-spacing-xs);
 }
@@ -979,7 +991,7 @@ function resetStretch() {
   position: absolute;
   top: var(--aw-spacing-xs);
   right: var(--aw-spacing-xs);
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgb(0 0 0 / 40%);
   color: var(--aw-color-text-on-primary);
   border: none;
   border-radius: var(--aw-border-radius-sm);
@@ -995,7 +1007,7 @@ function resetStretch() {
 }
 
 .fullscreen-button:hover {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgb(0 0 0 / 60%);
 }
 
 .fullscreen-modal {
@@ -1004,7 +1016,7 @@ function resetStretch() {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.85);
+  background-color: rgb(0 0 0 / 85%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1018,7 +1030,7 @@ function resetStretch() {
   max-height: 100%;
   object-fit: contain;
   border-radius: var(--aw-border-radius-md);
-  box-shadow: 0 0 30px rgba(0,0,0,0.5);
+  box-shadow: 0 0 30px rgb(0 0 0 / 50%);
 }
 
 .close-fullscreen-button {
@@ -1045,27 +1057,32 @@ function resetStretch() {
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
   margin-top: var(--aw-spacing-xs);
 }
+
 .stretch-auto-row label, .stretch-robust-row label {
   color: var(--aw-color-text-secondary);
 }
+
 .stretch-auto-row input[type="checkbox"], .stretch-robust-row input[type="checkbox"] {
   accent-color: var(--aw-accent-color);
 }
 
 .levels-vue-slider {
-  margin: 10px 0 10px 0;
+  margin: 10px 0;
   z-index: 1;
   position: static;
 }
+
 .levels-slider-histogram-stack {
   width: 100%;
   margin-bottom: 0.5rem;
 }
+
 .histogram-stack-container {
   position: relative;
   width: 100%;
   height: 100px;
 }
+
 .histogram-canvas {
   width: 100%;
   height: 100px;
@@ -1077,6 +1094,7 @@ function resetStretch() {
   top: 0;
   z-index: 1;
 }
+
 .levels-vue-slider-overlay {
   position: absolute;
   left: 0;
@@ -1087,6 +1105,7 @@ function resetStretch() {
   z-index: 2;
   pointer-events: auto;
 }
+
 .levels-vue-slider-output {
   position: absolute;
   left: 0;
@@ -1097,6 +1116,7 @@ function resetStretch() {
   z-index: 3;
   pointer-events: auto;
 }
+
 .levels-values {
   display: flex;
   flex-wrap: wrap;
@@ -1106,11 +1126,13 @@ function resetStretch() {
   margin-top: 0.2rem;
   color: var(--aw-color-text-secondary);
 }
+
 .levels-values label {
   display: flex;
   align-items: center;
   gap: 0.2rem;
 }
+
 .levels-values input[type="number"] {
   width: 70px;
   padding: 0.2rem 0.4rem;
@@ -1120,6 +1142,7 @@ function resetStretch() {
   background: var(--aw-input-bg-color);
   color: var(--aw-color-text-primary);
 }
+
 .levels-values button {
   padding: 0.2rem 0.8rem;
   font-size: 0.95rem;
@@ -1129,10 +1152,12 @@ function resetStretch() {
   color: var(--aw-button-primary-text);
   cursor: pointer;
 }
+
 .levels-values button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .levels-values input[type="checkbox"] {
   margin-left: 0.5rem;
 }
@@ -1145,17 +1170,20 @@ function resetStretch() {
   align-items: center;
   gap: 0.3em;
   padding: 0.05em 0.1em;
-  margin: 0.1em 0 0.1em 0;
+  margin: 0.1em 0;
 }
+
 .stats-group {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.3em;
 }
+
 .stats-left {
   justify-content: flex-start;
 }
+
 .stats-right {
   justify-content: flex-end;
 }
@@ -1168,7 +1196,7 @@ function resetStretch() {
   font-size: 0.95em;
   padding: 0.4em 0.7em;
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
   pointer-events: none;
   white-space: nowrap;
   opacity: 0.97;
@@ -1183,6 +1211,7 @@ function resetStretch() {
   gap: 1.2em;
   align-items: center;
 }
+
 .lut-args-indicator strong {
   color: var(--aw-accent-color);
   margin-right: 0.7em;

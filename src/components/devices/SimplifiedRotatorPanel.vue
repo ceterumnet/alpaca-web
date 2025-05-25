@@ -370,6 +370,7 @@ onUnmounted(() => {
 }
 
 .action-button:hover { background-color: var(--aw-button-primary-hover-bg); }
+
 .action-button:disabled { 
   background-color: var(--aw-color-neutral-300);
   cursor: not-allowed;
@@ -380,11 +381,13 @@ onUnmounted(() => {
   background-color: var(--aw-button-danger-bg);
   color: var(--aw-button-danger-text);
 }
+
 .stop-button.wide-button {
     width: 100%; /* Make halt button full width in its flex container */
 }
 
 .stop-button:hover { background-color: var(--aw-button-danger-hover-bg); }
+
 .stop-button:disabled { 
   background-color: var(--aw-color-neutral-300);
   cursor: not-allowed;
@@ -404,14 +407,14 @@ onUnmounted(() => {
 .slider {
   position: absolute;
   cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   background-color: var(--aw-panel-bg-color);
   border: 1px solid var(--aw-panel-border-color);
   transition: .4s;
   border-radius: var(--aw-spacing-lg);
 }
 
-.slider:before {
+.slider::before {
   position: absolute;
   content: "";
   height: 16px; width: 16px;
@@ -422,7 +425,8 @@ onUnmounted(() => {
 }
 
 input:checked + .slider { background-color: var(--aw-success-color); }
-input:checked + .slider:before {
+
+input:checked + .slider::before {
   transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
   background-color: var(--aw-button-primary-text);
 }

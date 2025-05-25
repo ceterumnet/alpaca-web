@@ -828,10 +828,7 @@ const getPanelTypeName = (panelId: string): string => {
 
 .universal-panel-container.maximized {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
+  inset: 0 !important;
   z-index: 1000 !important;
   width: 100% !important;
   height: 100% !important;
@@ -950,7 +947,7 @@ const getPanelTypeName = (panelId: string): string => {
   border-color: var(--aw-primary-color);
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .panel-layout-view {
     padding-bottom: 0.5rem;
   }
@@ -966,7 +963,7 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .toggle-panel-btn {
-  background-color: var(--aw-primary-color, #0077cc);
+  background-color: var(--aw-primary-color, #07c);
   color: var(--aw-button-primary-text);
   border: none;
   border-radius: 4px;
@@ -991,18 +988,18 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .hybrid-cell-1 {
-  background-color: rgba(66, 135, 245, 0.15);
-  border-left: 4px solid rgb(66, 135, 245);
+  background-color: rgb(66 135 245 / 15%);
+  border-left: 4px solid rgb(66 135 245);
 }
 
 .hybrid-cell-2 {
-  background-color: rgba(77, 175, 124, 0.15);
-  border-left: 4px solid rgb(77, 175, 124);
+  background-color: rgb(77 175 124 / 15%);
+  border-left: 4px solid rgb(77 175 124);
 }
 
 .hybrid-cell-3 {
-  background-color: rgba(255, 159, 67, 0.15);
-  border-left: 4px solid rgb(255, 159, 67);
+  background-color: rgb(255 159 67 / 15%);
+  border-left: 4px solid rgb(255 159 67);
 }
 
 .panel-coordinates {
@@ -1023,7 +1020,7 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .select-layout-btn {
-  background-color: var(--aw-primary-color, #0077cc);
+  background-color: var(--aw-primary-color, #07c);
   color: var(--aw-button-primary-text);
   border: none;
   border-radius: 4px;
@@ -1041,11 +1038,8 @@ const getPanelTypeName = (panelId: string): string => {
 
 .static-layout-modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  inset: 0;
+  background-color: rgb(0 0 0 / 70%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1059,7 +1053,7 @@ const getPanelTypeName = (panelId: string): string => {
   max-height: 90%;
   overflow: auto;
   position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 30%);
 }
 
 .close-modal-btn {
@@ -1125,17 +1119,19 @@ const getPanelTypeName = (panelId: string): string => {
   cursor: wait;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .panel-header {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
+
   .header-controls {
     flex-wrap: wrap;
     justify-content: flex-start;
     gap: 8px 4px;
   }
+
   .panel-title {
     margin-bottom: 4px;
   }

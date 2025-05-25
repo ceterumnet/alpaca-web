@@ -38,7 +38,7 @@
 .aw-textarea:focus {
   border-color: var(--aw-color-primary-500);
   outline: 0;
-  box-shadow: 0 0 0 3px rgba(var(--aw-color-primary-rgb), 0.25);
+  box-shadow: 0 0 0 3px rgb(var(--aw-color-primary-rgb), 0.25);
 }
 
 .aw-input:disabled,
@@ -83,7 +83,7 @@
 .aw-input--error:focus,
 .aw-select--error:focus,
 .aw-textarea--error:focus {
-  box-shadow: 0 0 0 3px rgba(var(--aw-color-error-rgb), 0.25);
+  box-shadow: 0 0 0 3px rgb(var(--aw-color-error-rgb), 0.25);
 }
 
 /* Success state */
@@ -96,7 +96,7 @@
 .aw-input--success:focus,
 .aw-select--success:focus,
 .aw-textarea--success:focus {
-  box-shadow: 0 0 0 3px rgba(var(--aw-color-success-rgb), 0.25);
+  box-shadow: 0 0 0 3px rgb(var(--aw-color-success-rgb), 0.25);
 }
 
 /* ============================================================
@@ -174,7 +174,7 @@
 }
 
 /* Checkbox mark */
-.aw-checkbox:after {
+.aw-checkbox::after {
   content: '';
   position: absolute;
   display: none;
@@ -187,12 +187,12 @@
   transform: rotate(45deg);
 }
 
-.aw-checkbox-container input:checked ~ .aw-checkbox:after {
+.aw-checkbox-container input:checked ~ .aw-checkbox::after {
   display: block;
 }
 
 /* Radio mark */
-.aw-radio:after {
+.aw-radio::after {
   content: '';
   position: absolute;
   display: none;
@@ -204,7 +204,7 @@
   background: white;
 }
 
-.aw-radio-container input:checked ~ .aw-radio:after {
+.aw-radio-container input:checked ~ .aw-radio::after {
   display: block;
 }
 
@@ -247,8 +247,8 @@
 /* ============================================================
    DARK THEME SPECIFIC OVERRIDES (if needed)
    ============================================================ */
-.dark-theme .aw-checkbox:after,
-.dark-theme .aw-radio:after {
+.dark-theme .aw-checkbox::after,
+.dark-theme .aw-radio::after {
   /* Ensure checkbox/radio marks are visible in dark theme */
   border-color: var(--aw-color-neutral-900);
   background-color: var(--aw-color-neutral-900);

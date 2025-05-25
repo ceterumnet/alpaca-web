@@ -1,5 +1,5 @@
-@import './modern-reset.css';
-@import './design-tokens.css';
-@import './base.css';
-@import './components/buttons.css';
-@import './components/forms.css';
+@import url('./modern-reset.css');
+@import url('./design-tokens.css');
+@import url('./base.css');
+@import url('./components/buttons.css');
+@import url('./components/forms.css');

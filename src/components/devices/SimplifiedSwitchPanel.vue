@@ -239,17 +239,14 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
 .slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: var(--aw-input-bg-color);
   border: 1px solid var(--aw-input-border-color);
   transition: .4s;
   border-radius: 28px;
 }
 
-.slider:before {
+.slider::before {
   position: absolute;
   content: "";
   height: 20px;
@@ -269,7 +266,7 @@ input:focus + .slider {
   box-shadow: 0 0 1px var(--aw-primary-color);
 }
 
-input:checked + .slider:before {
+input:checked + .slider::before {
   transform: translateX(22px);
 }
 

@@ -54,7 +54,9 @@ const tearOutLogs = () => {
   right: var(--aw-spacing-md);
   z-index: var(--aw-z-index-overlay);
   padding: var(--aw-spacing-sm) var(--aw-spacing-md);
+
   /* Assuming --aw-button--secondary provides background, color, border */
+
   /* Add display: flex and gap if Icon and text need alignment */
   display: flex;
   align-items: center;
@@ -70,7 +72,7 @@ const tearOutLogs = () => {
   max-height: 80vh;
   background-color: var(--aw-panel-bg-color);
   border-top: 1px solid var(--aw-color-border);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); /* This might need a themeable shadow token later */
+  box-shadow: 0 -2px 10px rgb(0 0 0 / 10%); /* This might need a themeable shadow token later */
   z-index: var(--aw-z-index-overlay-panel);
   display: flex;
   flex-direction: column;
@@ -107,6 +109,7 @@ const tearOutLogs = () => {
   border: none;
   padding: var(--aw-spacing-xs);
 }
+
 .aw-button.aw-button--icon-only.aw-button--subtle:hover {
   background-color: var(--aw-color-overlay-light-hover);
 }

@@ -519,7 +519,7 @@ function resetLayoutStorage() {
 
 .aw-settings__tabs {
   width: 180px;
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgb(0 0 0 / 5%);
   border-right: 1px solid var(--aw-panel-border-color);
   padding: var(--aw-spacing-md) 0;
   display: flex;
@@ -621,17 +621,14 @@ function resetLayoutStorage() {
 .aw-settings__toggle-slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: var(--aw-panel-content-bg-color);
   border: 1px solid var(--aw-panel-border-color);
   border-radius: 24px;
   transition: 0.4s;
 }
 
-.aw-settings__toggle-slider:before {
+.aw-settings__toggle-slider::before {
   position: absolute;
   content: '';
   height: 18px;
@@ -648,7 +645,7 @@ input:checked + .aw-settings__toggle-slider {
   border-color: var(--aw-button-primary-bg);
 }
 
-input:checked + .aw-settings__toggle-slider:before {
+input:checked + .aw-settings__toggle-slider::before {
   transform: translateX(22px);
   background-color: var(--aw-button-primary-text);
 }
@@ -763,7 +760,7 @@ input:checked + .aw-settings__toggle-slider:before {
 }
 
 /* Responsive styles */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .aw-settings__body {
     flex-direction: column;
   }

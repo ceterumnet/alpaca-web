@@ -33,21 +33,23 @@ defineProps<{
   box-shadow: var(--aw-shadow-sm, none);
   overflow-x: auto;
 }
+
 .device-info-title {
   font-weight: 600;
   color: var(--aw-text-secondary-color, #888);
   font-size: 1rem;
   margin-bottom: var(--aw-spacing-xs, 8px);
 }
+
 .device-info-list {
   display: grid;
   grid-template-columns: max-content 1fr;
-  row-gap: var(--aw-spacing-xs, 6px);
-  column-gap: var(--aw-spacing-lg, 24px);
+  gap: var(--aw-spacing-xs, 6px) var(--aw-spacing-lg, 24px);
   margin: 0;
   padding: 0;
   font-size: 0.8rem;
 }
+
 .device-info-label {
   font-weight: 500;
   color: var(--aw-text-secondary-color, #888);
@@ -55,16 +57,19 @@ defineProps<{
   padding-right: var(--aw-spacing-sm, 12px);
   white-space: nowrap;
 }
+
 .device-info-value {
   color: var(--aw-text-color, #222);
   text-align: right;
   font-variant-numeric: tabular-nums;
   word-break: break-all;
 }
-@media (max-width: 600px) {
+
+@media (width <= 600px) {
   .device-info-list {
     grid-template-columns: 1fr;
   }
+
   .device-info-label, .device-info-value {
     padding: 4px 0;
   }

@@ -1,0 +1,19 @@
+{
+  "extends": ["stylelint-config-standard", "stylelint-config-recommended-vue"],
+  "rules": {
+    "declaration-property-value-disallowed-list": {
+      "/color/": ["/^((?!var\\(--aw-).)*$/"],
+      "/background/": ["/^((?!var\\(--aw-).)*$/"],
+      "/border/": ["/^((?!var\\(--aw-).)*$/"]
+    },
+    "color-named": "never",
+    "color-no-hex": true,
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.vue"],
+      "customSyntax": "postcss-html"
+    }
+  ]
+}

@@ -364,5 +364,6 @@ onUnmounted(() => {
 }
 
 /* Styles for specific states could be added here using classes if needed */
+
 /* e.g. .status-open, .status-closed, .calibrator-ready */
 </style> 

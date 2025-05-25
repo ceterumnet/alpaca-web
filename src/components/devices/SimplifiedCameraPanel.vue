@@ -1033,7 +1033,9 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 }
 
 .panel-section {
-  /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */ /* Adjusted by flex gap */
+  /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */
+
+ /* Adjusted by flex gap */
   background-color: var(--aw-panel-content-bg-color);
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
@@ -1049,18 +1051,25 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 }
 
 .camera-controls-wrapper {
-  /* border: 1px solid var(--aw-panel-border-color); */ /* Removed as panel-section has border */
+  /* border: 1px solid var(--aw-panel-border-color); */
+
+ /* Removed as panel-section has border */
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   overflow: hidden;
-  /* margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)); */ /* No longer needed */
+
+  /* margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)); */
+
+ /* No longer needed */
 }
 
 .camera-settings {
   display: grid;
   grid-template-columns: auto 1fr; /* Parent grid for label/input columns */
-  column-gap: var(--aw-spacing-sm); /* Gap between label and input columns */
-  row-gap: var(--aw-spacing-sm);    /* Gap between each setting row */
-  /* align-items: center; */ /* Let .setting-row handle its internal vertical alignment */
+  gap: var(--aw-spacing-sm) var(--aw-spacing-sm); /* Gap between label and input columns */    /* Gap between each setting row */
+
+  /* align-items: center; */
+
+ /* Let .setting-row handle its internal vertical alignment */
 }
 
 .setting-row {
@@ -1068,7 +1077,10 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   display: grid; 
   grid-template-columns: subgrid; /* Inherit column tracks from parent */
   align-items: center; /* Vertically align label and input-container within the row */
-  /* gap: var(--aw-spacing-sm); */ /* Gap is now handled by parent grid + subgrid inheritance */
+
+  /* gap: var(--aw-spacing-sm); */
+
+ /* Gap is now handled by parent grid + subgrid inheritance */
 }
 
 .setting-row label {
@@ -1086,13 +1098,16 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 
 .setting-row input,
 .setting-row .toggle {
-  /* padding: var(--aw-spacing-sm); */ /* Padding is on input-with-spinner or input directly */
+  /* padding: var(--aw-spacing-sm); */
+
+ /* Padding is on input-with-spinner or input directly */
   background-color: var(--aw-input-bg-color);
   color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   flex-grow: 1;
 }
+
 .setting-row input {
    padding: var(--aw-spacing-xs); /* More compact input padding */
 }
@@ -1101,15 +1116,25 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 .cooling-controls {
   display: grid; /* Changed from flex to grid */
   grid-template-columns: auto 1fr; /* Parent grid for label/input columns */
-  column-gap: var(--aw-spacing-sm); /* Gap between label and input columns */
-  row-gap: var(--aw-spacing-sm);    /* Gap between each setting row */
-  /* align-items: center; */ /* Let .setting-row handle its internal vertical alignment */
+  gap: var(--aw-spacing-sm) var(--aw-spacing-sm); /* Gap between label and input columns */    /* Gap between each setting row */
+
+  /* align-items: center; */
+
+ /* Let .setting-row handle its internal vertical alignment */
 }
 
 .cooling-status {
-  /* display: flex; */ /* Already a setting-row */
-  /* justify-content: space-between; */ /* From setting-row */
-  /* align-items: center; */ /* From setting-row */
+  /* display: flex; */
+
+ /* Already a setting-row */
+
+  /* justify-content: space-between; */
+
+ /* From setting-row */
+
+  /* align-items: center; */
+
+ /* From setting-row */
 }
 
 .temperature-label {
@@ -1124,9 +1149,17 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 }
 
 .cooling-toggle {
-  /* display: flex; */ /* Already a setting-row */
-  /* align-items: center; */ /* From setting-row */
-  /* justify-content: space-between; */ /* From setting-row */
+  /* display: flex; */
+
+ /* Already a setting-row */
+
+  /* align-items: center; */
+
+ /* From setting-row */
+
+  /* justify-content: space-between; */
+
+ /* From setting-row */
 }
 
 .cooling-toggle label[for="cooler-toggle-checkbox"] { /* More specific selector for the label */
@@ -1151,17 +1184,14 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 .slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: var(--aw-input-bg-color);
   border: 1px solid var(--aw-panel-border-color);
   transition: .4s;
   border-radius: var(--aw-spacing-lg);
 }
 
-.slider:before {
+.slider::before {
   position: absolute;
   content: "";
   height: 16px;
@@ -1177,15 +1207,23 @@ input:checked + .slider {
   background-color: var(--aw-success-color);
 }
 
-input:checked + .slider:before {
+input:checked + .slider::before {
   transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
   background-color: var(--aw-button-primary-text);
 }
 
 .temperature-target {
-  /* display: flex; */ /* Already a setting-row */
-  /* align-items: center; */ /* From setting-row */
-  /* justify-content: space-between; */ /* From setting-row */
+  /* display: flex; */
+
+ /* Already a setting-row */
+
+  /* align-items: center; */
+
+ /* From setting-row */
+
+  /* justify-content: space-between; */
+
+ /* From setting-row */
 }
 
 .temperature-target label {
@@ -1196,10 +1234,22 @@ input:checked + .slider:before {
 .temperature-target .input-with-spinner input { /* Target input within this specific structure */
   width: 60px; /* More compact target temp input */
   padding: var(--aw-spacing-xs);
-  /* background-color: var(--aw-input-bg-color); */ /* Already set */
-  /* color: var(--aw-text-color); */ /* Already set */
-  /* border: 1px solid var(--aw-panel-border-color); */ /* Already set */
-  /* border-radius: var(--aw-border-radius-sm); */ /* Already set */
+
+  /* background-color: var(--aw-input-bg-color); */
+
+ /* Already set */
+
+  /* color: var(--aw-text-color); */
+
+ /* Already set */
+
+  /* border: 1px solid var(--aw-panel-border-color); */
+
+ /* Already set */
+
+  /* border-radius: var(--aw-border-radius-sm); */
+
+ /* Already set */
   flex-grow: 0; /* Don't let it grow too much */
 }
 
@@ -1210,7 +1260,10 @@ input:checked + .slider:before {
   align-items: center;
   background-color: var(--aw-panel-content-bg-color);
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
-  /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */ /* Handled by parent padding/gap */
+
+  /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */
+
+ /* Handled by parent padding/gap */
   gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   padding: var(--aw-spacing-md);
   border: 1px solid var(--aw-panel-border-color); /* Add border */
@@ -1231,7 +1284,10 @@ input:checked + .slider:before {
   background-color: var(--aw-color-error-muted);
   color: var(--aw-color-error-700);
   padding: var(--aw-spacing-sm);
-  /* margin-bottom: var(--aw-spacing-md); */ /* Handled by parent padding/gap */
+
+  /* margin-bottom: var(--aw-spacing-md); */
+
+ /* Handled by parent padding/gap */
   border-radius: var(--aw-border-radius-sm);
   display: flex;
   justify-content: space-between;
@@ -1266,11 +1322,18 @@ input:checked + .slider:before {
   position: relative;
   display: flex;
   align-items: center;
-  /* gap: var(--aw-spacing-xs); */ /* Add gap between input and spinner if desired */
+
+  /* gap: var(--aw-spacing-xs); */
+
+ /* Add gap between input and spinner if desired */
 }
 
-/* .input-with-spinner input { */ /* General input styling moved to .setting-row input */
+/* .input-with-spinner input { */
+
+ /* General input styling moved to .setting-row input */
+
   /* flex-grow: 1; */
+
 /* } */
 
 .spinner-icon {
@@ -1281,27 +1344,41 @@ input:checked + .slider:before {
 
 /* Ensure toggle switch is vertically aligned with spinner */
 .cooling-toggle .input-with-spinner {
-  /* display: flex; */ /* Already set */
-  /* align-items: center; */ /* Already set */
+  /* display: flex; */
+
+ /* Already set */
+
+  /* align-items: center; */
+
+ /* Already set */
   justify-content: flex-end; /* Align toggle to the right within its container */
 }
 
 /* .cooling-toggle .toggle { */
-  /* margin-right: auto; */ /* Pushes spinner to the right if needed or centers */
+
+  /* margin-right: auto; */
+
+ /* Pushes spinner to the right if needed or centers */
+
 /* } */
 
 /* Adjustments for setting rows if they contain input-with-spinner */
 .setting-row .input-with-spinner + .spinner-icon {
   /* If spinner is outside input-with-spinner, style it here */
+
   /* This case should not happen with current structure */
 }
 
 /* Responsive adjustments */
-/* @media (max-width: 768px) { */ /* Old media query */
+
+/* @media (max-width: 768px) { */
+
+ /* Old media query */
 @container simplified-camera-panel (max-width: 768px) { /* New container query */
   .main-layout-grid {
     flex-direction: column;
   }
+
   .camera-controls-column,
   .settings-cooling-column {
     flex-basis: auto; /* Reset flex-basis for column layout */
@@ -1315,6 +1392,7 @@ input:checked + .slider:before {
   align-items: center;
   gap: 8px;
 }
+
 .slider-group {
   display: flex;
   align-items: center;
@@ -1322,6 +1400,7 @@ input:checked + .slider:before {
   gap: 8px;
   min-width: 0;
 }
+
 .themed-slider {
   flex: 1 1 80px;
   min-width: 60px;
@@ -1331,18 +1410,22 @@ input:checked + .slider:before {
   height: 2px;
   margin: 0 4px;
 }
+
 .themed-slider::-webkit-slider-thumb {
   background: var(--aw-primary-color);
   border: 1px solid var(--aw-panel-border-color);
 }
+
 .themed-slider::-moz-range-thumb {
   background: var(--aw-primary-color);
   border: 1px solid var(--aw-panel-border-color);
 }
+
 .themed-slider::-ms-thumb {
   background: var(--aw-primary-color);
   border: 1px solid var(--aw-panel-border-color);
 }
+
 .slider-minmax {
   font-size: 0.8rem;
   color: var(--aw-text-secondary-color);
@@ -1377,8 +1460,7 @@ input:checked + .slider:before {
 .camera-info-list {
   display: grid;
   grid-template-columns: max-content 1fr;
-  row-gap: var(--aw-spacing-xs);
-  column-gap: var(--aw-spacing-lg);
+  gap: var(--aw-spacing-xs) var(--aw-spacing-lg);
   margin: 0;
   padding: 0;
   font-size: 0.7rem;
@@ -1398,7 +1480,7 @@ input:checked + .slider:before {
   word-break: break-all;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .camera-info-list {
     grid-template-columns: 1fr;
   }

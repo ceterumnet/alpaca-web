@@ -207,9 +207,11 @@ const emit = defineEmits(['save', 'cancel'])
   max-width: 900px;
   margin: 0 auto;
 }
+
 .layout-chooser__options {
   text-align: center;
 }
+
 .layout-chooser__grid {
   display: flex;
   gap: 2rem;
@@ -217,6 +219,7 @@ const emit = defineEmits(['save', 'cancel'])
   justify-content: center;
   margin-top: 2rem;
 }
+
 .layout-chooser__card {
   border: 1px solid var(--aw-panel-border-color);
   border-radius: 8px;
@@ -225,16 +228,19 @@ const emit = defineEmits(['save', 'cancel'])
   cursor: pointer;
   background: var(--aw-panel-bg-color);
   transition: box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
 }
+
 .layout-chooser__card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
   border-color: var(--aw-color-primary-500);
 }
+
 .layout-chooser__card-title {
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
+
 .layout-chooser__preview {
   display: grid;
   gap: 0;
@@ -245,6 +251,7 @@ const emit = defineEmits(['save', 'cancel'])
   width: 120px;
   aspect-ratio: 3 / 2;
 }
+
 .layout-chooser__cell-preview {
   background: var(--aw-panel-content-bg-color);
   border-radius: 0;
@@ -259,32 +266,40 @@ const emit = defineEmits(['save', 'cancel'])
   border-bottom: none;
   flex-direction: column;
 }
+
 .layout-chooser__cell-preview:last-child,
 .layout-chooser__cell-preview[style*='grid-column: 2 / span 1'] {
   border-right: 1px solid #ddd;
 }
+
 .layout-chooser__cell-preview[style*='grid-row: 2 / span 1'] {
   border-bottom: 1px solid #ddd;
 }
+
 .layout-chooser__cell-id {
   color: var(--aw-text-secondary-color);
   font-size: 0.8rem;
 }
+
 .layout-chooser__assign {
   text-align: center;
 }
+
 .layout-chooser__cell-assign {
   flex-direction: column;
   padding: 0.5rem 0.25rem;
 }
+
 .layout-chooser__cell-title {
   font-weight: 500;
   margin-bottom: 0.5rem;
 }
+
 .layout-chooser__cell-unassigned {
   color: var(--aw-color-neutral-500);
   font-style: italic;
 }
+
 .layout-chooser__device-select {
   width: 100%;
   margin-top: 0.25rem;
@@ -292,6 +307,7 @@ const emit = defineEmits(['save', 'cancel'])
   border-radius: 4px;
   border: 1px solid #ccc;
 }
+
 .layout-chooser__actions {
   margin-top: 2rem;
   display: flex;

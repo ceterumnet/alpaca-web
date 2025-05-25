@@ -221,6 +221,7 @@ const toggleRawArgs = (id: string) => {
   min-width: 120px;
   font-size: 0.8rem;
 }
+
 .filter-group input[type="text"]:focus,
 .filter-group select:focus {
   outline: none;
@@ -249,9 +250,11 @@ const toggleRawArgs = (id: string) => {
 .action-buttons button:hover {
   background-color: var(--aw-button-secondary-hover-bg);
 }
+
 .action-buttons button:first-child { /* Clear logs */
   background-color: var(--aw-button-danger-bg);
 }
+
 .action-buttons button:first-child:hover {
   background-color: var(--aw-button-danger-hover-bg);
 }
@@ -262,7 +265,7 @@ const toggleRawArgs = (id: string) => {
   overflow-y: auto;
   background-color: var(--aw-log-entries-bg-color);
   border-radius: var(--border-radius-md);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Consider theming this shadow */
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%); /* Consider theming this shadow */
 }
 
 .no-logs {
@@ -273,7 +276,7 @@ const toggleRawArgs = (id: string) => {
 
 .log-entry-list {
   /* background-color: var(--aw-log-entry-list-bg-color); */
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace;
   font-size: 0.875rem;  
 }
 
@@ -306,6 +309,7 @@ const toggleRawArgs = (id: string) => {
 .timestamp {
   font-weight: 500;
 }
+
 .device-ids {
   font-style: italic;
 }
@@ -316,6 +320,7 @@ const toggleRawArgs = (id: string) => {
   color: var(--aw-text-color-primary);
   flex-grow: 1;
 }
+
 .log-message:hover {
   /* text-decoration: underline; */
 }
@@ -341,6 +346,7 @@ const toggleRawArgs = (id: string) => {
   border-left: 4px solid var(--aw-error-color);
   color: var(--aw-error-text-color);
 }
+
 .log-level-error .log-entry-main-line,
 .log-level-error .log-message {
   color: var(--aw-error-text-color);
@@ -352,6 +358,7 @@ const toggleRawArgs = (id: string) => {
   border-left: 4px solid var(--aw-warning-color);
   color: var(--aw-warning-text-color);
 }
+
 .log-level-warn .log-entry-main-line,
 .log-level-warn .log-message {
   color: var(--aw-warning-text-color);
@@ -362,6 +369,7 @@ const toggleRawArgs = (id: string) => {
   background-color: var(--aw-info-bg-color-light);
   border-left: 4px solid var(--aw-info-color);
 }
+
 .log-level-info .log-entry-main-line,
 .log-level-info .log-message {
   color: var(--aw-info-text-color);
@@ -372,6 +380,7 @@ const toggleRawArgs = (id: string) => {
   background-color: var(--aw-bg-color-subtle);
   border-left: 4px solid var(--aw-text-color-muted); /* Using a muted color for border */
 }
+
 .log-level-debug .log-entry-main-line,
 .log-level-debug .log-message {
   color: var(--aw-text-secondary-color);
@@ -383,6 +392,7 @@ const toggleRawArgs = (id: string) => {
   border-left: 4px solid var(--aw-text-color-tertiary); /* Using a tertiary color for border */
   font-style: italic;
 }
+
 .log-level-trace .log-entry-main-line,
 .log-level-trace .log-message {
   color: var(--aw-text-color-tertiary);
@@ -394,6 +404,7 @@ const toggleRawArgs = (id: string) => {
   background-color: var(--aw-fatal-bg-color);
   border-left: 4px solid var(--aw-fatal-color);
 }
+
 .log-level-fatal .log-entry-main-line,
 .log-level-fatal .log-message {
  color: var(--aw-fatal-text-color);

@@ -162,8 +162,9 @@ const currentPositions = computed(() => {
   box-shadow: var(--aw-shadow-sm);
   min-height: 0;
   min-width: 0;
+
   /* Show border for debugging */
-  outline: 1px dashed var(--aw-color-debug-border, rgba(255, 255, 255, 0.05));
+  outline: 1px dashed var(--aw-color-debug-border, rgb(255 255 255 / 5%));
   
   /* Firefox scrollbar styling */
   scrollbar-width: thin;

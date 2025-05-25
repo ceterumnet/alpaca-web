@@ -537,12 +537,12 @@ onMounted(() => {
   gap: var(--aw-spacing-xs);
   transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
   width: 100%;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
 }
 
 .exposure-button:hover:not(:disabled) {
   background-color: var(--aw-button-primary-hover-bg);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 7%);
 }
 
 .exposure-button:disabled {
@@ -586,20 +586,23 @@ onMounted(() => {
 }
 
 /* Responsive adjustments for smaller containers if needed */
-@media (max-width: 400px) { /* Example breakpoint for when controls are in a very narrow space */
+@media (width <= 400px) { /* Example breakpoint for when controls are in a very narrow space */
   .exposure-inputs {
     flex-direction: column; /* Stack inputs vertically */
     align-items: stretch; /* Stretch items to full width */
     gap: var(--aw-spacing-sm);
   }
+
   .input-group {
     justify-content: space-between; /* Space out label and input fully */
   }
+
   .duration-input-group,
   .frame-type-group {
     min-width: unset; /* Remove min-width */
     flex-basis: auto;
   }
+
   .input-group input[type="number"] {
     width: auto; /* Allow input to grow */
     flex-grow: 1;

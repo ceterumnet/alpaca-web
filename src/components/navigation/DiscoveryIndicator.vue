@@ -171,6 +171,7 @@ onUnmounted(() => {
   border: none;
   border-radius: var(--aw-border-radius-md);
   background-color: var(--aw-panel-hover-bg-color);
+
   /* color: var(--aw-panel-content-color); */
   cursor: pointer;
   transition: all 0.2s ease;
@@ -246,10 +247,12 @@ onUnmounted(() => {
     transform: scale(1);
     opacity: 0.7;
   }
+
   50% {
     transform: scale(1.1);
     opacity: 1;
   }
+
   100% {
     transform: scale(1);
     opacity: 0.7;
@@ -257,7 +260,7 @@ onUnmounted(() => {
 }
 
 /* Responsive styles */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .aw-discovery-indicator__info {
     display: none;
   }

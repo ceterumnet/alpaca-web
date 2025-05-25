@@ -20,6 +20,7 @@ import LogDisplayView from '@/views/LogDisplayView.vue';
   display: flex;
   flex-direction: column;
   height: 100%;
+
   /* background-color: transparent; */
   overflow: hidden;
 }
@@ -30,6 +31,7 @@ import LogDisplayView from '@/views/LogDisplayView.vue';
   flex-grow: 1;
   overflow: hidden; /* LogDisplayView will handle its own scrolling */
   padding: 0; /* Remove padding if LogDisplayView has its own */
+
   /* 
     If LogDisplayView does not have its own padding and you want it here:
     padding: 1rem;
