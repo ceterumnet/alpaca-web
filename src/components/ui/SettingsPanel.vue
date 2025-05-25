@@ -506,6 +506,9 @@ function resetLayoutStorage() {
 }
 
 .aw-settings__description {
+  margin-top: 0;
+  margin-bottom: var(--aw-spacing-md);
+  /* stylelint-disable-next-line declaration-block-no-shorthand-property-overrides */
   margin: var(--aw-spacing-xs) 0 0;
   opacity: 0.8;
   font-size: 0.9rem;
@@ -519,7 +522,8 @@ function resetLayoutStorage() {
 
 .aw-settings__tabs {
   width: 180px;
-  background-color: rgb(0 0 0 / 5%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  background-color: var(--aw-color-black-5);
   border-right: 1px solid var(--aw-panel-border-color);
   padding: var(--aw-spacing-md) 0;
   display: flex;
@@ -539,6 +543,7 @@ function resetLayoutStorage() {
   transition:
     background-color 0.2s,
     color 0.2s;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
   border-left: 3px solid transparent;
 }
 
@@ -593,12 +598,7 @@ function resetLayoutStorage() {
   margin-bottom: 0;
 }
 
-.aw-settings__description {
-  margin-top: 0;
-  margin-bottom: var(--aw-spacing-md);
-  font-size: 0.9rem;
-  opacity: 0.8;
-}
+
 
 .aw-settings__description--warning {
   color: var(--aw-error-color);
@@ -624,7 +624,7 @@ function resetLayoutStorage() {
   inset: 0;
   background-color: var(--aw-panel-content-bg-color);
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: 24px;
+  border-radius: var(--aw-border-radius-sm);
   transition: 0.4s;
 }
 
@@ -636,7 +636,7 @@ function resetLayoutStorage() {
   left: 3px;
   bottom: 2px;
   background-color: var(--aw-button-secondary-bg);
-  border-radius: 50%;
+  border-radius: var(--aw-border-radius-sm);
   transition: 0.4s;
 }
 
@@ -706,6 +706,11 @@ input:checked + .aw-settings__toggle-slider::before {
   transition: background-color 0.2s ease;
 }
 
+.aw-settings__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .aw-settings__btn:hover:not(:disabled) {
   background-color: var(--aw-button-secondary-hover-bg);
 }
@@ -730,11 +735,6 @@ input:checked + .aw-settings__toggle-slider::before {
 .aw-settings__btn--danger:hover:not(:disabled) {
   background-color: var(--aw-button-danger-hover-bg);
   border-color: var(--aw-button-danger-hover-bg);
-}
-
-.aw-settings__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .aw-settings__group--danger {
@@ -777,11 +777,13 @@ input:checked + .aw-settings__toggle-slider::before {
   .aw-settings__tab-btn {
     flex-direction: column;
     border-left: none;
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list */
     border-bottom: 3px solid transparent;
     padding: var(--aw-spacing-sm);
   }
 
   .aw-settings__tab-btn--active {
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list */
     border-left-color: transparent;
     border-bottom-color: var(--aw-panel-resize-bg-color);
   }

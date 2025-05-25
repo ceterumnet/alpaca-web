@@ -180,7 +180,10 @@ export default defineComponent({
         h(IconToRender.value, { // Tabler icon as a child
           size: props.size, // Pass size for Tabler's internal SVG attributes
           color: props.color || 'currentColor',
-          strokeWidth: props.strokeWidth
+          strokeWidth: props.strokeWidth,
+          style: {
+            maxWidth: 'none !important'
+          }
         })
       ]);
   }
@@ -201,6 +204,7 @@ export default defineComponent({
   /* These can be uncommented if a CSS-driven default is preferred over inline styles, */
 
   /* but inline styles from props provide more direct control. */
+  max-width: none !important;
 }
 
 /* Device-related icons */

@@ -969,6 +969,10 @@ function resetStretch() {
 }
 
 .histogram-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
   width: 100%;
   height: 100px;
   background: var(--aw-color-background);
@@ -991,7 +995,7 @@ function resetStretch() {
   position: absolute;
   top: var(--aw-spacing-xs);
   right: var(--aw-spacing-xs);
-  background-color: rgb(0 0 0 / 40%);
+  background-color: var(--aw-color-black-40);
   color: var(--aw-color-text-on-primary);
   border: none;
   border-radius: var(--aw-border-radius-sm);
@@ -1007,7 +1011,7 @@ function resetStretch() {
 }
 
 .fullscreen-button:hover {
-  background-color: rgb(0 0 0 / 60%);
+  background-color: var(--aw-color-black-60);
 }
 
 .fullscreen-modal {
@@ -1016,7 +1020,7 @@ function resetStretch() {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgb(0 0 0 / 85%);
+  background-color: var(--aw-color-black-85);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1030,7 +1034,7 @@ function resetStretch() {
   max-height: 100%;
   object-fit: contain;
   border-radius: var(--aw-border-radius-md);
-  box-shadow: 0 0 30px rgb(0 0 0 / 50%);
+  box-shadow: 0 0 30px var(--aw-color-black-50);
 }
 
 .close-fullscreen-button {
@@ -1083,17 +1087,7 @@ function resetStretch() {
   height: 100px;
 }
 
-.histogram-canvas {
-  width: 100%;
-  height: 100px;
-  background: var(--aw-color-background);
-  border-radius: var(--aw-border-radius-xs);
-  border: 1px solid var(--aw-panel-border-color);
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 1;
-}
+
 
 .levels-vue-slider-overlay {
   position: absolute;
@@ -1101,7 +1095,7 @@ function resetStretch() {
   top: 0;
   width: 100%;
   height: 100px;
-  background: transparent !important;
+  background: none !important;
   z-index: 2;
   pointer-events: auto;
 }
@@ -1112,7 +1106,7 @@ function resetStretch() {
   top: 60px;
   width: 100%;
   height: 40px;
-  background: transparent !important;
+  background: none !important;
   z-index: 3;
   pointer-events: auto;
 }
@@ -1191,12 +1185,12 @@ function resetStretch() {
 .pixel-tooltip {
   position: fixed;
   z-index: 10000;
-  background: #222;
-  color: #fff;
+  background: var(--aw-color-black-90);
+  color: var(--aw-color-text-on-primary);
   font-size: 0.95em;
   padding: 0.4em 0.7em;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+  border-radius: var(--aw-border-radius-sm);
+  box-shadow: var(--aw-shadow-sm);
   pointer-events: none;
   white-space: nowrap;
   opacity: 0.97;

@@ -371,14 +371,14 @@ svg {
   user-select: none;
   cursor: pointer;
   background: var(--aw-histogram-bg);
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
+  border-radius: var(--aw-border-radius-sm);
+  box-shadow: var(--aw-shadow-sm);
   color: var(--aw-histogram-svg-color, var(--aw-color-text-primary, #222));
 }
 
 .handle-pill {
   cursor: pointer;
-  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 10%));
+  filter: drop-shadow(var(--aw-shadow-sm));
   transition: transform 0.12s, stroke-width 0.12s;
   stroke-width: 2;
   transform-origin: 50% 50%;
@@ -442,7 +442,7 @@ svg {
 .levels-button-row button {
   padding: 0.18rem 0.7rem;
   font-size: 0.95em;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   border: 1px solid var(--aw-panel-border-color, #444);
   background: var(--aw-button-primary-bg, #0af);
   color: var(--aw-button-primary-text, #fff);
@@ -466,7 +466,7 @@ svg {
   width: 60px;
   padding: 0.15rem 0.3rem;
   font-size: 0.95em;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   border: 1px solid var(--aw-panel-border-color, #444);
   background: var(--aw-input-bg-color, #222);
   color: var(--aw-color-text-primary, #fff);

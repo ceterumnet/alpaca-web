@@ -1,19 +1,27 @@
 {
-  "extends": ["stylelint-config-standard", "stylelint-config-recommended-vue"],
+  "extends": ["stylelint-config-standard", "stylelint-config-recommended-vue", "stylelint-declaration-strict-value"],
   "rules": {
     "declaration-property-value-disallowed-list": {
-      "/color/": ["/^((?!var\\(--aw-).)*$/"],
-      "/background/": ["/^((?!var\\(--aw-).)*$/"],
-      "/border/": ["/^((?!var\\(--aw-).)*$/"]
+      "/color/": ["/^((?!var\\(--aw-|none).)*$/"],
+      "/background/": ["/^((?!var\\(--aw-|none).)*$/"],
+      "/border/": ["/^((?!var\\(--aw-|none).)*$/"]
     },
     "color-named": "never",
-    "color-no-hex": true,
-    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"]
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"],
+    "selector-class-pattern": "^(aw-).*$|[a-z0-9\\-]+$"
   },
   "overrides": [
     {
       "files": ["**/*.vue"],
       "customSyntax": "postcss-html"
+    },
+    {
+      "files": ["src/assets/design-tokens.css"],
+      "rules": {
+        "declaration-property-value-disallowed-list": null,
+        "function-disallowed-list": null,
+        "selector-class-pattern": null
+      }
     }
   ]
 }

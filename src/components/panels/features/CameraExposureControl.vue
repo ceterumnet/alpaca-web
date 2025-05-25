@@ -476,6 +476,11 @@ onMounted(() => {
   transition: background-color 0.2s, border-color 0.2s;
 }
 
+.preset-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .preset-button:hover:not(:disabled) {
   background-color: var(--aw-panel-button-hover-bg);
   border-color: var(--aw-color-primary-500);
@@ -485,11 +490,6 @@ onMounted(() => {
   background-color: var(--aw-color-primary-500);
   color: var(--aw-button-primary-text);
   border-color: var(--aw-color-primary-500);
-}
-
-.preset-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .frame-type-group {
@@ -537,12 +537,7 @@ onMounted(() => {
   gap: var(--aw-spacing-xs);
   transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
   width: 100%;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
-}
-
-.exposure-button:hover:not(:disabled) {
-  background-color: var(--aw-button-primary-hover-bg);
-  box-shadow: 0 2px 4px rgb(0 0 0 / 7%);
+  box-shadow: var(--aw-shadow-sm);
 }
 
 .exposure-button:disabled {
@@ -552,6 +547,11 @@ onMounted(() => {
   box-shadow: none;
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.exposure-button:hover:not(:disabled) {
+  background-color: var(--aw-button-primary-hover-bg);
+  box-shadow: var(--aw-shadow-sm);
 }
 
 .button-icon {

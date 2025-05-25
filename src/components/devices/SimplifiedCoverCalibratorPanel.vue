@@ -312,6 +312,13 @@ onUnmounted(() => {
   margin-bottom: var(--aw-spacing-sm);
 }
 
+.control-grid button:disabled, .action-button:disabled {
+  background-color: var(--aw-color-neutral-300);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
 .control-grid button, .action-button {
   padding: calc(var(--aw-spacing-xs) * 1.5) var(--aw-spacing-sm);
   background-color: var(--aw-button-primary-bg);
@@ -325,12 +332,6 @@ onUnmounted(() => {
 
 .control-grid button:hover:not(:disabled), .action-button:hover:not(:disabled) {
   background-color: var(--aw-button-primary-hover-bg);
-}
-
-.control-grid button:disabled, .action-button:disabled {
-  background-color: var(--aw-color-neutral-300);
-  cursor: not-allowed;
-  opacity: 0.7;
 }
 
 .brightness-control {

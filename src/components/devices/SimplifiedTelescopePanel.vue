@@ -4,10 +4,11 @@ import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import { setAlpacaProperty, callAlpacaMethod } from '@/utils/alpacaPropertyAccess'
-import { formatRaNumber, formatDecNumber, parseRaString, parseDecString } from '@/utils/astroCoordinates'
+import { formatRaNumber, formatDecNumber, parseRaString, parseDecString, formatSiderealTime } from '@/utils/astroCoordinates'
 import CollapsibleSection from '@/components/ui/CollapsibleSection.vue'
 import { useNotificationStore } from '@/stores/useNotificationStore'
 import DeviceInfo from '@/components/ui/DeviceInfo.vue'
+import Icon from '@/components/ui/Icon.vue'
 
 const props = defineProps({
   deviceId: {
@@ -121,6 +122,47 @@ const altitude = computed(() => {
 const azimuth = computed(() => {
   const props = currentDevice.value?.properties;
   return (props?.azimuth as number | undefined) ?? 0;
+})
+
+// --- Info Table Computed Properties ---
+const siderealTime = computed(() => {
+  const props = currentDevice.value?.properties;
+  // Try both camelCase and lower-case
+  return (props?.siderealTime ?? props?.siderealtime) as number | undefined;
+})
+const formattedLST = computed(() => {
+  return siderealTime.value !== undefined ? formatSiderealTime(siderealTime.value) : '--';
+})
+
+const utcDate = computed(() => {
+  const props = currentDevice.value?.properties;
+  // Try both camelCase and lower-case
+  return (props?.utcDate ?? props?.utcdate) as string | undefined;
+})
+const formattedUTCDate = computed(() => {
+  if (!utcDate.value) return '--';
+  // Show as UTC, but in a readable format
+  try {
+    const d = new Date(utcDate.value)
+    return d.toISOString().replace('T', ' ').replace('Z', ' UTC')
+  } catch {
+    return utcDate.value
+  }
+})
+
+const siteLatitude = computed(() => {
+  const props = currentDevice.value?.properties;
+  return props?.siteLatitude ?? props?.sitelatitude;
+})
+const siteLongitude = computed(() => {
+  const props = currentDevice.value?.properties;
+  return props?.siteLongitude ?? props?.sitelongitude;
+})
+const formattedLat = computed(() => {
+  return siteLatitude.value !== undefined ? Number(siteLatitude.value).toFixed(6) : '--';
+})
+const formattedLon = computed(() => {
+  return siteLongitude.value !== undefined ? Number(siteLongitude.value).toFixed(6) : '--';
 })
 
 const tracking = computed({
@@ -479,122 +521,84 @@ const statusBadgeClass = computed(() => {
     </div>
 
     <div class="aw-panel-content">
-      <!-- Combined Main Section (table-like grid) -->
-      <div class="aw-section-header">Telescope Controls</div>
-      <div class="aw-section-table">
-        <div class="aw-row">
-          <div class="aw-label">RA:</div>
-          <div class="aw-value">{{ formattedRA }}</div>
-          <div class="aw-label">Dec:</div>
-          <div class="aw-value">{{ formattedDec }}</div>
-        </div>
-        <div class="aw-row">
-          <div class="aw-label">Alt:</div>
-          <div class="aw-value">{{ altitude.toFixed(2) }}°</div>
-          <div class="aw-label">Az:</div>
-          <div class="aw-value">{{ azimuth.toFixed(2) }}°</div>
-        </div>
-        <div class="aw-row">
-          <div class="aw-label">Side of Pier:</div>
-          <div class="aw-value">--</div>
-        </div>
-        <div class="aw-row">
-          <div class="aw-label">Tracking:</div>
-          <div class="aw-value">
-            <input id="tracking-toggle" v-model="tracking" type="checkbox" class="aw-tracking-checkbox" aria-label="Tracking toggle" />
+      <!-- Main Info + NESW Layout -->
+      <div class="aw-main-grid">
+        <!-- Info Table -->
+        <div class="aw-info-table" role="table" aria-label="Telescope Position and Site Info">
+          <div class="aw-info-row" role="row">
+            <div class="aw-info-label" role="cell">RA</div>
+            <div class="aw-info-value" role="cell">{{ formattedRA }}</div>
           </div>
-          <div class="aw-label">Rate:</div>
-          <div class="aw-value">
-            <select
-              id="tracking-rate-select"
-              v-model="selectedTrackingRate"
-              class="aw-select aw-select--sm"
-              aria-label="Tracking rate"
-              :disabled="!tracking"
-            >
-              <option v-for="rate in trackingRates" :key="rate.value" :value="rate.value">
-                {{ rate.label }}
-              </option>
-            </select>
+          <div class="aw-info-row" role="row">
+            <div class="aw-info-label" role="cell">Dec</div>
+            <div class="aw-info-value" role="cell">{{ formattedDec }}</div>
+          </div>
+          <div class="aw-info-row" role="row">
+            <div class="aw-info-label" role="cell">Alt</div>
+            <div class="aw-info-value" role="cell">{{ altitude.toFixed(2) }}°</div>
+          </div>
+          <div class="aw-info-row" role="row">
+            <div class="aw-info-label" role="cell">Az</div>
+            <div class="aw-info-value" role="cell">{{ azimuth.toFixed(2) }}°</div>
+          </div>
+          <div class="aw-info-row" role="row">
+            <div class="aw-info-label" role="cell">LST</div>
+            <div class="aw-info-value" role="cell">{{ formattedLST }}</div>
+          </div>
+          <div class="aw-info-row" role="row">
+            <div class="aw-info-label" role="cell">Telescope Time (UTC)</div>
+            <div class="aw-info-value" role="cell">{{ formattedUTCDate }}</div>
+          </div>
+          <div class="aw-info-row" role="row">
+            <div class="aw-info-label" role="cell">Lat</div>
+            <div class="aw-info-value" role="cell">{{ formattedLat }}</div>
+          </div>
+          <div class="aw-info-row" role="row">
+            <div class="aw-info-label" role="cell">Lon</div>
+            <div class="aw-info-value" role="cell">{{ formattedLon }}</div>
           </div>
         </div>
-        <div class="aw-row">
-          <div class="aw-label">Target RA</div>
-          <div class="aw-value">
-            <input
-              id="ra-input"
-              v-model="raInput"
-              type="text"
-              class="aw-input-field"
-              aria-label="Target RA"
-              :disabled="isSlewingLocal"
-              :class="{ 'aw-input-error': raInputError }"
-              placeholder="e.g. 12:34:56 or 12.58"
-            />
-            <!-- <span class="aw-input-hint">(HH:MM:SS or decimal hours)</span> -->
-            <span v-if="raInputError" class="aw-input-error-message">{{ raInputError }}</span>
-          </div>
-          <div class="aw-label">Target Dec</div>
-          <div class="aw-value">
-            <input
-              id="dec-input"
-              v-model="decInput"
-              type="text"
-              class="aw-input-field"
-              aria-label="Target Dec"
-              :disabled="isSlewingLocal"
-              :class="{ 'aw-input-error': decInputError }"
-              placeholder="e.g. +12:34:56 or 12.58"
-            />
-            <!-- <span class="aw-input-hint">(±DD:MM:SS or decimal degrees)</span> -->
-            <span v-if="decInputError" class="aw-input-error-message">{{ decInputError }}</span>
-          </div>
-        </div>
-        <div class="aw-row">
-          <div class="aw-label">Manual Rate:</div>
-          <div class="aw-value">
-            <select
-              id="axis-rate-select"
-              v-model="selectedAxisRate"
-              class="aw-select aw-select--sm"
-              aria-label="Manual motion rate"
-            >
-              <option v-for="rate in axisRates" :key="rate.value" :value="rate.value">{{ rate.label }}</option>
-            </select>
-          </div>
+        <!-- NESW 3x3 Grid -->
+        <div class="aw-direction-pad-3x3 aw-direction-pad-vertical">
+          <!-- Top row: Find Home, North, empty -->
+          <button class="aw-btn aw-btn--secondary" aria-label="Find Home" :disabled="isFindingHome" @click="findHome">
+            <span v-if="isFindingHome" class="aw-spinner"></span>
+            <Icon type="home" size="24" />
+          </button>
+          <button class="aw-btn aw-btn--secondary" aria-label="Move North" @click="moveDirection('up')">
+            <Icon type="arrow-up" size="24" />
+          </button>
+          <span></span>
+          <!-- Middle row: West, Stop, East -->
+          <button class="aw-btn aw-btn--secondary" aria-label="Move West" @click="moveDirection('left')">
+            <Icon type="arrow-left" size="24" />
+          </button>
+          <button class="aw-btn aw-btn--secondary" aria-label="Stop" @click="moveDirection('stop')">
+            <Icon type="stop" size="24" />
+          </button>
+          <button class="aw-btn aw-btn--secondary" aria-label="Move East" @click="moveDirection('right')">
+            <Icon type="arrow-right" size="24" />
+          </button>
+          <!-- Bottom row: Park, South, Unpark -->
+          <button class="aw-btn aw-btn--secondary" aria-label="Park telescope" :disabled="isParking" @click="parkTelescope">
+            <span v-if="isParking" class="aw-spinner"></span>
+            <Icon type="park" size="24" />
+          </button>
+          <button class="aw-btn aw-btn--secondary" aria-label="Move South" @click="moveDirection('down')">
+            <Icon type="arrow-down" size="24" />
+          </button>
+          <button class="aw-btn aw-btn--secondary" aria-label="Unpark telescope" :disabled="isUnparking" @click="unparkTelescope">
+            <span v-if="isUnparking" class="aw-spinner"></span>
+            <Icon type="unpark" size="24" />
+          </button>
         </div>
       </div>
+      <!-- Actions below -->
       <div class="aw-movement-actions">
         <button class="aw-btn aw-btn--primary" aria-label="Slew to coordinates" :disabled="isSlewingLocal" @click="handleSlew">Slew</button>
         <button class="aw-btn aw-btn--secondary" aria-label="Reset coordinates" :disabled="isSlewingLocal" @click="resetTelescopeState">Reset</button>
       </div>
-      <div class="aw-direction-pad-3x3">
-        <span></span>
-        <button class="aw-btn aw-btn--secondary" aria-label="Move North" @click="moveDirection('up')">▲</button>
-        <span></span>
-        <button class="aw-btn aw-btn--secondary" aria-label="Move West" @click="moveDirection('left')">◄</button>
-        <button class="aw-btn aw-btn--secondary" aria-label="Stop" @click="moveDirection('stop')">■</button>
-        <button class="aw-btn aw-btn--secondary" aria-label="Move East" @click="moveDirection('right')">►</button>
-        <span></span>
-        <button class="aw-btn aw-btn--secondary" aria-label="Move South" @click="moveDirection('down')">▼</button>
-        <span></span>
-      </div>
-      <div class="aw-actions-row">
-        <button class="aw-btn aw-btn--primary" aria-label="Park telescope" :disabled="isParking" @click="parkTelescope">
-          <span v-if="isParking" class="aw-spinner"></span>
-          Park
-        </button>
-        <button class="aw-btn aw-btn--secondary" aria-label="Unpark telescope" :disabled="isUnparking" @click="unparkTelescope">
-          <span v-if="isUnparking" class="aw-spinner"></span>
-          Unpark
-        </button>
-        <button class="aw-btn aw-btn--secondary" aria-label="Find home" :disabled="isFindingHome" @click="findHome">
-          <span v-if="isFindingHome" class="aw-spinner"></span>
-          Find Home
-        </button>
-      </div>
       <div class="aw-section-divider"></div>
-
       <!-- Telescope Info Section -->
       <section class="aw-section">
         <CollapsibleSection title="Telescope Info" :default-open="false">
@@ -905,4 +909,89 @@ const statusBadgeClass = computed(() => {
   width: 100%;
   box-sizing: border-box;
 }
+
+
+/* --- Main Info + NESW Layout --- */
+.aw-main-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--aw-spacing-lg);
+  align-items: start;
+  margin-bottom: var(--aw-spacing-lg);
+}
+
+.aw-info-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  background: var(--aw-panel-bg-color);
+  min-width: 220px;
+  max-width: 320px;
+  font-size: var(--aw-font-size-sm, 0.95em);
+  box-shadow: none;
+}
+
+.aw-info-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-bottom: 1px solid var(--aw-panel-border-color);
+  min-height: 28px;
+  padding: 0 var(--aw-spacing-md);
+}
+
+.aw-info-row:last-child {
+  /* No border for last child */
+}
+
+.aw-info-label {
+  flex: 0 0 90px;
+  text-align: left;
+  color: var(--aw-text-secondary-color);
+  font-weight: 500;
+  padding: var(--aw-spacing-xs) 0;
+}
+
+.aw-info-value {
+  flex: 1 1 auto;
+  text-align: right;
+  color: var(--aw-text-color);
+  font-family: var(--aw-font-family-mono, inherit);
+  padding: var(--aw-spacing-xs) 0;
+}
+
+/* Adjust NESW grid for vertical alignment with info table */
+.aw-direction-pad-vertical {
+  align-self: start;
+}
+
+/* Fix: Prevent icon collapse due to reset's max-width */
+.aw-direction-pad-3x3 div.aw-icon, svg {
+  /* color: blue; */
+  max-width: none !important;
+}
+
+@media (width <= 900px) {
+  .aw-main-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: var(--aw-spacing-md);
+  }
+
+  .aw-direction-pad-vertical {
+    justify-self: start;
+    margin-top: var(--aw-spacing-md);
+  }
+
+  .aw-info-table {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+}
+
+
+
 </style> 

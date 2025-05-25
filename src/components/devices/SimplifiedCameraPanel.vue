@@ -1090,10 +1090,28 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   flex-shrink: 0; /* Prevent label from shrinking */
 }
 
+.input-with-spinner {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  /* gap: var(--aw-spacing-xs); */
+
+ /* Add gap between input and spinner if desired */
+}
+
 .setting-row .input-with-spinner {
   flex-grow: 1; /* Allow input to take available space */
   display: flex;
   align-items: center;
+}
+
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0; /* Prevent toggle from shrinking */
 }
 
 .setting-row input,
@@ -1167,13 +1185,6 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 }
 
 
-.toggle {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0; /* Prevent toggle from shrinking */
-}
 
 .toggle input {
   opacity: 0;
@@ -1200,7 +1211,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   bottom: 3px;
   background-color: var(--aw-text-secondary-color);
   transition: .4s;
-  border-radius: 50%;
+  border-radius: var(--aw-border-radius-sm);
 }
 
 input:checked + .slider {
@@ -1225,6 +1236,17 @@ input:checked + .slider::before {
 
  /* From setting-row */
 }
+
+
+.subframe-controls input {
+  width: 100%;
+  padding: var(--aw-spacing-xs);
+  background-color: var(--aw-input-bg-color);
+  color: var(--aw-text-color);
+  border: 1px solid var(--aw-panel-border-color);
+  border-radius: var(--aw-border-radius-sm);
+}
+
 
 .temperature-target label {
   color: var(--aw-text-secondary-color);
@@ -1318,15 +1340,7 @@ input:checked + .slider::before {
   font-size: 1rem;
 }
 
-.input-with-spinner {
-  position: relative;
-  display: flex;
-  align-items: center;
 
-  /* gap: var(--aw-spacing-xs); */
-
- /* Add gap between input and spinner if desired */
-}
 
 /* .input-with-spinner input { */
 
@@ -1406,7 +1420,7 @@ input:checked + .slider::before {
   min-width: 60px;
   max-width: 140px;
   accent-color: var(--aw-accent-color);
-  background: transparent;
+  background: none;
   height: 2px;
   margin: 0 4px;
 }
@@ -1503,15 +1517,6 @@ input:checked + .slider::before {
 .subframe-controls label {
   display: flex;
   flex-direction: column;
-}
-
-.subframe-controls input {
-  width: 100%;
-  padding: var(--aw-spacing-xs);
-  background-color: var(--aw-input-bg-color);
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
 }
 
 .subframe-controls button {

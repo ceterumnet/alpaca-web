@@ -203,7 +203,7 @@
   --aw-control-stop-color: var(--aw-color-error-500);
   --aw-control-reset-color: var(--aw-color-error-500);
   --aw-control-sliders-color: var(--aw-color-neutral-600);
-  --aw-control-park-color: var(--aw-color-neutral-700);
+  --aw-control-park-color: var(--aw-color-success-500);
   --aw-control-unpark-color: var(--aw-color-success-500);
   --aw-status-connected-color: var(--aw-color-success-500);
   --aw-status-disconnected-color: var(--aw-color-error-500);
@@ -237,6 +237,11 @@
 
   /* THEME PRIMARY COLOR - Used for general purpose primary elements like histogram bars */
   --aw-primary-color: var(--aw-color-primary-500);
+  --aw-color-black-40: rgb(0 0 0 / 40%);
+  --aw-color-black-60: rgb(0 0 0 / 60%);
+  --aw-color-black-85: rgb(0 0 0 / 85%);
+  --aw-color-black-90: rgb(0 0 0 / 90%);
+  --aw-color-black-95: rgb(0 0 0 / 95%);
 }
 
 /* ============================================================
@@ -396,7 +401,7 @@ html.dark-theme {
   --aw-control-stop-color: var(--aw-color-error-500);
   --aw-control-reset-color: var(--aw-color-error-500);
   --aw-control-sliders-color: var(--aw-color-neutral-600);
-  --aw-control-park-color: var(--aw-color-neutral-700);
+  --aw-control-park-color: var(--aw-color-success-500);
   --aw-control-unpark-color: var(--aw-color-success-500);
   --aw-status-connected-color: var(--aw-color-success-500);
   --aw-status-disconnected-color: var(--aw-color-error-500);

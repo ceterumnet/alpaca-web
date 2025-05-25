@@ -618,7 +618,7 @@ onUnmounted(() => {
   bottom: 3px;
   background-color: var(--aw-text-secondary-color);
   transition: .4s;
-  border-radius: 50%;
+  border-radius: var(--aw-border-radius-sm);
 }
 
 input:checked + .slider {

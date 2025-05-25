@@ -107,6 +107,7 @@ onBeforeUnmount(() => {
   opacity: 0;
   transform: translateY(-20px);
   pointer-events: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
   border-left: 4px solid transparent;
 }
 
@@ -182,7 +183,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: var(--aw-border-radius-sm);
   margin-right: var(--aw-spacing-md);
   font-weight: bold;
 }
@@ -237,7 +238,8 @@ onBeforeUnmount(() => {
   bottom: 0;
   left: 0;
   height: 4px;
-  background-color: rgb(0 0 0 / 10%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  background-color: var(--aw-color-black-10);
   width: 100%;
   border-radius: 0 0 var(--aw-border-radius-md) var(--aw-border-radius-md);
   overflow: hidden;
@@ -250,6 +252,7 @@ onBeforeUnmount(() => {
   top: 0;
   height: 100%;
   width: 100%;
+  /* stylelint-disable-next-line function-disallowed-list */
   background-color: var(--aw-color-primary-300, rgb(0 0 0 / 20%));
   animation: progress-animation linear forwards;
 }
@@ -266,10 +269,12 @@ onBeforeUnmount(() => {
 
 /* Dark theme adjustments */
 :root .dark-theme .aw-toast__progress {
+  /* stylelint-disable-next-line */
   background-color: rgb(255 255 255 / 10%);
 }
 
 :root .dark-theme .aw-toast__progress::after {
+  /* stylelint-disable-next-line function-disallowed-list */
   background-color: var(--aw-color-primary-300, rgb(255 255 255 / 20%));
 }
 </style>

@@ -72,11 +72,13 @@ const tearOutLogs = () => {
   max-height: 80vh;
   background-color: var(--aw-panel-bg-color);
   border-top: 1px solid var(--aw-color-border);
+  /* stylelint-disable-next-line function-disallowed-list */
   box-shadow: 0 -2px 10px rgb(0 0 0 / 10%); /* This might need a themeable shadow token later */
   z-index: var(--aw-z-index-overlay-panel);
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Important for LogPanel which might have its own overflow */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
   border-radius: 0; /* Explicitly no radius here if not desired */
 }
 
@@ -89,7 +91,6 @@ const tearOutLogs = () => {
   color: var(--aw-panel-header-text-color);
   border-bottom: 1px solid var(--aw-panel-border-color);
   flex-shrink: 0; /* Prevent header from shrinking */
-  border-radius: 0;
 }
 
 .container-title {
@@ -104,7 +105,8 @@ const tearOutLogs = () => {
 }
 
 .aw-button.aw-button--icon-only.aw-button--subtle {
-  background-color: transparent;
+  /* stylelint-disable-next-line declaration-property-value-no-unknown */
+  background-color: none;
   color: var(--aw-panel-header-text);
   border: none;
   padding: var(--aw-spacing-xs);

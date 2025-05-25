@@ -243,7 +243,7 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   background-color: var(--aw-input-bg-color);
   border: 1px solid var(--aw-input-border-color);
   transition: .4s;
-  border-radius: 28px;
+  border-radius: var(--aw-border-radius-sm);
 }
 
 .slider::before {
@@ -253,9 +253,9 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   width: 20px;
   left: 4px;
   bottom: 4px;
-  background-color: white;
+  background-color: var(--aw-button-primary-text);
   transition: .4s;
-  border-radius: 50%;
+  border-radius: var(--aw-border-radius-sm);
 }
 
 input:checked + .slider {
