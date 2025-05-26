@@ -157,15 +157,15 @@ onUnmounted(() => {
 }
 
 .status-safe .status-text {
-  color: var(--aw-success-color, green);
+  color: var(--aw-success-color);
 }
 
 .status-unsafe .status-text {
-  color: var(--aw-error-color, red);
+  color: var(--aw-error-color);
 }
 
 .status-unknown .status-text {
-  color: var(--aw-text-secondary-color, orange);
+  color: var(--aw-text-secondary-color);
 }
 
 .device-description {

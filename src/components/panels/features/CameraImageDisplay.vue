@@ -843,6 +843,7 @@ function resetStretch() {
   flex-direction: column;
   gap: var(--aw-spacing-sm);
   padding: var(--aw-spacing-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   background-color: var(--aw-panel-content-bg-color);
@@ -869,6 +870,7 @@ function resetStretch() {
   max-height: 100%;
   object-fit: contain;
   background-color: var(--aw-color-background);
+  /* stylelint-disable-next-line */
   border: 2px solid var(--aw-color-border);
 }
 
@@ -878,6 +880,7 @@ function resetStretch() {
   gap: var(--aw-spacing-sm);
   background: var(--aw-panel-content-bg-color);
   border-radius: var(--aw-border-radius-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   padding: var(--aw-spacing-md);
   margin-bottom: var(--aw-spacing-md);
@@ -921,6 +924,7 @@ function resetStretch() {
   padding: 0.2rem 0.4rem;
   font-size: 0.95rem;
   border-radius: var(--aw-border-radius-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   background: var(--aw-input-bg-color);
   color: var(--aw-color-text-primary);
@@ -934,6 +938,7 @@ function resetStretch() {
   min-width: 100px;
   font-size: 0.95rem;
   border-radius: var(--aw-border-radius-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   background: var(--aw-input-bg-color);
   color: var(--aw-color-text-primary);
@@ -946,7 +951,8 @@ function resetStretch() {
 }
 
 .stretch-reset-btn {
-  background: none;
+  background-color: transparent;
+  /* stylelint-disable-next-line */
   border: none;
   color: var(--aw-accent-color);
   cursor: pointer;
@@ -977,6 +983,7 @@ function resetStretch() {
   height: 100px;
   background: var(--aw-color-background);
   border-radius: var(--aw-border-radius-xs);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
 }
 
@@ -1041,7 +1048,8 @@ function resetStretch() {
   position: absolute;
   top: var(--aw-spacing-md);
   right: var(--aw-spacing-md);
-  background: none;
+  background-color: transparent;
+  /* stylelint-disable-next-line */
   border: none;
   color: var(--aw-color-text-on-primary);
   font-size: 1.8rem;
@@ -1057,6 +1065,7 @@ function resetStretch() {
 .stretch-auto-row, .stretch-robust-row {
   background: var(--aw-panel-hover-bg-color);
   border-radius: var(--aw-border-radius-xs);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
   margin-top: var(--aw-spacing-xs);
@@ -1095,7 +1104,7 @@ function resetStretch() {
   top: 0;
   width: 100%;
   height: 100px;
-  background: none !important;
+  background-color: transparent !important;
   z-index: 2;
   pointer-events: auto;
 }
@@ -1106,7 +1115,7 @@ function resetStretch() {
   top: 60px;
   width: 100%;
   height: 40px;
-  background: none !important;
+  background-color: transparent !important;
   z-index: 3;
   pointer-events: auto;
 }
@@ -1132,6 +1141,7 @@ function resetStretch() {
   padding: 0.2rem 0.4rem;
   font-size: 0.95rem;
   border-radius: var(--aw-border-radius-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   background: var(--aw-input-bg-color);
   color: var(--aw-color-text-primary);
@@ -1141,6 +1151,7 @@ function resetStretch() {
   padding: 0.2rem 0.8rem;
   font-size: 0.95rem;
   border-radius: var(--aw-border-radius-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   background: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);

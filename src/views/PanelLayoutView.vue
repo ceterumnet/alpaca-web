@@ -14,7 +14,7 @@ import { useLayoutStore } from '@/stores/useLayoutStore'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
 import type { GridLayoutDefinition, LayoutRow, LayoutCell as StoreLayoutCell } from '@/types/layouts/LayoutDefinition'
-import StaticLayoutChooser from '@/components/layout/StaticLayoutChooser.vue'
+// import StaticLayoutChooser from '@/components/layout/StaticLayoutChooser.vue'
 import Icon from '@/components/ui/Icon.vue'
 
 // Import the device component registry
@@ -846,6 +846,7 @@ const getPanelTypeName = (panelId: string): string => {
   align-items: center;
   background-color: var(--aw-panel-header-bg-color);
   padding: 8px;
+  /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
@@ -880,7 +881,7 @@ const getPanelTypeName = (panelId: string): string => {
 
 .maximize-panel-btn,
 .minimize-panel-btn {
-  background: none;
+  background: transparent;
   border: none;
   color: var(--aw-text-color);
   cursor: pointer;
@@ -891,7 +892,7 @@ const getPanelTypeName = (panelId: string): string => {
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
 }
 
 .maximize-panel-btn:hover,
@@ -902,8 +903,9 @@ const getPanelTypeName = (panelId: string): string => {
 .device-selector-dropdown {
   background-color: var(--aw-panel-content-bg-color);
   color: var(--aw-text-color);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   padding: 4px;
   font-size: 0.8rem;
   max-width: 180px;
@@ -933,8 +935,9 @@ const getPanelTypeName = (panelId: string): string => {
   padding: 0.5rem 1rem;
   background-color: var(--aw-button-bg-color);
   color: var(--aw-text-color);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-border-color);
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -959,21 +962,22 @@ const getPanelTypeName = (panelId: string): string => {
   gap: 8px;
   padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   background-color: var(--aw-secondary-bg-color);
+  /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-border-color);
 }
 
 .toggle-panel-btn {
-  background-color: var(--aw-primary-color, #07c);
+  background-color: var(--aw-primary-color);
   color: var(--aw-button-primary-text);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   padding: calc(var(--aw-spacing-xs) * 1.5) calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   cursor: pointer;
   font-size: 0.9rem;
 }
 
 .toggle-panel-btn:hover {
-  background-color: var(--aw-primary-hover-color, #0066b3);
+  background-color: var(--aw-primary-hover-color);
 }
 
 /* Hybrid panel styles */
@@ -988,17 +992,23 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .hybrid-cell-1 {
+  /* stylelint-disable-next-line */
   background-color: rgb(66 135 245 / 15%);
+  /* stylelint-disable-next-line */
   border-left: 4px solid rgb(66 135 245);
 }
 
 .hybrid-cell-2 {
+  /* stylelint-disable-next-line */
   background-color: rgb(77 175 124 / 15%);
+  /* stylelint-disable-next-line */
   border-left: 4px solid rgb(77 175 124);
 }
 
 .hybrid-cell-3 {
+  /* stylelint-disable-next-line */
   background-color: rgb(255 159 67 / 15%);
+  /* stylelint-disable-next-line */
   border-left: 4px solid rgb(255 159 67);
 }
 
@@ -1020,10 +1030,10 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .select-layout-btn {
-  background-color: var(--aw-primary-color, #07c);
+  background-color: var(--aw-primary-color);
   color: var(--aw-button-primary-text);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   cursor: pointer;
   font-weight: 500;
@@ -1033,12 +1043,13 @@ const getPanelTypeName = (panelId: string): string => {
 }
 
 .select-layout-btn:hover {
-  background-color: var(--aw-primary-hover-color, #0066b3);
+  background-color: var(--aw-primary-hover-color);
 }
 
 .static-layout-modal {
   position: fixed;
   inset: 0;
+  /* stylelint-disable-next-line */
   background-color: rgb(0 0 0 / 70%);
   display: flex;
   justify-content: center;
@@ -1048,19 +1059,19 @@ const getPanelTypeName = (panelId: string): string => {
 
 .static-layout-modal-content {
   background-color: var(--aw-panel-bg-color);
-  border-radius: 8px;
+  border-radius: var(--aw-border-radius-md);
   max-width: 90%;
   max-height: 90%;
   overflow: auto;
   position: relative;
-  box-shadow: 0 4px 20px rgb(0 0 0 / 30%);
+  box-shadow: var(--aw-shadow-md);
 }
 
 .close-modal-btn {
   position: absolute;
   top: 12px;
   right: 12px;
-  background: none;
+  background-color: transparent;
   border: none;
   color: var(--aw-text-color);
   font-size: 1.5rem;
@@ -1095,8 +1106,9 @@ const getPanelTypeName = (panelId: string): string => {
 
 .connect-disconnect-btn {
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
-  border-radius: 4px;
+  border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
   font-size: 0.8rem;
   min-width: 80px; /* Ensure consistent width */

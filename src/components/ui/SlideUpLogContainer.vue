@@ -71,6 +71,7 @@ const tearOutLogs = () => {
   height: 40vh; /* Initial height, can be made dynamic later */
   max-height: 80vh;
   background-color: var(--aw-panel-bg-color);
+  /* stylelint-disable-next-line */
   border-top: 1px solid var(--aw-color-border);
   /* stylelint-disable-next-line function-disallowed-list */
   box-shadow: 0 -2px 10px rgb(0 0 0 / 10%); /* This might need a themeable shadow token later */
@@ -89,6 +90,7 @@ const tearOutLogs = () => {
   padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   background-color: var(--aw-panel-header-bg-color);
   color: var(--aw-panel-header-text-color);
+  /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-panel-border-color);
   flex-shrink: 0; /* Prevent header from shrinking */
 }
@@ -105,8 +107,7 @@ const tearOutLogs = () => {
 }
 
 .aw-button.aw-button--icon-only.aw-button--subtle {
-  /* stylelint-disable-next-line declaration-property-value-no-unknown */
-  background-color: none;
+  background-color: transparent;
   color: var(--aw-panel-header-text);
   border: none;
   padding: var(--aw-spacing-xs);

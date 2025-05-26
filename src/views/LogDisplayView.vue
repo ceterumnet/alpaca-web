@@ -265,7 +265,7 @@ const toggleRawArgs = (id: string) => {
   overflow-y: auto;
   background-color: var(--aw-log-entries-bg-color);
   border-radius: var(--border-radius-md);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%); /* Consider theming this shadow */
+  box-shadow: var(--aw-shadow-sm); /* Consider theming this shadow */
 }
 
 .no-logs {
@@ -351,7 +351,11 @@ const toggleRawArgs = (id: string) => {
 .log-level-error .log-message {
   color: var(--aw-error-text-color);
 }
-.log-level-error .level { color: var(--aw-error-color); font-weight: bold; }
+
+.log-level-error .level { 
+  color: var(--aw-error-color); 
+  font-weight: bold; 
+}
 
 .log-level-warn {
   background-color: var(--aw-warning-muted); /* Use muted for less harsh bg */
@@ -363,7 +367,11 @@ const toggleRawArgs = (id: string) => {
 .log-level-warn .log-message {
   color: var(--aw-warning-text-color);
 }
-.log-level-warn .level { color: var(--aw-warning-color); font-weight: bold; }
+
+.log-level-warn .level { 
+  color: var(--aw-warning-color); 
+  font-weight: bold; 
+}
 
 .log-level-info {
   background-color: var(--aw-info-bg-color-light);
@@ -374,7 +382,11 @@ const toggleRawArgs = (id: string) => {
 .log-level-info .log-message {
   color: var(--aw-info-text-color);
 }
-.log-level-info .level { color: var(--aw-info-color); font-weight: bold; }
+
+.log-level-info .level { 
+  color: var(--aw-info-color); 
+  font-weight: bold; 
+}
 
 .log-level-debug {
   background-color: var(--aw-bg-color-subtle);
@@ -385,7 +397,11 @@ const toggleRawArgs = (id: string) => {
 .log-level-debug .log-message {
   color: var(--aw-text-secondary-color);
 }
-.log-level-debug .level { color: var(--aw-text-color-muted); font-weight: bold; }
+
+.log-level-debug .level { 
+  color: var(--aw-text-color-muted); 
+  font-weight: bold; 
+}
 
 .log-level-trace {
   background-color: var(--aw-bg-color-extra-subtle);
@@ -397,7 +413,11 @@ const toggleRawArgs = (id: string) => {
 .log-level-trace .log-message {
   color: var(--aw-text-color-tertiary);
 }
-.log-level-trace .level { color: var(--aw-text-color-tertiary); font-weight: bold; }
+
+.log-level-trace .level { 
+  color: var(--aw-text-color-tertiary); 
+  font-weight: bold; 
+}
 
 
 .log-level-fatal {
@@ -409,8 +429,10 @@ const toggleRawArgs = (id: string) => {
 .log-level-fatal .log-message {
  color: var(--aw-fatal-text-color);
 }
-.log-level-fatal .level { color: var(--aw-fatal-color); font-weight: bold; }
 
+.log-level-fatal .level { 
+  color: var(--aw-fatal-color); 
+  font-weight: bold; 
+}
 
-.log-level-default {}
 </style> 

@@ -307,7 +307,7 @@ p {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgb(0 0 0 / 50%);
+  background-color: var(--aw-color-black-50);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -321,7 +321,7 @@ p {
   max-height: 800px;
   background-color: var(--aw-panel-bg-color);
   border-radius: var(--border-radius-lg);
-  box-shadow: 0 4px 20px rgb(0 0 0 / 20%);
+  box-shadow: var(--aw-shadow-sm);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -340,7 +340,7 @@ p {
 }
 
 .close-button {
-  background: none;
+  background-color: transparent;
   border: none;
   font-size: 1.5rem;
   color: var(--aw-panel-content-color);
@@ -359,7 +359,7 @@ p {
 }
 
 .nav-icon-button {
-  background: none;
+  background-color: transparent;
   border: none;
   color: var(--aw-nav-text-color);
   cursor: pointer;

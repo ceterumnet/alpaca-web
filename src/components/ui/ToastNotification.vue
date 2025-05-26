@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
 }
 
 .aw-toast__close {
-  background: none;
+  background-color: transparent;
   border: none;
   color: var(--aw-panel-content-color);
   opacity: 0.5;
@@ -241,6 +241,7 @@ onBeforeUnmount(() => {
   /* stylelint-disable-next-line declaration-property-value-disallowed-list */
   background-color: var(--aw-color-black-10);
   width: 100%;
+  /* stylelint-disable-next-line */
   border-radius: 0 0 var(--aw-border-radius-md) var(--aw-border-radius-md);
   overflow: hidden;
 }

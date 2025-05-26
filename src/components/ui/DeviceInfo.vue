@@ -24,27 +24,27 @@ defineProps<{
 
 <style scoped>
 .device-info-section {
-  background: var(--aw-panel-content-bg-color, #f8f9fa);
-  border-radius: var(--aw-border-radius-sm, 6px);
-  border: 1px solid var(--aw-panel-border-color, #e0e0e0);
-  padding: var(--aw-spacing-sm, 12px) var(--aw-spacing-lg, 24px);
+  background: var(--aw-panel-content-bg-color);
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  padding: var(--aw-spacing-sm) var(--aw-spacing-lg);
   margin: 0;
   font-size: 0.8rem;
-  box-shadow: var(--aw-shadow-sm, none);
+  box-shadow: var(--aw-shadow-sm);
   overflow-x: auto;
 }
 
 .device-info-title {
   font-weight: 600;
-  color: var(--aw-text-secondary-color, #888);
+  color: var(--aw-text-secondary-color);
   font-size: 1rem;
-  margin-bottom: var(--aw-spacing-xs, 8px);
+  margin-bottom: var(--aw-spacing-xs);
 }
 
 .device-info-list {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: var(--aw-spacing-xs, 6px) var(--aw-spacing-lg, 24px);
+  gap: var(--aw-spacing-xs) var(--aw-spacing-lg);
   margin: 0;
   padding: 0;
   font-size: 0.8rem;
@@ -52,14 +52,14 @@ defineProps<{
 
 .device-info-label {
   font-weight: 500;
-  color: var(--aw-text-secondary-color, #888);
+  color: var(--aw-text-secondary-color);
   text-align: left;
-  padding-right: var(--aw-spacing-sm, 12px);
+  padding-right: var(--aw-spacing-sm);
   white-space: nowrap;
 }
 
 .device-info-value {
-  color: var(--aw-text-color, #222);
+  color: var(--aw-text-color);
   text-align: right;
   font-variant-numeric: tabular-nums;
   word-break: break-all;

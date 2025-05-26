@@ -1329,7 +1329,7 @@ input:checked + .slider::before {
 }
 
 .dismiss-button {
-  background: none;
+  background-color: transparent;
   border: none;
   color: var(--aw-color-error-700);
   cursor: pointer;
@@ -1420,7 +1420,7 @@ input:checked + .slider::before {
   min-width: 60px;
   max-width: 140px;
   accent-color: var(--aw-accent-color);
-  background: none;
+  background-color: transparent;
   height: 2px;
   margin: 0 4px;
 }

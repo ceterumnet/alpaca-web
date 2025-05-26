@@ -25,7 +25,6 @@
   line-height: 1.2;
   color: var(--aw-text-color);
   background-color: var(--aw-input-bg-color);
-  background-clip: padding-box;
   border: 1px solid var(--aw-input-border-color);
   border-radius: var(--aw-border-radius-sm);
   transition:
@@ -182,7 +181,7 @@
   top: 2px;
   width: 6px;
   height: 12px;
-  border: solid white;
+  border: solid var(--aw-color-white);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -201,7 +200,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: white;
+  background: var(--aw-color-white);
 }
 
 .aw-radio-container input:checked ~ .aw-radio::after {
@@ -279,7 +278,7 @@
 
 .aw-btn--primary {
   background: var(--aw-button-primary-bg, var(--aw-primary-color));
-  color: var(--aw-button-primary-text, #fff);
+  color: var(--aw-button-primary-text);
 }
 
 .aw-btn--primary:hover:not(:disabled) {

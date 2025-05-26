@@ -402,7 +402,11 @@ onUnmounted(() => {
   height: 24px;
 }
 
-.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle input { 
+  opacity: 0; 
+  width: 0; 
+  height: 0; 
+}
 
 .slider {
   position: absolute;

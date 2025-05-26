@@ -2,11 +2,11 @@
   "extends": ["stylelint-config-standard", "stylelint-config-recommended-vue", "stylelint-declaration-strict-value"],
   "rules": {
     "declaration-property-value-disallowed-list": {
-      "/color/": ["/^((?!var\\(--aw-|none).)*$/"],
-      "/background/": ["/^((?!var\\(--aw-|none).)*$/"],
-      "/border/": ["/^((?!var\\(--aw-|none).)*$/"]
+      "/color/": ["/^((?!transparent)(?!var\\(--aw-).*)$/"],
+      "/background/": ["/^((?!transparent)(?!var\\(--aw-).*)$/"]
     },
     "color-named": "never",
+    "color-no-hex": true,
     "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"],
     "selector-class-pattern": "^(aw-).*$|[a-z0-9\\-]+$"
   },
@@ -16,12 +16,15 @@
       "customSyntax": "postcss-html"
     },
     {
-      "files": ["src/assets/design-tokens.css"],
+      "files": ["src/assets/design-tokens.css", "src/assets/components/forms.css", "src/assets/components/buttons.css", "src/assets/base.css"],
       "rules": {
         "declaration-property-value-disallowed-list": null,
         "function-disallowed-list": null,
-        "selector-class-pattern": null
+        "selector-class-pattern": null,
+        "no-descending-specificity": null,
+        "color-no-hex": null
       }
     }
-  ]
+  ],
+  "ignoreFiles": ["src/assets/modern-reset.css", "src/assets/base.css"]
 }

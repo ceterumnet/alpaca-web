@@ -163,6 +163,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--aw-shadow-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
 }
 

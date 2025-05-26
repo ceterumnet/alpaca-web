@@ -98,7 +98,7 @@ const isManualAttemptError = computed(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgb(0 0 0 / 50%);
+  background-color: var(--aw-color-black-50);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -106,18 +106,18 @@ const isManualAttemptError = computed(() => {
 }
 
 .modal-content {
-  background-color: white;
+  background-color: var(--aw-color-background);
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgb(0 0 0 / 10%);
+  box-shadow: var(--aw-shadow-sm);
   width: 90%;
   max-width: 500px;
-  color: #333; /* Ensuring text is readable on white background */
+  color: var(--aw-color-text-primary); /* Ensuring text is readable on white background */
 }
 
 .modal-content h3 {
   margin-top: 0;
-  color: #1a202c; /* Darker heading */
+  color: var(--aw-color-text-primary); /* Darker heading */
 }
 
 .form-group {
@@ -133,7 +133,7 @@ const isManualAttemptError = computed(() => {
 .form-group input {
   width: calc(100% - 20px); /* Adjust for padding */
   padding: 8px 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--aw-color-border);
   border-radius: 4px;
   box-sizing: border-box;
 }
@@ -142,7 +142,7 @@ const isManualAttemptError = computed(() => {
   margin-top: 10px;
   margin-bottom: 20px;
   font-size: 0.9em;
-  color: #555;
+  color: var(--aw-color-text-secondary);
 }
 
 .modal-actions {
@@ -159,20 +159,20 @@ const isManualAttemptError = computed(() => {
 }
 
 .modal-actions button[type="submit"] {
-  background-color: #4CAF50; /* Green */
-  color: white;
+  background-color: var(--aw-color-success-500); /* Green */
+  color: var(--aw-color-text-on-primary);
 }
 
 .modal-actions button[type="button"] {
-  background-color: #f44336; /* Red */
-  color: white;
+  background-color: var(--aw-color-error-500); /* Red */
+  color: var(--aw-color-text-on-primary);
 }
 
 .error-message {
   margin-top: 15px;
-  color: #d32f2f; /* Red for errors */
-  background-color: #ffebee; /* Light red background */
-  border: 1px solid #d32f2f;
+  color: var(--aw-color-error-500); /* Red for errors */
+  background-color: var(--aw-color-error-50); /* Light red background */
+  border: 1px solid var(--aw-color-error-500);
   padding: 10px;
   border-radius: 4px;
 }

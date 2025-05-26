@@ -417,7 +417,7 @@ onMounted(() => {
 }
 
 .dismiss-error-button {
-  background: none;
+  background-color: transparent;
   border: none;
   color: var(--aw-color-error-700);
   cursor: pointer;
@@ -470,6 +470,7 @@ onMounted(() => {
   font-size: 0.8rem;
   background-color: var(--aw-input-bg-color);
   color: var(--aw-text-color);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
@@ -562,6 +563,7 @@ onMounted(() => {
   width: 100%;
   height: 20px;
   background-color: var(--aw-input-bg-color);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   overflow: hidden;

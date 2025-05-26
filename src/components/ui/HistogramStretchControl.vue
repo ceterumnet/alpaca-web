@@ -373,7 +373,7 @@ svg {
   background: var(--aw-histogram-bg);
   border-radius: var(--aw-border-radius-sm);
   box-shadow: var(--aw-shadow-sm);
-  color: var(--aw-histogram-svg-color, var(--aw-color-text-primary, #222));
+  color: var(--aw-histogram-svg-color, var(--aw-color-text-primary));
 }
 
 .handle-pill {
@@ -391,17 +391,17 @@ svg {
 }
 
 .handle-pill.black {
-  fill: var(--aw-histogram-black, #111);
+  fill: var(--aw-histogram-black);
   stroke: none;
 }
 
 .handle-pill.mid {
-  fill: var(--aw-histogram-mid, #0af);
+  fill: var(--aw-histogram-mid);
   stroke: none;
 }
 
 .handle-pill.white {
-  fill: var(--aw-histogram-white, #fff);
+  fill: var(--aw-histogram-white);
   stroke: none;
 }
 
@@ -443,9 +443,9 @@ svg {
   padding: 0.18rem 0.7rem;
   font-size: 0.95em;
   border-radius: var(--aw-border-radius-sm);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  background: var(--aw-button-primary-bg, #0af);
-  color: var(--aw-button-primary-text, #fff);
+  border: 1px solid var(--aw-panel-border-color);
+  background: var(--aw-button-primary-bg);
+  color: var(--aw-button-primary-text);
   cursor: pointer;
 }
 
@@ -467,8 +467,8 @@ svg {
   padding: 0.15rem 0.3rem;
   font-size: 0.95em;
   border-radius: var(--aw-border-radius-sm);
-  border: 1px solid var(--aw-panel-border-color, #444);
-  background: var(--aw-input-bg-color, #222);
-  color: var(--aw-color-text-primary, #fff);
+  border: 1px solid var(--aw-panel-border-color);
+  background: var(--aw-input-bg-color);
+  color: var(--aw-color-text-primary);
 }
 </style> 

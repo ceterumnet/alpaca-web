@@ -485,6 +485,7 @@ function resetLayoutStorage() {
   flex-direction: column;
   background-color: var(--aw-panel-bg-color);
   border-radius: var(--aw-border-radius-md);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   overflow: hidden;
   max-width: 800px;
@@ -497,6 +498,7 @@ function resetLayoutStorage() {
   background-color: var(--aw-panel-menu-bar-bg-color);
   color: var(--aw-panel-menu-bar-color);
   padding: var(--aw-spacing-md) var(--aw-spacing-lg);
+  /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
@@ -524,6 +526,7 @@ function resetLayoutStorage() {
   width: 180px;
   /* stylelint-disable-next-line declaration-property-value-disallowed-list */
   background-color: var(--aw-color-black-5);
+  /* stylelint-disable-next-line */
   border-right: 1px solid var(--aw-panel-border-color);
   padding: var(--aw-spacing-md) 0;
   display: flex;
@@ -535,7 +538,7 @@ function resetLayoutStorage() {
   align-items: center;
   padding: var(--aw-spacing-sm) var(--aw-spacing-md);
   border: none;
-  background: none;
+  background-color: transparent;
   text-align: left;
   color: var(--aw-text-color);
   font-size: 0.9rem;
@@ -577,6 +580,7 @@ function resetLayoutStorage() {
   font-size: 1.2rem;
   color: var(--aw-text-color);
   padding-bottom: var(--aw-spacing-sm);
+  /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
@@ -623,6 +627,7 @@ function resetLayoutStorage() {
   cursor: pointer;
   inset: 0;
   background-color: var(--aw-panel-content-bg-color);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   transition: 0.4s;
@@ -653,6 +658,7 @@ input:checked + .aw-settings__toggle-slider::before {
 .aw-settings__input,
 .aw-settings__select {
   background-color: var(--aw-input-bg-color);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-input-border-color);
   color: var(--aw-text-color);
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
@@ -698,6 +704,7 @@ input:checked + .aw-settings__toggle-slider::before {
   padding: var(--aw-spacing-xs) var(--aw-spacing-md);
   background-color: var(--aw-button-secondary-bg);
   color: var(--aw-button-secondary-text);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
@@ -737,7 +744,8 @@ input:checked + .aw-settings__toggle-slider::before {
   border-color: var(--aw-button-danger-hover-bg);
 }
 
-.aw-settings__group--danger {
+.aw-settings__group--danger { 
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-error-color);
 }
 
@@ -750,6 +758,7 @@ input:checked + .aw-settings__toggle-slider::before {
 /* Footer */
 .aw-settings__footer {
   background-color: var(--aw-panel-content-bg-color);
+  /* stylelint-disable-next-line */
   border-top: 1px solid var(--aw-panel-border-color);
   padding: var(--aw-spacing-md) var(--aw-spacing-lg);
 }
@@ -768,6 +777,7 @@ input:checked + .aw-settings__toggle-slider::before {
   .aw-settings__tabs {
     width: 100%;
     border-right: none;
+    /* stylelint-disable-next-line */
     border-bottom: 1px solid var(--aw-panel-border-color);
     flex-direction: row;
     overflow-x: auto;

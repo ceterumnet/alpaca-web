@@ -252,7 +252,12 @@ onBeforeUnmount(() => {
   align-items: baseline;
   font-size: 1rem;
 }
-.current-filter-display .label { color: var(--aw-text-secondary-color); font-size: 0.9rem; }
+
+.current-filter-display .label { 
+  color: var(--aw-text-secondary-color); 
+  font-size: 0.9rem; 
+}
+
 .current-filter-display .value { font-weight: var(--aw-font-weight-medium); }
 
 .filter-selection select {

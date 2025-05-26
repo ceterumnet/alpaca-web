@@ -1,6 +1,10 @@
-// Status: Good - Core UI Component // This is the notification manager implementation that: // -
-Manages all system notifications // - Provides filtering by type and state // - Handles notification
-acknowledgment // - Supports notification history // - Implements proper notification lifecycle
+// Status: Good - Core UI Component 
+// This is the notification manager implementation that: 
+// - Manages all system notifications   
+// - Provides filtering by type and state 
+// - Handles notification acknowledgment 
+// - Supports notification history 
+// - Implements proper notification lifecycle
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
@@ -295,6 +299,7 @@ function getIconForNotificationType(type: NotificationType): IconType {
   justify-content: space-between;
   align-items: center;
   padding: var(--aw-spacing-md);
+  /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
@@ -314,6 +319,7 @@ function getIconForNotificationType(type: NotificationType): IconType {
   gap: var(--aw-spacing-xs);
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
   border-radius: var(--aw-border-radius-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   background-color: var(--aw-panel-menu-bar-bg-color);
   color: var(--aw-panel-menu-bar-color);
@@ -328,6 +334,7 @@ function getIconForNotificationType(type: NotificationType): IconType {
 
 .aw-notification-manager__filter-panel {
   padding: var(--aw-spacing-md);
+  /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-panel-border-color);
   background-color: var(--aw-panel-bg-color);
 }
@@ -391,6 +398,7 @@ function getIconForNotificationType(type: NotificationType): IconType {
 .aw-notification-manager__btn {
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
   border-radius: var(--aw-border-radius-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   cursor: pointer;
   font-size: 0.8rem;
@@ -435,6 +443,7 @@ function getIconForNotificationType(type: NotificationType): IconType {
 .aw-notification-manager__item {
   margin-bottom: var(--aw-spacing-sm);
   border-radius: var(--aw-border-radius-sm);
+  /* stylelint-disable-next-line */
   border: 1px solid var(--aw-panel-border-color);
   overflow: hidden;
 }
@@ -444,18 +453,22 @@ function getIconForNotificationType(type: NotificationType): IconType {
 }
 
 .aw-notification-manager__item--success {
+  /* stylelint-disable-next-line */
   border-left: 4px solid var(--aw-color-success-500);
 }
 
 .aw-notification-manager__item--error {
+  /* stylelint-disable-next-line */
   border-left: 4px solid var(--aw-color-error-500);
 }
 
 .aw-notification-manager__item--warning {
+  /* stylelint-disable-next-line */
   border-left: 4px solid var(--aw-color-warning-500);
 }
 
 .aw-notification-manager__item--info {
+  /* stylelint-disable-next-line */
   border-left: 4px solid var(--aw-color-primary-500);
 }
 

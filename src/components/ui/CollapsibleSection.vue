@@ -38,8 +38,6 @@ function toggle() {
   background: var(--aw-panel-content-bg-color);
   border-radius: var(--aw-border-radius-sm);
   border: 1px solid var(--aw-panel-border-color);
-
-  /* margin-bottom: var(--aw-spacing-md); */
   box-shadow: var(--aw-shadow-xs, none);
 }
 

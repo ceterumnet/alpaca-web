@@ -164,11 +164,11 @@ const currentPositions = computed(() => {
   min-width: 0;
 
   /* Show border for debugging */
-  outline: 1px dashed var(--aw-color-debug-border, rgb(255 255 255 / 5%));
+  outline: 1px dashed var(--aw-color-debug-border);
   
   /* Firefox scrollbar styling */
   scrollbar-width: thin;
-  scrollbar-color: var(--aw-scrollbar-thumb, #666) var(--aw-scrollbar-track, #333);
+  scrollbar-color: var(--aw-scrollbar-thumb) var(--aw-scrollbar-track);
   
   /* WebKit scrollbar styling */
   &::-webkit-scrollbar {
@@ -176,11 +176,11 @@ const currentPositions = computed(() => {
   }
   
   &::-webkit-scrollbar-track {
-    background: var(--aw-scrollbar-track, #333);
+    background: var(--aw-scrollbar-track);
   }
   
   &::-webkit-scrollbar-thumb {
-    background-color: var(--aw-scrollbar-thumb, #666);
+    background-color: var(--aw-scrollbar-thumb);
     border-radius: var(--aw-spacing-xs);
   }
 }
