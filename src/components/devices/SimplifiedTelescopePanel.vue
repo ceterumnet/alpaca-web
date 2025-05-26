@@ -2,7 +2,6 @@
 import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import { setAlpacaProperty, callAlpacaMethod } from '@/utils/alpacaPropertyAccess'
 import { formatRaNumber, formatDecNumber, parseRaString, parseDecString, formatSiderealTime } from '@/utils/astroCoordinates'
 import CollapsibleSection from '@/components/ui/CollapsibleSection.vue'
 import { useNotificationStore } from '@/stores/useNotificationStore'
@@ -70,9 +69,7 @@ function parseDecInput(val: string): number | null {
 
 // Slew action with validation and notification
 const notificationStore = useNotificationStore()
-const isSlewingFlag = computed(() => {
-  return !!currentDevice.value?.properties?.slewing
-})
+
 // Add a local ref for UI state during slew
 const isSlewingLocal = ref(false)
 async function handleSlew() {
@@ -175,7 +172,7 @@ const tracking = computed({
   set: async (newValue: boolean) => {
     if (!props.deviceId) return
     try {
-      await setAlpacaProperty(props.deviceId, 'tracking', newValue)
+      await store.setTelescopeTracking(props.deviceId, newValue, selectedTrackingRate.value)
     } catch (error) {
       log.error({ deviceIds: [props.deviceId] }, 'Error toggling tracking:', error)
     }
@@ -191,7 +188,7 @@ const selectedTrackingRate = computed({
   set: async (newValue: number) => {
     if (!props.deviceId) return
     try {
-      await setAlpacaProperty(props.deviceId, 'trackingRate', newValue)
+      await store.setTelescopeTracking(props.deviceId, tracking.value, newValue)
     } catch (error) {
       log.error({ deviceIds: [props.deviceId] }, 'Error setting tracking rate:', error)
     }
@@ -237,23 +234,6 @@ const formattedDec = computed<string>(() => {
   return formatDecNumber(declination.value)
 })
 
-// Simple slew to coordinates
-const slewToCoordinates = async () => {
-  try {
-    await callAlpacaMethod(props.deviceId, 'slewToCoordinates', {
-      rightAscension: targetRA.value,
-      declination: targetDec.value
-    })
-  } catch (error) {
-    log.error({ deviceIds: [props.deviceId] }, 'Error slewing to coordinates:', error)
-  }
-}
-
-// Axis rate selector state
-type AxisRateObj = { Value: number; Name?: string }
-function isAxisRateObj(r: unknown): r is AxisRateObj {
-  return typeof r === 'object' && r !== null && typeof (r as { Value?: unknown }).Value === 'number'
-}
 const SIDEREAL_RATE = 0.004178 // degrees per second
 const COMMON_MULTIPLIERS = [0.5, 1, 4, 8, 20, 60, 120]
 const axisRates = ref<{ label: string; value: number }[]>([])
@@ -302,7 +282,7 @@ async function fetchAxisRates() {
       axisRates.value = [{ label: 'Default', value: 0.5 }]
       selectedAxisRate.value = 0.5
     }
-  } catch (e) {
+  } catch (_e) {
     axisRates.value = [{ label: 'Default', value: 0.5 }]
     selectedAxisRate.value = 0.5
   }
@@ -315,7 +295,7 @@ watch(() => props.deviceId, fetchAxisRates)
 const moveDirection = async (direction: string) => {
   try {
     if (direction === 'stop') {
-      await callAlpacaMethod(props.deviceId, 'abortSlew')
+      await store.abortSlew(props.deviceId)
       return
     }
     let axisParam = null
@@ -335,24 +315,12 @@ const moveDirection = async (direction: string) => {
         break
     }
     if (axisParam) {
-      await callAlpacaMethod(props.deviceId, 'moveAxis', axisParam)
+      await store.moveAxis(props.deviceId, axisParam.axis, axisParam.rate)
     }
   } catch (error) {
     log.error({ deviceIds: [props.deviceId] }, `Error moving telescope ${direction}:`, error)
   }
 }
-
-// Add computed for sync support and live status flags
-const canSync = computed(() => {
-  // Check if the device supports syncToCoordinates (store or device property)
-  return typeof store.syncToCoordinates === 'function'
-})
-const isParked = computed(() => {
-  return !!currentDevice.value?.properties?.atpark
-})
-const isTracking = computed(() => {
-  return !!currentDevice.value?.properties?.tracking
-})
 
 // Update Park/Unpark/Find Home to use notifications
 const isParking = ref(false)
@@ -482,12 +450,6 @@ const panelStatus = computed(() => {
   return 'Idle'
 })
 
-// Example: Error handling (to be replaced with notification system integration)
-function showError(msg: string) {
-  panelError.value = msg
-  // TODO: Also send to notification system
-  log.error({ deviceIds: [props.deviceId] }, msg)
-}
 function clearError() {
   panelError.value = null
 }

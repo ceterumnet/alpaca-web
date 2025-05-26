@@ -1222,8 +1222,8 @@ export function createTelescopeActions() {
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
         try {
-          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'moveaxis', args: [axis, rate], result: undefined })
-          await this.callDeviceMethod(deviceId, 'moveaxis', [axis, rate])
+          this._emitEvent({ type: 'deviceMethodCalled', deviceId, method: 'moveaxis', args: [{ Axis: axis, Rate: rate }], result: undefined })
+          await this.callDeviceMethod(deviceId, 'moveaxis', [{ Axis: axis, Rate: rate }])
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: `lastMoveAxis_${axis}`, value: rate })
           return true
         } catch (error) {
