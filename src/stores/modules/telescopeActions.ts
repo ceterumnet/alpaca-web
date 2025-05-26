@@ -773,10 +773,10 @@ export function createTelescopeActions() {
           // Execute appropriate slew method based on async preference
           if (useAsync) {
             // Method name should be lowercase in URL but preserve capitalization in parameters
-            await this.callDeviceMethod(deviceId, 'slewtocoordinatesasync', [])
+            await this.callDeviceMethod(deviceId, 'slewtocoordinatesasync', [{ RightAscension: rightAscension, Declination: declination }])
           } else {
             // Method name should be lowercase in URL but preserve capitalization in parameters
-            await this.callDeviceMethod(deviceId, 'slewtocoordinates', [])
+            await this.callDeviceMethod(deviceId, 'slewtocoordinates', [{ RightAscension: rightAscension, Declination: declination }])
 
             // For synchronous slew, update properties and emit completed event
             this.updateDeviceProperties(deviceId, {

@@ -225,6 +225,14 @@
   --aw-spacing-xl: 32px;
   --aw-spacing-xxl: 48px;
 
+  /* Font sizes */
+  --aw-font-size-xs: 0.625em;
+  --aw-font-size-sm: 0.75em;
+  --aw-font-size-md: 0.875em;
+  --aw-font-size-lg: 1.125em;
+  --aw-font-size-xl: 1.25em;
+  --aw-font-size-xxl: 1.5em;
+
   /* ============================================================
      LAYOUT TOKENS
      ============================================================ */
