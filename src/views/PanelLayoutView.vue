@@ -704,10 +704,13 @@ const getPanelTypeName = (panelId: string): string => {
                       }"
                     ></span>
                     <h3 style="margin: 0;">{{ getDeviceTitle(position.panelId) }}</h3>
+                    <div v-if="getDeviceConnectionInfo(position.panelId)" class="connection-info">
+                      {{ getDeviceConnectionInfo(position.panelId) }}
+                    </div>
                   </div>
-                  <div v-if="getDeviceConnectionInfo(position.panelId)" class="connection-info">
+                  <!-- <div v-if="getDeviceConnectionInfo(position.panelId)" class="connection-info">
                     {{ getDeviceConnectionInfo(position.panelId) }}
-                  </div>
+                  </div> -->
                 </template>
               </div>
               
@@ -848,6 +851,8 @@ const getPanelTypeName = (panelId: string): string => {
   padding: 8px;
   /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-panel-border-color);
+
+  /* height: 51px; */
 }
 
 .panel-title {

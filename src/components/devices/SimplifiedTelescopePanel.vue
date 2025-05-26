@@ -139,12 +139,15 @@ const utcDate = computed(() => {
   // Try both camelCase and lower-case
   return (props?.utcDate ?? props?.utcdate) as string | undefined;
 })
+
 const formattedUTCDate = computed(() => {
   if (!utcDate.value) return '--';
-  // Show as UTC, but in a readable format
+  // Show as UTC, but in a readable format without subseconds
   try {
     const d = new Date(utcDate.value)
-    return d.toISOString().replace('T', ' ').replace('Z', ' UTC')
+    // Format: YYYY-MM-DD HH:MM:SS UTC
+    const iso = d.toISOString().replace('T', ' ').replace('Z', ' UTC')
+    return iso.replace(/\.(\d+)(?= UTC)/, '') // Remove subseconds
   } catch {
     return utcDate.value
   }
@@ -546,7 +549,7 @@ const statusBadgeClass = computed(() => {
             <div class="aw-info-value" role="cell">{{ formattedLST }}</div>
           </div>
           <div class="aw-info-row" role="row">
-            <div class="aw-info-label" role="cell">Telescope Time (UTC)</div>
+            <div class="aw-info-label" role="cell">Time</div>
             <div class="aw-info-value" role="cell">{{ formattedUTCDate }}</div>
           </div>
           <div class="aw-info-row" role="row">
@@ -558,13 +561,11 @@ const statusBadgeClass = computed(() => {
             <div class="aw-info-value" role="cell">{{ formattedLon }}</div>
           </div>
         </div>
-        <!-- NESW 3x3 Grid -->
-        <div class="aw-direction-pad-3x3 aw-direction-pad-vertical">
+        <div>
+<!-- NESW 3x3 Grid -->
+<div class="aw-direction-pad-3x3 aw-direction-pad-vertical">
           <!-- Top row: Find Home, North, empty -->
-          <button class="aw-btn aw-btn--secondary" aria-label="Find Home" :disabled="isFindingHome" @click="findHome">
-            <span v-if="isFindingHome" class="aw-spinner"></span>
-            <Icon type="home" size="24" />
-          </button>
+          <span></span>
           <button class="aw-btn aw-btn--secondary" aria-label="Move North" @click="moveDirection('up')">
             <Icon type="arrow-up" size="24" />
           </button>
@@ -580,18 +581,29 @@ const statusBadgeClass = computed(() => {
             <Icon type="arrow-right" size="24" />
           </button>
           <!-- Bottom row: Park, South, Unpark -->
+          <span></span>
+          <button class="aw-btn aw-btn--secondary" aria-label="Move South" @click="moveDirection('down')">
+            <Icon type="arrow-down" size="24" />
+          </button>
+          <span></span>
+        </div>
+
+        <div class="aw-direction-pad-supplemental  aw-direction-pad-vertical">
+          <button class="aw-btn aw-btn--secondary" aria-label="Find Home" :disabled="isFindingHome" @click="findHome">
+            <span v-if="isFindingHome" class="aw-spinner"></span>
+            <Icon type="home" size="24" />
+          </button>
           <button class="aw-btn aw-btn--secondary" aria-label="Park telescope" :disabled="isParking" @click="parkTelescope">
             <span v-if="isParking" class="aw-spinner"></span>
             <Icon type="park" size="24" />
-          </button>
-          <button class="aw-btn aw-btn--secondary" aria-label="Move South" @click="moveDirection('down')">
-            <Icon type="arrow-down" size="24" />
           </button>
           <button class="aw-btn aw-btn--secondary" aria-label="Unpark telescope" :disabled="isUnparking" @click="unparkTelescope">
             <span v-if="isUnparking" class="aw-spinner"></span>
             <Icon type="unpark" size="24" />
           </button>
         </div>
+        </div>
+        
       </div>
       <!-- Actions below -->
       <div class="aw-movement-actions">
@@ -855,8 +867,19 @@ const statusBadgeClass = computed(() => {
   margin: var(--aw-spacing-xs) 0 var(--aw-spacing-md);
 }
 
+.aw-direction-pad-supplemental {
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+
+  /* grid-template-rows: repeat(1, 48px); */
+  gap: var(--aw-spacing-xs);
+  justify-content: center;
+  align-items: center;
+  margin: var(--aw-spacing-xs) 0 var(--aw-spacing-md);
+}
+
 /* NESW pad button sizing */
-.aw-direction-pad-3x3 .aw-btn {
+.aw-direction-pad-3x3 .aw-btn, .aw-direction-pad-supplemental .aw-btn {
   width: 48px;
   height: 48px;
   font-size: var(--aw-font-size-xl, 1.5em);
@@ -865,7 +888,7 @@ const statusBadgeClass = computed(() => {
   justify-content: center;
 }
 
-.aw-direction-pad-3x3 .aw-btn:hover {
+.aw-direction-pad-3x3 .aw-btn:hover, .aw-direction-pad-supplemental .aw-btn:hover {
   background: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
 }
@@ -886,16 +909,6 @@ const statusBadgeClass = computed(() => {
     align-items: flex-start;
   }
 
-  .aw-direction-pad-3x3 {
-    grid-template-columns: repeat(3, 36px);
-    grid-template-rows: repeat(3, 36px);
-  }
-
-  .aw-direction-pad-3x3 .aw-btn {
-    width: 36px;
-    height: 36px;
-    font-size: var(--aw-font-size-base, 1.1em);
-  }
 }
 
 .aw-actions-row {
@@ -975,7 +988,7 @@ const statusBadgeClass = computed(() => {
 
 @media (width <= 900px) {
   .aw-main-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;
     gap: var(--aw-spacing-md);
   }
@@ -987,7 +1000,8 @@ const statusBadgeClass = computed(() => {
 
   .aw-info-table {
     min-width: 0;
-    max-width: 100%;
+
+    /* max-width: 60%; */
   }
 
 }
