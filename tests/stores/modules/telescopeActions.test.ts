@@ -731,7 +731,7 @@ describe('telescopeActions.ts', () => {
     const testRA = 12.5
     const testDec = 45.75
 
-    it('should call target, slew async, update props, and emit events on success (async)', async () => {
+    it('should slew async, update props, and emit events on success (async)', async () => {
       mockCallDeviceMethod.mockResolvedValue(undefined) // All calls succeed
       const mockDevice = {
         ...mockTelescopeDevice,
@@ -743,15 +743,9 @@ describe('telescopeActions.ts', () => {
 
       expect(result).toBe(true)
       expect(mockGetDeviceById).toHaveBeenCalledWith(testDeviceId)
-      expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'targetrightascension', [{ TargetRightAscension: testRA }])
-      expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'targetdeclination', [{ TargetDeclination: testDec }])
-      expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'slewtocoordinatesasync', [])
-
-      // For async, the action itself might not update slewing: true and tracking: false immediately.
-      // This depends on whether the action optimistically updates or waits for polling.
-      // The provided code snippet for slewToCoordinates (async) does NOT update these properties itself.
-      // It only emits 'telescopeSlewStarted'. Let's assume no direct property update here.
-      // expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(testDeviceId, { slewing: true, tracking: false })
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, testDeviceId, 'targetrightascension', [{ TargetRightAscension: testRA }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, testDeviceId, 'targetdeclination', [{ TargetDeclination: testDec }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(3, testDeviceId, 'slewtocoordinatesasync', [{ RightAscension: testRA, Declination: testDec }])
 
       expect(mockEmitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -774,9 +768,9 @@ describe('telescopeActions.ts', () => {
       const result = await store.slewToCoordinates(testDeviceId, testRA, testDec, false) // useAsync = false
 
       expect(result).toBe(true)
-      expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'targetrightascension', [{ TargetRightAscension: testRA }])
-      expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'targetdeclination', [{ TargetDeclination: testDec }])
-      expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'slewtocoordinates', [])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(1, testDeviceId, 'targetrightascension', [{ TargetRightAscension: testRA }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(2, testDeviceId, 'targetdeclination', [{ TargetDeclination: testDec }])
+      expect(mockCallDeviceMethod).toHaveBeenNthCalledWith(3, testDeviceId, 'slewtocoordinates', [{ RightAscension: testRA, Declination: testDec }])
 
       expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(testDeviceId, {
         rightascension: testRA,
@@ -814,14 +808,7 @@ describe('telescopeActions.ts', () => {
       await expect(store.slewToCoordinates(testDeviceId, testRA, testDec, true)).rejects.toThrow(apiError)
 
       expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'targetrightascension', [{ TargetRightAscension: testRA }])
-      // SlewStarted event should not be emitted if setting target fails before that point
-      // However, the current code emits slewStarted *before* the actual slew command, after setting targets.
-      // Let's check the current implementation for when slewStarted is emitted. It's after target setting.
-      // So if targetrightascension fails, slewStarted is NOT emitted. If targetdeclination fails, it is also NOT emitted.
-      // If slewtocoordinatesasync fails, then slewStarted WOULD have been emitted.
-      // For this test, where targetrightascension fails, slewStarted should not be emitted.
       expect(mockEmitEvent).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'telescopeSlewStarted' }))
-
       expect(mockEmitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'telescopeSlewError',
@@ -847,9 +834,8 @@ describe('telescopeActions.ts', () => {
 
       expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'targetrightascension', [{ TargetRightAscension: testRA }])
       expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'targetdeclination', [{ TargetDeclination: testDec }])
-      expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'slewtocoordinatesasync', [])
+      expect(mockCallDeviceMethod).toHaveBeenCalledWith(testDeviceId, 'slewtocoordinatesasync', [{ RightAscension: testRA, Declination: testDec }])
 
-      // SlewStarted IS emitted before the actual slew command if targets were set successfully
       expect(mockEmitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'telescopeSlewStarted',
