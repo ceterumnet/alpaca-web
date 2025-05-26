@@ -19,7 +19,10 @@ export interface LogEntry {
 const MAX_LOG_ENTRIES = 1000 // Define a max number of log entries to keep
 
 export const useLogStore = defineStore('logStore', () => {
-  const logEntries = ref<LogEntry[]>([])
+  // --- Circular buffer implementation ---
+  const logBuffer = ref<(LogEntry | undefined)[]>(Array(MAX_LOG_ENTRIES).fill(undefined))
+  const logIndex = ref(0) // Points to the next slot to write
+  const logCount = ref(0) // Total number of logs ever added (for correct slicing)
 
   // UI-specific state for filtering and display
   const filterLevel = ref<LogLevel | 'ALL'>('ALL')
@@ -27,21 +30,32 @@ export const useLogStore = defineStore('logStore', () => {
   const filterSource = ref<string>('') // For filtering by source/module
   const filterDeviceIds = ref<string[]>([]) // For filtering by specific device UIDs
 
+  // Computed: logs in newest-first order
+  const logEntries = computed<LogEntry[]>(() => {
+    const result: LogEntry[] = []
+    const total = Math.min(logCount.value, MAX_LOG_ENTRIES)
+    for (let i = 0; i < total; i++) {
+      const idx = (logIndex.value - 1 - i + MAX_LOG_ENTRIES) % MAX_LOG_ENTRIES
+      const entry = logBuffer.value[idx]
+      if (entry) result.push(entry)
+    }
+    return result
+  })
+
   const addLogEntry = (entryData: Omit<LogEntry, 'id'>) => {
     const newEntry: LogEntry = {
       ...entryData,
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
     }
-    logEntries.value.unshift(newEntry) // Add to the beginning of the array
-
-    // Keep the array size manageable
-    if (logEntries.value.length > MAX_LOG_ENTRIES) {
-      logEntries.value.splice(MAX_LOG_ENTRIES)
-    }
+    logBuffer.value[logIndex.value] = newEntry
+    logIndex.value = (logIndex.value + 1) % MAX_LOG_ENTRIES
+    logCount.value++
   }
 
   const clearLogs = () => {
-    logEntries.value = []
+    logBuffer.value = Array(MAX_LOG_ENTRIES).fill(undefined)
+    logIndex.value = 0
+    logCount.value = 0
   }
 
   const filteredLogEntries = computed(() => {
@@ -79,7 +93,7 @@ export const useLogStore = defineStore('logStore', () => {
   }
 
   return {
-    logEntries, // Raw entries, might not be needed by most components
+    logEntries, // Raw entries, newest first
     filteredLogEntries, // For the log viewer
     filterLevel, // For binding to UI controls
     filterKeyword, // For binding to UI controls
