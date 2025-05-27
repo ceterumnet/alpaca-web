@@ -957,3 +957,42 @@ export function generateDisplayImageWorker(
     // Optionally handle errors
   });
 }
+
+// --- Worker-based full histogram calculation ---
+let histogramWorker: Worker | null = null;
+let histogramRequestId = 0;
+const histogramPendingRequests = new Map<number, (hist: number[]) => void>();
+
+function getHistogramWorker() {
+  if (!histogramWorker) {
+    histogramWorker = new Worker(new URL('./HistogramWorker.ts', import.meta.url), { type: 'module' });
+    histogramWorker.onmessage = (e: MessageEvent) => {
+      const { id, histogram } = e.data;
+      const resolve = histogramPendingRequests.get(id);
+      if (resolve) {
+        resolve(histogram as number[]);
+        histogramPendingRequests.delete(id);
+      }
+    };
+  }
+  return histogramWorker;
+}
+
+export function generateFullDisplayHistogramWorker(
+  data: Uint8Array | Uint16Array | Uint32Array | number[],
+  width: number,
+  height: number,
+  min: number,
+  max: number,
+  binCount: number,
+  channels: 1 | 3,
+  order: 'column-major' | 'row-major',
+  lut: Uint8Array
+): Promise<number[]> {
+  return new Promise((resolve) => {
+    const worker = getHistogramWorker();
+    const id = ++histogramRequestId;
+    histogramPendingRequests.set(id, resolve);
+    worker.postMessage({ id, data, width, height, min, max, binCount, channels, order, lut });
+  });
+}

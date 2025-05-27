@@ -14,21 +14,21 @@ import init, {
 //   postMessage(message: any, transfer?: Transferable[]): void;
 // }
 
-console.log('[worker] loaded');
+// console.log('[worker] loaded');
 
 const messageQueue: MessageEvent[] = [];
 let wasmReady = false;
 
 self.onmessage = function(e) {
   if (!wasmReady) {
-    console.log('[worker] QUEUED message', e.data);
+    // console.log('[worker] QUEUED message', e.data);
     messageQueue.push(e);
   }
 };
 
 await init();
 wasmReady = true;
-console.log('[worker] WASM initialized');
+// console.log('[worker] WASM initialized');
 
 // Process any queued messages
 for (const e of messageQueue) {
@@ -39,31 +39,31 @@ for (const e of messageQueue) {
 self.onmessage = handleMessage;
 
 async function handleMessage(e: MessageEvent) {
-  console.log('[worker] onmessage: received', e.data);
+  // console.log('[worker] onmessage: received', e.data);
   const { id, data, width, height, lut, channels } = e.data;
   const output = new Uint8Array(width * height * 4);
 
   const timingLabel = `[worker] WASM processing (id=${id})`;
-  console.time(timingLabel);
+  // console.time(timingLabel);
 
   if (data instanceof Uint8Array) {
-    console.log('[worker] Calling generate_display_image_u8', { length: data.length, width, height, lutLength: lut.length, channels });
+    // console.log('[worker] Calling generate_display_image_u8', { length: data.length, width, height, lutLength: lut.length, channels });
     generate_display_image_u8(data, width, height, lut, channels, output);
   } else if (data instanceof Uint16Array) {
-    console.log('[worker] Calling generate_display_image_u16', { length: data.length, width, height, lutLength: lut.length, channels });
+    // console.log('[worker] Calling generate_display_image_u16', { length: data.length, width, height, lutLength: lut.length, channels });
     generate_display_image_u16(data, width, height, lut, channels, output);
   } else if (data instanceof Uint32Array) {
-    console.log('[worker] Calling generate_display_image_u32', { length: data.length, width, height, lutLength: lut.length, channels });
+    // console.log('[worker] Calling generate_display_image_u32', { length: data.length, width, height, lutLength: lut.length, channels });
     generate_display_image_u32(data, width, height, lut, channels, output);
   } else {
-    console.error('[worker] Unsupported data type', data);
+    // console.error('[worker] Unsupported data type', data);
     return;
   }
 
-  console.timeEnd(timingLabel);
+  // console.timeEnd(timingLabel);
 
   const clamped = new Uint8ClampedArray(output.buffer);
-  console.log('[worker] Posting result', { length: clamped.length, sample: clamped.slice(0, 16) });
+  // console.log('[worker] Posting result', { length: clamped.length, sample: clamped.slice(0, 16) });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).postMessage({ id, outputData: clamped }, [clamped.buffer]);
 }

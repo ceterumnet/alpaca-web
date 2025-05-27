@@ -11,7 +11,8 @@ import {
   // generateDisplayImage, // replaced by worker
   calculateHistogram as calculateLibHistogram,
   processImageBytesCallCount,
-  generateDisplayImageWorker
+  generateDisplayImageWorker,
+  generateFullDisplayHistogramWorker
 } from '@/lib/ASCOMImageBytes'
 import type { ProcessedImageData, BayerPattern } from '@/lib/ASCOMImageBytes'
 import Icon from '@/components/ui/Icon.vue' // Import the Icon component
@@ -101,6 +102,7 @@ const pixelTooltipPos = ref({ x: 0, y: 0 })
 
 // Add at module scope:
 let latestDrawRequestId = 0
+let latestHistogramRequestId = 0
 
 // Helper to get 3x3 average at (x, y)
 function get3x3Average(x: number, y: number): number[] {
@@ -170,7 +172,7 @@ function onCanvasMouseLeave() {
 // Draw the image on canvas
 const drawImage = async () => {
   const thisDrawRequestId = ++latestDrawRequestId
-  console.time('drawImage')
+  // console.time('drawImage')
   log.debug(
     {
       imageData: props.imageData,
@@ -184,14 +186,14 @@ const drawImage = async () => {
 
   if (!canvasRef.value) {
     log.warn('CameraImageDisplay: drawImage aborted - no canvas.')
-    console.timeEnd('drawImage')
+    // console.timeEnd('drawImage')
     return
   }
 
   const canvas = canvasRef.value
   const ctx = canvas.getContext('2d')
   if (!ctx) {
-    console.timeEnd('drawImage')
+    // console.timeEnd('drawImage')
     return
   }
 
@@ -212,9 +214,9 @@ const drawImage = async () => {
       ctx.setLineDash([6, 4])
       ctx.strokeRect(props.subframe.startX, props.subframe.startY, props.subframe.numX, props.subframe.numY)
       ctx.restore()
-      console.log('Subframe overlay (placeholder):', props.subframe)
+      // console.log('Subframe overlay (placeholder):', props.subframe)
     }
-    console.timeEnd('drawImage')
+    // console.timeEnd('drawImage')
     return
   }
 
@@ -228,13 +230,13 @@ const drawImage = async () => {
 
   if (!processedImage.value) {
     log.error('Image processing failed in drawImage')
-    console.timeEnd('drawImage')
+    // console.timeEnd('drawImage')
     return
   }
 
   const imageWidth = processedImage.value.width
   const imageHeight = processedImage.value.height
-  console.log('drawImage: imageWidth', imageWidth, 'imageHeight', imageHeight, 'subframe', props.subframe)
+  // console.log('drawImage: imageWidth', imageWidth, 'imageHeight', imageHeight, 'subframe', props.subframe)
 
   const minToUse = minPixelValue.value
   const maxToUse = maxPixelValue.value
@@ -242,22 +244,22 @@ const drawImage = async () => {
   const methodToUse = stretchMethod.value
 
   // Create an efficient lookup table for the stretch method
-  console.time('drawImage:createStretchLUT')
+  // console.time('drawImage:createStretchLUT')
   const lut = createStretchLUT(minToUse, maxToUse, methodToUse, processedImage.value.bitsPerPixel, gammaToUse)
-  console.timeEnd('drawImage:createStretchLUT')
+  // console.timeEnd('drawImage:createStretchLUT')
 
   // Generate display image data efficiently
-  console.time('drawImage:workerCall')
-  console.log('[main] About to post to worker', {
-    pixelData: processedImage.value.pixelData,
-    width: imageWidth,
-    height: imageHeight,
-    lut: lut,
-    channels: processedImage.value.channels,
-    pixelDataType: processedImage.value.pixelData && processedImage.value.pixelData.constructor && processedImage.value.pixelData.constructor.name,
-    pixelDataLength: processedImage.value.pixelData && processedImage.value.pixelData.length
-  })
-  console.log('[main] Calling generateDisplayImageWorker')
+  // console.time('drawImage:workerCall')
+  // console.log('[main] About to post to worker', {
+  //   pixelData: processedImage.value.pixelData,
+  //   width: imageWidth,
+  //   height: imageHeight,
+  //   lut: lut,
+  //   channels: processedImage.value.channels,
+  //   pixelDataType: processedImage.value.pixelData && processedImage.value.pixelData.constructor && processedImage.value.pixelData.constructor.name,
+  //   pixelDataLength: processedImage.value.pixelData && processedImage.value.pixelData.length
+  // })
+  // console.log('[main] Calling generateDisplayImageWorker')
   let imageData: unknown
   try {
     imageData = await generateDisplayImageWorker(
@@ -267,22 +269,22 @@ const drawImage = async () => {
       lut,
       processedImage.value.channels // Pass channels
     )
-    console.log('[main] generateDisplayImageWorker resolved')
+    // console.log('[main] generateDisplayImageWorker resolved')
   } catch (err) {
     console.error('[main] generateDisplayImageWorker threw:', err)
   }
-  console.timeEnd('drawImage:workerCall')
+  // console.timeEnd('drawImage:workerCall')
 
   // After receiving imageData from the worker and before drawing:
-  console.log('[main] About to draw image')
+  // console.log('[main] About to draw image')
   if (isUint8ArrayLike(imageData)) {
-    console.log('[main] imageData length:', imageData.length)
-    console.log('[main] imageData sample:', Array.from(imageData.slice(0, 16)))
-    console.log('[main] alpha values:', imageData[3], imageData[7], imageData[11], imageData[15])
+    // console.log('[main] imageData length:', imageData.length)
+    // console.log('[main] imageData sample:', Array.from(imageData.slice(0, 16)))
+    // console.log('[main] alpha values:', imageData[3], imageData[7], imageData[11], imageData[15])
   } else {
     console.error('[main] imageData is not a Uint8Array or Uint8ClampedArray:', imageData)
   }
-  console.log('[main] canvas size:', canvas.width, canvas.height, 'image size:', imageWidth, imageHeight)
+  // console.log('[main] canvas size:', canvas.width, canvas.height, 'image size:', imageWidth, imageHeight)
 
   // Sanity checks
   if (!(imageData instanceof Uint8ClampedArray)) {
@@ -298,23 +300,23 @@ const drawImage = async () => {
   }
 
   if (thisDrawRequestId !== latestDrawRequestId) {
-    console.log('drawImage: Skipping outdated render', thisDrawRequestId, 'current', latestDrawRequestId)
-    console.timeEnd('drawImage')
+    // console.log('drawImage: Skipping outdated render', thisDrawRequestId, 'current', latestDrawRequestId)
+    // console.timeEnd('drawImage')
     return
   }
 
   // Only now resize and clear the canvas, then draw
-  console.time('drawImage:canvasResizeClear')
+  // console.time('drawImage:canvasResizeClear')
   canvas.width = imageWidth
   canvas.height = imageHeight
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  console.timeEnd('drawImage:canvasResizeClear')
+  // console.timeEnd('drawImage:canvasResizeClear')
 
   // Create ImageData object for canvas
-  console.time('drawImage:putImageData')
+  // console.time('drawImage:putImageData')
   const imgData = new ImageData(imageData as Uint8ClampedArray, imageWidth, imageHeight)
   ctx.putImageData(imgData, 0, 0)
-  console.timeEnd('drawImage:putImageData')
+  // console.timeEnd('drawImage:putImageData')
 
   // Draw subframe overlay if present and valid
   if (
@@ -329,7 +331,7 @@ const drawImage = async () => {
     ctx.setLineDash([6, 4])
     ctx.strokeRect(props.subframe.startX, props.subframe.startY, props.subframe.numX, props.subframe.numY)
     ctx.restore()
-    console.log('Subframe overlay:', props.subframe)
+    // console.log('Subframe overlay:', props.subframe)
   }
 
   // If full screen is active, update its source too
@@ -339,7 +341,7 @@ const drawImage = async () => {
       fullScreenImageSrc.value = canvasRef.value.toDataURL('image/png')
     }
   }
-  console.timeEnd('drawImage')
+  // console.timeEnd('drawImage')
 }
 
 // Calculate histogram from the image data
@@ -418,8 +420,8 @@ function setDraggingFalse() {
   calculateHistogram()
 }
 
-const calculateHistogram = () => {
-  console.time('calculateHistogram')
+const calculateHistogram = async () => {
+  // console.time('calculateHistogram')
   if (props.imageData.byteLength === 0) {
     histogram.value = []
     rawHistogram.value = []
@@ -429,7 +431,7 @@ const calculateHistogram = () => {
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
     }
-    console.timeEnd('calculateHistogram')
+    // console.timeEnd('calculateHistogram')
     return []
   }
   const rawHistKey = getRawHistKey()
@@ -446,7 +448,7 @@ const calculateHistogram = () => {
     processedImage.value = processImageBytes(props.imageData, props.width, props.height, bayerPatternToUse)
     if (!processedImage.value) {
       log.error('Image processing failed in calculateHistogram')
-      console.timeEnd('calculateHistogram')
+      // console.timeEnd('calculateHistogram')
       return []
     }
   }
@@ -460,7 +462,7 @@ const calculateHistogram = () => {
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
     }
-    console.timeEnd('calculateHistogram')
+    // console.timeEnd('calculateHistogram')
     return []
   }
   const imageWidth = processedImage.value.width
@@ -477,32 +479,47 @@ const calculateHistogram = () => {
     rawOrder = 'column-major'
   }
   if (recalcRaw || !rawHistogram.value.length) {
-    console.time('rawHistogram')
+    // console.time('rawHistogram')
     rawHistogram.value = calculateLibHistogram(rawData, imageWidth, imageHeight, rawMin, rawMax, 256, rawChannels, rawOrder)
-    console.timeEnd('rawHistogram')
+    // console.timeEnd('rawHistogram')
   }
   // Use fast or full display histogram depending on drag state
   if (isDragging) {
-    console.time('fastDisplayHistogram')
     displayHistogram.value = fastDisplayHistogram()
-    console.timeEnd('fastDisplayHistogram')
+    histogram.value = displayHistogram.value
+    emit('histogram-generated', histogram.value)
+    if (histogram.value.length > 0) {
+      nextTick(() => {
+        if (histogramCanvas.value) {
+          drawHistogram(histogram.value)
+        }
+      })
+    }
   } else {
-    console.time('fullDisplayHistogram')
-    displayHistogram.value = fullDisplayHistogram()
-    console.timeEnd('fullDisplayHistogram')
-  }
-  histogram.value = displayHistogram.value
-  emit('histogram-generated', histogram.value)
-  if (histogram.value.length > 0) {
-    nextTick(() => {
-      if (histogramCanvas.value) {
-        drawHistogram(histogram.value)
-      } else {
-        log.warn('[Histogram] drawHistogram skipped: histogramCanvas ref not available even after nextTick.')
+    // Use worker for full histogram
+    if (!processedImage.value) return []
+    const { pixelData, width, height, channels } = processedImage.value
+    const min = minPixelValue.value
+    const max = maxPixelValue.value
+    const binCount = 256
+    const order = processedImage.value.isDebayered ? 'row-major' : 'column-major'
+    const lut = createStretchLUT(min, max, stretchMethod.value, processedImage.value.bitsPerPixel, gamma.value)
+    const thisHistogramRequestId = ++latestHistogramRequestId
+    generateFullDisplayHistogramWorker(pixelData, width, height, min, max, binCount, channels, order, lut).then((hist) => {
+      if (thisHistogramRequestId !== latestHistogramRequestId) return // Only apply if still latest
+      displayHistogram.value = hist
+      histogram.value = hist
+      emit('histogram-generated', histogram.value)
+      if (histogram.value.length > 0) {
+        nextTick(() => {
+          if (histogramCanvas.value) {
+            drawHistogram(histogram.value)
+          }
+        })
       }
     })
   }
-  console.timeEnd('calculateHistogram')
+  // console.timeEnd('calculateHistogram')
   return histogram.value
 }
 
@@ -572,10 +589,10 @@ const drawHistogram = (histData: number[]) => {
 
 // Apply stretch settings and redraw
 const applyStretch = () => {
-  console.time('applyStretch')
+  // console.time('applyStretch')
   calculateHistogram()
   drawImage() // drawImage will now also update fullScreenImageSrc if active
-  console.timeEnd('applyStretch')
+  // console.timeEnd('applyStretch')
 }
 
 // Toggle full-screen mode
@@ -686,7 +703,7 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number) 
   }
 }
 
-const debouncedDrawImage = debounce(drawImage, 20)
+const debouncedDrawImage = debounce(drawImage, 80)
 
 // For stretch/gamma/levels, just redraw using cached processedImage
 watch([stretchMethod, minPixelValue, maxPixelValue, autoStretch, useRobustStretch, robustPercentile, currentThemeRef, gamma], () => {
@@ -769,7 +786,7 @@ function onUpdateLivePreview(val: boolean) {
 }
 
 function onAutoStretch() {
-  console.time('AutoStretch Total')
+  // console.time('AutoStretch Total')
   autoStretch.value = true
   // If processedImage is available, use its robust/auto min/max for UI
   if (processedImage.value) {
@@ -787,7 +804,7 @@ function onAutoStretch() {
     // If not available, trigger processing and stretch
     applyStretch()
   }
-  console.timeEnd('AutoStretch Total')
+  // console.timeEnd('AutoStretch Total')
 }
 
 function onResetStretch() {
