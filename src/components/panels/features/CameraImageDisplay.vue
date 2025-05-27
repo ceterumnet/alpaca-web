@@ -372,53 +372,53 @@ const fastDisplayHistogram = () => {
 }
 
 // --- Full-fidelity display histogram: map every pixel through LUT ---
-const fullDisplayHistogram = () => {
-  if (!processedImage.value) return []
-  const { pixelData, width, height, bitsPerPixel, channels } = processedImage.value
-  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bitsPerPixel, gamma.value)
-  const displayBins = 256
-  const displayHist = new Array(displayBins).fill(0)
-  if (channels === 1) {
-    // Column-major
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        const idx = x * height + y
-        const value = pixelData[idx]
-        const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(value)))]
-        const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)))
-        displayHist[displayBin]++
-      }
-    }
-  } else {
-    // Row-major RGB: use luminance
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const baseIdx = (y * width + x) * 3
-        const r = pixelData[baseIdx]
-        const g = pixelData[baseIdx + 1]
-        const b = pixelData[baseIdx + 2]
-        const luminance = (r + g + b) / 3
-        const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(luminance)))]
-        const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)))
-        displayHist[displayBin]++
-      }
-    }
-  }
-  return displayHist
-}
+// const fullDisplayHistogram = () => {
+//   if (!processedImage.value) return []
+//   const { pixelData, width, height, bitsPerPixel, channels } = processedImage.value
+//   const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bitsPerPixel, gamma.value)
+//   const displayBins = 256
+//   const displayHist = new Array(displayBins).fill(0)
+//   if (channels === 1) {
+//     // Column-major
+//     for (let x = 0; x < width; x++) {
+//       for (let y = 0; y < height; y++) {
+//         const idx = x * height + y
+//         const value = pixelData[idx]
+//         const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(value)))]
+//         const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)))
+//         displayHist[displayBin]++
+//       }
+//     }
+//   } else {
+//     // Row-major RGB: use luminance
+//     for (let y = 0; y < height; y++) {
+//       for (let x = 0; x < width; x++) {
+//         const baseIdx = (y * width + x) * 3
+//         const r = pixelData[baseIdx]
+//         const g = pixelData[baseIdx + 1]
+//         const b = pixelData[baseIdx + 2]
+//         const luminance = (r + g + b) / 3
+//         const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(luminance)))]
+//         const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)))
+//         displayHist[displayBin]++
+//       }
+//     }
+//   }
+//   return displayHist
+// }
 
 // --- Use fast histogram during drag, full after drag ---
 let isDragging = false
 
 // Listen for drag events globally to set isDragging
-function setDraggingTrue() {
-  isDragging = true
-  calculateHistogram()
-}
-function setDraggingFalse() {
-  isDragging = false
-  calculateHistogram()
-}
+// function setDraggingTrue() {
+//   isDragging = true
+//   calculateHistogram()
+// }
+// function setDraggingFalse() {
+//   isDragging = false
+//   calculateHistogram()
+// }
 
 const calculateHistogram = async () => {
   // console.time('calculateHistogram')
@@ -472,15 +472,15 @@ const calculateHistogram = async () => {
   const rawMax = Math.pow(2, bits) - 1
   let rawData = processedImage.value.pixelData
   let rawChannels = processedImage.value.channels
-  let rawOrder: 'column-major' | 'row-major' = processedImage.value.isDebayered ? 'row-major' : 'column-major'
+  // const rawOrder: 'column-major' | 'row-major' = processedImage.value.isDebayered ? 'row-major' : 'column-major'
   if (processedImage.value.isDebayered && processedImage.value.originalPixelData) {
     rawData = Array.from(processedImage.value.originalPixelData)
     rawChannels = 1
-    rawOrder = 'column-major'
+    // rawOrder = 'column-major'
   }
   if (recalcRaw || !rawHistogram.value.length) {
     // console.time('rawHistogram')
-    rawHistogram.value = calculateLibHistogram(rawData, imageWidth, imageHeight, rawMin, rawMax, 256, rawChannels, rawOrder)
+    rawHistogram.value = calculateLibHistogram(rawData, imageWidth, imageHeight, rawMin, rawMax, 256, rawChannels)
     // console.timeEnd('rawHistogram')
   }
   // Use fast or full display histogram depending on drag state

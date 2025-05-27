@@ -1,7 +1,7 @@
 // HistogramWorker.ts - Web Worker for full histogram calculation
 
 self.onmessage = function(e) {
-  const { id, data, width, height, min, max, binCount, channels, order, lut } = e.data;
+  const { id, data, width, height, binCount, channels, order, lut } = e.data;
   const histogram = calculateFullHistogram(data, width, height, binCount, channels, order, lut);
   (self as unknown as Worker).postMessage({ id, histogram });
 };

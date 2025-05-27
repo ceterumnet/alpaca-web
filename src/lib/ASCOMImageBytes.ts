@@ -876,7 +876,6 @@ export function calculateHistogram(
   max: number, // Max value for histogram range (from stats, possibly luminance)
   binCount: number = 256,
   channels: 1 | 3, // Added channels
-  order: 'column-major' | 'row-major' // Kept for compatibility, but always pass 'row-major'
 ): number[] {
   const histogram = new Array(binCount).fill(0)
   const pixelCount = width * height
@@ -949,7 +948,7 @@ export function generateDisplayImageWorker(
   lut: Uint8Array,
   channels: 1 | 3
 ): Promise<Uint8ClampedArray> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const worker = getDisplayImageWorker();
     const id = ++requestId;
     pendingRequests.set(id, resolve);
