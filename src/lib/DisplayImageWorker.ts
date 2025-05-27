@@ -19,25 +19,6 @@ import init, {
 const messageQueue: MessageEvent[] = [];
 let wasmReady = false;
 
-self.onmessage = function(e) {
-  if (!wasmReady) {
-    // console.log('[worker] QUEUED message', e.data);
-    messageQueue.push(e);
-  }
-};
-
-await init();
-wasmReady = true;
-// console.log('[worker] WASM initialized');
-
-// Process any queued messages
-for (const e of messageQueue) {
-  await handleMessage(e);
-}
-
-// Now set the real handler
-self.onmessage = handleMessage;
-
 async function handleMessage(e: MessageEvent) {
   // console.log('[worker] onmessage: received', e.data);
   const { id, data, width, height, lut, channels } = e.data;
@@ -67,6 +48,27 @@ async function handleMessage(e: MessageEvent) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).postMessage({ id, outputData: clamped }, [clamped.buffer]);
 }
+
+function queueOrHandleMessage(e: MessageEvent) {
+  if (!wasmReady) {
+    messageQueue.push(e);
+    return;
+  }
+  handleMessage(e);
+}
+
+async function main() {
+  await init();
+  wasmReady = true;
+  for (const e of messageQueue) {
+    await handleMessage(e);
+  }
+  self.onmessage = handleMessage;
+}
+
+self.onmessage = queueOrHandleMessage;
+
+main();
 
 function getValueAtIndex(
   data: Uint8Array | Uint16Array | Uint32Array | number[],

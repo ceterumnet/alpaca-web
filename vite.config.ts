@@ -26,8 +26,12 @@ const wasmMimePlugin = {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
+
   const env = loadEnv(mode, process.cwd(), '')
   return {
+    worker: {
+      format: 'es'
+    },
     base: env.VITE_APP_BASE_PATH || '/',
     plugins: [wasmMimePlugin, vue(), wasmPack(['./image_wasm'])],
     resolve: {
