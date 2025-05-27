@@ -8,9 +8,10 @@ import { ref, onMounted, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import {
   processImageBytes,
   createStretchLUT,
-  generateDisplayImage,
+  // generateDisplayImage, // replaced by worker
   calculateHistogram as calculateLibHistogram,
-  processImageBytesCallCount
+  processImageBytesCallCount,
+  generateDisplayImageWorker
 } from '@/lib/ASCOMImageBytes'
 import type { ProcessedImageData, BayerPattern } from '@/lib/ASCOMImageBytes'
 import Icon from '@/components/ui/Icon.vue' // Import the Icon component
@@ -98,6 +99,9 @@ const hoverPixel = ref<{ x: number; y: number; avg: number[]; display: number[] 
 const showPixelTooltip = ref(false)
 const pixelTooltipPos = ref({ x: 0, y: 0 })
 
+// Add at module scope:
+let latestDrawRequestId = 0
+
 // Helper to get 3x3 average at (x, y)
 function get3x3Average(x: number, y: number): number[] {
   if (!processedImage.value) return [0]
@@ -165,8 +169,8 @@ function onCanvasMouseLeave() {
 
 // Draw the image on canvas
 const drawImage = async () => {
+  const thisDrawRequestId = ++latestDrawRequestId
   console.time('drawImage')
-  // Add detailed logging for received props at the beginning of drawImage
   log.debug(
     {
       imageData: props.imageData,
@@ -223,7 +227,6 @@ const drawImage = async () => {
   }
 
   if (!processedImage.value) {
-    // Check again in case processing failed
     log.error('Image processing failed in drawImage')
     console.timeEnd('drawImage')
     return
@@ -233,35 +236,45 @@ const drawImage = async () => {
   const imageHeight = processedImage.value.height
   console.log('drawImage: imageWidth', imageWidth, 'imageHeight', imageHeight, 'subframe', props.subframe)
 
-  canvas.width = imageWidth
-  canvas.height = imageHeight
-
   const minToUse = minPixelValue.value
   const maxToUse = maxPixelValue.value
   const gammaToUse = gamma.value
   const methodToUse = stretchMethod.value
 
   // Create an efficient lookup table for the stretch method
-  console.time('createStretchLUT')
+  console.time('drawImage:createStretchLUT')
   const lut = createStretchLUT(minToUse, maxToUse, methodToUse, processedImage.value.bitsPerPixel, gammaToUse)
-  console.timeEnd('createStretchLUT')
+  console.timeEnd('drawImage:createStretchLUT')
 
   // Generate display image data efficiently
-  console.time('generateDisplayImage')
-  const imageData = generateDisplayImage(
+  console.time('drawImage:workerCall')
+  const imageData = await generateDisplayImageWorker(
     processedImage.value.pixelData,
     imageWidth,
     imageHeight,
     lut,
     processedImage.value.channels // Pass channels
   )
-  console.timeEnd('generateDisplayImage')
+  console.timeEnd('drawImage:workerCall')
+
+  if (thisDrawRequestId !== latestDrawRequestId) {
+    console.log('drawImage: Skipping outdated render', thisDrawRequestId, 'current', latestDrawRequestId)
+    console.timeEnd('drawImage')
+    return
+  }
+
+  // Only now resize and clear the canvas, then draw
+  console.time('drawImage:canvasResizeClear')
+  canvas.width = imageWidth
+  canvas.height = imageHeight
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  console.timeEnd('drawImage:canvasResizeClear')
 
   // Create ImageData object for canvas
-  console.time('putImageData')
+  console.time('drawImage:putImageData')
   const imgData = new ImageData(imageData, imageWidth, imageHeight)
   ctx.putImageData(imgData, 0, 0)
-  console.timeEnd('putImageData')
+  console.timeEnd('drawImage:putImageData')
 
   // Draw subframe overlay if present and valid
   if (
@@ -624,23 +637,34 @@ watch([() => props.imageData, enableDebayer, selectedBayerPattern, () => props.w
   drawImage()
 })
 
+// Debounce utility
+function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number) {
+  let timeout: ReturnType<typeof setTimeout> | null = null
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout)
+    timeout = setTimeout(() => fn(...args), delay)
+  }
+}
+
+const debouncedDrawImage = debounce(drawImage, 40)
+
 // For stretch/gamma/levels, just redraw using cached processedImage
 watch([stretchMethod, minPixelValue, maxPixelValue, autoStretch, useRobustStretch, robustPercentile, currentThemeRef, gamma], () => {
-  drawImage()
+  debouncedDrawImage()
 })
 
 // Watch for subframe prop changes and redraw overlay
 watch(
   () => props.subframe,
   () => {
-    drawImage()
+    debouncedDrawImage()
   },
   { deep: true }
 )
 
 // Watch for width/height changes and redraw
 watch([() => props.width, () => props.height], () => {
-  drawImage()
+  debouncedDrawImage()
 })
 
 // Initialize on mount

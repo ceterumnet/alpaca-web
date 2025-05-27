@@ -966,3 +966,31 @@ export function generateDisplayImage(
   }
   return outputData
 }
+
+/**
+ * Offload generateDisplayImage to a web worker for performance.
+ * Usage:
+ *   await generateDisplayImageWorker(data, width, height, lut, channels)
+ * Returns: Promise<Uint8ClampedArray>
+ */
+export function generateDisplayImageWorker(
+  data: Uint8Array | Uint16Array | Uint32Array | number[],
+  width: number,
+  height: number,
+  lut: Uint8Array,
+  channels: 1 | 3
+): Promise<Uint8ClampedArray> {
+  return new Promise((resolve, reject) => {
+    // Dynamically import the worker
+    const worker = new Worker(new URL('./DisplayImageWorker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (e: MessageEvent) => {
+      resolve(e.data.outputData as Uint8ClampedArray);
+      worker.terminate();
+    };
+    worker.onerror = (err) => {
+      reject(err);
+      worker.terminate();
+    };
+    worker.postMessage({ data, width, height, lut, channels });
+  });
+}
