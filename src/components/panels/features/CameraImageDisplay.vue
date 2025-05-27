@@ -1,10 +1,6 @@
-// Status: Good - Part of new panel system 
-// This component handles image display and processing with advanced features:
-// - ASCOM Alpaca image format support
-// - Image stretching and enhancement
-// - Histogram generation and display
-// - Robust stretch handling for outlier rejection
-// - Real-time image updates
+// Status: Good - Part of new panel system // This component handles image display and processing with advanced features: // - ASCOM Alpaca image
+format support // - Image stretching and enhancement // - Histogram generation and display // - Robust stretch handling for outlier rejection // -
+Real-time image updates
 
 <script setup lang="ts">
 import log from '@/plugins/logger'
@@ -13,7 +9,8 @@ import {
   processImageBytes,
   createStretchLUT,
   generateDisplayImage,
-  calculateHistogram as calculateLibHistogram
+  calculateHistogram as calculateLibHistogram,
+  processImageBytesCallCount
 } from '@/lib/ASCOMImageBytes'
 import type { ProcessedImageData, BayerPattern } from '@/lib/ASCOMImageBytes'
 import Icon from '@/components/ui/Icon.vue' // Import the Icon component
@@ -32,7 +29,8 @@ const props = defineProps({
     type: Number,
     default: 0
   },
-  sensorType: { // 0: Mono, 1: Color (no bayer), 2: RGGB, 3:CMYG, 4:CMYG2, 5:LRGB, 6: TrueSense Mono (Kodak)
+  sensorType: {
+    // 0: Mono, 1: Color (no bayer), 2: RGGB, 3:CMYG, 4:CMYG2, 5:LRGB, 6: TrueSense Mono (Kodak)
     type: Number,
     default: null // null if unknown or not provided
   },
@@ -41,7 +39,7 @@ const props = defineProps({
     default: null
   },
   subframe: {
-    type: Object as () => { startX: number, startY: number, numX: number, numY: number } | undefined,
+    type: Object as () => { startX: number; startY: number; numX: number; numY: number } | undefined,
     default: undefined
   }
 })
@@ -74,8 +72,8 @@ const autoDetectedPatternDisplay = ref<BayerPattern | null>(null)
 const isMonochromeOrUnknown = computed(() => {
   // SensorType: 0=Mono, 1=Color (no Bayer mosaic), 2=RGGB, 3=CMYG, 4=CMYG2, 5=LRGB (e.g. LRGB filter wheel), 6=TrueSense Mono (Kodak)
   // Consider null (unknown), 0 (Mono), 1 (Color no bayer), and 6 (TrueSense Mono) as non-debayerable for our Bayer patterns.
-  return props.sensorType === null || props.sensorType === 0 || props.sensorType === 1 || props.sensorType === 6;
-});
+  return props.sensorType === null || props.sensorType === 0 || props.sensorType === 1 || props.sensorType === 6
+})
 
 // Full-screen state
 const isFullScreen = ref(false)
@@ -89,164 +87,167 @@ const currentThemeRef = ref<'light' | 'dark'>('light')
 
 // Function to update the current theme based on document.documentElement class
 const updateThemeRef = () => {
-  const isDark = document.documentElement.classList.contains('dark-theme');
-  currentThemeRef.value = isDark ? 'dark' : 'light';
+  const isDark = document.documentElement.classList.contains('dark-theme')
+  currentThemeRef.value = isDark ? 'dark' : 'light'
 }
 
 let themeObserver: MutationObserver | null = null
 
 // State for pixel hover readout
-const hoverPixel = ref<{ x: number; y: number; avg: number[]; display: number[] } | null>(null);
-const showPixelTooltip = ref(false);
-const pixelTooltipPos = ref({ x: 0, y: 0 });
-
+const hoverPixel = ref<{ x: number; y: number; avg: number[]; display: number[] } | null>(null)
+const showPixelTooltip = ref(false)
+const pixelTooltipPos = ref({ x: 0, y: 0 })
 
 // Helper to get 3x3 average at (x, y)
 function get3x3Average(x: number, y: number): number[] {
-  if (!processedImage.value) return [0];
-  const { pixelData, width, height, channels } = processedImage.value;
-  const avg: number[] = channels === 3 ? [0, 0, 0] : [0];
-  let count = 0;
+  if (!processedImage.value) return [0]
+  const { pixelData, width, height, channels } = processedImage.value
+  const avg: number[] = channels === 3 ? [0, 0, 0] : [0]
+  let count = 0
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
-      const px = Math.min(width - 1, Math.max(0, x + dx));
-      const py = Math.min(height - 1, Math.max(0, y + dy));
+      const px = Math.min(width - 1, Math.max(0, x + dx))
+      const py = Math.min(height - 1, Math.max(0, y + dy))
       if (channels === 1) {
         // Column-major for mono
-        const idx = px * height + py;
-        avg[0] += Number(pixelData[idx]);
+        const idx = px * height + py
+        avg[0] += Number(pixelData[idx])
       } else {
         // Row-major for RGB
-        const baseIdx = (py * width + px) * 3;
-        avg[0] += Number(pixelData[baseIdx]);
-        avg[1] += Number(pixelData[baseIdx + 1]);
-        avg[2] += Number(pixelData[baseIdx + 2]);
+        const baseIdx = (py * width + px) * 3
+        avg[0] += Number(pixelData[baseIdx])
+        avg[1] += Number(pixelData[baseIdx + 1])
+        avg[2] += Number(pixelData[baseIdx + 2])
       }
-      count++;
+      count++
     }
   }
-  for (let i = 0; i < avg.length; i++) avg[i] = Math.round(avg[i] / count);
-  return avg;
+  for (let i = 0; i < avg.length; i++) avg[i] = Math.round(avg[i] / count)
+  return avg
 }
 
 // Helper to map raw value(s) to display value(s) using current LUT
 function mapToDisplay(raw: number[]): number[] {
-  if (!processedImage.value) return [0];
-  const { bitsPerPixel, channels } = processedImage.value;
-  const minToUse = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value;
-  const maxToUse = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value;
-  const lut = createStretchLUT(minToUse, maxToUse, stretchMethod.value, bitsPerPixel, gamma.value);
+  if (!processedImage.value) return [0]
+  const { bitsPerPixel, channels } = processedImage.value
+  const minToUse = autoStretch.value ? processedImage.value.minPixelValue : minPixelValue.value
+  const maxToUse = autoStretch.value ? processedImage.value.maxPixelValue : maxPixelValue.value
+  const lut = createStretchLUT(minToUse, maxToUse, stretchMethod.value, bitsPerPixel, gamma.value)
   if (channels === 1) {
-    return [lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[0])))] ];
+    return [lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[0])))]]
   } else {
     return [
       lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[0])))],
       lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[1])))],
       lut[Math.min(lut.length - 1, Math.max(0, Math.round(raw[2])))]
-    ];
+    ]
   }
 }
 
 function onCanvasMouseMove(e: MouseEvent) {
-  if (!canvasRef.value || !processedImage.value) return;
-  const rect = canvasRef.value.getBoundingClientRect();
-  const x = Math.floor((e.clientX - rect.left) * processedImage.value.width / rect.width);
-  const y = Math.floor((e.clientY - rect.top) * processedImage.value.height / rect.height);
+  if (!canvasRef.value || !processedImage.value) return
+  const rect = canvasRef.value.getBoundingClientRect()
+  const x = Math.floor(((e.clientX - rect.left) * processedImage.value.width) / rect.width)
+  const y = Math.floor(((e.clientY - rect.top) * processedImage.value.height) / rect.height)
   if (x < 0 || y < 0 || x >= processedImage.value.width || y >= processedImage.value.height) {
-    showPixelTooltip.value = false;
-    return;
+    showPixelTooltip.value = false
+    return
   }
-  const avg = get3x3Average(x, y);
-  const display = mapToDisplay(avg);
-  hoverPixel.value = { x, y, avg, display };
-  showPixelTooltip.value = true;
-  pixelTooltipPos.value = { x: e.clientX, y: e.clientY };
+  const avg = get3x3Average(x, y)
+  const display = mapToDisplay(avg)
+  hoverPixel.value = { x, y, avg, display }
+  showPixelTooltip.value = true
+  pixelTooltipPos.value = { x: e.clientX, y: e.clientY }
 }
 function onCanvasMouseLeave() {
-  showPixelTooltip.value = false;
+  showPixelTooltip.value = false
 }
 
 // Draw the image on canvas
 const drawImage = async () => {
+  console.time('drawImage')
   // Add detailed logging for received props at the beginning of drawImage
-  log.debug({
-    imageData: props.imageData,
-    width: props.width,
-    height: props.height,
-    sensorType: props.sensorType,
-    subframe: props.subframe
-  }, 'CameraImageDisplay: drawImage called. Props:');
+  log.debug(
+    {
+      imageData: props.imageData,
+      width: props.width,
+      height: props.height,
+      sensorType: props.sensorType,
+      subframe: props.subframe
+    },
+    'CameraImageDisplay: drawImage called. Props:'
+  )
 
   if (!canvasRef.value) {
-    log.warn('CameraImageDisplay: drawImage aborted - no canvas.');
-    return;
+    log.warn('CameraImageDisplay: drawImage aborted - no canvas.')
+    console.timeEnd('drawImage')
+    return
   }
 
-  const canvas = canvasRef.value;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  const canvas = canvasRef.value
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    console.timeEnd('drawImage')
+    return
+  }
 
   // If no image data, draw placeholder
   if (props.imageData.byteLength === 0) {
-    canvas.width = props.width;
-    canvas.height = props.height;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([]);
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    canvas.width = props.width
+    canvas.height = props.height
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.strokeStyle = '#888'
+    ctx.lineWidth = 2
+    ctx.setLineDash([])
+    ctx.strokeRect(0, 0, canvas.width, canvas.height)
     // Draw subframe overlay if present
     if (props.subframe && props.subframe.numX > 0 && props.subframe.numY > 0) {
-      ctx.save();
-      ctx.strokeStyle = '#ff9800';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeRect(
-        props.subframe.startX,
-        props.subframe.startY,
-        props.subframe.numX,
-        props.subframe.numY
-      );
-      ctx.restore();
-      console.log('Subframe overlay (placeholder):', props.subframe);
+      ctx.save()
+      ctx.strokeStyle = '#ff9800'
+      ctx.lineWidth = 2
+      ctx.setLineDash([6, 4])
+      ctx.strokeRect(props.subframe.startX, props.subframe.startY, props.subframe.numX, props.subframe.numY)
+      ctx.restore()
+      console.log('Subframe overlay (placeholder):', props.subframe)
     }
-    return;
+    console.timeEnd('drawImage')
+    return
   }
 
   if (!processedImage.value) {
-    let bayerPatternToUse: BayerPattern | undefined = undefined;
+    let bayerPatternToUse: BayerPattern | undefined = undefined
     if (!isMonochromeOrUnknown.value && enableDebayer.value) {
-      bayerPatternToUse = selectedBayerPattern.value;
+      bayerPatternToUse = selectedBayerPattern.value
     }
-    processedImage.value = processImageBytes(
-        props.imageData,
-        props.width,
-        props.height,
-        bayerPatternToUse
-      )
-  }
-  
-  if (!processedImage.value) { // Check again in case processing failed
-      log.error("Image processing failed in drawImage");
-      return;
+    processedImage.value = processImageBytes(props.imageData, props.width, props.height, bayerPatternToUse)
   }
 
-  const imageWidth = processedImage.value.width;
-  const imageHeight = processedImage.value.height;
-  console.log('drawImage: imageWidth', imageWidth, 'imageHeight', imageHeight, 'subframe', props.subframe);
+  if (!processedImage.value) {
+    // Check again in case processing failed
+    log.error('Image processing failed in drawImage')
+    console.timeEnd('drawImage')
+    return
+  }
 
-  canvas.width = imageWidth;
-  canvas.height = imageHeight;
+  const imageWidth = processedImage.value.width
+  const imageHeight = processedImage.value.height
+  console.log('drawImage: imageWidth', imageWidth, 'imageHeight', imageHeight, 'subframe', props.subframe)
 
-  const minToUse = minPixelValue.value;
-  const maxToUse = maxPixelValue.value;
-  const gammaToUse = gamma.value;
-  const methodToUse = stretchMethod.value;
+  canvas.width = imageWidth
+  canvas.height = imageHeight
+
+  const minToUse = minPixelValue.value
+  const maxToUse = maxPixelValue.value
+  const gammaToUse = gamma.value
+  const methodToUse = stretchMethod.value
 
   // Create an efficient lookup table for the stretch method
+  console.time('createStretchLUT')
   const lut = createStretchLUT(minToUse, maxToUse, methodToUse, processedImage.value.bitsPerPixel, gammaToUse)
+  console.timeEnd('createStretchLUT')
 
   // Generate display image data efficiently
+  console.time('generateDisplayImage')
   const imageData = generateDisplayImage(
     processedImage.value.pixelData,
     imageWidth,
@@ -254,27 +255,28 @@ const drawImage = async () => {
     lut,
     processedImage.value.channels // Pass channels
   )
+  console.timeEnd('generateDisplayImage')
 
   // Create ImageData object for canvas
+  console.time('putImageData')
   const imgData = new ImageData(imageData, imageWidth, imageHeight)
-
-  // Put the image data to canvas
   ctx.putImageData(imgData, 0, 0)
+  console.timeEnd('putImageData')
 
   // Draw subframe overlay if present and valid
-  if (props.subframe && props.subframe.numX > 0 && props.subframe.numY > 0 && (props.subframe.numX < imageWidth || props.subframe.numY < imageHeight)) {
-    ctx.save();
-    ctx.strokeStyle = '#ff9800';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(
-      props.subframe.startX,
-      props.subframe.startY,
-      props.subframe.numX,
-      props.subframe.numY
-    );
-    ctx.restore();
-    console.log('Subframe overlay:', props.subframe);
+  if (
+    props.subframe &&
+    props.subframe.numX > 0 &&
+    props.subframe.numY > 0 &&
+    (props.subframe.numX < imageWidth || props.subframe.numY < imageHeight)
+  ) {
+    ctx.save()
+    ctx.strokeStyle = '#ff9800'
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 4])
+    ctx.strokeRect(props.subframe.startX, props.subframe.startY, props.subframe.numX, props.subframe.numY)
+    ctx.restore()
+    console.log('Subframe overlay:', props.subframe)
   }
 
   // If full screen is active, update its source too
@@ -284,234 +286,243 @@ const drawImage = async () => {
       fullScreenImageSrc.value = canvasRef.value.toDataURL('image/png')
     }
   }
+  console.timeEnd('drawImage')
 }
 
 // Calculate histogram from the image data
 // --- OPTIMIZED: Only recalc rawHistogram when image data changes; remap for displayHistogram ---
-const lastRawHistKey = ref(''); // To track when image data changes
+const lastRawHistKey = ref('') // To track when image data changes
 
 function getRawHistKey() {
   // Use a string key based on imageData, width, height, debayering
-  return [props.imageData, props.width, props.height, enableDebayer.value, selectedBayerPattern.value].join(':');
+  return [props.imageData, props.width, props.height, enableDebayer.value, selectedBayerPattern.value].join(':')
 }
 
 // --- Fast display histogram: remap rawHistogram bins using LUT ---
 const fastDisplayHistogram = () => {
-  if (!processedImage.value) return [];
-  const bits = processedImage.value.bitsPerPixel;
-  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bits, gamma.value);
-  const displayBins = 256;
-  const displayHist = new Array(displayBins).fill(0);
-  const rawMin = 0;
-  const rawMax = Math.pow(2, bits) - 1;
+  if (!processedImage.value) return []
+  const bits = processedImage.value.bitsPerPixel
+  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bits, gamma.value)
+  const displayBins = 256
+  const displayHist = new Array(displayBins).fill(0)
+  const rawMin = 0
+  const rawMax = Math.pow(2, bits) - 1
   for (let i = 0; i < rawHistogram.value.length; i++) {
-    const rawValue = rawMin + ((rawMax - rawMin) * (i + 0.5)) / rawHistogram.value.length;
-    const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(rawValue)))];
-    const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)));
-    displayHist[displayBin] += rawHistogram.value[i];
+    const rawValue = rawMin + ((rawMax - rawMin) * (i + 0.5)) / rawHistogram.value.length
+    const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(rawValue)))]
+    const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)))
+    displayHist[displayBin] += rawHistogram.value[i]
   }
-  return displayHist;
-};
+  return displayHist
+}
 
 // --- Full-fidelity display histogram: map every pixel through LUT ---
 const fullDisplayHistogram = () => {
-  if (!processedImage.value) return [];
-  const { pixelData, width, height, bitsPerPixel, channels } = processedImage.value;
-  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bitsPerPixel, gamma.value);
-  const displayBins = 256;
-  const displayHist = new Array(displayBins).fill(0);
+  if (!processedImage.value) return []
+  const { pixelData, width, height, bitsPerPixel, channels } = processedImage.value
+  const lut = createStretchLUT(minPixelValue.value, maxPixelValue.value, stretchMethod.value, bitsPerPixel, gamma.value)
+  const displayBins = 256
+  const displayHist = new Array(displayBins).fill(0)
   if (channels === 1) {
     // Column-major
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
-        const idx = x * height + y;
-        const value = pixelData[idx];
-        const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(value)))];
-        const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)));
-        displayHist[displayBin]++;
+        const idx = x * height + y
+        const value = pixelData[idx]
+        const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(value)))]
+        const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)))
+        displayHist[displayBin]++
       }
     }
   } else {
     // Row-major RGB: use luminance
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const baseIdx = (y * width + x) * 3;
-        const r = pixelData[baseIdx];
-        const g = pixelData[baseIdx + 1];
-        const b = pixelData[baseIdx + 2];
-        const luminance = (r + g + b) / 3;
-        const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(luminance)))];
-        const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)));
-        displayHist[displayBin]++;
+        const baseIdx = (y * width + x) * 3
+        const r = pixelData[baseIdx]
+        const g = pixelData[baseIdx + 1]
+        const b = pixelData[baseIdx + 2]
+        const luminance = (r + g + b) / 3
+        const displayValue = lut[Math.min(lut.length - 1, Math.max(0, Math.round(luminance)))]
+        const displayBin = Math.min(displayBins - 1, Math.max(0, Math.round(displayValue)))
+        displayHist[displayBin]++
       }
     }
   }
-  return displayHist;
-};
+  return displayHist
+}
 
 // --- Use fast histogram during drag, full after drag ---
-let isDragging = false;
+let isDragging = false
 
 // Listen for drag events globally to set isDragging
-function setDraggingTrue() { isDragging = true; calculateHistogram(); }
-function setDraggingFalse() { isDragging = false; calculateHistogram(); }
+function setDraggingTrue() {
+  isDragging = true
+  calculateHistogram()
+}
+function setDraggingFalse() {
+  isDragging = false
+  calculateHistogram()
+}
 
 const calculateHistogram = () => {
+  console.time('calculateHistogram')
   if (props.imageData.byteLength === 0) {
-    histogram.value = [];
-    rawHistogram.value = [];
-    displayHistogram.value = [];
+    histogram.value = []
+    rawHistogram.value = []
+    displayHistogram.value = []
     if (histogramCanvas.value) {
-      const canvas = histogramCanvas.value;
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const canvas = histogramCanvas.value
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
     }
-    return [];
+    console.timeEnd('calculateHistogram')
+    return []
   }
-  const rawHistKey = getRawHistKey();
-  let recalcRaw = false;
+  const rawHistKey = getRawHistKey()
+  let recalcRaw = false
   if (rawHistKey !== lastRawHistKey.value) {
-    recalcRaw = true;
-    lastRawHistKey.value = rawHistKey;
+    recalcRaw = true
+    lastRawHistKey.value = rawHistKey
   }
   if (!processedImage.value) {
-    let bayerPatternToUse;
+    let bayerPatternToUse
     if (!isMonochromeOrUnknown.value && enableDebayer.value) {
-      bayerPatternToUse = selectedBayerPattern.value;
+      bayerPatternToUse = selectedBayerPattern.value
     }
-    processedImage.value = processImageBytes(
-      props.imageData,
-      props.width,
-      props.height,
-      bayerPatternToUse
-    );
+    processedImage.value = processImageBytes(props.imageData, props.width, props.height, bayerPatternToUse)
     if (!processedImage.value) {
-      log.error('Image processing failed in calculateHistogram');
-      return [];
+      log.error('Image processing failed in calculateHistogram')
+      console.timeEnd('calculateHistogram')
+      return []
     }
   }
   if (!processedImage.value || processedImage.value.pixelData.length === 0) {
-    log.error('No valid image data for histogram calculation');
-    histogram.value = [];
-    rawHistogram.value = [];
-    displayHistogram.value = [];
+    log.error('No valid image data for histogram calculation')
+    histogram.value = []
+    rawHistogram.value = []
+    displayHistogram.value = []
     if (histogramCanvas.value) {
-      const canvas = histogramCanvas.value;
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const canvas = histogramCanvas.value
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
     }
-    return [];
+    console.timeEnd('calculateHistogram')
+    return []
   }
-  const imageWidth = processedImage.value.width;
-  const imageHeight = processedImage.value.height;
-  const bits = processedImage.value.bitsPerPixel;
-  const rawMin = 0;
-  const rawMax = Math.pow(2, bits) - 1;
-  let rawData = processedImage.value.pixelData;
-  let rawChannels = processedImage.value.channels;
-  let rawOrder: 'column-major' | 'row-major' = processedImage.value.isDebayered ? 'row-major' : 'column-major';
+  const imageWidth = processedImage.value.width
+  const imageHeight = processedImage.value.height
+  const bits = processedImage.value.bitsPerPixel
+  const rawMin = 0
+  const rawMax = Math.pow(2, bits) - 1
+  let rawData = processedImage.value.pixelData
+  let rawChannels = processedImage.value.channels
+  let rawOrder: 'column-major' | 'row-major' = processedImage.value.isDebayered ? 'row-major' : 'column-major'
   if (processedImage.value.isDebayered && processedImage.value.originalPixelData) {
-    rawData = Array.from(processedImage.value.originalPixelData);
-    rawChannels = 1;
-    rawOrder = 'column-major';
+    rawData = Array.from(processedImage.value.originalPixelData)
+    rawChannels = 1
+    rawOrder = 'column-major'
   }
   if (recalcRaw || !rawHistogram.value.length) {
-    rawHistogram.value = calculateLibHistogram(
-      rawData,
-      imageWidth,
-      imageHeight,
-      rawMin,
-      rawMax,
-      256,
-      rawChannels,
-      rawOrder
-    );
+    console.time('rawHistogram')
+    rawHistogram.value = calculateLibHistogram(rawData, imageWidth, imageHeight, rawMin, rawMax, 256, rawChannels, rawOrder)
+    console.timeEnd('rawHistogram')
   }
   // Use fast or full display histogram depending on drag state
   if (isDragging) {
-    displayHistogram.value = fastDisplayHistogram();
+    console.time('fastDisplayHistogram')
+    displayHistogram.value = fastDisplayHistogram()
+    console.timeEnd('fastDisplayHistogram')
   } else {
-    displayHistogram.value = fullDisplayHistogram();
+    console.time('fullDisplayHistogram')
+    displayHistogram.value = fullDisplayHistogram()
+    console.timeEnd('fullDisplayHistogram')
   }
-  histogram.value = displayHistogram.value;
-  emit('histogram-generated', histogram.value);
+  histogram.value = displayHistogram.value
+  emit('histogram-generated', histogram.value)
   if (histogram.value.length > 0) {
     nextTick(() => {
       if (histogramCanvas.value) {
-        drawHistogram(histogram.value);
+        drawHistogram(histogram.value)
       } else {
-        log.warn('[Histogram] drawHistogram skipped: histogramCanvas ref not available even after nextTick.');
+        log.warn('[Histogram] drawHistogram skipped: histogramCanvas ref not available even after nextTick.')
       }
-    });
+    })
   }
-  return histogram.value;
-};
+  console.timeEnd('calculateHistogram')
+  return histogram.value
+}
 
 // Draw the histogram on canvas
 const drawHistogram = (histData: number[]) => {
-  if (!histogramCanvas.value || histData.length === 0) { 
-    return;
+  if (!histogramCanvas.value || histData.length === 0) {
+    return
   }
 
-  const canvas = histogramCanvas.value;
-  const ctx = canvas.getContext('2d');
+  const canvas = histogramCanvas.value
+  const ctx = canvas.getContext('2d')
   if (!ctx) {
-    log.warn('[Histogram] No canvas context.');
-    return;
+    log.warn('[Histogram] No canvas context.')
+    return
   }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  const maxCount = Math.max(...histData);
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  const maxCount = Math.max(...histData)
   if (maxCount === 0) {
-    return;
+    return
   }
 
-  let barColor = '#CCCCCC'; // Fallback if theme variable fails
+  let barColor = '#CCCCCC' // Fallback if theme variable fails
 
   if (canvas && typeof getComputedStyle === 'function') {
     try {
-      const computedThemeColor = getComputedStyle(canvas).getPropertyValue('--aw-primary-color').trim();
+      const computedThemeColor = getComputedStyle(canvas).getPropertyValue('--aw-primary-color').trim()
       if (computedThemeColor) {
-        barColor = computedThemeColor;
+        barColor = computedThemeColor
       } else {
-        log.warn('[Histogram] CSS variable --aw-primary-color is empty or not found. Using #CCCCCC fallback.');
+        log.warn('[Histogram] CSS variable --aw-primary-color is empty or not found. Using #CCCCCC fallback.')
       }
     } catch (e) {
-      log.warn('[Histogram] Error accessing CSS variable --aw-primary-color. Using #CCCCCC fallback.', e);
+      log.warn('[Histogram] Error accessing CSS variable --aw-primary-color. Using #CCCCCC fallback.', e)
     }
   } else {
     // This case is highly unlikely in modern browsers
-    log.warn('[Histogram] getComputedStyle not available. Using #CCCCCC fallback.');
+    log.warn('[Histogram] getComputedStyle not available. Using #CCCCCC fallback.')
   }
-  
-  ctx.fillStyle = barColor;
-  ctx.globalAlpha = 1.0; 
 
-  const barWidth = canvas.width / histData.length; // This is the total space per bar (bar + potential gap)
+  ctx.fillStyle = barColor
+  ctx.globalAlpha = 1.0
+
+  const barWidth = canvas.width / histData.length // This is the total space per bar (bar + potential gap)
 
   for (let i = 0; i < histData.length; i++) {
-    const barHeight = (histData[i] / maxCount) * canvas.height;
-    
-    let drawnBarActualWidth;
-    if (barWidth >= 2.0) { // If total space is 2px or more, make a 1px gap
-        drawnBarActualWidth = Math.floor(barWidth) - 1;
-    } else if (barWidth >= 1.0) { // If total space is between 1px and 2px (exclusive of 2px), draw a 1px bar
-        drawnBarActualWidth = 1.0;
-    } else { // If total space is less than 1px, draw the fractional width (browser will anti-alias)
-        drawnBarActualWidth = barWidth;
+    const barHeight = (histData[i] / maxCount) * canvas.height
+
+    let drawnBarActualWidth
+    if (barWidth >= 2.0) {
+      // If total space is 2px or more, make a 1px gap
+      drawnBarActualWidth = Math.floor(barWidth) - 1
+    } else if (barWidth >= 1.0) {
+      // If total space is between 1px and 2px (exclusive of 2px), draw a 1px bar
+      drawnBarActualWidth = 1.0
+    } else {
+      // If total space is less than 1px, draw the fractional width (browser will anti-alias)
+      drawnBarActualWidth = barWidth
     }
     // Ensure we draw at least something visible if calculations result in very small/zero width
-    const finalDrawWidth = Math.max(0.5, drawnBarActualWidth); 
+    const finalDrawWidth = Math.max(0.5, drawnBarActualWidth)
 
-    ctx.fillRect(i * barWidth, canvas.height - barHeight, finalDrawWidth, barHeight); 
+    ctx.fillRect(i * barWidth, canvas.height - barHeight, finalDrawWidth, barHeight)
   }
-};
+}
 
 // Apply stretch settings and redraw
 const applyStretch = () => {
+  console.time('applyStretch')
   calculateHistogram()
   drawImage() // drawImage will now also update fullScreenImageSrc if active
+  console.timeEnd('applyStretch')
 }
 
 // Toggle full-screen mode
@@ -532,110 +543,105 @@ watch(
   () => props.imageData,
   (newValue) => {
     if (newValue.byteLength > 0) {
-      processedImage.value = null 
-      applyStretch(); 
+      processedImage.value = null
+      applyStretch()
     } else {
-        processedImage.value = null;
-        histogram.value = [];
-        rawHistogram.value = [];
-        displayHistogram.value = [];
-        minPixelValue.value = 0; // Reset manual stretch values
-        maxPixelValue.value = 255;
-        if (canvasRef.value) {
-            const ctx = canvasRef.value.getContext('2d');
-            if (ctx) ctx.clearRect(0,0, canvasRef.value.width, canvasRef.value.height);
-        }
-        if (histogramCanvas.value) {
-            const ctxHist = histogramCanvas.value.getContext('2d');
-            if (ctxHist) ctxHist.clearRect(0,0, histogramCanvas.value.width, histogramCanvas.value.height);
-        }
+      processedImage.value = null
+      histogram.value = []
+      rawHistogram.value = []
+      displayHistogram.value = []
+      minPixelValue.value = 0 // Reset manual stretch values
+      maxPixelValue.value = 255
+      if (canvasRef.value) {
+        const ctx = canvasRef.value.getContext('2d')
+        if (ctx) ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height)
+      }
+      if (histogramCanvas.value) {
+        const ctxHist = histogramCanvas.value.getContext('2d')
+        if (ctxHist) ctxHist.clearRect(0, 0, histogramCanvas.value.width, histogramCanvas.value.height)
+      }
     }
   }
 )
 
 // Watch for changes in detectedBayerPattern from props
-watch(() => props.detectedBayerPattern, (newDetectedPattern) => {
-  autoDetectedPatternDisplay.value = newDetectedPattern;
-  if (newDetectedPattern && !userHasManuallySelectedPattern.value && !isMonochromeOrUnknown.value) {
-    if (bayerPatternOptions.value.includes(newDetectedPattern)) {
-      selectedBayerPattern.value = newDetectedPattern;
-      if (!enableDebayer.value) {
-        enableDebayer.value = true; // Auto-enable if a pattern is detected and we are not monochrome
-      } else {
-        // If debayer was already enabled, changing pattern should trigger reprocess
-        processedImage.value = null;
-        applyStretch();
+watch(
+  () => props.detectedBayerPattern,
+  (newDetectedPattern) => {
+    autoDetectedPatternDisplay.value = newDetectedPattern
+    if (newDetectedPattern && !userHasManuallySelectedPattern.value && !isMonochromeOrUnknown.value) {
+      if (bayerPatternOptions.value.includes(newDetectedPattern)) {
+        selectedBayerPattern.value = newDetectedPattern
+        if (!enableDebayer.value) {
+          enableDebayer.value = true // Auto-enable if a pattern is detected and we are not monochrome
+        } else {
+          // If debayer was already enabled, changing pattern should trigger reprocess
+          processedImage.value = null
+          applyStretch()
+        }
       }
     }
-  }
-}, { immediate: true });
+  },
+  { immediate: true }
+)
 
 // Watch for user manually changing the selectedBayerPattern
 watch(selectedBayerPattern, (newValue, oldValue) => {
   if (newValue !== oldValue && newValue !== props.detectedBayerPattern) {
-      userHasManuallySelectedPattern.value = true;
+    userHasManuallySelectedPattern.value = true
   }
   // If user selects a pattern that IS the auto-detected one, reset manual flag if desired
   // This logic can be nuanced. For now, any direct change is manual.
   // Re-processing is handled by the main watcher that includes selectedBayerPattern.value
-});
+})
 
 // Watch for enableDebayer changes initiated by user
 watch(enableDebayer, (newValue, oldValue) => {
-    if (newValue !== oldValue) {
-        // If user enables debayering and we have a detected pattern, but they haven't manually picked one, select the detected one.
-        if (newValue && props.detectedBayerPattern && !userHasManuallySelectedPattern.value && !isMonochromeOrUnknown.value) {
-            if (selectedBayerPattern.value !== props.detectedBayerPattern) {
-                 if (bayerPatternOptions.value.includes(props.detectedBayerPattern)) {
-                    selectedBayerPattern.value = props.detectedBayerPattern;
-                    // This change in selectedBayerPattern will trigger the main watcher for reprocessing
-                 }
-            }
+  if (newValue !== oldValue) {
+    // If user enables debayering and we have a detected pattern, but they haven't manually picked one, select the detected one.
+    if (newValue && props.detectedBayerPattern && !userHasManuallySelectedPattern.value && !isMonochromeOrUnknown.value) {
+      if (selectedBayerPattern.value !== props.detectedBayerPattern) {
+        if (bayerPatternOptions.value.includes(props.detectedBayerPattern)) {
+          selectedBayerPattern.value = props.detectedBayerPattern
+          // This change in selectedBayerPattern will trigger the main watcher for reprocessing
         }
-        // If user disables debayering, they might expect it to revert to monochrome even if a pattern was auto-selected.
-        // The main watcher including enableDebayer.value will trigger reprocessing.
-        // Setting userHasManuallySelectedPattern to false if debayer is disabled might be good to allow auto-detection again if re-enabled.
-        if (!newValue) {
-            userHasManuallySelectedPattern.value = false;
-        }
+      }
     }
-});
+    // If user disables debayering, they might expect it to revert to monochrome even if a pattern was auto-selected.
+    // The main watcher including enableDebayer.value will trigger reprocessing.
+    // Setting userHasManuallySelectedPattern to false if debayer is disabled might be good to allow auto-detection again if re-enabled.
+    if (!newValue) {
+      userHasManuallySelectedPattern.value = false
+    }
+  }
+})
 
 // --- REFACTOR: Watchers for performance ---
 // Only re-decode/process image when image data or debayer settings change
-watch(
-  [() => props.imageData, enableDebayer, selectedBayerPattern, () => props.width, () => props.height],
-  () => {
-    processedImage.value = null;
-    calculateHistogram();
-    drawImage();
-  }
-);
+watch([() => props.imageData, enableDebayer, selectedBayerPattern, () => props.width, () => props.height], () => {
+  processedImage.value = null
+  calculateHistogram()
+  drawImage()
+})
 
 // For stretch/gamma/levels, just redraw using cached processedImage
-watch(
-  [
-    stretchMethod,
-    minPixelValue,
-    maxPixelValue,
-    autoStretch,
-    useRobustStretch,
-    robustPercentile,
-    currentThemeRef,
-    gamma
-  ],
-  () => {
-    drawImage();
-  }
-);
+watch([stretchMethod, minPixelValue, maxPixelValue, autoStretch, useRobustStretch, robustPercentile, currentThemeRef, gamma], () => {
+  drawImage()
+})
 
 // Watch for subframe prop changes and redraw overlay
-watch(() => props.subframe, () => { drawImage(); }, { deep: true });
+watch(
+  () => props.subframe,
+  () => {
+    drawImage()
+  },
+  { deep: true }
+)
 
 // Watch for width/height changes and redraw
 watch([() => props.width, () => props.height], () => {
-  drawImage();
-});
+  drawImage()
+})
 
 // Initialize on mount
 onMounted(() => {
@@ -657,10 +663,10 @@ onMounted(() => {
     drawImage()
   }
 
-  window.addEventListener('mousedown', setDraggingTrue);
-  window.addEventListener('touchstart', setDraggingTrue);
-  window.addEventListener('mouseup', setDraggingFalse);
-  window.addEventListener('touchend', setDraggingFalse);
+  window.addEventListener('mousedown', setDraggingTrue)
+  window.addEventListener('touchstart', setDraggingTrue)
+  window.addEventListener('mouseup', setDraggingFalse)
+  window.addEventListener('touchend', setDraggingFalse)
 })
 
 // 3. Clean up observer
@@ -669,10 +675,10 @@ onBeforeUnmount(() => {
     themeObserver.disconnect()
   }
 
-  window.removeEventListener('mousedown', setDraggingTrue);
-  window.removeEventListener('touchstart', setDraggingTrue);
-  window.removeEventListener('mouseup', setDraggingFalse);
-  window.removeEventListener('touchend', setDraggingFalse);
+  window.removeEventListener('mousedown', setDraggingTrue)
+  window.removeEventListener('touchstart', setDraggingTrue)
+  window.removeEventListener('mouseup', setDraggingFalse)
+  window.removeEventListener('touchend', setDraggingFalse)
 })
 
 // function resetStretch() {
@@ -689,52 +695,54 @@ onBeforeUnmount(() => {
 
 // Remove all old slider/levels/stretch control logic and state
 // Add state for histogram stretch control
-const stretchLevels = ref({ input: [0, 32768, 65535], output: [0, 65535] });
-const livePreview = ref(true);
+const stretchLevels = ref({ input: [0, 32768, 65535], output: [0, 65535] })
+const livePreview = ref(true)
 
 // Watch for updates from the control
-function onUpdateLevels(levels: { input: [number, number, number], output: [number, number] }) {
-  stretchLevels.value = levels;
-  minPixelValue.value = levels.input[0];
-  maxPixelValue.value = levels.input[2];
-  const norm = (levels.input[1] - levels.input[0]) / (levels.input[2] - levels.input[0]);
+function onUpdateLevels(levels: { input: [number, number, number]; output: [number, number] }) {
+  stretchLevels.value = levels
+  minPixelValue.value = levels.input[0]
+  maxPixelValue.value = levels.input[2]
+  const norm = (levels.input[1] - levels.input[0]) / (levels.input[2] - levels.input[0])
   if (norm > 0 && norm < 1) {
-    const invertedNorm = 1 - norm;
-    gamma.value = Math.log(0.5) / Math.log(invertedNorm);
+    const invertedNorm = 1 - norm
+    gamma.value = Math.log(0.5) / Math.log(invertedNorm)
   }
-  calculateHistogram();
+  calculateHistogram()
 }
 function onUpdateLivePreview(val: boolean) {
-  livePreview.value = val;
+  livePreview.value = val
 }
 
 function onAutoStretch() {
-  autoStretch.value = true;
+  console.time('AutoStretch Total')
+  autoStretch.value = true
   // If processedImage is available, use its robust/auto min/max for UI
   if (processedImage.value) {
-    minPixelValue.value = processedImage.value.minPixelValue;
-    maxPixelValue.value = processedImage.value.maxPixelValue;
+    minPixelValue.value = processedImage.value.minPixelValue
+    maxPixelValue.value = processedImage.value.maxPixelValue
     // Set gamma to 1.0 for auto-stretch (or recalculate if needed)
-    gamma.value = 1.0;
+    gamma.value = 1.0
     // Update stretchLevels to match
     stretchLevels.value = {
       input: [minPixelValue.value, Math.round((processedImage.value.minPixelValue + processedImage.value.maxPixelValue) / 2), maxPixelValue.value],
       output: [0, 65535]
-    };
-    applyStretch();
+    }
+    applyStretch()
   } else {
     // If not available, trigger processing and stretch
-    applyStretch();
+    applyStretch()
   }
+  console.timeEnd('AutoStretch Total')
 }
 
 function onResetStretch() {
-  resetStretch();
+  resetStretch()
 }
 
 function onApplyStretch() {
-  calculateHistogram();
-  applyStretch();
+  calculateHistogram()
+  applyStretch()
 }
 
 // On image load, initialize sliders to True Linear
@@ -742,43 +750,57 @@ watch(
   () => props.imageData,
   (newValue) => {
     if (newValue.byteLength > 0 && processedImage.value) {
-      setTrueLinear();
+      setTrueLinear()
     }
   }
 )
 
 function setTrueLinear() {
-  if (!processedImage.value) return;
-  minPixelValue.value = 0;
-  maxPixelValue.value = Math.pow(2, processedImage.value.bitsPerPixel) - 1;
-  gamma.value = 1.0;
-  stretchMethod.value = 'linear';
+  if (!processedImage.value) return
+  minPixelValue.value = 0
+  maxPixelValue.value = Math.pow(2, processedImage.value.bitsPerPixel) - 1
+  gamma.value = 1.0
+  stretchMethod.value = 'linear'
   stretchLevels.value = {
     input: [minPixelValue.value, Math.round((minPixelValue.value + maxPixelValue.value) / 2), maxPixelValue.value],
     output: [0, 65535]
-  };
-  applyStretch();
+  }
+  applyStretch()
 }
 
 function resetStretch() {
-  setTrueLinear();
+  setTrueLinear()
 }
+
+const perfStats = ref({
+  autoStretch: 0,
+  applyStretch: 0,
+  calculateHistogram: 0,
+  fastDisplayHistogram: 0,
+  fullDisplayHistogram: 0,
+  createStretchLUT: 0,
+  generateDisplayImage: 0,
+  putImageData: 0,
+  drawImage: 0
+})
 </script>
 
 <template>
   <div class="aw-camera-image-display">
     <div ref="imageContainerRef" class="image-container">
-      <canvas
-        ref="canvasRef" class="image-canvas"
-        @mousemove="onCanvasMouseMove"
-        @mouseleave="onCanvasMouseLeave"
-      ></canvas>
+      <canvas ref="canvasRef" class="image-canvas" @mousemove="onCanvasMouseMove" @mouseleave="onCanvasMouseLeave"></canvas>
       <button v-if="props.imageData.byteLength > 0" class="fullscreen-button" title="View Full Screen" @click="toggleFullScreen">
         <Icon type="search" size="18" />
       </button>
       <!-- Pixel hover tooltip -->
-      <div v-if="showPixelTooltip && hoverPixel" class="pixel-tooltip" :style="{ left: pixelTooltipPos.x + 12 + 'px', top: pixelTooltipPos.y + 12 + 'px' }">
-        <div><strong>Pixel ({{ hoverPixel.x }}, {{ hoverPixel.y }})</strong></div>
+      <div
+        v-if="showPixelTooltip && hoverPixel"
+        class="pixel-tooltip"
+        :style="{ left: pixelTooltipPos.x + 12 + 'px', top: pixelTooltipPos.y + 12 + 'px' }"
+      >
+        <div>
+          <strong>Pixel ({{ hoverPixel.x }}, {{ hoverPixel.y }})</strong>
+        </div>
         <div v-if="hoverPixel.avg.length === 1">Raw: {{ hoverPixel.avg[0] }}</div>
         <div v-else>Raw: R {{ hoverPixel.avg[0] }}, G {{ hoverPixel.avg[1] }}, B {{ hoverPixel.avg[2] }}</div>
         <div v-if="hoverPixel.display.length === 1">Display: {{ hoverPixel.display[0] }}</div>
@@ -788,19 +810,21 @@ function resetStretch() {
     <!-- Dense, clean pixel stats bar -->
     <div v-if="processedImage" class="pixel-stats-bar compact">
       <span class="stats-group stats-left">
-        <b>{{ processedImage.width }}×{{ processedImage.height }}</b>,
-        <b>{{ processedImage.bitsPerPixel }}</b>-bit,
+        <b>{{ processedImage.width }}×{{ processedImage.height }}</b
+        >, <b>{{ processedImage.bitsPerPixel }}</b
+        >-bit,
         {{ processedImage.channels === 1 ? 'Mono' : 'RGB' }}
       </span>
       <span class="stats-group stats-right">
-        Min: <b>{{ processedImage.minPixelValue }}</b>,
-        Max: <b>{{ processedImage.maxPixelValue }}</b>,
-        Mean: <b>{{ Math.round(processedImage.meanPixelValue) }}</b>
+        Min: <b>{{ processedImage.minPixelValue }}</b
+        >, Max: <b>{{ processedImage.maxPixelValue }}</b
+        >, Mean: <b>{{ Math.round(processedImage.meanPixelValue) }}</b>
       </span>
     </div>
     <div v-if="props.imageData.byteLength > 0" class="stretch-controls astronomy-stretch-ui">
       <div class="stretch-mode-row">
-        <label>Stretch Mode:
+        <label
+          >Stretch Mode:
           <select v-model="stretchMethod" class="stretch-select">
             <option value="linear">True Linear</option>
             <option value="log">Log</option>
@@ -824,15 +848,26 @@ function resetStretch() {
         @reset-stretch="onResetStretch"
       />
     </div>
-    <div v-if="props.imageData.byteLength === 0" class="no-image-message">
-      No image data to display.
-    </div>
+    <div v-if="props.imageData.byteLength === 0" class="no-image-message">No image data to display.</div>
     <!-- Full Screen Modal -->
     <div v-if="isFullScreen" class="fullscreen-modal" @click.self="toggleFullScreen">
       <img :src="fullScreenImageSrc" alt="Full screen image" class="fullscreen-modal-image" />
       <button class="close-fullscreen-button" @click="toggleFullScreen">
         <Icon type="close" />
       </button>
+    </div>
+    <div class="perf-stats-overlay" style="display: none">
+      <b>Performance Stats (ms):</b>
+      <div>processImageBytes calls: {{ processImageBytesCallCount }}</div>
+      <div>AutoStretch: {{ perfStats.autoStretch.toFixed(2) }}</div>
+      <div>ApplyStretch: {{ perfStats.applyStretch.toFixed(2) }}</div>
+      <div>CalculateHistogram: {{ perfStats.calculateHistogram.toFixed(2) }}</div>
+      <div>FastDisplayHistogram: {{ perfStats.fastDisplayHistogram.toFixed(2) }}</div>
+      <div>FullDisplayHistogram: {{ perfStats.fullDisplayHistogram.toFixed(2) }}</div>
+      <div>CreateStretchLUT: {{ perfStats.createStretchLUT.toFixed(2) }}</div>
+      <div>GenerateDisplayImage: {{ perfStats.generateDisplayImage.toFixed(2) }}</div>
+      <div>PutImageData: {{ perfStats.putImageData.toFixed(2) }}</div>
+      <div>DrawImage: {{ perfStats.drawImage.toFixed(2) }}</div>
     </div>
   </div>
 </template>
@@ -1062,7 +1097,8 @@ function resetStretch() {
   color: var(--aw-color-neutral-300);
 }
 
-.stretch-auto-row, .stretch-robust-row {
+.stretch-auto-row,
+.stretch-robust-row {
   background: var(--aw-panel-hover-bg-color);
   border-radius: var(--aw-border-radius-xs);
   /* stylelint-disable-next-line */
@@ -1071,11 +1107,13 @@ function resetStretch() {
   margin-top: var(--aw-spacing-xs);
 }
 
-.stretch-auto-row label, .stretch-robust-row label {
+.stretch-auto-row label,
+.stretch-robust-row label {
   color: var(--aw-color-text-secondary);
 }
 
-.stretch-auto-row input[type="checkbox"], .stretch-robust-row input[type="checkbox"] {
+.stretch-auto-row input[type='checkbox'],
+.stretch-robust-row input[type='checkbox'] {
   accent-color: var(--aw-accent-color);
 }
 
@@ -1095,8 +1133,6 @@ function resetStretch() {
   width: 100%;
   height: 100px;
 }
-
-
 
 .levels-vue-slider-overlay {
   position: absolute;
@@ -1136,7 +1172,7 @@ function resetStretch() {
   gap: 0.2rem;
 }
 
-.levels-values input[type="number"] {
+.levels-values input[type='number'] {
   width: 70px;
   padding: 0.2rem 0.4rem;
   font-size: 0.95rem;
@@ -1163,7 +1199,7 @@ function resetStretch() {
   cursor: not-allowed;
 }
 
-.levels-values input[type="checkbox"] {
+.levels-values input[type='checkbox'] {
   margin-left: 0.5rem;
 }
 
@@ -1220,5 +1256,12 @@ function resetStretch() {
 .lut-args-indicator strong {
   color: var(--aw-accent-color);
   margin-right: 0.7em;
+}
+
+.perf-stats-overlay {
+  padding: var(--aw-spacing-md);
+  background: var(--aw-panel-content-bg-color);
+  border-radius: var(--aw-border-radius-sm);
+  margin-top: var(--aw-spacing-md);
 }
 </style>

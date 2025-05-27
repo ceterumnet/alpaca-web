@@ -384,6 +384,23 @@ export function getBitsPerPixel(imageElementType: number): number {
   }
 }
 
+// Utility: Convert column-major to row-major for mono images
+function columnMajorToRowMajor<T extends Uint8Array | Uint16Array | Uint32Array | number[]>(
+  data: T,
+  width: number,
+  height: number
+): T {
+  const result = new (Object.getPrototypeOf(data).constructor)(width * height) as T;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      result[y * width + x] = data[x * height + y];
+    }
+  }
+  return result;
+}
+
+export let processImageBytesCallCount = 0;
+
 /**
  * Convert ArrayBuffer to appropriate typed array based on metadata
  * This is where we handle the ASCOM image data format conversion
@@ -394,6 +411,7 @@ export function processImageBytes(
   defaultHeight = 0,
   bayerPattern?: BayerPattern // Optional Bayer pattern for debayering
 ): ProcessedImageData {
+  processImageBytesCallCount++;
   // Parse metadata
   const metadata = parseImageMetadata(buffer, defaultWidth, defaultHeight)
 
@@ -436,7 +454,18 @@ export function processImageBytes(
     const alignedOffset = getAlignedOffset(dataStart, metadata.transmissionElementType)
 
     // Extract the raw pixel data based on transmission element type (column-major)
-    const originalMonoPixelData = extractTypedArray(buffer, metadata.transmissionElementType, alignedOffset, pixelCount)
+    let originalMonoPixelData = extractTypedArray(buffer, metadata.transmissionElementType, alignedOffset, pixelCount)
+
+    // --- Forced conversion to typed array if needed ---
+    if (Array.isArray(originalMonoPixelData)) {
+      if (rawBitsPerPixel <= 8) {
+        originalMonoPixelData = new Uint8Array(originalMonoPixelData)
+      } else if (rawBitsPerPixel <= 16) {
+        originalMonoPixelData = new Uint16Array(originalMonoPixelData)
+      } else {
+        originalMonoPixelData = new Uint32Array(originalMonoPixelData)
+      }
+    }
 
     let finalPixelData: Uint8Array | Uint16Array | Uint32Array | number[]
     let finalChannels: 1 | 3 = 1
@@ -461,11 +490,6 @@ export function processImageBytes(
       imageType = 'color' // Image is now color
     } else {
       // Standard processing for monochrome or pre-colored (rank 3) images
-      // For rank 3 color images, this path assumes they are already interleaved RGB or similar
-      // and might need specific handling if not. For now, we treat them as needing conversion like mono.
-      // The extractTypedArray gives a flat array. If it's rank 3 color, interpretation needs care.
-      // Let's assume for now rank 3 color images are not yet handled by this simple path for pixelData structure.
-      // The goal here is to get a single coherent pixelData array.
       if (rawBitsPerPixel <= 8) {
         finalPixelData = convertToUint8Array(originalMonoPixelData)
       } else if (rawBitsPerPixel <= 16) {
@@ -474,20 +498,20 @@ export function processImageBytes(
         finalPixelData = convertToUint32Array(originalMonoPixelData, metadata.transmissionElementType)
         effectiveBitsPerPixel = 32 // Standardize to 32 BPP for higher inputs after conversion
       }
+      // One-time conversion to row-major for mono images
+      if (imageType === 'monochrome' && width > 0 && height > 0) {
+        finalPixelData = columnMajorToRowMajor(finalPixelData, width, height)
+      }
     }
 
     // Calculate image statistics (min, max, mean)
-    // If debayered, stats are based on luminance of row-major RGB data.
-    // If monochrome, stats are based on column-major mono data.
-    // We need to ensure calculateImageStatistics gets the correct format.
-    // If debayered, finalPixelData is already row-major.
-    // If not, we pass originalMonoPixelData (column-major)
+    // Now always row-major for both mono and RGB
     const stats = calculateImageStatistics(
-      finalPixelData, // This is row-major if debayered, or converted mono (still effectively 1D)
+      finalPixelData, // Always row-major now
       width,
       height,
       finalChannels, // Pass channels
-      isDebayered ? 'row-major' : 'column-major', // Pass data order
+      'row-major', // Always row-major
       effectiveBitsPerPixel // Pass BPP for luminance calc if needed
     )
 
@@ -498,7 +522,7 @@ export function processImageBytes(
       pixelData: finalPixelData,
       channels: finalChannels,
       isDebayered,
-      originalPixelData: originalMonoPixelData, // Store original mono data
+      originalPixelData: originalMonoPixelData, // Store original mono data (now always typed array)
       imageType,
       metadata,
       minPixelValue: stats.min,
@@ -702,7 +726,7 @@ function calculateImageStatistics(
   width: number,
   height: number,
   channels: 1 | 3,
-  order: 'column-major' | 'row-major', // Added to specify data order
+  order: 'column-major' | 'row-major', // Kept for compatibility, but always pass 'row-major'
   bitsPerPixel: number // Added for luminance calculation normalization
 ): { min: number; max: number; mean: number } {
   let min = Number.MAX_VALUE
@@ -718,11 +742,10 @@ function calculateImageStatistics(
   const sampleStep = pixelCount > 1000000 ? Math.floor(Math.sqrt(pixelCount / 1000)) : 1
 
   if (channels === 1) {
-    // Monochrome data (assume column-major as per original ASCOM)
-    // Order parameter helps clarify, but original logic was column-major for mono stats
+    // Monochrome data (now always row-major)
     for (let y = 0; y < height; y += sampleStep) {
       for (let x = 0; x < width; x += sampleStep) {
-        const idx = order === 'column-major' ? x * height + y : y * width + x // Adjust index based on order
+        const idx = y * width + x // Always row-major
         if (idx < data.length) {
           const val = Number(data[idx])
           if (!isNaN(val) && isFinite(val)) {
@@ -735,8 +758,7 @@ function calculateImageStatistics(
       }
     }
   } else {
-    // RGB data (assumed row-major: [R,G,B,R,G,B...])
-    // Calculate luminance for statistics
+    // RGB data (assumed row-major), calculate histogram of luminance
     for (let y = 0; y < height; y += sampleStep) {
       for (let x = 0; x < width; x += sampleStep) {
         const idx = (y * width + x) * 3 // Row-major index for R value
@@ -746,8 +768,6 @@ function calculateImageStatistics(
           const b = Number(data[idx + 2])
 
           if ([r, g, b].every((c) => !isNaN(c) && isFinite(c))) {
-            // Simple average for luminance, or could use weighted (0.299R + 0.587G + 0.114B)
-            // For now, using average, assuming R,G,B are in similar scale
             const luminance = (r + g + b) / 3
             min = Math.min(min, luminance)
             max = Math.max(max, luminance)
@@ -766,7 +786,6 @@ function calculateImageStatistics(
     if (channels === 1) {
       return { min: 0, max: defaultMaxVal, mean: defaultMaxVal / 2 }
     } else {
-      // RGB, stats based on luminance
       return { min: 0, max: Math.round(defaultMaxVal), mean: Math.round(defaultMaxVal / 2) }
     }
   }
@@ -857,7 +876,7 @@ export function calculateHistogram(
   max: number, // Max value for histogram range (from stats, possibly luminance)
   binCount: number = 256,
   channels: 1 | 3, // Added channels
-  order: 'column-major' | 'row-major' // Added data order
+  order: 'column-major' | 'row-major' // Kept for compatibility, but always pass 'row-major'
 ): number[] {
   const histogram = new Array(binCount).fill(0)
   const pixelCount = width * height
@@ -870,18 +889,13 @@ export function calculateHistogram(
   const scaleFactor = (binCount - 1) / range
 
   if (channels === 1) {
-    // Monochrome data
-    for (let y = 0; y < height; y += sampleStep) {
-      for (let x = 0; x < width; x += sampleStep) {
-        const idx = order === 'column-major' ? x * height + y : y * width + x
-        if (idx < data.length) {
-          const value = Number(data[idx])
-          if (!isFinite(value) || isNaN(value)) continue
-          const bin = Math.min(binCount - 1, Math.max(0, Math.floor((value - min) * scaleFactor)))
-          if (bin >= 0 && bin < binCount) {
-            histogram[bin]++
-          }
-        }
+    // Monochrome data (now always row-major) - use a flat loop for better performance
+    for (let idx = 0; idx < pixelCount; idx += sampleStep) {
+      const value = Number(data[idx]);
+      if (!isFinite(value) || isNaN(value)) continue;
+      const bin = Math.min(binCount - 1, Math.max(0, Math.floor((value - min) * scaleFactor)));
+      if (bin >= 0 && bin < binCount) {
+        histogram[bin]++;
       }
     }
   } else {
@@ -925,10 +939,10 @@ export function generateDisplayImage(
   if (width === 0 || height === 0 || data.length === 0) return outputData
 
   if (channels === 1) {
-    // Monochrome: data is column-major, output is row-major RGBA
+    // Monochrome: data is now row-major, output is row-major RGBA
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const sourceIdx = x * height + y // column-major
+        const sourceIdx = y * width + x // row-major
         const targetIdx = (y * width + x) * 4 // row-major
         const value = data[sourceIdx]
         const lutIndex = Math.min(lut.length - 1, Math.max(0, value))
