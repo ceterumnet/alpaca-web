@@ -248,14 +248,54 @@ const drawImage = async () => {
 
   // Generate display image data efficiently
   console.time('drawImage:workerCall')
-  const imageData = await generateDisplayImageWorker(
-    processedImage.value.pixelData,
-    imageWidth,
-    imageHeight,
-    lut,
-    processedImage.value.channels // Pass channels
-  )
+  console.log('[main] About to post to worker', {
+    pixelData: processedImage.value.pixelData,
+    width: imageWidth,
+    height: imageHeight,
+    lut: lut,
+    channels: processedImage.value.channels,
+    pixelDataType: processedImage.value.pixelData && processedImage.value.pixelData.constructor && processedImage.value.pixelData.constructor.name,
+    pixelDataLength: processedImage.value.pixelData && processedImage.value.pixelData.length
+  })
+  console.log('[main] Calling generateDisplayImageWorker')
+  let imageData: unknown
+  try {
+    imageData = await generateDisplayImageWorker(
+      processedImage.value.pixelData,
+      imageWidth,
+      imageHeight,
+      lut,
+      processedImage.value.channels // Pass channels
+    )
+    console.log('[main] generateDisplayImageWorker resolved')
+  } catch (err) {
+    console.error('[main] generateDisplayImageWorker threw:', err)
+  }
   console.timeEnd('drawImage:workerCall')
+
+  // After receiving imageData from the worker and before drawing:
+  console.log('[main] About to draw image')
+  if (isUint8ArrayLike(imageData)) {
+    console.log('[main] imageData length:', imageData.length)
+    console.log('[main] imageData sample:', Array.from(imageData.slice(0, 16)))
+    console.log('[main] alpha values:', imageData[3], imageData[7], imageData[11], imageData[15])
+  } else {
+    console.error('[main] imageData is not a Uint8Array or Uint8ClampedArray:', imageData)
+  }
+  console.log('[main] canvas size:', canvas.width, canvas.height, 'image size:', imageWidth, imageHeight)
+
+  // Sanity checks
+  if (!(imageData instanceof Uint8ClampedArray)) {
+    if (imageData instanceof Uint8Array) {
+      console.warn('[main] imageData is not Uint8ClampedArray, converting')
+      imageData = new Uint8ClampedArray(imageData.buffer, imageData.byteOffset, imageData.byteLength)
+    } else {
+      console.error('[main] imageData is not a recognized array type:', imageData)
+    }
+  }
+  if ((imageData as Uint8ClampedArray).length !== imageWidth * imageHeight * 4) {
+    console.error('[main] imageData length mismatch', (imageData as Uint8ClampedArray).length, imageWidth * imageHeight * 4)
+  }
 
   if (thisDrawRequestId !== latestDrawRequestId) {
     console.log('drawImage: Skipping outdated render', thisDrawRequestId, 'current', latestDrawRequestId)
@@ -272,7 +312,7 @@ const drawImage = async () => {
 
   // Create ImageData object for canvas
   console.time('drawImage:putImageData')
-  const imgData = new ImageData(imageData, imageWidth, imageHeight)
+  const imgData = new ImageData(imageData as Uint8ClampedArray, imageWidth, imageHeight)
   ctx.putImageData(imgData, 0, 0)
   console.timeEnd('drawImage:putImageData')
 
@@ -646,7 +686,7 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number) 
   }
 }
 
-const debouncedDrawImage = debounce(drawImage, 40)
+const debouncedDrawImage = debounce(drawImage, 20)
 
 // For stretch/gamma/levels, just redraw using cached processedImage
 watch([stretchMethod, minPixelValue, maxPixelValue, autoStretch, useRobustStretch, robustPercentile, currentThemeRef, gamma], () => {
@@ -686,11 +726,6 @@ onMounted(() => {
     calculateHistogram()
     drawImage()
   }
-
-  window.addEventListener('mousedown', setDraggingTrue)
-  window.addEventListener('touchstart', setDraggingTrue)
-  window.addEventListener('mouseup', setDraggingFalse)
-  window.addEventListener('touchend', setDraggingFalse)
 })
 
 // 3. Clean up observer
@@ -698,11 +733,6 @@ onBeforeUnmount(() => {
   if (themeObserver) {
     themeObserver.disconnect()
   }
-
-  window.removeEventListener('mousedown', setDraggingTrue)
-  window.removeEventListener('touchstart', setDraggingTrue)
-  window.removeEventListener('mouseup', setDraggingFalse)
-  window.removeEventListener('touchend', setDraggingFalse)
 })
 
 // function resetStretch() {
@@ -807,6 +837,21 @@ const perfStats = ref({
   putImageData: 0,
   drawImage: 0
 })
+
+// Type guard for Uint8Array-like
+function isUint8ArrayLike(arr: unknown): arr is Uint8Array | Uint8ClampedArray {
+  return arr instanceof Uint8Array || arr instanceof Uint8ClampedArray
+}
+
+// Add these methods in <script setup>
+function onDragStart() {
+  isDragging = true
+  calculateHistogram()
+}
+function onDragEnd() {
+  isDragging = false
+  calculateHistogram()
+}
 </script>
 
 <template>
@@ -870,6 +915,8 @@ const perfStats = ref({
         @auto-stretch="onAutoStretch"
         @apply-stretch="onApplyStretch"
         @reset-stretch="onResetStretch"
+        @drag-start="onDragStart"
+        @drag-end="onDragEnd"
       />
     </div>
     <div v-if="props.imageData.byteLength === 0" class="no-image-message">No image data to display.</div>

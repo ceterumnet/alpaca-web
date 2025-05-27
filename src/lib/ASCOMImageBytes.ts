@@ -922,57 +922,26 @@ export function calculateHistogram(
   return histogram
 }
 
-/**
- * Generate an 8-bit image using a lookup table for display
- * Much more efficient than calculating stretch for each pixel
- */
-export function generateDisplayImage(
-  data: Uint8Array | Uint16Array | Uint32Array | number[],
-  width: number,
-  height: number,
-  lut: Uint8Array,
-  channels: 1 | 3
-): Uint8ClampedArray {
-  const outputLength = width * height * 4
-  const outputData = new Uint8ClampedArray(outputLength)
+let displayImageWorker: Worker | null = null;
+let requestId = 0;
+const pendingRequests = new Map<number, (data: Uint8ClampedArray) => void>();
 
-  if (width === 0 || height === 0 || data.length === 0) return outputData
-
-  if (channels === 1) {
-    // Monochrome: data is now row-major, output is row-major RGBA
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const sourceIdx = y * width + x // row-major
-        const targetIdx = (y * width + x) * 4 // row-major
-        const value = data[sourceIdx]
-        const lutIndex = Math.min(lut.length - 1, Math.max(0, value))
-        const displayValue = lut[lutIndex]
-        outputData[targetIdx] = displayValue // R
-        outputData[targetIdx + 1] = displayValue // G
-        outputData[targetIdx + 2] = displayValue // B
-        outputData[targetIdx + 3] = 255 // A
+function getDisplayImageWorker() {
+  if (!displayImageWorker) {
+    displayImageWorker = new Worker(new URL('./DisplayImageWorker.ts', import.meta.url), { type: 'module' });
+    displayImageWorker.onmessage = (e: MessageEvent) => {
+      const { id, outputData } = e.data;
+      const resolve = pendingRequests.get(id);
+      if (resolve) {
+        resolve(outputData as Uint8ClampedArray);
+        pendingRequests.delete(id);
       }
-    }
-  } else {
-    // Optimized: flatten loop for RGB
-    const numPixels = width * height
-    for (let idx = 0, outIdx = 0; idx < numPixels; idx++, outIdx += 4) {
-      const base = idx * 3
-      outputData[outIdx] = lut[Math.min(lut.length - 1, Math.max(0, data[base]))]
-      outputData[outIdx + 1] = lut[Math.min(lut.length - 1, Math.max(0, data[base + 1]))]
-      outputData[outIdx + 2] = lut[Math.min(lut.length - 1, Math.max(0, data[base + 2]))]
-      outputData[outIdx + 3] = 255
-    }
+    };
+    // Optionally handle errors
   }
-  return outputData
+  return displayImageWorker;
 }
 
-/**
- * Offload generateDisplayImage to a web worker for performance.
- * Usage:
- *   await generateDisplayImageWorker(data, width, height, lut, channels)
- * Returns: Promise<Uint8ClampedArray>
- */
 export function generateDisplayImageWorker(
   data: Uint8Array | Uint16Array | Uint32Array | number[],
   width: number,
@@ -981,16 +950,10 @@ export function generateDisplayImageWorker(
   channels: 1 | 3
 ): Promise<Uint8ClampedArray> {
   return new Promise((resolve, reject) => {
-    // Dynamically import the worker
-    const worker = new Worker(new URL('./DisplayImageWorker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (e: MessageEvent) => {
-      resolve(e.data.outputData as Uint8ClampedArray);
-      worker.terminate();
-    };
-    worker.onerror = (err) => {
-      reject(err);
-      worker.terminate();
-    };
-    worker.postMessage({ data, width, height, lut, channels });
+    const worker = getDisplayImageWorker();
+    const id = ++requestId;
+    pendingRequests.set(id, resolve);
+    worker.postMessage({ id, data, width, height, lut, channels });
+    // Optionally handle errors
   });
 }

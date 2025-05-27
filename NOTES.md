@@ -30,13 +30,12 @@ FUTURE:
 - [x] Write unit tests for stores:
 - [ ] Write unit tests for panels
 - [ ] Write e2e tests...
-- [ ] Open question: I have a buggy behavior in the cover calibrator. I would like to reveal this through a test that attempts to open the cover and demonstrate that it isn't working correctly.
 
 ## Features
 
-- [ ] Telescope Panel is missing a lot of indicators of status such as "At Home" / "Parked" / Slewing / Tracking. Some of these are combined with the inputs, but it isn't a great UX
+- [x] Telescope Panel is missing a lot of indicators of status such as "At Home" / "Parked" / Slewing / Tracking. Some of these are combined with the inputs, but it isn't a great UX
 - [ ] Wire settings up
-- [ ] Create logging system for user
+- [x] Create logging system for user
 - [ ] Filterwheel Panel should have concept of moving while switching filters
 
 ## Bugs
@@ -51,15 +50,15 @@ FUTURE:
 
 ## UX Issues
 
-- [ ] Notifications are weird. The CSS styles aren't quite right they don't always honor dark mode
+- [x] Notifications are weird. The CSS styles aren't quite right they don't always honor dark mode
 - [ ] Toasts should only show up for errors
 - [ ] Opening notifications doesn't need to generate a notification :)
 
 ## Documentation
 
-- [ ] Generate Audit for Simplified Panels against what is available in the stores
+- [x] Generate Audit for Simplified Panels against what is available in the stores
 - [ ] Create build instruction with specific examples of how the 2 critical environment variables work: `VITE_APP_BASE_PATH=/html/ VITE_APP_DISCOVERY_MODE=direct npm run build`
-- [ ] Update README.md to include a project overview with links to the different documents available
+- [x] Update README.md to include a project overview with links to the different documents available
 
 ## General System
 

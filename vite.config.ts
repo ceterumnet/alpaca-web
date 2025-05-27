@@ -1,14 +1,33 @@
 import { fileURLToPath, URL } from 'node:url'
-
+import wasmPack from 'vite-plugin-wasm-pack'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import path from 'node:path'
+import fs from 'node:fs'
+
+const wasmMimePlugin = {
+  name: 'wasm-mime',
+  configureServer(server: { middlewares: { use: (arg0: (args: { url: string }) => void) => void } }) {
+    server.middlewares.use((req, res, next) => {
+      if (req.url && req.url.endsWith('.wasm')) {
+        console.log('wasm mime', req.url)
+        const wasmPath = path.join(__dirname, 'node_modules/image_wasm', path.basename(req.url));
+        const wasmFile = fs.readFileSync(wasmPath);
+        res.setHeader('Content-Type', 'application/wasm');
+        res.end(wasmFile);
+        return;
+      }
+      next();
+    });
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
     base: env.VITE_APP_BASE_PATH || '/',
-    plugins: [vue()],
+    plugins: [wasmMimePlugin, vue(), wasmPack(['./image_wasm'])],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url))
