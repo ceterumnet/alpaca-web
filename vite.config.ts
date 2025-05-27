@@ -7,7 +7,9 @@ import fs from 'node:fs'
 
 const wasmMimePlugin = {
   name: 'wasm-mime',
-  configureServer(server: { middlewares: { use: (arg0: (args: { url: string }) => void) => void } }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  configureServer(server: any) {
+    // @ts-expect-error - Vite types are not fully compatible with Node.js types
     server.middlewares.use((req, res, next) => {
       if (req.url && req.url.endsWith('.wasm')) {
         console.log('wasm mime', req.url)
