@@ -34,14 +34,30 @@ jobs:
       - name: Type check
         run: npm run type-check
 
-      - name: Build
+      - name: Build Proxied Version
         run: npm run build-only
+
+      - name: Move Proxied Build
+        run: mv dist alpaca-web-proxied
+
+      - name: Build Direct Version
+        run: |
+          VITE_APP_BASE_PATH=/html/ VITE_APP_DISCOVERY_MODE=direct npm run build-only
+
+      - name: Move Direct Build
+        run: mv dist alpaca-web-direct
+
+      - name: Upload Proxied Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpaca-web-proxied
+          path: alpaca-web-proxied/
+
+      - name: Upload Direct Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpaca-web-direct
+          path: alpaca-web-direct/
 
       - name: Run unit tests
         run: npm run test:unit
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
