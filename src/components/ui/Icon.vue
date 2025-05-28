@@ -1,6 +1,6 @@
-// Status: Good - Core UI Component // This is the icon system implementation that: // - Provides a
-unified interface for all app icons // - Supports custom sizing and colors // - Implements type-safe
-icon selection // - Maintains consistent styling across the app // - Integrates with the design token system
+// Status: Good - Core UI Component // This is the icon system implementation that: // - Provides a unified interface for all app icons // - Supports
+custom sizing and colors // - Implements type-safe icon selection // - Maintains consistent styling across the app // - Integrates with the design
+token system
 
 <script lang="ts">
 import { defineComponent, h, shallowRef, watchEffect, type Component } from 'vue'
@@ -61,6 +61,7 @@ export type IconType =
   | 'check' // IconCheck
   | 'layout-grid' // IconLayoutGrid
   | 'external-link' // IconExternalLink
+  | 'lock' // IconLock
   // Keep old names for CSS compatibility, but map them in setup or use new names in templates
   // Retaining old names for simpler CSS class matching for now.
   // The mapping to Tabler components will handle the new names.
@@ -70,7 +71,7 @@ export type IconType =
   | 'expand' // Will map to IconArrowsMaximize
   | 'collapse' // Will map to IconArrowsMinimize
   | 'compact' // Will map to IconLayoutSidebarLeftCollapse
-  | 'detailed'// Will map to IconLayoutSidebarLeftExpand
+  | 'detailed' // Will map to IconLayoutSidebarLeftExpand
   | 'fullscreen' // Will map to IconMaximize
   | 'disconnected' // Will map to IconPlugX
   | 'stop' // Will map to IconPlayerStop
@@ -79,7 +80,7 @@ export type IconType =
   | 'reset' // Will map to IconRefresh
   | 'park' // Will map to IconParkingCircle
   | 'unpark' // Will map to IconPlayerPlay
-  | 'sync'; // Will map to IconRefresh
+  | 'sync' // Will map to IconRefresh
 
 export default defineComponent({
   name: 'IconComponent',
@@ -90,21 +91,76 @@ export default defineComponent({
       required: false,
       validator: (value: string): boolean => {
         return [
-          'camera', 'building-observatory', 'telescope', 'sun', 'moon',
-          'question-mark', 'search', 'focus-2', 'filter', 'cloud',
-          'chevron-left', 'chevron-right', 'chevron-down', 'chevron-up', 'settings', 'exposure', 'x',
-          'arrows-maximize', 'arrows-minimize', 'layout-sidebar-left-collapse',
-          'layout-sidebar-left-expand', 'maximize', 'plug-connected', 'plug-x',
-          'arrow-up', 'arrow-down', 'arrow-left', 'arrow-right',
-          'player-stop', 'target-arrow', 'target-off', 'home', 'files',
-          'history', 'bell', 'refresh', 'sliders-horizontal', 'parking-circle',
-          'player-play', 'alert-triangle',
-          'temperature', 'shield', 'rotate-clockwise', 'toggle-left', 'highlight', 'package',
-          'trash', 'alert-circle', 'info-circle', 'check', 'layout-grid', 'external-link',
+          'camera',
+          'building-observatory',
+          'telescope',
+          'sun',
+          'moon',
+          'question-mark',
+          'search',
+          'focus-2',
+          'filter',
+          'cloud',
+          'chevron-left',
+          'chevron-right',
+          'chevron-down',
+          'chevron-up',
+          'settings',
+          'exposure',
+          'x',
+          'arrows-maximize',
+          'arrows-minimize',
+          'layout-sidebar-left-collapse',
+          'layout-sidebar-left-expand',
+          'maximize',
+          'plug-connected',
+          'plug-x',
+          'arrow-up',
+          'arrow-down',
+          'arrow-left',
+          'arrow-right',
+          'player-stop',
+          'target-arrow',
+          'target-off',
+          'home',
+          'files',
+          'history',
+          'bell',
+          'refresh',
+          'sliders-horizontal',
+          'parking-circle',
+          'player-play',
+          'alert-triangle',
+          'temperature',
+          'shield',
+          'rotate-clockwise',
+          'toggle-left',
+          'highlight',
+          'package',
+          'trash',
+          'alert-circle',
+          'info-circle',
+          'check',
+          'layout-grid',
+          'external-link',
+          'lock',
           // Old names for compatibility, these will be mapped
-          'device-unknown', 'gear', 'close', 'expand', 'collapse', 'compact',
-          'detailed', 'fullscreen', 'disconnected', 'stop', 'tracking-on',
-          'tracking-off', 'reset', 'park', 'unpark', 'sync'
+          'device-unknown',
+          'gear',
+          'close',
+          'expand',
+          'collapse',
+          'compact',
+          'detailed',
+          'fullscreen',
+          'disconnected',
+          'stop',
+          'tracking-on',
+          'tracking-off',
+          'reset',
+          'park',
+          'unpark',
+          'sync'
         ].includes(value)
       },
       default: 'question-mark' // Default to a Tabler icon
@@ -117,77 +173,85 @@ export default defineComponent({
       type: String,
       default: '' // currentColor will be used by Tabler if not specified
     },
-    strokeWidth: { // Tabler specific prop
+    strokeWidth: {
+      // Tabler specific prop
       type: [String, Number],
       default: 2 // Default to numeric 2
     }
   },
 
   setup(props) {
-    const IconToRender = shallowRef<Component>(TablerIcons.IconQuestionMark as Component);
+    const IconToRender = shallowRef<Component>(TablerIcons.IconQuestionMark as Component)
 
     watchEffect(() => {
       const typeMap: Record<string, string> = {
         'device-unknown': 'question-mark',
-        'dome': 'building-observatory',
-        'focus': 'focus-2',
-        'gear': 'settings',
-        'close': 'x',
-        'expand': 'arrows-maximize',
-        'collapse': 'arrows-minimize',
-        'compact': 'layout-sidebar-left-collapse',
-        'detailed': 'layout-sidebar-left-expand',
-        'fullscreen': 'maximize',
-        'disconnected': 'plug-x',
-        'stop': 'player-stop',
+        dome: 'building-observatory',
+        focus: 'focus-2',
+        gear: 'settings',
+        close: 'x',
+        expand: 'arrows-maximize',
+        collapse: 'arrows-minimize',
+        compact: 'layout-sidebar-left-collapse',
+        detailed: 'layout-sidebar-left-expand',
+        fullscreen: 'maximize',
+        disconnected: 'plug-x',
+        stop: 'player-stop',
         'tracking-on': 'target-arrow',
         'tracking-off': 'target-off',
-        'reset': 'refresh',
-        'sliders': 'sliders-horizontal',
-        'park': 'parking-circle',
-        'unpark': 'player-play',
-        'sync': 'refresh'
-      };
-
-      const currentPropType = props.type || 'question-mark';
-      const iconName = typeMap[currentPropType] || currentPropType;
-
-      const pascalCaseName = ('Icon' + iconName
-        .split('-')
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join('')) as keyof typeof TablerIcons;
-
-      const ResolvedIcon = TablerIcons[pascalCaseName];
-      
-      if (ResolvedIcon && (typeof ResolvedIcon === 'function' || typeof ResolvedIcon === 'object')) {
-        IconToRender.value = ResolvedIcon as Component;
-      } else {
-        IconToRender.value = TablerIcons.IconQuestionMark as Component;
+        reset: 'refresh',
+        sliders: 'sliders-horizontal',
+        park: 'parking-circle',
+        unpark: 'player-play',
+        sync: 'refresh'
       }
-    });
+
+      const currentPropType = props.type || 'question-mark'
+      const iconName = typeMap[currentPropType] || currentPropType
+
+      const pascalCaseName = ('Icon' +
+        iconName
+          .split('-')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join('')) as keyof typeof TablerIcons
+
+      const ResolvedIcon = TablerIcons[pascalCaseName]
+
+      if (ResolvedIcon && (typeof ResolvedIcon === 'function' || typeof ResolvedIcon === 'object')) {
+        IconToRender.value = ResolvedIcon as Component
+      } else {
+        IconToRender.value = TablerIcons.IconQuestionMark as Component
+      }
+    })
 
     return () =>
-      h('div', { // Wrapper div
-        class: ['aw-icon', `aw-icon--${props.type}`],
-        style: {
-          width: `${props.size}px`,
-          height: `${props.size}px`,
-          display: 'inline-flex', // Ensure proper inline behavior and centering
-          alignItems: 'center',
-          justifyContent: 'center'
-        }
-      }, [
-        h(IconToRender.value, { // Tabler icon as a child
-          size: props.size, // Pass size for Tabler's internal SVG attributes
-          color: props.color || 'currentColor',
-          strokeWidth: props.strokeWidth,
+      h(
+        'div',
+        {
+          // Wrapper div
+          class: ['aw-icon', `aw-icon--${props.type}`],
           style: {
-            maxWidth: 'none !important'
+            width: `${props.size}px`,
+            height: `${props.size}px`,
+            display: 'inline-flex', // Ensure proper inline behavior and centering
+            alignItems: 'center',
+            justifyContent: 'center'
           }
-        })
-      ]);
+        },
+        [
+          h(IconToRender.value, {
+            // Tabler icon as a child
+            size: props.size, // Pass size for Tabler's internal SVG attributes
+            color: props.color || 'currentColor',
+            strokeWidth: props.strokeWidth,
+            style: {
+              maxWidth: 'none !important'
+            }
+          })
+        ]
+      )
   }
-});
+})
 </script>
 
 <style scoped>
@@ -289,20 +353,18 @@ export default defineComponent({
 }
 
 .aw-icon--alert-triangle {
-    color: var(--aw-status-warning-color, var(--aw-color-warning-500));
+  color: var(--aw-status-warning-color, var(--aw-color-warning-500));
 }
 
 .aw-icon--info-circle {
-    color: var(--aw-status-info-color, var(--aw-color-info-500));
+  color: var(--aw-status-info-color, var(--aw-color-info-500));
 }
 
 .aw-icon--check {
-    color: var(--aw-status-success-color, var(--aw-color-success-500));
+  color: var(--aw-status-success-color, var(--aw-color-success-500));
 }
-
 
 /* Add more type-specific color rules here as needed, matching your IconType definitions */
 
 /* and the --aw-color-* design tokens. */
-
 </style>
