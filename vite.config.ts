@@ -12,7 +12,6 @@ const wasmMimePlugin = {
     // @ts-expect-error - Vite types are not fully compatible with Node.js types
     server.middlewares.use((req, res, next) => {
       if (req.url && req.url.endsWith('.wasm')) {
-        console.log('wasm mime', req.url)
         const wasmPath = path.join(__dirname, 'node_modules/image_wasm', path.basename(req.url));
         const wasmFile = fs.readFileSync(wasmPath);
         res.setHeader('Content-Type', 'application/wasm');

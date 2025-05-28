@@ -260,8 +260,6 @@ async function fetchAxisRates() {
       valueArr = (ratesRaw as { Value: unknown[] }).Value
     }
     const ranges = valueArr.filter(isAxisRateRange)
-    console.log('ratesRaw', ratesRaw)
-    console.log('ranges', ranges)
     if (ranges.length > 0) {
       // Generate candidate rates from multipliers
       const candidateRates = COMMON_MULTIPLIERS.map((mult) => ({

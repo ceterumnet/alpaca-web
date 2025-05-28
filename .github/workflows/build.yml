@@ -22,6 +22,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Copy Image Wasm
+        run: npm run copy-wasm
+
       - name: Run linting
         run: npm run lint
 

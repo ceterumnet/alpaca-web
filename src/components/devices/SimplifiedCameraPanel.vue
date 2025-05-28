@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
@@ -8,7 +7,7 @@ import CameraImageDisplay from '@/components/panels/features/CameraImageDisplay.
 import CameraExposureControl from '@/components/panels/features/CameraExposureControl.vue'
 import { setAlpacaProperty, getAlpacaProperties, getDeviceCapabilities } from '@/utils/alpacaPropertyAccess'
 import Icon from '@/components/ui/Icon.vue'
-import type { BayerPattern } from '@/lib/ASCOMImageBytes';
+import type { BayerPattern } from '@/lib/ASCOMImageBytes'
 import '@/assets/components/forms.css'
 import CollapsibleSection from '@/components/ui/CollapsibleSection.vue'
 import DeviceInfo from '@/components/ui/DeviceInfo.vue'
@@ -38,16 +37,22 @@ const currentDevice = computed(() => {
 
 // Computed properties for image dimensions with logging
 const computedImageWidth = computed(() => {
-  const width = Number(currentDevice.value?.properties?.numX);
-  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel (${props.deviceId}): computedImageWidth is ${width}, raw value was: ${currentDevice.value?.properties?.numX}`);
-  return isNaN(width) ? 0 : width; // Default to 0 if not a number
-});
+  const width = Number(currentDevice.value?.properties?.numX)
+  log.debug(
+    { deviceIds: [props.deviceId] },
+    `SimplifiedCameraPanel (${props.deviceId}): computedImageWidth is ${width}, raw value was: ${currentDevice.value?.properties?.numX}`
+  )
+  return isNaN(width) ? 0 : width // Default to 0 if not a number
+})
 
 const computedImageHeight = computed(() => {
-  const height = Number(currentDevice.value?.properties?.numY);
-  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel (${props.deviceId}): computedImageHeight is ${height}, raw value was: ${currentDevice.value?.properties?.numY}`);
-  return isNaN(height) ? 0 : height; // Default to 0 if not a number
-});
+  const height = Number(currentDevice.value?.properties?.numY)
+  log.debug(
+    { deviceIds: [props.deviceId] },
+    `SimplifiedCameraPanel (${props.deviceId}): computedImageHeight is ${height}, raw value was: ${currentDevice.value?.properties?.numY}`
+  )
+  return isNaN(height) ? 0 : height // Default to 0 if not a number
+})
 
 // Get exposure range for the camera
 const exposureMin = ref(0.001)
@@ -88,17 +93,21 @@ watch(
   () => currentDevice.value?.properties?.imageData,
   (newImageData) => {
     if (newImageData instanceof ArrayBuffer && newImageData.byteLength > 0) {
-      log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: imageData updated from store for device ${props.deviceId}, size: ${newImageData.byteLength}`);
-      imageData.value = newImageData;
+      log.debug(
+        { deviceIds: [props.deviceId] },
+        `SimplifiedCameraPanel: imageData updated from store for device ${props.deviceId}, size: ${newImageData.byteLength}`
+      )
+      imageData.value = newImageData
     } else if (newImageData === null || (newImageData instanceof ArrayBuffer && newImageData.byteLength === 0)) {
       // Handle case where image data is explicitly cleared in the store or props reset
-      if (imageData.value.byteLength > 0) { // Only update if it actually changed to empty
-        log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: imageData cleared (from store/props) for device ${props.deviceId}`);
-        imageData.value = new ArrayBuffer(0);
+      if (imageData.value.byteLength > 0) {
+        // Only update if it actually changed to empty
+        log.debug({ deviceIds: [props.deviceId] }, `SimplifiedCameraPanel: imageData cleared (from store/props) for device ${props.deviceId}`)
+        imageData.value = new ArrayBuffer(0)
       }
     }
   }
-);
+)
 
 // Function to clear settings error
 const clearSettingsError = () => {
@@ -114,7 +123,7 @@ const toggleCooler = async () => {
     await setAlpacaProperty(props.deviceId, 'coolerOn', !coolerOn.value)
     coolerOn.value = !coolerOn.value
   } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error toggling cooler:', error)
+    log.error({ deviceIds: [props.deviceId] }, 'Error toggling cooler:', error)
     settingsError.value = `Failed to toggle cooler: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isTogglingCooler.value = false
@@ -128,7 +137,7 @@ const updateGain = async () => {
   try {
     await setAlpacaProperty(props.deviceId, 'gain', gain.value)
   } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error setting gain:', error)
+    log.error({ deviceIds: [props.deviceId] }, 'Error setting gain:', error)
     settingsError.value = `Failed to set gain: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingGain.value = false
@@ -141,7 +150,7 @@ const updateOffset = async () => {
   try {
     await setAlpacaProperty(props.deviceId, 'offset', offset.value)
   } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error setting offset:', error)
+    log.error({ deviceIds: [props.deviceId] }, 'Error setting offset:', error)
     settingsError.value = `Failed to set offset: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingOffset.value = false
@@ -155,7 +164,7 @@ const updateBinning = async () => {
     await setAlpacaProperty(props.deviceId, 'binX', binning.value)
     await setAlpacaProperty(props.deviceId, 'binY', binning.value)
   } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error setting binning:', error)
+    log.error({ deviceIds: [props.deviceId] }, 'Error setting binning:', error)
     settingsError.value = `Failed to set binning: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingBinning.value = false
@@ -169,7 +178,7 @@ const updateTargetTemp = async () => {
   try {
     await setAlpacaProperty(props.deviceId, 'setCCDTemperature', targetTemp.value)
   } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error setting target temperature:', error)
+    log.error({ deviceIds: [props.deviceId] }, 'Error setting target temperature:', error)
     settingsError.value = `Failed to set target temperature: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingTargetTemp.value = false
@@ -179,13 +188,13 @@ const updateTargetTemp = async () => {
 // Event handlers for CameraExposureControl
 const handleExposureStarted = (params: { duration: number; isLight: boolean }) => {
   // Clear any previous exposure-related errors if settingsError is used for this
-  // settingsError.value = null; 
-  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Exposure started: ${params.duration}s, Light: ${params.isLight}`)
+  // settingsError.value = null;
+  log.debug({ deviceIds: [props.deviceId] }, `SimplifiedCameraPanel: Exposure started: ${params.duration}s, Light: ${params.isLight}`)
   // You might want to set a specific loading state related to exposure if needed elsewhere in this panel
 }
 
 const handleExposureComplete = () => {
-  log.debug({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: Exposure complete')
+  log.debug({ deviceIds: [props.deviceId] }, 'SimplifiedCameraPanel: Exposure complete')
   // Handle post-exposure actions if any specific to this panel
   // Note: Image data is now handled by the watcher on currentDevice.value.properties.imageData
 }
@@ -194,19 +203,22 @@ const handleExposureComplete = () => {
 // as image download responsibility moved to store actions.
 // Keeping it for now in case of other uses, but the watcher above is the primary mechanism.
 const handleImageDownloaded = () => {
-  log.warn({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: handleImageDownloaded called. This might be from a legacy path or an event without data. Image data should primarily come from store watcher.');
+  log.warn(
+    { deviceIds: [props.deviceId] },
+    'SimplifiedCameraPanel: handleImageDownloaded called. This might be from a legacy path or an event without data. Image data should primarily come from store watcher.'
+  )
   // imageData.value = data // Commenting out to prefer store-driven updates
   // log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Image downloaded (via event): ${data.byteLength} bytes`)
 }
 
 const handleExposureError = (error: string) => {
-  log.error({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: Exposure error:', error)
+  log.error({ deviceIds: [props.deviceId] }, 'SimplifiedCameraPanel: Exposure error:', error)
   settingsError.value = `Exposure failed: ${error}` // Display exposure error in the existing error display
 }
 
 // Handler for histogram generation from CameraImageDisplay
 const handleHistogramGenerated = (histogram: number[]) => {
-  log.debug({deviceIds:[props.deviceId]}, 'SimplifiedCameraPanel: Histogram generated with', histogram.length, 'bins')
+  log.debug({ deviceIds: [props.deviceId] }, 'SimplifiedCameraPanel: Histogram generated with', histogram.length, 'bins')
   // Process histogram data if needed at this level
 }
 
@@ -222,18 +234,15 @@ const detectedBayerPatternFromSensorType = computed<BayerPattern | null>(() => {
 // Check device capabilities
 const updateDeviceCapabilities = async () => {
   if (!props.isConnected || !props.deviceId) return
-  
+
   try {
-    const deviceCaps = await getDeviceCapabilities(props.deviceId, [
-      'canSetCCDTemperature'
-    ])
-    
+    const deviceCaps = await getDeviceCapabilities(props.deviceId, ['canSetCCDTemperature'])
+
     capabilities.value = {
       canSetCCDTemperature: deviceCaps.canSetCCDTemperature || false
     }
-    
   } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error checking device capabilities:', error)
+    log.error({ deviceIds: [props.deviceId] }, 'Error checking device capabilities:', error)
   }
 }
 
@@ -242,36 +251,41 @@ let statusTimer: number | undefined
 
 const updateCameraStatus = async () => {
   if (!props.isConnected || !props.deviceId) return
-  
+
   try {
     // Build property list based on device capabilities
     const propertiesToFetch = [
-      'exposureMin', 'exposureMax', 
-      'gain', 'offset', 'binX', 'binY', 
-      'CCDTemperature', 'sensorType' // Added sensorType
+      'exposureMin',
+      'exposureMax',
+      'gain',
+      'offset',
+      'binX',
+      'binY',
+      'CCDTemperature',
+      'sensorType' // Added sensorType
     ]
-    
+
     // Add optional properties based on capabilities
     if (capabilities.value.canSetCCDTemperature) {
       propertiesToFetch.push('coolerOn')
       propertiesToFetch.push('setCCDTemperature')
     }
-    
+
     const properties = await getAlpacaProperties(props.deviceId, propertiesToFetch)
-    
+
     // Update camera settings with current values
     if (properties.gain !== null && typeof properties.gain === 'number') {
       gain.value = properties.gain
     }
-    
+
     if (properties.offset !== null && typeof properties.offset === 'number') {
       offset.value = properties.offset
     }
-    
+
     if (properties.binX !== null && typeof properties.binX === 'number') {
       binning.value = properties.binX
     }
-    
+
     if (properties.coolerOn !== null && typeof properties.coolerOn === 'boolean') {
       coolerOn.value = properties.coolerOn
     }
@@ -280,7 +294,6 @@ const updateCameraStatus = async () => {
     }
 
     if (capabilities.value.canSetCCDTemperature) {
-  
       if (properties.setCCDTemperature !== null && typeof properties.setCCDTemperature === 'number') {
         targetTemp.value = properties.setCCDTemperature
       }
@@ -294,12 +307,12 @@ const updateCameraStatus = async () => {
     if (properties.exposureMin !== null && typeof properties.exposureMin === 'number') {
       exposureMin.value = properties.exposureMin
     }
-    
+
     if (properties.exposureMax !== null && typeof properties.exposureMax === 'number') {
       exposureMax.value = properties.exposureMax
     }
   } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error updating camera status:', error)
+    log.error({ deviceIds: [props.deviceId] }, 'Error updating camera status:', error)
   }
 }
 
@@ -334,73 +347,81 @@ onMounted(() => {
     }
   } else {
     if (statusTimer) {
-      window.clearInterval(statusTimer);
-      statusTimer = undefined;
+      window.clearInterval(statusTimer)
+      statusTimer = undefined
     }
   }
 })
 
 // Watch for changes in connection status (from parent)
-watch(() => props.isConnected, (newIsConnected) => {
-  log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
-  if (newIsConnected) {
-    // Reset capabilities
-    resetCameraSettings() // Reset settings on new connection to ensure fresh state
-    imageData.value = new ArrayBuffer(0) // Reset image data on new connection
-    capabilities.value = {
-      canSetCCDTemperature: false
-    }
-    
-    // First check device capabilities
-    updateDeviceCapabilities()
-    
-    // Then get current status
-    updateCameraStatus()
-    
-    // Start regular status polling
-    if (!statusTimer) { // Avoid multiple intervals
-      statusTimer = window.setInterval(() => {
-        updateCameraStatus()
-      }, 5000)
-    }
-  } else {
-    // Stop polling when disconnected
-    if (statusTimer) {
-      window.clearInterval(statusTimer)
-      statusTimer = undefined;
-    }
-    resetCameraSettings() // Clear data when disconnected
-  }
-})
+watch(
+  () => props.isConnected,
+  (newIsConnected) => {
+    log.debug({ deviceIds: [props.deviceId] }, `SimplifiedCameraPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`)
+    if (newIsConnected) {
+      // Reset capabilities
+      resetCameraSettings() // Reset settings on new connection to ensure fresh state
+      imageData.value = new ArrayBuffer(0) // Reset image data on new connection
+      capabilities.value = {
+        canSetCCDTemperature: false
+      }
 
-// Watch for device ID changes
-watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
-  if (newDeviceId !== oldDeviceId) {
-    log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
-    // Reset settings when device changes
-    resetCameraSettings()
-    imageData.value = new ArrayBuffer(0) // Also reset image data when device changes
-    
-    if (props.isConnected) {
-      // Update capabilities for the new device
+      // First check device capabilities
       updateDeviceCapabilities()
-      // Update status for the new device
+
+      // Then get current status
       updateCameraStatus()
-      // Ensure polling is active if it wasn't
+
+      // Start regular status polling
       if (!statusTimer) {
+        // Avoid multiple intervals
         statusTimer = window.setInterval(() => {
           updateCameraStatus()
         }, 5000)
       }
     } else {
-      // If not connected, ensure polling is stopped
+      // Stop polling when disconnected
       if (statusTimer) {
-        clearInterval(statusTimer);
-        statusTimer = undefined;
+        window.clearInterval(statusTimer)
+        statusTimer = undefined
       }
+      resetCameraSettings() // Clear data when disconnected
     }
   }
-}, { immediate: true })
+)
+
+// Watch for device ID changes
+watch(
+  () => props.deviceId,
+  (newDeviceId, oldDeviceId) => {
+    if (newDeviceId !== oldDeviceId) {
+      log.debug({ deviceIds: [props.deviceId] }, `SimplifiedCameraPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`)
+      // Reset settings when device changes
+      resetCameraSettings()
+      imageData.value = new ArrayBuffer(0) // Also reset image data when device changes
+
+      if (props.isConnected) {
+        // Update capabilities for the new device
+        updateDeviceCapabilities()
+        // Update status for the new device
+        updateCameraStatus()
+        // Ensure polling is active if it wasn't
+        if (!statusTimer) {
+          statusTimer = window.setInterval(() => {
+            updateCameraStatus()
+          }, 5000)
+        }
+      } else {
+        // If not connected, ensure polling is stopped
+        if (statusTimer) {
+          clearInterval(statusTimer)
+          statusTimer = undefined
+        }
+      }
+    }
+  },
+  { immediate: true }
+)
 
 // Cleanup when unmounted
 onUnmounted(() => {
@@ -411,8 +432,8 @@ onUnmounted(() => {
 
 // Computed properties for gain/offset modes and ranges
 const gainMode = computed(() => {
-  return currentDevice.value?.properties?.cam_gainMode || 'unknown';
-});
+  return currentDevice.value?.properties?.cam_gainMode || 'unknown'
+})
 
 const gainMin = computed(() => {
   const val = currentDevice.value?.properties?.gainmin
@@ -427,8 +448,8 @@ const gainMax = computed(() => {
 const gainList = computed(() => currentDevice.value?.properties?.gains ?? [])
 
 const offsetMode = computed(() => {
-  return currentDevice.value?.properties?.cam_offsetMode || 'unknown';
-});
+  return currentDevice.value?.properties?.cam_offsetMode || 'unknown'
+})
 
 const offsetMin = computed(() => {
   const val = currentDevice.value?.properties?.offsetmin
@@ -441,14 +462,6 @@ const offsetMax = computed(() => {
 })
 
 const offsetList = computed(() => currentDevice.value?.properties?.offsets ?? [])
-
-// Debug: Log all available camera properties for troubleshooting
-watch(currentDevice, (val) => {
-  if (val) {
-     
-    console.log('Camera properties:', val.properties)
-  }
-}, { immediate: true })
 
 const cameraInfoProps = computed(() => {
   if (!currentDevice.value) return []
@@ -493,7 +506,7 @@ const cameraInfoProps = computed(() => {
     ['Bayer Offset X', ['bayerOffsetX', 'bayeroffsetx']],
     ['Bayer Offset Y', ['bayerOffsetY', 'bayeroffsety']],
     ['Sub Exposure Duration', ['subExposureDuration', 'subexposureduration']],
-    ['Firmware Version', ['firmwareVersion']], // device root only
+    ['Firmware Version', ['firmwareVersion']] // device root only
   ]
   function toStr(val: unknown): string {
     if (val === undefined || val === null || val === '') return '--'
@@ -520,8 +533,8 @@ const cameraInfoProps = computed(() => {
 })
 
 const readoutModes = computed<string[]>(() => {
-  const modes = currentDevice.value?.properties?.readoutModes;
-  return Array.isArray(modes) ? modes : [];
+  const modes = currentDevice.value?.properties?.readoutModes
+  return Array.isArray(modes) ? modes : []
 })
 
 const currentReadoutModeIndex = computed({
@@ -545,7 +558,7 @@ async function updateReadoutMode(idx: number) {
   try {
     await store.setCameraReadoutMode(props.deviceId, idx)
   } catch (error) {
-    log.error({deviceIds:[props.deviceId]}, 'Error setting readout mode:', error)
+    log.error({ deviceIds: [props.deviceId] }, 'Error setting readout mode:', error)
     settingsError.value = `Failed to set readout mode: ${error instanceof Error ? error.message : String(error)}`
   } finally {
     isLoadingReadoutMode.value = false
@@ -553,13 +566,13 @@ async function updateReadoutMode(idx: number) {
 }
 
 const binningOptions = computed(() => {
-  const min = currentDevice.value?.properties?.minBinX ?? 1;
-  const max = currentDevice.value?.properties?.maxBinX ?? 4;
-  if (typeof min !== 'number' || typeof max !== 'number' || min > max) return [1];
-  const opts = [];
-  for (let i = min; i <= max; i++) opts.push(i);
-  return opts;
-});
+  const min = currentDevice.value?.properties?.minBinX ?? 1
+  const max = currentDevice.value?.properties?.maxBinX ?? 4
+  if (typeof min !== 'number' || typeof max !== 'number' || min > max) return [1]
+  const opts = []
+  for (let i = min; i <= max; i++) opts.push(i)
+  return opts
+})
 
 // Subframe/ROI state
 const subframe = ref({
@@ -567,70 +580,61 @@ const subframe = ref({
   startY: 0,
   numX: computedImageWidth.value,
   numY: computedImageHeight.value
-});
+})
 
 // Watch for sensor size changes to reset subframe
 watch([computedImageWidth, computedImageHeight], ([w, h]) => {
   if (w > 0 && h > 0) {
-    subframe.value.numX = w;
-    subframe.value.numY = h;
+    subframe.value.numX = w
+    subframe.value.numY = h
   }
-});
+})
 
 // Auto-reset subframe if resolution changes and subframe is currently full frame
 watch([computedImageWidth, computedImageHeight], ([w, h]) => {
-  if (
-    subframe.value.startX === 0 &&
-    subframe.value.startY === 0 &&
-    (subframe.value.numX !== w || subframe.value.numY !== h)
-  ) {
-    resetSubframe();
+  if (subframe.value.startX === 0 && subframe.value.startY === 0 && (subframe.value.numX !== w || subframe.value.numY !== h)) {
+    resetSubframe()
   }
-});
+})
 
 // Subframe controls
 const applySubframe = async () => {
   try {
-    await store.setCameraSubframe(props.deviceId, subframe.value.startX, subframe.value.startY, subframe.value.numX, subframe.value.numY);
+    await store.setCameraSubframe(props.deviceId, subframe.value.startX, subframe.value.startY, subframe.value.numX, subframe.value.numY)
   } catch (error) {
-    settingsError.value = `Failed to set subframe: ${error instanceof Error ? error.message : String(error)}`;
+    settingsError.value = `Failed to set subframe: ${error instanceof Error ? error.message : String(error)}`
   }
-};
+}
 
 // Sensor max size and binning
 const sensorWidth = computed(() => {
-  const w = Number(currentDevice.value?.properties?.cameraXSize ?? currentDevice.value?.properties?.cameraxsize);
-  return isNaN(w) ? 0 : w;
-});
+  const w = Number(currentDevice.value?.properties?.cameraXSize ?? currentDevice.value?.properties?.cameraxsize)
+  return isNaN(w) ? 0 : w
+})
 const sensorHeight = computed(() => {
-  const h = Number(currentDevice.value?.properties?.cameraYSize ?? currentDevice.value?.properties?.cameraysize);
-  return isNaN(h) ? 0 : h;
-});
-const binX = computed(() => Number(currentDevice.value?.properties?.binX ?? 1));
-const binY = computed(() => Number(currentDevice.value?.properties?.binY ?? 1));
+  const h = Number(currentDevice.value?.properties?.cameraYSize ?? currentDevice.value?.properties?.cameraysize)
+  return isNaN(h) ? 0 : h
+})
+const binX = computed(() => Number(currentDevice.value?.properties?.binX ?? 1))
+const binY = computed(() => Number(currentDevice.value?.properties?.binY ?? 1))
 
 const resetSubframe = () => {
-  const w = sensorWidth.value > 0 ? Math.floor(sensorWidth.value / (binX.value > 0 ? binX.value : 1)) : 1;
-  const h = sensorHeight.value > 0 ? Math.floor(sensorHeight.value / (binY.value > 0 ? binY.value : 1)) : 1;
-  subframe.value.startX = 0;
-  subframe.value.startY = 0;
-  subframe.value.numX = w;
-  subframe.value.numY = h;
-};
+  const w = sensorWidth.value > 0 ? Math.floor(sensorWidth.value / (binX.value > 0 ? binX.value : 1)) : 1
+  const h = sensorHeight.value > 0 ? Math.floor(sensorHeight.value / (binY.value > 0 ? binY.value : 1)) : 1
+  subframe.value.startX = 0
+  subframe.value.startY = 0
+  subframe.value.numX = w
+  subframe.value.numY = h
+}
 
 // Auto-reset subframe if resolution changes and subframe is currently full frame
 watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
-  const fullW = w > 0 ? Math.floor(w / (bx > 0 ? bx : 1)) : 1;
-  const fullH = h > 0 ? Math.floor(h / (by > 0 ? by : 1)) : 1;
-  if (
-    subframe.value.startX === 0 &&
-    subframe.value.startY === 0 &&
-    (subframe.value.numX !== fullW || subframe.value.numY !== fullH)
-  ) {
-    resetSubframe();
+  const fullW = w > 0 ? Math.floor(w / (bx > 0 ? bx : 1)) : 1
+  const fullH = h > 0 ? Math.floor(h / (by > 0 ? by : 1)) : 1
+  if (subframe.value.startX === 0 && subframe.value.startY === 0 && (subframe.value.numX !== fullW || subframe.value.numY !== fullH)) {
+    resetSubframe()
   }
-});
-
+})
 </script>
 
 <template>
@@ -660,11 +664,11 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
         <div class="main-layout-grid">
           <!-- Left Column: Camera Image Display -->
           <div class="camera-controls-column">
-            <CameraImageDisplay 
+            <CameraImageDisplay
               :image-data="imageData"
               :width="computedImageWidth"
               :height="computedImageHeight"
-              :sensor-type="cameraSensorType === null ? undefined : cameraSensorType" 
+              :sensor-type="cameraSensorType === null ? undefined : cameraSensorType"
               :detected-bayer-pattern="detectedBayerPatternFromSensorType"
               :subframe="subframe"
               @histogram-generated="handleHistogramGenerated"
@@ -687,10 +691,32 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
             <!-- Subframe Section -->
             <CollapsibleSection title="Subframe (ROI)" :default-open="false">
               <div class="subframe-controls">
-                <label>Start X: <input v-model.number="subframe.startX" type="number" :min="0" :max="computedImageWidth-1" class="aw-input aw-input--sm" /></label>
-                <label>Start Y: <input v-model.number="subframe.startY" type="number" :min="0" :max="computedImageHeight-1" class="aw-input aw-input--sm" /></label>
-                <label>Width: <input v-model.number="subframe.numX" type="number" :min="1" :max="computedImageWidth-subframe.startX" class="aw-input aw-input--sm" /></label>
-                <label>Height: <input v-model.number="subframe.numY" type="number" :min="1" :max="computedImageHeight-subframe.startY" class="aw-input aw-input--sm" /></label>
+                <label
+                  >Start X:
+                  <input v-model.number="subframe.startX" type="number" :min="0" :max="computedImageWidth - 1" class="aw-input aw-input--sm"
+                /></label>
+                <label
+                  >Start Y:
+                  <input v-model.number="subframe.startY" type="number" :min="0" :max="computedImageHeight - 1" class="aw-input aw-input--sm"
+                /></label>
+                <label
+                  >Width:
+                  <input
+                    v-model.number="subframe.numX"
+                    type="number"
+                    :min="1"
+                    :max="computedImageWidth - subframe.startX"
+                    class="aw-input aw-input--sm"
+                /></label>
+                <label
+                  >Height:
+                  <input
+                    v-model.number="subframe.numY"
+                    type="number"
+                    :min="1"
+                    :max="computedImageHeight - subframe.startY"
+                    class="aw-input aw-input--sm"
+                /></label>
                 <button class="aw-btn aw-btn--primary aw-btn--sm" @click="applySubframe">Apply</button>
                 <button class="aw-btn aw-btn--secondary aw-btn--sm" @click="resetSubframe">Reset</button>
               </div>
@@ -715,7 +741,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                         :disabled="isLoadingGain"
                         aria-label="Gain slider"
                         @change="updateGain"
-                      >
+                      />
                       <input
                         id="gain-input"
                         v-model.number="gain"
@@ -727,7 +753,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                         aria-label="Gain value"
                         class="aw-input aw-input--sm"
                         @change="updateGain"
-                      >
+                      />
                     </template>
                     <template v-else-if="gainMode === 'list'">
                       <select
@@ -762,7 +788,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                         :disabled="isLoadingOffset"
                         aria-label="Offset slider"
                         @change="updateOffset"
-                      >
+                      />
                       <input
                         id="offset-input"
                         v-model.number="offset"
@@ -774,7 +800,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                         aria-label="Offset value"
                         class="aw-input aw-input--sm"
                         @change="updateOffset"
-                      >
+                      />
                     </template>
                     <template v-else-if="offsetMode === 'list'">
                       <select
@@ -836,7 +862,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                   <label for="cooler-toggle-checkbox">Cooler:</label>
                   <div class="input-with-spinner">
                     <label class="toggle">
-                      <input id="cooler-toggle-checkbox" v-model="coolerOn" type="checkbox" :disabled="isTogglingCooler" @change="toggleCooler">
+                      <input id="cooler-toggle-checkbox" v-model="coolerOn" type="checkbox" :disabled="isTogglingCooler" @change="toggleCooler" />
                       <span class="slider"></span>
                     </label>
                     <Icon v-if="isTogglingCooler" type="refresh" class="spinner-icon" animation="spin" />
@@ -845,7 +871,17 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
                 <div v-if="capabilities.canSetCCDTemperature" class="temperature-target setting-row">
                   <label for="target-temp-input">Target Temp (°C):</label>
                   <div class="input-with-spinner">
-                    <input id="target-temp-input" v-model.number="targetTemp" type="number" min="-50" max="50" step="1" :disabled="isLoadingTargetTemp" class="aw-input aw-input--sm" @change="updateTargetTemp">
+                    <input
+                      id="target-temp-input"
+                      v-model.number="targetTemp"
+                      type="number"
+                      min="-50"
+                      max="50"
+                      step="1"
+                      :disabled="isLoadingTargetTemp"
+                      class="aw-input aw-input--sm"
+                      @change="updateTargetTemp"
+                    />
                     <Icon v-if="isLoadingTargetTemp" type="refresh" class="spinner-icon" animation="spin" />
                   </div>
                 </div>
@@ -1035,7 +1071,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 .panel-section {
   /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */
 
- /* Adjusted by flex gap */
+  /* Adjusted by flex gap */
   background-color: var(--aw-panel-content-bg-color);
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
@@ -1053,34 +1089,34 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 .camera-controls-wrapper {
   /* border: 1px solid var(--aw-panel-border-color); */
 
- /* Removed as panel-section has border */
+  /* Removed as panel-section has border */
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   overflow: hidden;
 
   /* margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)); */
 
- /* No longer needed */
+  /* No longer needed */
 }
 
 .camera-settings {
   display: grid;
   grid-template-columns: auto 1fr; /* Parent grid for label/input columns */
-  gap: var(--aw-spacing-sm) var(--aw-spacing-sm); /* Gap between label and input columns */    /* Gap between each setting row */
+  gap: var(--aw-spacing-sm) var(--aw-spacing-sm); /* Gap between label and input columns */ /* Gap between each setting row */
 
   /* align-items: center; */
 
- /* Let .setting-row handle its internal vertical alignment */
+  /* Let .setting-row handle its internal vertical alignment */
 }
 
 .setting-row {
   grid-column: 1 / -1; /* Span all columns of the parent grid */
-  display: grid; 
+  display: grid;
   grid-template-columns: subgrid; /* Inherit column tracks from parent */
   align-items: center; /* Vertically align label and input-container within the row */
 
   /* gap: var(--aw-spacing-sm); */
 
- /* Gap is now handled by parent grid + subgrid inheritance */
+  /* Gap is now handled by parent grid + subgrid inheritance */
 }
 
 .setting-row label {
@@ -1097,7 +1133,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 
   /* gap: var(--aw-spacing-xs); */
 
- /* Add gap between input and spinner if desired */
+  /* Add gap between input and spinner if desired */
 }
 
 .setting-row .input-with-spinner {
@@ -1118,7 +1154,7 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 .setting-row .toggle {
   /* padding: var(--aw-spacing-sm); */
 
- /* Padding is on input-with-spinner or input directly */
+  /* Padding is on input-with-spinner or input directly */
   background-color: var(--aw-input-bg-color);
   color: var(--aw-text-color);
   border: 1px solid var(--aw-panel-border-color);
@@ -1127,32 +1163,31 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 }
 
 .setting-row input {
-   padding: var(--aw-spacing-xs); /* More compact input padding */
+  padding: var(--aw-spacing-xs); /* More compact input padding */
 }
-
 
 .cooling-controls {
   display: grid; /* Changed from flex to grid */
   grid-template-columns: auto 1fr; /* Parent grid for label/input columns */
-  gap: var(--aw-spacing-sm) var(--aw-spacing-sm); /* Gap between label and input columns */    /* Gap between each setting row */
+  gap: var(--aw-spacing-sm) var(--aw-spacing-sm); /* Gap between label and input columns */ /* Gap between each setting row */
 
   /* align-items: center; */
 
- /* Let .setting-row handle its internal vertical alignment */
+  /* Let .setting-row handle its internal vertical alignment */
 }
 
 .cooling-status {
   /* display: flex; */
 
- /* Already a setting-row */
+  /* Already a setting-row */
 
   /* justify-content: space-between; */
 
- /* From setting-row */
+  /* From setting-row */
 
   /* align-items: center; */
 
- /* From setting-row */
+  /* From setting-row */
 }
 
 .temperature-label {
@@ -1169,22 +1204,21 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 .cooling-toggle {
   /* display: flex; */
 
- /* Already a setting-row */
+  /* Already a setting-row */
 
   /* align-items: center; */
 
- /* From setting-row */
+  /* From setting-row */
 
   /* justify-content: space-between; */
 
- /* From setting-row */
+  /* From setting-row */
 }
 
-.cooling-toggle label[for="cooler-toggle-checkbox"] { /* More specific selector for the label */
-   margin-bottom: 0; /* Override if any default margin exists */
+.cooling-toggle label[for='cooler-toggle-checkbox'] {
+  /* More specific selector for the label */
+  margin-bottom: 0; /* Override if any default margin exists */
 }
-
-
 
 .toggle input {
   opacity: 0;
@@ -1198,19 +1232,19 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   inset: 0;
   background-color: var(--aw-input-bg-color);
   border: 1px solid var(--aw-panel-border-color);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: var(--aw-spacing-lg);
 }
 
 .slider::before {
   position: absolute;
-  content: "";
+  content: '';
   height: 16px;
   width: 16px;
   left: 3px;
   bottom: 3px;
   background-color: var(--aw-text-secondary-color);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: var(--aw-border-radius-sm);
 }
 
@@ -1226,17 +1260,16 @@ input:checked + .slider::before {
 .temperature-target {
   /* display: flex; */
 
- /* Already a setting-row */
+  /* Already a setting-row */
 
   /* align-items: center; */
 
- /* From setting-row */
+  /* From setting-row */
 
   /* justify-content: space-between; */
 
- /* From setting-row */
+  /* From setting-row */
 }
-
 
 .subframe-controls input {
   width: 100%;
@@ -1247,31 +1280,31 @@ input:checked + .slider::before {
   border-radius: var(--aw-border-radius-sm);
 }
 
-
 .temperature-target label {
   color: var(--aw-text-secondary-color);
   margin-bottom: 0; /* Override */
 }
 
-.temperature-target .input-with-spinner input { /* Target input within this specific structure */
+.temperature-target .input-with-spinner input {
+  /* Target input within this specific structure */
   width: 60px; /* More compact target temp input */
   padding: var(--aw-spacing-xs);
 
   /* background-color: var(--aw-input-bg-color); */
 
- /* Already set */
+  /* Already set */
 
   /* color: var(--aw-text-color); */
 
- /* Already set */
+  /* Already set */
 
   /* border: 1px solid var(--aw-panel-border-color); */
 
- /* Already set */
+  /* Already set */
 
   /* border-radius: var(--aw-border-radius-sm); */
 
- /* Already set */
+  /* Already set */
   flex-grow: 0; /* Don't let it grow too much */
 }
 
@@ -1285,7 +1318,7 @@ input:checked + .slider::before {
 
   /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */
 
- /* Handled by parent padding/gap */
+  /* Handled by parent padding/gap */
   gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
   padding: var(--aw-spacing-md);
   border: 1px solid var(--aw-panel-border-color); /* Add border */
@@ -1309,7 +1342,7 @@ input:checked + .slider::before {
 
   /* margin-bottom: var(--aw-spacing-md); */
 
- /* Handled by parent padding/gap */
+  /* Handled by parent padding/gap */
   border-radius: var(--aw-border-radius-sm);
   display: flex;
   justify-content: space-between;
@@ -1340,13 +1373,11 @@ input:checked + .slider::before {
   font-size: 1rem;
 }
 
-
-
 /* .input-with-spinner input { */
 
- /* General input styling moved to .setting-row input */
+/* General input styling moved to .setting-row input */
 
-  /* flex-grow: 1; */
+/* flex-grow: 1; */
 
 /* } */
 
@@ -1360,19 +1391,19 @@ input:checked + .slider::before {
 .cooling-toggle .input-with-spinner {
   /* display: flex; */
 
- /* Already set */
+  /* Already set */
 
   /* align-items: center; */
 
- /* Already set */
+  /* Already set */
   justify-content: flex-end; /* Align toggle to the right within its container */
 }
 
 /* .cooling-toggle .toggle { */
 
-  /* margin-right: auto; */
+/* margin-right: auto; */
 
- /* Pushes spinner to the right if needed or centers */
+/* Pushes spinner to the right if needed or centers */
 
 /* } */
 
@@ -1387,8 +1418,9 @@ input:checked + .slider::before {
 
 /* @media (max-width: 768px) { */
 
- /* Old media query */
-@container simplified-camera-panel (max-width: 768px) { /* New container query */
+/* Old media query */
+@container simplified-camera-panel (max-width: 768px) {
+  /* New container query */
   .main-layout-grid {
     flex-direction: column;
   }
@@ -1537,6 +1569,4 @@ input:checked + .slider::before {
   font-size: 0.8rem;
   color: var(--aw-text-secondary-color);
 }
-
-</style> 
-
+</style>
