@@ -49,30 +49,57 @@
             <div class="switch-controls">
               <template v-if="isBooleanSwitch(sw)">
                 <div class="switch-input-row">
-                  <label class="toggle">
-                    <input
-                      type="checkbox"
-                      :checked="Boolean(sw.value)"
-                      @change="toggleBooleanSwitch(index, ($event.target as HTMLInputElement).checked)"
-                    />
-                    <span class="slider"></span>
-                  </label>
-                  <span class="value-label">{{ Boolean(sw.value) ? 'ON' : 'OFF' }}</span>
+                  <template v-if="sw.canWrite">
+                    <label class="toggle">
+                      <input
+                        type="checkbox"
+                        :checked="Boolean(sw.value)"
+                        @change="toggleBooleanSwitch(index, ($event.target as HTMLInputElement).checked)"
+                      />
+                      <span class="slider"></span>
+                    </label>
+                    <span class="value-label">{{ Boolean(sw.value) ? 'ON' : 'OFF' }}</span>
+                  </template>
+                  <template v-else>
+                    <label class="toggle" aria-label="Read-only toggle">
+                      <input type="checkbox" :checked="Boolean(sw.value)" disabled />
+                      <span class="slider"></span>
+                    </label>
+                    <span class="value-label">{{ Boolean(sw.value) ? 'ON' : 'OFF' }}</span>
+                    <Icon type="lock" size="16" class="switch-readonly-icon" title="Read-only" />
+                  </template>
                 </div>
                 <div class="range-label"></div>
               </template>
               <template v-else>
                 <div class="switch-input-row">
-                  <input
-                    type="number"
-                    :value="sw.value"
-                    :min="sw.min"
-                    :max="sw.max"
-                    :step="sw.step"
-                    class="aw-input"
-                    @change="setNumericSwitchValue(index, parseFloat(($event.target as HTMLInputElement).value))"
-                  />
-                  <span class="value-label">Current: {{ sw.value }}</span>
+                  <template v-if="sw.canWrite">
+                    <input
+                      type="number"
+                      :value="sw.value"
+                      :min="sw.min"
+                      :max="sw.max"
+                      :step="sw.step"
+                      class="aw-input"
+                      @change="setNumericSwitchValue(index, parseFloat(($event.target as HTMLInputElement).value))"
+                    />
+                    <span class="value-label">Current: {{ sw.value }}</span>
+                  </template>
+                  <template v-else>
+                    <input
+                      type="number"
+                      :value="sw.value"
+                      :min="sw.min"
+                      :max="sw.max"
+                      :step="sw.step"
+                      class="aw-input"
+                      readonly
+                      disabled
+                      aria-label="Read-only value"
+                    />
+                    <span class="value-label">Current: {{ sw.value }}</span>
+                    <Icon type="lock" size="16" class="switch-readonly-icon" title="Read-only" />
+                  </template>
                 </div>
                 <div class="range-label">
                   <template v-if="sw.min !== undefined && sw.max !== undefined">
@@ -422,5 +449,11 @@ input:checked + .slider::before {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-md);
+}
+
+.switch-readonly-icon {
+  margin-left: var(--aw-spacing-xs);
+  color: var(--aw-color-neutral-500);
+  vertical-align: middle;
 }
 </style>
