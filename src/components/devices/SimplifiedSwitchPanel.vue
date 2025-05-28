@@ -61,31 +61,25 @@
                     <span class="value-label">{{ Boolean(sw.value) ? 'ON' : 'OFF' }}</span>
                   </template>
                   <template v-else>
-                    <label class="toggle" aria-label="Read-only toggle">
-                      <input type="checkbox" :checked="Boolean(sw.value)" disabled />
-                      <span class="slider"></span>
-                    </label>
-                    <span class="value-label">{{ Boolean(sw.value) ? 'ON' : 'OFF' }}</span>
-                    <Icon type="lock" size="16" class="switch-readonly-icon" title="Read-only" />
+                    <div class="switch-input-row switch-input-row--readonly">
+                      <div class="switch-row-left">
+                        <label class="toggle" aria-label="Read-only toggle" title="This switch is read-only">
+                          <input type="checkbox" :checked="Boolean(sw.value)" disabled />
+                          <span class="slider"></span>
+                        </label>
+                      </div>
+                      <div class="switch-row-middle value-label">{{ Boolean(sw.value) ? 'ON' : 'OFF' }}</div>
+                      <div class="switch-row-right">
+                        <Icon type="lock" size="16" class="switch-readonly-icon" title="Read-only" />
+                      </div>
+                    </div>
                   </template>
                 </div>
                 <div class="range-label"></div>
               </template>
               <template v-else>
-                <div class="switch-input-row">
-                  <template v-if="sw.canWrite">
-                    <input
-                      type="number"
-                      :value="sw.value"
-                      :min="sw.min"
-                      :max="sw.max"
-                      :step="sw.step"
-                      class="aw-input"
-                      @change="setNumericSwitchValue(index, parseFloat(($event.target as HTMLInputElement).value))"
-                    />
-                    <span class="value-label">Current: {{ sw.value }}</span>
-                  </template>
-                  <template v-else>
+                <div class="switch-input-row switch-input-row--readonly">
+                  <div class="switch-row-left">
                     <input
                       type="number"
                       :value="sw.value"
@@ -97,9 +91,11 @@
                       disabled
                       aria-label="Read-only value"
                     />
-                    <span class="value-label">Current: {{ sw.value }}</span>
+                  </div>
+                  <div class="switch-row-middle value-label">Current: {{ sw.value }}</div>
+                  <div class="switch-row-right">
                     <Icon type="lock" size="16" class="switch-readonly-icon" title="Read-only" />
-                  </template>
+                  </div>
                 </div>
                 <div class="range-label">
                   <template v-if="sw.min !== undefined && sw.max !== undefined">
@@ -118,8 +114,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import type { ISwitchDetail } from '@/api/alpaca/switch-client'
 import Icon from '@/components/ui/Icon.vue'
+import type { ISwitchDetail } from '@/stores/modules/switchActions'
 
 const props = defineProps({
   deviceId: {
@@ -373,6 +369,7 @@ input:checked + .slider::before {
 .value-label {
   font-size: 0.9rem;
   min-width: 80px;
+  font-family: var(--aw-font-family-mono);
 }
 
 .range-label {
@@ -449,11 +446,49 @@ input:checked + .slider::before {
   display: flex;
   align-items: center;
   gap: var(--aw-spacing-md);
+  width: 100%;
+}
+
+.switch-row-left {
+  /* No flex/grid needed for grid layout */
+}
+
+.switch-row-middle {
+  min-width: 80px;
+  text-align: left;
+  font-family: var(--aw-font-family-mono);
+}
+
+.switch-row-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 24px;
 }
 
 .switch-readonly-icon {
   margin-left: var(--aw-spacing-xs);
   color: var(--aw-color-neutral-500);
   vertical-align: middle;
+}
+
+.toggle[aria-label='Read-only toggle'] {
+  cursor: not-allowed;
+}
+
+.toggle[aria-label='Read-only toggle'] .slider {
+  cursor: not-allowed;
+}
+
+input.aw-input {
+  font-family: var(--aw-font-family-mono);
+  width: 70px;
+}
+
+.switch-input-row--readonly {
+  display: grid;
+  grid-template-columns: auto 1fr min-content;
+  align-items: center;
+  gap: var(--aw-spacing-md);
 }
 </style>

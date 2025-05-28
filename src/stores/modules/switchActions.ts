@@ -416,3 +416,5 @@ export function createSwitchActions(): {
     }
   }
 }
+
+export type { ISwitchDetail } from '@/api/alpaca/switch-client'
