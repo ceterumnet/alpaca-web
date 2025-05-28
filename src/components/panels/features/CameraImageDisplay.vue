@@ -1125,8 +1125,8 @@ function onDragEnd() {
   position: absolute;
   top: var(--aw-spacing-xs);
   right: var(--aw-spacing-xs);
-  background-color: var(--aw-color-black-40);
-  color: var(--aw-color-text-on-primary);
+  background-color: var(--aw-fullscreen-button-bg);
+  color: var(--aw-fullscreen-button-color);
   border: none;
   border-radius: var(--aw-border-radius-sm);
   padding: var(--aw-spacing-xs);
@@ -1141,7 +1141,7 @@ function onDragEnd() {
 }
 
 .fullscreen-button:hover {
-  background-color: var(--aw-color-black-60);
+  background-color: var(--aw-fullscreen-button-hover-bg);
 }
 
 .fullscreen-modal {

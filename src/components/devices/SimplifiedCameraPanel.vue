@@ -901,7 +901,8 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 <style scoped>
 .simplified-panel {
   background-color: var(--aw-panel-bg-color);
-  color: var(--aw-text-color);
+
+  /* color: var(--aw-panel-header-text-color); */
   border-radius: var(--aw-border-radius);
   border: 1px solid var(--aw-panel-border-color);
   overflow: hidden;
@@ -910,22 +911,6 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   height: 100%;
   container-type: inline-size; /* Define this as a query container */
   container-name: simplified-camera-panel; /* Optional: name the container */
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--aw-spacing-sm) var(--aw-spacing-md);
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  background-color: var(--aw-panel-header-bg-color);
-  color: var(--aw-panel-header-text-color);
-}
-
-.panel-header h2 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: var(--aw-font-weight-bold, 600);
 }
 
 /* Device selector styles */

@@ -261,16 +261,16 @@ watch(
         :x2="valueToX(inputLevels[0])"
         :y1="histY"
         :y2="histY + histHeight"
-        stroke="var(--aw-histogram-black, #111)"
+        stroke="var(--aw-histogram-black)"
         stroke-width="2.2"
       />
-      <!-- Mid point line (dashed, blue) -->
+      <!-- Mid point line (dashed, primary) -->
       <line
         :x1="valueToX(inputLevels[1])"
         :x2="valueToX(inputLevels[1])"
         :y1="histY"
         :y2="histY + histHeight"
-        stroke="var(--aw-histogram-mid, #0af)"
+        stroke="var(--aw-histogram-mid)"
         stroke-width="2.2"
         stroke-dasharray="7,6"
       />
@@ -280,7 +280,7 @@ watch(
         :x2="valueToX(inputLevels[2])"
         :y1="histY"
         :y2="histY + histHeight"
-        stroke="var(--aw-histogram-white, #fff)"
+        stroke="var(--aw-histogram-white)"
         stroke-width="2.2"
       />
       <!-- Handles (modern rect) using <g> for centering and scaling -->

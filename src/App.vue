@@ -1,11 +1,6 @@
-// Status: Good - Core Component 
-// This is the main application component that: 
-// - Serves as the application root 
-// - Manages global layout and routing 
-// - Handles device connection state 
-// - Provides global UI components 
-// - Maintains application-wide state
-// - Initiates automatic device discovery
+// Status: Good - Core Component // This is the main application component that: // - Serves as the application root // - Manages global layout and
+routing // - Handles device connection state // - Provides global UI components // - Maintains application-wide state // - Initiates automatic device
+discovery
 
 <script setup lang="ts">
 // import '@primevue/themes'
@@ -91,7 +86,7 @@ onMounted(() => {
       duration: 5000
     })
   }, 1000)
-  
+
   // Start automatic device discovery
   runInitialDiscovery()
 })
@@ -104,11 +99,7 @@ onMounted(() => {
       <div class="main-content-area">
         <NavigationBar>
           <template #actions>
-            <button
-              class="nav-icon-button"
-              title="Open Notification Manager"
-              @click="toggleNotificationManager"
-            >
+            <button class="nav-icon-button" title="Open Notification Manager" @click="toggleNotificationManager">
               <Icon type="bell" size="20" />
             </button>
           </template>
@@ -130,16 +121,8 @@ onMounted(() => {
 
     <!-- Notification Manager Modal -->
     <transition name="fade">
-      <div
-        v-if="showNotificationManager"
-        class="notification-modal-backdrop"
-        @click="showNotificationManager = false"
-      >
+      <div v-if="showNotificationManager" class="notification-modal-backdrop" @click="showNotificationManager = false">
         <div class="notification-modal" @click.stop>
-          <div class="notification-modal-header">
-            <h2>Notification Manager</h2>
-            <button class="close-button" @click="showNotificationManager = false">×</button>
-          </div>
           <div class="notification-modal-body">
             <NotificationManager />
           </div>

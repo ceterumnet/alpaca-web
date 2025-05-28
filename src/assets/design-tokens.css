@@ -98,7 +98,7 @@
 
   /* Text colors */
   --aw-text-color: var(--aw-color-neutral-800);
-  --aw-text-secondary-color: var(--aw-color-neutral-600);
+  --aw-text-secondary-color: var(--aw-color-neutral-700);
   --aw-text-color-muted: var(--aw-color-neutral-500); /* For DEBUG logs level text */
   --aw-text-color-tertiary: var(--aw-color-neutral-400); /* For TRACE logs text */
   --aw-link-color: var(--aw-color-primary-500);
@@ -108,7 +108,7 @@
   --aw-panels-bg-color: var(--aw-color-neutral-200);
   --aw-panel-border-color: var(--aw-color-neutral-300);
   --aw-panel-header-bg-color: var(--aw-color-primary-500);
-  --aw-panel-header-text-color: var(--aw-color-neutral-900);
+  --aw-panel-header-text-color: var(--aw-color-neutral-200);
   --aw-panel-hover-bg-color: var(--aw-color-neutral-50);
   --aw-panel-content-bg-color: var(--aw-color-neutral-50);
   --aw-panel-content-color: var(--aw-text-color);
@@ -191,12 +191,11 @@
   --aw-celestial-sun-color: var(--aw-color-warning-500);
   --aw-celestial-moon-color: var(--aw-color-neutral-400);
   --aw-celestial-cloud-color: var(--aw-color-primary-300);
-  --aw-navigation-icon-color: var(--aw-color-neutral-600);
   --aw-navigation-home-color: var(--aw-color-primary-500);
   --aw-navigation-search-color: var(--aw-color-neutral-600);
   --aw-navigation-files-color: var(--aw-color-warning-500);
   --aw-navigation-history-color: var(--aw-color-neutral-500);
-  --aw-control-gear-color: var(--aw-color-neutral-600);
+  --aw-control-gear-color: var(--aw-color-neutral-300);
   --aw-control-exposure-color: var(--aw-color-error-500);
   --aw-control-ui-color: var(--aw-color-neutral-600);
   --aw-control-view-color: var(--aw-color-neutral-600);
@@ -210,6 +209,12 @@
   --aw-status-tracking-on-color: var(--aw-color-success-500);
   --aw-status-tracking-off-color: var(--aw-color-error-500);
   --aw-notification-bell-color: var(--aw-color-warning-500);
+
+  /* Navigation bar */
+  --aw-navigation-icon-color-bg: var(--aw-color-white-20);
+  --aw-navigation-icon-color: var(--aw-color-white-90);
+  --aw-navigation-icon-color-hover-bg: var(--aw-color-white-40);
+  --aw-navigation-icon-color-hover: var(--aw-color-white-90);
 
   /* Scrollbar colors */
   --aw-scrollbar-thumb: var(--aw-color-neutral-600);
@@ -245,11 +250,46 @@
 
   /* THEME PRIMARY COLOR - Used for general purpose primary elements like histogram bars */
   --aw-primary-color: var(--aw-color-primary-500);
+
+  /* Black colors */
+  --aw-color-black-10: rgb(0 0 0 / 10%);
+  --aw-color-black-20: rgb(0 0 0 / 20%);
+  --aw-color-black-30: rgb(0 0 0 / 30%);
   --aw-color-black-40: rgb(0 0 0 / 40%);
+  --aw-color-black-50: rgb(0 0 0 / 50%);
   --aw-color-black-60: rgb(0 0 0 / 60%);
+  --aw-color-black-70: rgb(0 0 0 / 70%);
+  --aw-color-black-80: rgb(0 0 0 / 80%);
   --aw-color-black-85: rgb(0 0 0 / 85%);
   --aw-color-black-90: rgb(0 0 0 / 90%);
   --aw-color-black-95: rgb(0 0 0 / 95%);
+
+  /* White colors */
+  --aw-color-white-10: rgb(255 255 255 / 10%);
+  --aw-color-white-20: rgb(255 255 255 / 20%);
+  --aw-color-white-30: rgb(255 255 255 / 30%);
+  --aw-color-white-40: rgb(255 255 255 / 40%);
+  --aw-color-white-50: rgb(255 255 255 / 50%);
+  --aw-color-white-60: rgb(255 255 255 / 60%);
+  --aw-color-white-70: rgb(255 255 255 / 70%);
+  --aw-color-white-80: rgb(255 255 255 / 80%);
+  --aw-color-white-85: rgb(255 255 255 / 85%);
+  --aw-color-white-90: rgb(255 255 255 / 90%);
+  --aw-color-white-95: rgb(255 255 255 / 95%);
+
+  /* Histogram slider line colors */
+  --aw-histogram-black: var(--aw-color-neutral-900);   /* Deepest neutral for black point */
+  --aw-histogram-mid: var(--aw-color-primary-500);     /* Primary brand color for mid point */
+  --aw-histogram-white: #fff;                          /* White for white point */
+
+  /* Fullscreen button */
+  --aw-fullscreen-button-bg: var(--aw-color-white-40);
+  --aw-fullscreen-button-color: var(--aw-color-neutral-900);
+  --aw-fullscreen-button-hover-bg: var(--aw-color-white-60);
+
+  /* Font Family */
+  --aw-font-family: 'Inter', sans-serif;
+  --aw-font-family-mono: 'JetBrains Mono', monospace;
 }
 
 /* ============================================================
@@ -397,7 +437,6 @@ html.dark-theme {
   --aw-celestial-sun-color: var(--aw-color-warning-500);
   --aw-celestial-moon-color: var(--aw-color-neutral-400);
   --aw-celestial-cloud-color: var(--aw-color-primary-300);
-  --aw-navigation-icon-color: var(--aw-color-neutral-600);
   --aw-navigation-home-color: var(--aw-color-primary-500);
   --aw-navigation-search-color: var(--aw-color-neutral-600);
   --aw-navigation-files-color: var(--aw-color-warning-500);
@@ -417,9 +456,18 @@ html.dark-theme {
   --aw-status-tracking-off-color: var(--aw-color-error-500);
   --aw-notification-bell-color: var(--aw-color-warning-500);
 
+  /* Navigation bar */
+  --aw-navigation-icon-color-bg: var(--aw-color-black-40);
+  --aw-navigation-icon-color: var(--aw-color-primary-300);
+  --aw-navigation-icon-color-hover-bg: var(--aw-color-black-20);
+  --aw-navigation-icon-color-hover: var(--aw-color-primary-300);
+
   /* Scrollbar colors */
   --aw-scrollbar-thumb: var(--aw-color-neutral-500);
   --aw-scrollbar-track: var(--aw-color-neutral-200);
 
   /* THEME PRIMARY COLOR - Used for general purpose primary elements like histogram bars */
+  --aw-histogram-black: var(--aw-color-neutral-300);   /* High contrast text (lightest) */
+  --aw-histogram-mid: var(--aw-color-primary-300);     /* Lighter primary for mid point */
+  --aw-histogram-white: #fff;                          /* White for white point */
 }

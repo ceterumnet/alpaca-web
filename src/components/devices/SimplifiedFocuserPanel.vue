@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
@@ -29,21 +28,21 @@ const currentDevice = computed(() => {
 
 // --- Computed properties deriving state from the store ---
 const position = computed(() => {
-  const val = currentDevice.value?.properties.focuser_position;
-  return typeof val === 'number' ? val : 0;
+  const val = currentDevice.value?.properties.focuser_position
+  return typeof val === 'number' ? val : 0
 })
 const isMoving = computed(() => currentDevice.value?.properties.focuser_isMoving ?? false)
 const temperature = computed(() => {
-  const val = currentDevice.value?.properties.focuser_temperature;
-  return typeof val === 'number' ? val : null;
+  const val = currentDevice.value?.properties.focuser_temperature
+  return typeof val === 'number' ? val : null
 })
 const stepSize = computed(() => {
-  const val = currentDevice.value?.properties.focuser_stepSize;
-  return typeof val === 'number' ? val : 10;
+  const val = currentDevice.value?.properties.focuser_stepSize
+  return typeof val === 'number' ? val : 10
 })
 const maxStep = computed(() => {
-  const val = currentDevice.value?.properties.focuser_maxStep;
-  return typeof val === 'number' ? val : 1000;
+  const val = currentDevice.value?.properties.focuser_maxStep
+  return typeof val === 'number' ? val : 1000
 })
 
 const tempComp = computed({
@@ -58,13 +57,16 @@ const tempComp = computed({
 const targetPosition = ref(0)
 
 // Initialize targetPosition when current position becomes available or changes
-watch(position, (newPos) => {
-  // Only set initially or if panel is reset and new device has different position
-  if (targetPosition.value === 0 || targetPosition.value !== newPos) {
+watch(
+  position,
+  (newPos) => {
+    // Only set initially or if panel is reset and new device has different position
+    if (targetPosition.value === 0 || targetPosition.value !== newPos) {
       targetPosition.value = newPos
-  }
-}, { immediate: true })
-
+    }
+  },
+  { immediate: true }
+)
 
 // Reset focuser state (local UI state) when device changes or disconnects
 const resetFocuserPanelState = () => {
@@ -118,32 +120,39 @@ onMounted(() => {
 })
 
 // Watch for changes in connection status (from parent)
-watch(() => props.isConnected, (newIsConnected) => {
-  log.debug({deviceIds:[props.deviceId]}, `SimplifiedFocuserPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`);
-  if (newIsConnected && props.deviceId) {
-    // Connection logic (fetching details, starting polling) is handled by
-    // handleFocuserConnected in focuserActions.ts when the store detects connection.
-    resetFocuserPanelState() // Reset local UI state
-  } else {
-    resetFocuserPanelState() // Clear/reset local UI data when disconnected
-  }
-})
-
-// Watch for device ID changes
-watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
-  if (newDeviceId !== oldDeviceId) {
-    log.debug({deviceIds:[props.deviceId]}, `SimplifiedFocuserPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`);
-    resetFocuserPanelState() // Reset local UI state for the new device
-    
-    // If connected, the store's connection handler for the new device would have already
-    // fetched initial data and started polling.
-    // If we need to ensure targetPosition is specifically updated for the new device's current position:
-    if (props.isConnected && currentDevice.value) {
-        // Use the computed, type-checked position value
-        targetPosition.value = position.value;
+watch(
+  () => props.isConnected,
+  (newIsConnected) => {
+    log.debug({ deviceIds: [props.deviceId] }, `SimplifiedFocuserPanel: Connection status changed to ${newIsConnected} for device ${props.deviceId}`)
+    if (newIsConnected && props.deviceId) {
+      // Connection logic (fetching details, starting polling) is handled by
+      // handleFocuserConnected in focuserActions.ts when the store detects connection.
+      resetFocuserPanelState() // Reset local UI state
+    } else {
+      resetFocuserPanelState() // Clear/reset local UI data when disconnected
     }
   }
-}, { immediate: true }) // immediate: true to run on initial setup
+)
+
+// Watch for device ID changes
+watch(
+  () => props.deviceId,
+  (newDeviceId, oldDeviceId) => {
+    if (newDeviceId !== oldDeviceId) {
+      log.debug({ deviceIds: [props.deviceId] }, `SimplifiedFocuserPanel: Device changed from ${oldDeviceId} to ${newDeviceId}`)
+      resetFocuserPanelState() // Reset local UI state for the new device
+
+      // If connected, the store's connection handler for the new device would have already
+      // fetched initial data and started polling.
+      // If we need to ensure targetPosition is specifically updated for the new device's current position:
+      if (props.isConnected && currentDevice.value) {
+        // Use the computed, type-checked position value
+        targetPosition.value = position.value
+      }
+    }
+  },
+  { immediate: true }
+) // immediate: true to run on initial setup
 
 // Cleanup when unmounted
 onUnmounted(() => {
@@ -151,7 +160,6 @@ onUnmounted(() => {
   // The store's handleFocuserDisconnected or a general device removal logic
   // should handle stopping polling for this deviceId if the panel is destroyed.
 })
-
 </script>
 
 <template>
@@ -162,13 +170,13 @@ onUnmounted(() => {
       <div v-if="!currentDevice" class="connection-notice">
         <div class="connection-message">No focuser selected or available</div>
       </div>
-      
+
       <!-- Connection status -->
       <div v-else-if="!props.isConnected" class="connection-notice">
         <div class="connection-message">Focuser ({{ currentDevice.name }}) not connected.</div>
         <div class="panel-tip">Use the connect button in the panel header.</div>
       </div>
-      
+
       <template v-else>
         <!-- Position section -->
         <div class="panel-section">
@@ -178,22 +186,22 @@ onUnmounted(() => {
               <span class="position-label">Current Position:</span>
               <span class="value">{{ position }}</span>
             </div>
-            
+
             <div class="status-indicator" :class="{ moving: isMoving }">
               {{ isMoving ? 'Moving' : 'Idle' }}
             </div>
-            
+
             <div class="position-controls">
               <div class="position-input">
                 <label>Target:</label>
-                <input v-model.number="targetPosition" type="number" min="0" :max="maxStep" step="1">
+                <input v-model.number="targetPosition" type="number" min="0" :max="maxStep" step="1" />
               </div>
               <button class="action-button" @click="moveToTarget">Move To</button>
               <button class="stop-button" :disabled="!isMoving" @click="halt">Stop</button>
             </div>
           </div>
         </div>
-        
+
         <!-- Movement section -->
         <div class="panel-section">
           <h3>Movement</h3>
@@ -201,9 +209,9 @@ onUnmounted(() => {
             <div class="step-size-control">
               <label>Step Size (microns):</label>
               <!-- StepSize is typically read-only from device, display it -->
-              <input v-model.number="stepSize" type="number" readonly>
+              <input v-model.number="stepSize" type="number" readonly />
             </div>
-            
+
             <div class="movement-buttons">
               <button class="direction-button" @click="moveIn">
                 <span>◄ Move In</span>
@@ -214,7 +222,7 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-        
+
         <!-- Status section (only shown if temperature is available) -->
         <div v-if="temperature !== null" class="panel-section">
           <h3>Status</h3>
@@ -223,11 +231,12 @@ onUnmounted(() => {
               <span class="label">Temperature:</span>
               <span class="value">{{ temperature.toFixed(1) }}°C</span>
             </div>
-            
+
             <div class="temp-comp-control">
               <span class="label">Temperature Compensation:</span>
               <label class="toggle">
-                <input v-model="tempComp" type="checkbox"> <!-- No @change needed, computed setter handles it -->
+                <input v-model="tempComp" type="checkbox" />
+                <!-- No @change needed, computed setter handles it -->
                 <span class="slider"></span>
               </label>
             </div>
@@ -248,20 +257,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 var(--aw-spacing-sm);
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  background-color: var(--aw-panel-header-bg-color);
-}
-
-.panel-header h2 {
-  margin: 0;
-  font-size: 0.8rem;
 }
 
 /* Device selector styles */
@@ -605,19 +600,19 @@ onUnmounted(() => {
   inset: 0;
   background-color: var(--aw-panel-bg-color);
   border: 1px solid var(--aw-panel-border-color);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: var(--aw-spacing-lg);
 }
 
 .slider::before {
   position: absolute;
-  content: "";
+  content: '';
   height: 16px;
   width: 16px;
   left: 3px;
   bottom: 3px;
   background-color: var(--aw-text-secondary-color);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: var(--aw-border-radius-sm);
 }
 
@@ -634,4 +629,4 @@ input:checked + .slider::before {
   font-size: 0.8rem;
   color: var(--aw-text-secondary-color);
 }
-</style> 
+</style>

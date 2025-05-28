@@ -1,10 +1,5 @@
-// Status: Updated - Core Navigation Component 
-// This is the main navigation bar that: 
-// - Integrates with new navigation components 
-// - Provides primary navigation 
-// - Shows device status
-// - Handles theme switching 
-// - Supports responsive design
+// Status: Updated - Core Navigation Component // This is the main navigation bar that: // - Integrates with new navigation components // - Provides
+primary navigation // - Shows device status // - Handles theme switching // - Supports responsive design
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
@@ -63,20 +58,20 @@ function toggleDarkMode() {
 
 // Define LayoutCell and LayoutTemplate interfaces
 interface LayoutCell {
-  id: string;
-  row: number;
-  col: number;
-  rowSpan?: number;
-  colSpan?: number;
-  width?: number;
+  id: string
+  row: number
+  col: number
+  rowSpan?: number
+  colSpan?: number
+  width?: number
 }
 
 interface LayoutTemplate {
-  id: string;
-  name: string;
-  rows: number;
-  cols: number;
-  cells: LayoutCell[];
+  id: string
+  name: string
+  rows: number
+  cols: number
+  cells: LayoutCell[]
 }
 
 // Layout modal control
@@ -101,7 +96,7 @@ function handleStaticLayoutClick(layoutId: string) {
 function showThumbnailLabel(event: MouseEvent, layout: LayoutTemplate) {
   const target = event.currentTarget as HTMLElement
   const rect = target.getBoundingClientRect()
-  
+
   // Calculate the position (center bottom of thumbnail)
   activeLabelInfo.value = {
     text: layout.name,
@@ -119,16 +114,16 @@ function hideThumbnailLabel() {
 function selectStaticLayout(layoutId: string) {
   const template = staticLayouts.find((l) => l.id === layoutId)
   if (!template) return
-  
+
   // Get or create a layout based on this template using the store utility
   const gridLayout = layoutStore.getOrCreateTemplateLayout(layoutId)
-  
+
   // Use setTimeout to ensure DOM updates between changes
   setTimeout(() => {
     // Then set the layout as current
     layoutStore.setCurrentLayout(gridLayout.id)
     currentLayoutId.value = gridLayout.id
-    
+
     // Force a window resize event to ensure layout container updates
     window.dispatchEvent(new Event('resize'))
   }, 10)
@@ -172,7 +167,6 @@ const isActiveLink = (path: string) => {
 <template>
   <nav class="aw-navigation-bar">
     <div class="aw-navigation-bar__left">
-
       <!-- Navigation links -->
       <div class="aw-navigation-bar__links">
         <RouterLink
@@ -188,87 +182,86 @@ const isActiveLink = (path: string) => {
         </RouterLink>
         <!-- Layout Controls (between Home and Settings) -->
         <div class="aw-navigation-bar__layout-controls">
-            
-            <!-- Inline layout thumbnails for larger screens -->
-            <div v-if="!isMobileDevice" class="aw-navigation-bar__inline-thumbnails">
-              <div 
-                v-for="layout in staticLayouts" 
-                :key="layout.id" 
-                class="aw-navigation-bar__thumbnail"
-                :title="layout.name"
-                :data-active="currentLayoutId.includes(layout.id)"
-                @click="handleStaticLayoutClick(layout.id)"
-                @mouseenter="showThumbnailLabel($event, layout)"
-                @mouseleave="hideThumbnailLabel"
+          <!-- Inline layout thumbnails for larger screens -->
+          <div v-if="!isMobileDevice" class="aw-navigation-bar__inline-thumbnails">
+            <div
+              v-for="layout in staticLayouts"
+              :key="layout.id"
+              class="aw-navigation-bar__thumbnail"
+              :title="layout.name"
+              :data-active="currentLayoutId.includes(layout.id)"
+              @click="handleStaticLayoutClick(layout.id)"
+              @mouseenter="showThumbnailLabel($event, layout)"
+              @mouseleave="hideThumbnailLabel"
+            >
+              <div
+                class="aw-navigation-bar__thumbnail-preview"
+                :style="{
+                  gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
+                  gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : '1fr 1fr'
+                }"
               >
                 <div
-class="aw-navigation-bar__thumbnail-preview" 
+                  v-for="cell in layout.cells"
+                  :key="cell.id"
+                  class="aw-navigation-bar__thumbnail-cell"
                   :style="{
-                    gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-                    gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : '1fr 1fr'
+                    gridRow: `${cell.row + 1} / span ${cell.rowSpan || 1}`,
+                    gridColumn: `${cell.col + 1} / span ${cell.colSpan || 1}`
                   }"
-                >
+                ></div>
+              </div>
+            </div>
+            <div class="aw-navigation-bar__more-indicator" title="More layouts" @click="openLayoutModal">
+              <Icon type="layout-grid" />
+            </div>
+          </div>
+
+          <!-- Global thumbnail label -->
+          <div
+            v-if="activeLabelInfo.visible"
+            class="thumbnail-global-label"
+            :style="{
+              left: `${activeLabelInfo.x}px`,
+              top: `${activeLabelInfo.y}px`
+            }"
+          >
+            {{ activeLabelInfo.text }}
+          </div>
+
+          <!-- Layout modal for smaller screens or when clicking "More" -->
+          <div v-if="showLayoutModal" class="layout-modal-overlay">
+            <div class="layout-modal">
+              <button class="layout-modal__close" title="Close" @click="closeLayoutModal">×</button>
+              <h2 class="layout-modal__title">Choose a Layout</h2>
+              <div class="layout-modal__grid">
+                <div v-for="layout in staticLayouts" :key="layout.id" class="layout-modal__card" @click="handleStaticLayoutClick(layout.id)">
+                  <div class="layout-modal__card-title">{{ layout.name }}</div>
                   <div
-                    v-for="cell in layout.cells"
-                    :key="cell.id"
-                    class="aw-navigation-bar__thumbnail-cell"
+                    class="layout-modal__preview"
                     :style="{
-                      gridRow: `${cell.row + 1} / span ${cell.rowSpan || 1}`,
-                      gridColumn: `${cell.col + 1} / span ${cell.colSpan || 1}`
+                      gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
+                      gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : '1fr 1fr',
+                      width: '120px',
+                      aspectRatio: '3 / 2'
                     }"
-                  ></div>
-                </div>
-              </div>
-              <div class="aw-navigation-bar__more-indicator" title="More layouts" @click="openLayoutModal">
-                <Icon type="layout-grid" />
-              </div>
-            </div>
-            
-            <!-- Global thumbnail label -->
-            <div 
-              v-if="activeLabelInfo.visible" 
-              class="thumbnail-global-label"
-              :style="{
-                left: `${activeLabelInfo.x}px`,
-                top: `${activeLabelInfo.y}px`
-              }"
-            >
-              {{ activeLabelInfo.text }}
-            </div>
-            
-            <!-- Layout modal for smaller screens or when clicking "More" -->
-            <div v-if="showLayoutModal" class="layout-modal-overlay">
-              <div class="layout-modal">
-                <button class="layout-modal__close" title="Close" @click="closeLayoutModal">×</button>
-                <h2 class="layout-modal__title">Choose a Layout</h2>
-                <div class="layout-modal__grid">
-                  <div v-for="layout in staticLayouts" :key="layout.id" class="layout-modal__card" @click="handleStaticLayoutClick(layout.id)">
-                    <div class="layout-modal__card-title">{{ layout.name }}</div>
+                  >
                     <div
-                      class="layout-modal__preview"
+                      v-for="cell in layout.cells"
+                      :key="cell.id"
+                      class="layout-modal__cell-preview"
                       :style="{
-                        gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-                        gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : '1fr 1fr',
-                        width: '120px',
-                        aspectRatio: '3 / 2'
+                        gridRow: `${cell.row + 1} / span ${cell.rowSpan || 1}`,
+                        gridColumn: `${cell.col + 1} / span ${cell.colSpan || 1}`
                       }"
                     >
-                      <div
-                        v-for="cell in layout.cells"
-                        :key="cell.id"
-                        class="layout-modal__cell-preview"
-                        :style="{
-                          gridRow: `${cell.row + 1} / span ${cell.rowSpan || 1}`,
-                          gridColumn: `${cell.col + 1} / span ${cell.colSpan || 1}`
-                        }"
-                      >
-                        <span class="layout-modal__cell-id">{{ cell.id }}</span>
-                      </div>
+                      <span class="layout-modal__cell-id">{{ cell.id }}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
         </div>
       </div>
     </div>
@@ -457,7 +450,7 @@ class="aw-navigation-bar__thumbnail-preview"
   color: var(--aw-panel-menu-bar-color);
 }
 
-.aw-navigation-bar__theme-toggle {  
+.aw-navigation-bar__theme-toggle {
   background-color: transparent;
   /* stylelint-disable-next-line */
   border: none;
@@ -512,19 +505,19 @@ class="aw-navigation-bar__thumbnail-preview"
   .aw-navigation-bar__link {
     padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
   }
-  
+
   .aw-navigation-bar__layout-controls {
     margin-left: 0;
     flex-direction: column;
     align-items: flex-start;
     padding: var(--aw-spacing-xs);
   }
-  
+
   .aw-navigation-bar__layout-select {
     max-width: 100px;
     font-size: 12px;
   }
-  
+
   .aw-navigation-bar__inline-thumbnails {
     display: none;
   }
@@ -568,7 +561,9 @@ class="aw-navigation-bar__thumbnail-preview"
   border-radius: var(--aw-border-radius-sm);
   padding: 2px;
   background: var(--aw-panel-content-bg-color);
-  transition: border-color 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
   position: relative;
   height: 28px;
   display: flex;
@@ -584,7 +579,7 @@ class="aw-navigation-bar__thumbnail-preview"
   box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 }
 
-.aw-navigation-bar__thumbnail[data-active="true"] {
+.aw-navigation-bar__thumbnail[data-active='true'] {
   border-color: var(--aw-color-primary-500);
   background: var(--aw-color-primary-100);
 }
@@ -614,15 +609,15 @@ class="aw-navigation-bar__thumbnail-preview"
   height: 24px;
   /* stylelint-disable-next-line */
   border-radius: 50%;
-  background: var(--aw-panel-hover-bg-color);
+  background-color: var(--aw-navigation-icon-color-bg);
   cursor: pointer;
-  color: var(--aw-text-color);
+  color: var(--aw-navigation-icon-color);
   transition: background-color 0.2s;
 }
 
 .aw-navigation-bar__more-indicator:hover {
-  background-color: var(--aw-color-primary-500);
-  color: var(--aw-button-primary-text);
+  background-color: var(--aw-navigation-icon-color-hover-bg);
+  color: var(--aw-navigation-icon-color-hover);
 }
 
 .layout-modal-overlay {
@@ -690,7 +685,9 @@ class="aw-navigation-bar__thumbnail-preview"
   padding: 1rem;
   width: 180px;
   cursor: pointer;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
   box-shadow: var(--aw-shadow-sm);
   /* stylelint-disable-next-line */
   border: 1.5px solid transparent;

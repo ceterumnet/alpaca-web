@@ -1,9 +1,6 @@
-// Status: New - Discovery Navigation Integration
-// This component provides discovery status indicators and triggers in the navigation area
-// - Runs discovery automatically when the app loads
-// - Performs periodic discovery checks
-// - Shows spinner during discovery
-// - Generates notifications when new devices are found
+// Status: New - Discovery Navigation Integration // This component provides discovery status indicators and triggers in the navigation area // - Runs
+discovery automatically when the app loads // - Performs periodic discovery checks // - Shows spinner during discovery // - Generates notifications
+when new devices are found
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
@@ -65,21 +62,18 @@ async function triggerDiscovery() {
   try {
     const prevCount = discoveryStore.availableDevices.length
     await discoveryStore.discoverDevices()
-    
+
     // Get new count after discovery
     const newCount = discoveryStore.availableDevices.length
     const newDevicesFound = newCount - prevCount
-    
+
     // Notify if new devices were found
     if (newDevicesFound > 0) {
-      notificationStore.showSuccess(
-        `${newDevicesFound} new ${newDevicesFound === 1 ? 'device' : 'devices'} discovered`,
-        {
-          autoDismiss: true,
-          position: 'top-right',
-          duration: 5000
-        }
-      )
+      notificationStore.showSuccess(`${newDevicesFound} new ${newDevicesFound === 1 ? 'device' : 'devices'} discovered`, {
+        autoDismiss: true,
+        position: 'top-right',
+        duration: 5000
+      })
     }
   } catch (error) {
     console.error('Discovery failed:', error)
@@ -96,10 +90,10 @@ function setupPeriodicDiscovery() {
   if (discoveryInterval.value) {
     clearInterval(discoveryInterval.value)
   }
-  
+
   // Do NOT run discovery immediately on mount here, App.vue handles initial discovery
   // triggerDiscovery() // OLD: Removed immediate trigger
-  
+
   // Set up interval (every minute) - this will start the first periodic check after 60s
   discoveryInterval.value = window.setInterval(() => {
     triggerDiscovery()
@@ -109,7 +103,7 @@ function setupPeriodicDiscovery() {
 // Lifecycle hooks
 onMounted(() => {
   setupPeriodicDiscovery() // This will now only set up the interval
-  
+
   // Track initial device count - this might be 0 if App.vue's discovery hasn't run yet
   // This is fine, as the indicator will update reactively when discoveryStore changes.
   previousDeviceCount.value = discoveryStore.availableDevices.length
@@ -132,12 +126,8 @@ onUnmounted(() => {
     }"
   >
     <button
-      class="aw-discovery-indicator__button"
-      :title="
-        hasDevices
-          ? `${availableDeviceCount} available devices found`
-          : 'Find devices on your network'
-      "
+      class="aw-btn aw-discovery-indicator__button"
+      :title="hasDevices ? `${availableDeviceCount} available devices found` : 'Find devices on your network'"
       @click="handleDiscoveryClick"
     >
       <div class="aw-discovery-indicator__icon-wrapper">
@@ -149,9 +139,7 @@ onUnmounted(() => {
       </span>
     </button>
 
-    <div v-if="lastDiscoveryTime" class="aw-discovery-indicator__info">
-      Last scan: {{ formattedLastDiscoveryTime }}
-    </div>
+    <div v-if="lastDiscoveryTime" class="aw-discovery-indicator__info">Last scan: {{ formattedLastDiscoveryTime }}</div>
   </div>
 </template>
 

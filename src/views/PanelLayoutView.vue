@@ -1,9 +1,5 @@
-// Status: Core View 
-// This view implements the main panel layout system with: 
-// - Grid-based layout using LayoutContainer 
-// - Support for multiple device panels 
-// - Integration with layout store for persistence 
-// - Proper responsive behavior
+// Status: Core View // This view implements the main panel layout system with: // - Grid-based layout using LayoutContainer // - Support for multiple
+device panels // - Integration with layout store for persistence // - Proper responsive behavior
 
 <script setup lang="ts">
 import log from '@/plugins/logger'
@@ -40,18 +36,18 @@ const hasMaximizedPanel = computed(() => {
 const toggleMaximizePanel = (panelId: string) => {
   // Find the device assigned to this cell
   const deviceRef = deviceComponentRegistry.getDeviceForCell(panelId)
-  
+
   if (!deviceRef) {
     log.warn(`No device found for panel ${panelId}, cannot maximize`)
     return
   }
-  
+
   // Check if this panel is already maximized
   const isCurrentlyMaximized = deviceRef.isMaximized
-  
+
   // Toggle maximized state using the registry
   deviceComponentRegistry.setMaximized(deviceRef.id, deviceRef.type, !isCurrentlyMaximized)
-  
+
   // Force a layout recalculation after toggling
   nextTick(() => {
     window.dispatchEvent(new Event('resize'))
@@ -65,7 +61,7 @@ watch(
     if (newLayoutId && newLayoutId !== currentLayoutId.value) {
       log.debug('PanelLayoutView - layoutStore.currentLayoutId changed to:', newLayoutId)
       currentLayoutId.value = newLayoutId
-      
+
       // Force component re-render
       nextTick(() => {
         window.dispatchEvent(new Event('resize'))
@@ -76,10 +72,16 @@ watch(
 
 // Create a default layout if none exists
 onMounted(() => {
-  log.debug('PanelLayoutView - onMounted - Current layouts in store:', layoutStore.layouts.map(l => l.id))
-  log.debug('PanelLayoutView - onMounted - Current grid layouts:', layoutStore.gridLayouts.map(l => l.id))
+  log.debug(
+    'PanelLayoutView - onMounted - Current layouts in store:',
+    layoutStore.layouts.map((l) => l.id)
+  )
+  log.debug(
+    'PanelLayoutView - onMounted - Current grid layouts:',
+    layoutStore.gridLayouts.map((l) => l.id)
+  )
   log.debug('PanelLayoutView - onMounted - Current layout ID:', layoutStore.currentLayoutId)
-  
+
   // Check if there's a layout parameter in the URL
   if (route.query.layout) {
     const layoutId = route.query.layout as string
@@ -90,28 +92,38 @@ onMounted(() => {
 
 // Updated with component registry integration
 onMounted(() => {
-  log.debug('PanelLayoutView - onMounted - Current layouts in store:', layoutStore.layouts.map(l => l.id))
-  log.debug('PanelLayoutView - onMounted - Current grid layouts:', layoutStore.gridLayouts.map(l => l.id))
+  log.debug(
+    'PanelLayoutView - onMounted - Current layouts in store:',
+    layoutStore.layouts.map((l) => l.id)
+  )
+  log.debug(
+    'PanelLayoutView - onMounted - Current grid layouts:',
+    layoutStore.gridLayouts.map((l) => l.id)
+  )
   log.debug('PanelLayoutView - onMounted - Current layout ID:', layoutStore.currentLayoutId)
-  
+
   // Register all available devices with the component registry
-  unifiedStore.devicesList.forEach(device => {
+  unifiedStore.devicesList.forEach((device) => {
     if (device.id && device.type) {
-      deviceComponentRegistry.registerDevice(device.id, device.type);
-      log.debug({deviceIds: [device.id]}, `Registered device with registry: ${device.type} ${device.id}`);
+      deviceComponentRegistry.registerDevice(device.id, device.type)
+      log.debug({ deviceIds: [device.id] }, `Registered device with registry: ${device.type} ${device.id}`)
     }
-  });
-  
+  })
+
   // Set up watcher for device list changes
-  watch(() => unifiedStore.devicesList, (newDevices) => {
-    // Register any new devices with the registry
-    newDevices.forEach(device => {
-      if (device.id && device.type) {
-        deviceComponentRegistry.registerDevice(device.id, device.type);
-      }
-    });
-  }, { deep: true });
-  
+  watch(
+    () => unifiedStore.devicesList,
+    (newDevices) => {
+      // Register any new devices with the registry
+      newDevices.forEach((device) => {
+        if (device.id && device.type) {
+          deviceComponentRegistry.registerDevice(device.id, device.type)
+        }
+      })
+    },
+    { deep: true }
+  )
+
   // Check if there's a layout parameter in the URL
   if (route.query.layout) {
     const layoutId = route.query.layout as string
@@ -149,136 +161,143 @@ const deviceMap = ref<DeviceTypeMap>({
 })
 
 // Track cell-to-device assignments
-const cellDeviceAssignments = ref<Record<string, string>>({});
+const cellDeviceAssignments = ref<Record<string, string>>({})
 
 // Track connection status for each cell
-const cellConnectionStatus = ref<Record<string, boolean>>({});
+const cellConnectionStatus = ref<Record<string, boolean>>({})
 
 // Track if a connection attempt is in progress for a cell
-const cellConnectionAttemptStatus = ref<Record<string, boolean>>({});
+const cellConnectionAttemptStatus = ref<Record<string, boolean>>({})
 
 // Computed property for watching only relevant device statuses (id and isConnected)
-const relevantDeviceStatuses = computed(() => 
-  unifiedStore.devicesList.map(device => ({
+const relevantDeviceStatuses = computed(() =>
+  unifiedStore.devicesList.map((device) => ({
     id: device.id,
     isConnected: device.isConnected
     // Add other properties here if the watcher below needs them, but aim for minimal set
   }))
-);
+)
 
 // Handle device selection for a specific cell
 const assignDeviceToCell = (cellId: string, deviceId: string) => {
-  log.debug({deviceIds: [deviceId]}, `Assigning device ${deviceId} to cell ${cellId}`);
-  
+  log.debug({ deviceIds: [deviceId] }, `Assigning device ${deviceId} to cell ${cellId}`)
+
   // Performance measurement
-  const startTime = performance.now();
-  
+  const startTime = performance.now()
+
   // Update cell assignment
-  cellDeviceAssignments.value[cellId] = deviceId;
-  
+  cellDeviceAssignments.value[cellId] = deviceId
+
   // Initialize connection status for the cell
   if (deviceId) {
-    const device = unifiedStore.getDeviceById(deviceId);
-    cellConnectionStatus.value[cellId] = device?.isConnected || false;
-    cellConnectionAttemptStatus.value[cellId] = false; // Reset attempt status
+    const device = unifiedStore.getDeviceById(deviceId)
+    cellConnectionStatus.value[cellId] = device?.isConnected || false
+    cellConnectionAttemptStatus.value[cellId] = false // Reset attempt status
   } else {
-    delete cellConnectionStatus.value[cellId];
-    delete cellConnectionAttemptStatus.value[cellId];
+    delete cellConnectionStatus.value[cellId]
+    delete cellConnectionAttemptStatus.value[cellId]
   }
-  
+
   // Get device type to update the deviceMap
   if (deviceId) {
-    const device = unifiedStore.getDeviceById(deviceId);
+    const device = unifiedStore.getDeviceById(deviceId)
     if (device && device.type) {
-      const deviceType = device.type.toLowerCase();
-      
+      const deviceType = device.type.toLowerCase()
+
       // Update deviceMap to maintain device selection by type
-      log.debug({deviceIds: [deviceId]}, `Updating deviceMap: ${deviceType} -> ${deviceId}`);
-      deviceMap.value[deviceType] = deviceId;
-      
+      log.debug({ deviceIds: [deviceId] }, `Updating deviceMap: ${deviceType} -> ${deviceId}`)
+      deviceMap.value[deviceType] = deviceId
+
       // Register with component registry to ensure state preservation
-      deviceComponentRegistry.assignToCell(deviceId, deviceType, cellId);
+      deviceComponentRegistry.assignToCell(deviceId, deviceType, cellId)
     }
   } else {
     // If removing a device, clear the component registry assignment
-    const currentDevice = deviceComponentRegistry.getDeviceForCell(cellId);
+    const currentDevice = deviceComponentRegistry.getDeviceForCell(cellId)
     if (currentDevice) {
-      deviceComponentRegistry.assignToCell(currentDevice.id, currentDevice.type, '');
+      deviceComponentRegistry.assignToCell(currentDevice.id, currentDevice.type, '')
     }
   }
-  
+
   // Log performance of the operation
-  const assignmentTime = performance.now() - startTime;
-  log.debug({cellId}, `Device assignment to cell ${cellId} took ${assignmentTime.toFixed(2)}ms`);
-};
+  const assignmentTime = performance.now() - startTime
+  log.debug({ cellId }, `Device assignment to cell ${cellId} took ${assignmentTime.toFixed(2)}ms`)
+}
 
 // Toggle connection for a device in a cell
 const toggleCellConnection = async (cellId: string) => {
-  const deviceId = cellDeviceAssignments.value[cellId];
-  if (!deviceId || cellConnectionAttemptStatus.value[cellId]) return;
+  const deviceId = cellDeviceAssignments.value[cellId]
+  if (!deviceId || cellConnectionAttemptStatus.value[cellId]) return
 
-  const device = unifiedStore.getDeviceById(deviceId);
+  const device = unifiedStore.getDeviceById(deviceId)
   if (!device) {
-    log.error({deviceIds: [deviceId]}, `Device ${deviceId} not found for cell ${cellId}`);
-    return;
+    log.error({ deviceIds: [deviceId] }, `Device ${deviceId} not found for cell ${cellId}`)
+    return
   }
 
-  cellConnectionAttemptStatus.value[cellId] = true;
+  cellConnectionAttemptStatus.value[cellId] = true
   try {
     if (device.isConnected) {
-      log.info({deviceIds: [deviceId]}, `Disconnecting device ${deviceId} in cell ${cellId}`);
-      await unifiedStore.disconnectDevice(deviceId);
-      cellConnectionStatus.value[cellId] = false;
-      log.debug({deviceIds: [deviceId]}, `Device ${deviceId} disconnected successfully in cell ${cellId}`);
+      log.info({ deviceIds: [deviceId] }, `Disconnecting device ${deviceId} in cell ${cellId}`)
+      await unifiedStore.disconnectDevice(deviceId)
+      cellConnectionStatus.value[cellId] = false
+      log.debug({ deviceIds: [deviceId] }, `Device ${deviceId} disconnected successfully in cell ${cellId}`)
     } else {
-      log.info({deviceIds: [deviceId]}, `Connecting device ${deviceId} in cell ${cellId}`);
-      await unifiedStore.connectDevice(deviceId);
-      cellConnectionStatus.value[cellId] = true;
-      log.debug({deviceIds: [deviceId]}, `Device ${deviceId} connected successfully in cell ${cellId}`);
+      log.info({ deviceIds: [deviceId] }, `Connecting device ${deviceId} in cell ${cellId}`)
+      await unifiedStore.connectDevice(deviceId)
+      cellConnectionStatus.value[cellId] = true
+      log.debug({ deviceIds: [deviceId] }, `Device ${deviceId} connected successfully in cell ${cellId}`)
     }
   } catch (error) {
-    log.error({deviceIds: [deviceId]}, `Error toggling connection for device ${deviceId} in cell ${cellId}:`, error);
+    log.error({ deviceIds: [deviceId] }, `Error toggling connection for device ${deviceId} in cell ${cellId}:`, error)
     // Revert status on error if needed, or rely on watcher
-    const updatedDevice = unifiedStore.getDeviceById(deviceId);
-    cellConnectionStatus.value[cellId] = updatedDevice?.isConnected || false;
+    const updatedDevice = unifiedStore.getDeviceById(deviceId)
+    cellConnectionStatus.value[cellId] = updatedDevice?.isConnected || false
   } finally {
-    cellConnectionAttemptStatus.value[cellId] = false;
+    cellConnectionAttemptStatus.value[cellId] = false
   }
-};
+}
 
 // Watch for external changes to device connection statuses (Optimized)
-watch(relevantDeviceStatuses, (currentDeviceStatuses /*, previousDeviceStatuses */) => {
-  // The watcher now fires only if id or isConnected changes for any device, or if devices are added/removed.
-  log.debug('PanelLayoutView - relevantDeviceStatuses changed, updating cell connection statuses.');
-  
-  currentDeviceStatuses.forEach(deviceStatus => {
-    // Iterate over cells to find which ones are assigned this device
-    Object.entries(cellDeviceAssignments.value).forEach(([cellId, assignedDeviceId]) => {
-      if (assignedDeviceId === deviceStatus.id) {
-        // Check if the connection status for this cell needs an update
-        if (cellConnectionStatus.value[cellId] !== deviceStatus.isConnected) {
-          log.debug({deviceIds: [deviceStatus.id]}, `Updating connection status for cell ${cellId} (device ${deviceStatus.id}) to ${deviceStatus.isConnected}`);
-          cellConnectionStatus.value[cellId] = deviceStatus.isConnected;
+watch(
+  relevantDeviceStatuses,
+  (currentDeviceStatuses /*, previousDeviceStatuses */) => {
+    // The watcher now fires only if id or isConnected changes for any device, or if devices are added/removed.
+    log.debug('PanelLayoutView - relevantDeviceStatuses changed, updating cell connection statuses.')
+
+    currentDeviceStatuses.forEach((deviceStatus) => {
+      // Iterate over cells to find which ones are assigned this device
+      Object.entries(cellDeviceAssignments.value).forEach(([cellId, assignedDeviceId]) => {
+        if (assignedDeviceId === deviceStatus.id) {
+          // Check if the connection status for this cell needs an update
+          if (cellConnectionStatus.value[cellId] !== deviceStatus.isConnected) {
+            log.debug(
+              { deviceIds: [deviceStatus.id] },
+              `Updating connection status for cell ${cellId} (device ${deviceStatus.id}) to ${deviceStatus.isConnected}`
+            )
+            cellConnectionStatus.value[cellId] = deviceStatus.isConnected
+          }
         }
-      }
-    });
-  });
-  // Note: No need for { deep: true } on relevantDeviceStatuses if we are careful about how it's constructed.
-  // Vue's default watcher for a computed property returning an array of objects will trigger if the array 
-  // reference changes or if items are added/removed. If isConnected mutates on an existing object within 
-  // devicesList and relevantDeviceStatuses.map creates new objects, the watcher will fire.
-  // If devicesList itself is replaced, relevantDeviceStatuses recomputes, watcher fires.
-  // If a device object within devicesList has its isConnected property mutated directly, AND
-  // relevantDeviceStatuses.map re-uses existing device objects (it does not, it creates new ones),
-  // then deep:true would be needed. But since .map creates new objects, it should be fine.
-  // Let's keep deep: true for safety for now, as per the original optimization note, 
-  // but it might be removable if the store guarantees devicesList array itself is replaced on changes.
-}, { deep: true, immediate: true });
+      })
+    })
+    // Note: No need for { deep: true } on relevantDeviceStatuses if we are careful about how it's constructed.
+    // Vue's default watcher for a computed property returning an array of objects will trigger if the array
+    // reference changes or if items are added/removed. If isConnected mutates on an existing object within
+    // devicesList and relevantDeviceStatuses.map creates new objects, the watcher will fire.
+    // If devicesList itself is replaced, relevantDeviceStatuses recomputes, watcher fires.
+    // If a device object within devicesList has its isConnected property mutated directly, AND
+    // relevantDeviceStatuses.map re-uses existing device objects (it does not, it creates new ones),
+    // then deep:true would be needed. But since .map creates new objects, it should be fine.
+    // Let's keep deep: true for safety for now, as per the original optimization note,
+    // but it might be removable if the store guarantees devicesList array itself is replaced on changes.
+  },
+  { deep: true, immediate: true }
+)
 
 // Get all available devices (not filtered by type)
 const allAvailableDevices = computed(() => {
-  return unifiedStore.devicesList.filter(d => !!d.type);
-});
+  return unifiedStore.devicesList.filter((d) => !!d.type)
+})
 
 // Open layout builder
 const openLayoutBuilder = () => {
@@ -288,13 +307,13 @@ const openLayoutBuilder = () => {
 // Change layout
 const changeLayout = (layoutId: string) => {
   log.debug(`Attempting to change layout to: ${layoutId}`)
-  
+
   // Check if the layout exists
   const layoutExists = layoutStore.layouts.some((layout) => layout.id === layoutId)
 
   if (layoutExists) {
     log.debug(`Layout ${layoutId} found, setting as current layout`)
-    
+
     // Directly set the current layout without resetting first
     layoutStore.setCurrentLayout(layoutId)
     currentLayoutId.value = layoutId
@@ -312,37 +331,40 @@ const changeLayout = (layoutId: string) => {
 }
 
 interface LayoutCell {
-  id: string;
-  row: number;
-  col: number;
-  rowSpan?: number;
-  colSpan?: number;
-  width?: number;
-  deviceType?: string;
-  name?: string;
+  id: string
+  row: number
+  col: number
+  rowSpan?: number
+  colSpan?: number
+  width?: number
+  deviceType?: string
+  name?: string
 }
 
 interface LayoutTemplate {
-  id: string;
-  name: string;
-  rows: number;
-  cols: number;
-  cells: LayoutCell[];
+  id: string
+  name: string
+  rows: number
+  cols: number
+  cells: LayoutCell[]
 }
 
 function handleStaticLayoutSave(layout: LayoutTemplate) {
   // Save the chosen layout as a new grid layout and switch to it
   const layoutId = `static-${layout.id}-${Date.now()}`
   const desktopRows = convertStaticToRows(layout)
-  
+
   // Extract device assignments from the cells
-  const deviceAssignments = layout.cells.reduce((acc, cell) => {
-    if (cell.deviceType) {
-      acc[cell.id] = cell.deviceType;
-    }
-    return acc;
-  }, {} as Record<string, string>);
-  
+  const deviceAssignments = layout.cells.reduce(
+    (acc, cell) => {
+      if (cell.deviceType) {
+        acc[cell.id] = cell.deviceType
+      }
+      return acc
+    },
+    {} as Record<string, string>
+  )
+
   // For demo, use the same layout for all viewports
   const gridLayout: GridLayoutDefinition = {
     id: layoutId,
@@ -351,30 +373,30 @@ function handleStaticLayoutSave(layout: LayoutTemplate) {
     layouts: {
       desktop: {
         rows: desktopRows,
-        panelIds: layout.cells.map(cell => cell.id)
+        panelIds: layout.cells.map((cell) => cell.id)
       },
       tablet: {
         rows: desktopRows,
-        panelIds: layout.cells.map(cell => cell.id)
+        panelIds: layout.cells.map((cell) => cell.id)
       },
       mobile: {
         rows: desktopRows,
-        panelIds: layout.cells.map(cell => cell.id)
+        panelIds: layout.cells.map((cell) => cell.id)
       }
     },
     isDefault: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
   }
-  
+
   // Update device map based on cell assignments
   Object.entries(deviceAssignments).forEach(([cellId, deviceType]) => {
     if (deviceType in deviceMap.value) {
       // Store the assigned device type in the cell ID -> device type mapping
-      log.debug(`Assigning device type ${deviceType} to cell ${cellId}`);
+      log.debug(`Assigning device type ${deviceType} to cell ${cellId}`)
     }
-  });
-  
+  })
+
   layoutStore.addGridLayout(gridLayout)
   layoutStore.setCurrentLayout(layoutId)
   currentLayoutId.value = layoutId
@@ -385,13 +407,15 @@ function convertStaticToRows(layout: LayoutTemplate): LayoutRow[] {
   // Group cells by row
   const rows: LayoutRow[] = []
   for (let r = 0; r < layout.rows; r++) {
-    const rowCells: StoreLayoutCell[] = layout.cells.filter((cell: LayoutCell) => cell.row === r).map((cell: LayoutCell) => ({
-      id: cell.id,
-      deviceType: cell.deviceType || 'any',
-      name: cell.name || cell.id,
-      priority: 'primary',
-      width: cell.width || (100 / layout.cells.filter(c => c.row === r).length)
-    }))
+    const rowCells: StoreLayoutCell[] = layout.cells
+      .filter((cell: LayoutCell) => cell.row === r)
+      .map((cell: LayoutCell) => ({
+        id: cell.id,
+        deviceType: cell.deviceType || 'any',
+        name: cell.name || cell.id,
+        priority: 'primary',
+        width: cell.width || 100 / layout.cells.filter((c) => c.row === r).length
+      }))
     rows.push({
       id: `row-${r + 1}`,
       cells: rowCells,
@@ -404,25 +428,25 @@ function convertStaticToRows(layout: LayoutTemplate): LayoutRow[] {
 // Now let's make sure the deviceType is propagated to the panel positions
 // We need to add a function to ensure device types are passed correctly
 const ensureDeviceTypesInPositions = () => {
-  if (!currentDeviceLayout.value) return;
-  
+  if (!currentDeviceLayout.value) return
+
   // For each panel position, set the deviceType from the corresponding grid cell
   if (layoutStore.currentGridLayout) {
-    const gridRows = layoutStore.currentGridLayout.layouts[layoutStore.currentViewport].rows;
-    
+    const gridRows = layoutStore.currentGridLayout.layouts[layoutStore.currentViewport].rows
+
     // Extract all cells from all rows
-    const cells = gridRows.flatMap(row => row.cells);
-    
+    const cells = gridRows.flatMap((row) => row.cells)
+
     // For each position, find the matching cell by ID and copy its deviceType
-    currentDeviceLayout.value.positions.forEach(position => {
-      const matchingCell = cells.find(cell => cell.id === position.panelId);
+    currentDeviceLayout.value.positions.forEach((position) => {
+      const matchingCell = cells.find((cell) => cell.id === position.panelId)
       if (matchingCell) {
         // Copy the deviceType from the cell to the position
-        position.deviceType = matchingCell.deviceType || undefined;
+        position.deviceType = matchingCell.deviceType || undefined
       }
-    });
+    })
   }
-};
+}
 
 // Watch for layout changes to apply the device type updates
 watch(
@@ -430,208 +454,218 @@ watch(
   () => {
     // Wait for Vue to update the DOM
     nextTick(() => {
-      ensureDeviceTypesInPositions();
-    });
+      ensureDeviceTypesInPositions()
+    })
   }
-);
+)
 
 // Also call it on mount to apply to current layout
 onMounted(() => {
   nextTick(() => {
-    ensureDeviceTypesInPositions();
-  });
-});
+    ensureDeviceTypesInPositions()
+  })
+})
 
 // Initialize cell device assignments when layout changes - optimized version
-watch(() => currentLayoutId.value, () => {
-  log.debug('LAYOUT CHANGE - Current Layout ID:', currentLayoutId.value);
-  
-  // Performance measurement
-  const startTime = performance.now();
-  
-  // Wait for Vue to update the device layout
-  nextTick(() => {
-    // Initialize cell assignments from the layout if available
-    if (currentDeviceLayout.value && currentDeviceLayout.value.positions) {
-      const initialAssignments: Record<string, string> = {};
-      
-      // Initialize connection status for pre-assigned devices
-      const initialConnectionStatus: Record<string, boolean> = {};
-      const initialAttemptStatus: Record<string, boolean> = {};
+watch(
+  () => currentLayoutId.value,
+  () => {
+    log.debug('LAYOUT CHANGE - Current Layout ID:', currentLayoutId.value)
 
-      // Process layout positions and determine assignments
-      currentDeviceLayout.value.positions.forEach(position => {
-        if (position.deviceType && position.panelId) {
-          const cellId = position.panelId;
-          const deviceType = position.deviceType.toLowerCase();
-          
-          // Try existing assignment first
-          const existingDeviceId = cellDeviceAssignments.value[cellId];
-          const existingDevice = existingDeviceId ? unifiedStore.getDeviceById(existingDeviceId) : null;
-          
-          if (existingDeviceId && existingDevice) {
-            // Keep existing assignment if device still exists
-            initialAssignments[cellId] = existingDeviceId;
-            initialConnectionStatus[cellId] = existingDevice.isConnected;
-            initialAttemptStatus[cellId] = false;
-          } 
-          // Otherwise use deviceMap for consistent device selection by type
-          else if (deviceType in deviceMap.value && deviceMap.value[deviceType]) {
-            initialAssignments[cellId] = deviceMap.value[deviceType]!;
-            const mappedDevice = unifiedStore.getDeviceById(deviceMap.value[deviceType]!);
-            initialConnectionStatus[cellId] = mappedDevice?.isConnected || false;
-            initialAttemptStatus[cellId] = false;
-          }
-          // If no device of this type is selected, find a suitable one
-          else {
-            const matchingDevice = unifiedStore.devicesList.find(
-              d => d.type?.toLowerCase() === deviceType && d.isConnected
-            );
-            
-            if (matchingDevice) {
-              initialAssignments[cellId] = matchingDevice.id;
-              deviceMap.value[deviceType] = matchingDevice.id;
-              initialConnectionStatus[cellId] = matchingDevice.isConnected;
-              initialAttemptStatus[cellId] = false;
+    // Performance measurement
+    const startTime = performance.now()
+
+    // Wait for Vue to update the device layout
+    nextTick(() => {
+      // Initialize cell assignments from the layout if available
+      if (currentDeviceLayout.value && currentDeviceLayout.value.positions) {
+        const initialAssignments: Record<string, string> = {}
+
+        // Initialize connection status for pre-assigned devices
+        const initialConnectionStatus: Record<string, boolean> = {}
+        const initialAttemptStatus: Record<string, boolean> = {}
+
+        // Process layout positions and determine assignments
+        currentDeviceLayout.value.positions.forEach((position) => {
+          if (position.deviceType && position.panelId) {
+            const cellId = position.panelId
+            const deviceType = position.deviceType.toLowerCase()
+
+            // Try existing assignment first
+            const existingDeviceId = cellDeviceAssignments.value[cellId]
+            const existingDevice = existingDeviceId ? unifiedStore.getDeviceById(existingDeviceId) : null
+
+            if (existingDeviceId && existingDevice) {
+              // Keep existing assignment if device still exists
+              initialAssignments[cellId] = existingDeviceId
+              initialConnectionStatus[cellId] = existingDevice.isConnected
+              initialAttemptStatus[cellId] = false
+            }
+            // Otherwise use deviceMap for consistent device selection by type
+            else if (deviceType in deviceMap.value && deviceMap.value[deviceType]) {
+              initialAssignments[cellId] = deviceMap.value[deviceType]!
+              const mappedDevice = unifiedStore.getDeviceById(deviceMap.value[deviceType]!)
+              initialConnectionStatus[cellId] = mappedDevice?.isConnected || false
+              initialAttemptStatus[cellId] = false
+            }
+            // If no device of this type is selected, find a suitable one
+            else {
+              const matchingDevice = unifiedStore.devicesList.find((d) => d.type?.toLowerCase() === deviceType && d.isConnected)
+
+              if (matchingDevice) {
+                initialAssignments[cellId] = matchingDevice.id
+                deviceMap.value[deviceType] = matchingDevice.id
+                initialConnectionStatus[cellId] = matchingDevice.isConnected
+                initialAttemptStatus[cellId] = false
+              }
             }
           }
-        }
-      });
-      
-      // Update cell assignments and register with component registry
-      Object.entries(initialAssignments).forEach(([cellId, deviceId]) => {
-        cellDeviceAssignments.value[cellId] = deviceId;
-        
-        const device = unifiedStore.getDeviceById(deviceId);
-        if (device?.type) {
-          deviceComponentRegistry.assignToCell(deviceId, device.type, cellId);
-        }
-      });
+        })
 
-      // Batch update connection statuses
-      Object.assign(cellConnectionStatus.value, initialConnectionStatus);
-      Object.assign(cellConnectionAttemptStatus.value, initialAttemptStatus);
+        // Update cell assignments and register with component registry
+        Object.entries(initialAssignments).forEach(([cellId, deviceId]) => {
+          cellDeviceAssignments.value[cellId] = deviceId
 
-      // Log performance metrics after layout change is complete
-      const layoutChangeTime = performance.now() - startTime;
-      log.debug(`Layout change to ${currentLayoutId.value} took ${layoutChangeTime.toFixed(2)}ms`);
-      
-      // Log component registry metrics to monitor performance
-      deviceComponentRegistry.logPerformanceMetrics();
-    }
-  });
-}, { immediate: true });
+          const device = unifiedStore.getDeviceById(deviceId)
+          if (device?.type) {
+            deviceComponentRegistry.assignToCell(deviceId, device.type, cellId)
+          }
+        })
+
+        // Batch update connection statuses
+        Object.assign(cellConnectionStatus.value, initialConnectionStatus)
+        Object.assign(cellConnectionAttemptStatus.value, initialAttemptStatus)
+
+        // Log performance metrics after layout change is complete
+        const layoutChangeTime = performance.now() - startTime
+        log.debug(`Layout change to ${currentLayoutId.value} took ${layoutChangeTime.toFixed(2)}ms`)
+
+        // Log component registry metrics to monitor performance
+        deviceComponentRegistry.logPerformanceMetrics()
+      }
+    })
+  },
+  { immediate: true }
+)
 
 // Get device type for event handling
 const getDeviceType = (cellId: string): string => {
-  const deviceId = cellDeviceAssignments.value[cellId];
-  if (!deviceId) return '';
-  
-  const device = unifiedStore.getDeviceById(deviceId);
+  const deviceId = cellDeviceAssignments.value[cellId]
+  if (!deviceId) return ''
+
+  const device = unifiedStore.getDeviceById(deviceId)
   if (!device) {
-    log.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getDeviceType.`);
-    return ''; // Device not found in store
+    log.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getDeviceType.`)
+    return '' // Device not found in store
   }
-  
+
   // Ensure device.type is a valid, non-empty string
   if (!device.type || typeof device.type !== 'string' || device.type.trim() === '') {
-    log.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`);
-    return ''; 
+    log.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`)
+    return ''
   }
-  
-  return device.type.toLowerCase();
-};
+
+  return device.type.toLowerCase()
+}
 
 // Helper functions for getting components from the registry
 // Get the component for a given cell
 const getComponentForCell = (cellId: string) => {
   // First check if there's a device assigned to this cell
-  const deviceId = cellDeviceAssignments.value[cellId];
-  if (!deviceId) return null;
-  
+  const deviceId = cellDeviceAssignments.value[cellId]
+  if (!deviceId) return null
+
   // Get the device to determine its type
-  const device = unifiedStore.getDeviceById(deviceId);
+  const device = unifiedStore.getDeviceById(deviceId)
   if (!device) {
-    log.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getComponentForCell.`);
-    return null; // Device not found in store
+    log.warn(`PanelLayoutView: Device ${deviceId} not found in store for cell ${cellId} during getComponentForCell.`)
+    return null // Device not found in store
   }
-  
+
   // Ensure device.type is a valid, non-empty string
   if (!device.type || typeof device.type !== 'string' || device.type.trim() === '') {
-    log.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`);
-    return null; 
+    log.warn(`PanelLayoutView: Invalid or missing device.type for device ${deviceId} (cell ${cellId}). Type: '${device.type}'.`)
+    return null
   }
-  
+
   // Get the component from the registry
-  const component = deviceComponentRegistry.getComponent(deviceId, device.type);
+  const component = deviceComponentRegistry.getComponent(deviceId, device.type)
   if (!component) {
-    log.warn(`PanelLayoutView: No component registered for type '${device.type}' (device ${deviceId}, cell ${cellId}).`);
+    log.warn(`PanelLayoutView: No component registered for type '${device.type}' (device ${deviceId}, cell ${cellId}).`)
   }
-  return component; // This might still be null if type not in registry
-};
+  return component // This might still be null if type not in registry
+}
 
 // Get device title/name for a cell
 const getDeviceTitle = (cellId: string): string => {
-  const deviceId = cellDeviceAssignments.value[cellId];
-  if (!deviceId) return '';
-  
-  const device = unifiedStore.getDeviceById(deviceId);
-  return device?.name || '';
-};
+  const deviceId = cellDeviceAssignments.value[cellId]
+  if (!deviceId) return ''
+
+  const device = unifiedStore.getDeviceById(deviceId)
+  return device?.name || ''
+}
 
 // Get device connection info for a cell to display in header
 const getDeviceConnectionInfo = (cellId: string): string => {
-  const deviceId = cellDeviceAssignments.value[cellId];
-  if (!deviceId) return '';
-  
-  const device = unifiedStore.getDeviceById(deviceId);
-  if (!device) return '';
-  
+  const deviceId = cellDeviceAssignments.value[cellId]
+  if (!deviceId) return ''
+
+  const device = unifiedStore.getDeviceById(deviceId)
+  if (!device) return ''
+
   // Get connection details from device properties
-  const ipAddress = device.ipAddress || device.address || '';
-  const port = device.properties?.alpacaPort || device.port || '';
-  const serverName = device.properties?.serverName || '';
-  
-  let connectionInfo = '';
-  
+  const ipAddress = device.ipAddress || device.address || ''
+  const port = device.properties?.alpacaPort || device.port || ''
+  const serverName = device.properties?.serverName || ''
+
+  let connectionInfo = ''
+
   // Include server name if available
   if (serverName) {
-    connectionInfo += `${serverName}`;
+    connectionInfo += `${serverName}`
   }
-  
+
   // Add IP:port if available
   if (ipAddress && port) {
-    if (connectionInfo) connectionInfo += ' - ';
-    connectionInfo += `${ipAddress}:${port}`;
+    if (connectionInfo) connectionInfo += ' - '
+    connectionInfo += `${ipAddress}:${port}`
   }
-  
-  return connectionInfo;
-};
+
+  return connectionInfo
+}
 
 // Handle device changes from child panels - simplified version using component registry
 const handleDeviceChange = (deviceType: string, deviceId: string, cellId?: string) => {
-  log.debug('PanelLayoutView - handleDeviceChange called:', deviceType, deviceId);
+  log.debug('PanelLayoutView - handleDeviceChange called:', deviceType, deviceId)
 
   // Normalize to lowercase for consistent mapping
-  const normalizedType = deviceType.toLowerCase();
+  const normalizedType = deviceType.toLowerCase()
 
   if (normalizedType in deviceMap.value) {
-    log.debug({deviceIds: [deviceId]}, 'PanelLayoutView - Updating deviceMap for type:', normalizedType, 'from', deviceMap.value[normalizedType], 'to', deviceId);
-    
+    log.debug(
+      { deviceIds: [deviceId] },
+      'PanelLayoutView - Updating deviceMap for type:',
+      normalizedType,
+      'from',
+      deviceMap.value[normalizedType],
+      'to',
+      deviceId
+    )
+
     // Update the deviceMap for this type
-    deviceMap.value[normalizedType] = deviceId;
-    
+    deviceMap.value[normalizedType] = deviceId
+
     // Register device with the component registry if needed
-    deviceComponentRegistry.registerDevice(deviceId, normalizedType);
-    
+    deviceComponentRegistry.registerDevice(deviceId, normalizedType)
+
     // If cellId was provided, update cell assignment
     if (cellId) {
-      cellDeviceAssignments.value[cellId] = deviceId;
-      deviceComponentRegistry.assignToCell(deviceId, normalizedType, cellId);
-      log.debug(`Updated cell assignment for ${cellId} to ${normalizedType} ${deviceId}`);
+      cellDeviceAssignments.value[cellId] = deviceId
+      deviceComponentRegistry.assignToCell(deviceId, normalizedType, cellId)
+      log.debug(`Updated cell assignment for ${cellId} to ${normalizedType} ${deviceId}`)
     }
   }
-};
+}
 
 // Helper function to check if a panel is maximized
 const isPanelMaximized = (panelId: string): boolean => {
@@ -643,44 +677,54 @@ const isPanelMaximized = (panelId: string): boolean => {
 const getPanelTypeName = (panelId: string): string => {
   // If there's a current device layout, try to get the device type from the position
   if (currentDeviceLayout.value) {
-    const position = currentDeviceLayout.value.positions.find(pos => pos.panelId === panelId);
+    const position = currentDeviceLayout.value.positions.find((pos) => pos.panelId === panelId)
     if (position && position.deviceType) {
       // Convert deviceType to a more user-friendly name
-      const deviceType = position.deviceType.toLowerCase();
+      const deviceType = position.deviceType.toLowerCase()
       switch (deviceType) {
-        case 'camera': return 'Camera Panel';
-        case 'telescope': return 'Telescope Panel';
-        case 'focuser': return 'Focuser Panel';
-        case 'filterwheel': return 'Filter Wheel Panel';
-        case 'dome': return 'Dome Panel';
-        case 'rotator': return 'Rotator Panel';
-        case 'weather': return 'Weather Panel';
-        case 'safetymonitor': return 'Safety Monitor Panel';
-        case 'switch': return 'Switch Panel';
-        case 'covercalibrator': return 'Cover/Calibrator Panel';
-        default: return `${deviceType.charAt(0).toUpperCase() + deviceType.slice(1)} Panel`;
+        case 'camera':
+          return 'Camera Panel'
+        case 'telescope':
+          return 'Telescope Panel'
+        case 'focuser':
+          return 'Focuser Panel'
+        case 'filterwheel':
+          return 'Filter Wheel Panel'
+        case 'dome':
+          return 'Dome Panel'
+        case 'rotator':
+          return 'Rotator Panel'
+        case 'weather':
+          return 'Weather Panel'
+        case 'safetymonitor':
+          return 'Safety Monitor Panel'
+        case 'switch':
+          return 'Switch Panel'
+        case 'covercalibrator':
+          return 'Cover/Calibrator Panel'
+        default:
+          return `${deviceType.charAt(0).toUpperCase() + deviceType.slice(1)} Panel`
       }
     }
   }
-  
+
   // Fallback to a generic name if no device type is found
-  return `Device Panel ${panelId}`;
-};
+  return `Device Panel ${panelId}`
+}
 </script>
 
 <template>
   <div class="panel-layout-view">
-
     <div v-if="currentLayout && currentDeviceLayout" class="layout-wrapper">
       <LayoutContainer :layout-id="currentLayoutId" :class="{ 'has-maximized-panel': hasMaximizedPanel }">
         <!-- Dynamic Cell Slots - Generic device renderer -->
         <template v-for="i in 6" :key="`cell-${i}`" #[`cell-${i}`]="{ position }">
-          <div 
-            v-if="position" 
-            :id="`panel-${position.panelId}`" 
+          <div
+            v-if="position"
+            :id="`panel-${position.panelId}`"
             class="universal-panel-container"
             :class="{
-              'maximized': isPanelMaximized(position.panelId),
+              maximized: isPanelMaximized(position.panelId),
               'hidden-panel': hasMaximizedPanel && !isPanelMaximized(position.panelId)
             }"
           >
@@ -689,7 +733,7 @@ const getPanelTypeName = (panelId: string): string => {
               <div class="panel-title">
                 <h3 v-if="!cellDeviceAssignments[position.panelId]">{{ getPanelTypeName(position.panelId) }}</h3>
                 <template v-else>
-                  <div style="display: flex; align-items: center; gap: 0.5em;">
+                  <div style="display: flex; align-items: center; gap: 0.5em">
                     <!-- Live status indicator -->
                     <span
                       :title="cellConnectionStatus[position.panelId] ? 'Connected' : 'Disconnected'"
@@ -703,7 +747,7 @@ const getPanelTypeName = (panelId: string): string => {
                         border: '1px solid var(--aw-panel-border-color)'
                       }"
                     ></span>
-                    <h3 style="margin: 0;">{{ getDeviceTitle(position.panelId) }}</h3>
+                    <h3 style="margin: 0">{{ getDeviceTitle(position.panelId) }}</h3>
                     <div v-if="getDeviceConnectionInfo(position.panelId)" class="connection-info">
                       {{ getDeviceConnectionInfo(position.panelId) }}
                     </div>
@@ -713,55 +757,53 @@ const getPanelTypeName = (panelId: string): string => {
                   </div> -->
                 </template>
               </div>
-              
+
               <div class="header-controls">
                 <!-- Toggle maximize button with different icon based on state -->
-                <button 
-                  class="maximize-panel-btn" 
+                <button
+                  class="maximize-panel-btn"
                   :title="isPanelMaximized(position.panelId) ? 'Restore panel' : 'Maximize panel'"
                   :aria-label="isPanelMaximized(position.panelId) ? 'Restore panel' : 'Maximize panel'"
                   @click="toggleMaximizePanel(position.panelId)"
                 >
                   <Icon :type="isPanelMaximized(position.panelId) ? 'arrows-minimize' : 'arrows-maximize'" size="16" />
                 </button>
-                
+
                 <!-- Connect/Disconnect Button -->
                 <button
                   v-if="cellDeviceAssignments[position.panelId]"
                   class="connect-disconnect-btn"
-                  :class="{ 
-                    'connected': cellConnectionStatus[position.panelId], 
-                    'disconnected': !cellConnectionStatus[position.panelId],
-                    'connecting': cellConnectionAttemptStatus[position.panelId]
+                  :class="{
+                    connected: cellConnectionStatus[position.panelId],
+                    disconnected: !cellConnectionStatus[position.panelId],
+                    connecting: cellConnectionAttemptStatus[position.panelId]
                   }"
                   :disabled="cellConnectionAttemptStatus[position.panelId]"
                   :title="cellConnectionStatus[position.panelId] ? 'Disconnect device' : 'Connect device'"
                   :aria-label="cellConnectionStatus[position.panelId] ? 'Disconnect device' : 'Connect device'"
                   @click="toggleCellConnection(position.panelId)"
                 >
-                  {{ cellConnectionAttemptStatus[position.panelId] ? '...' : (cellConnectionStatus[position.panelId] ? 'Disconnect' : 'Connect') }}
+                  {{ cellConnectionAttemptStatus[position.panelId] ? '...' : cellConnectionStatus[position.panelId] ? 'Disconnect' : 'Connect' }}
                 </button>
 
                 <!-- Universal device selector dropdown with proper event typing -->
-                <select 
-                  :value="cellDeviceAssignments[position.panelId]" 
+                <select
+                  :value="cellDeviceAssignments[position.panelId]"
                   class="device-selector-dropdown"
                   :title="'Select device for this panel'"
                   aria-label="Select device for this panel"
                   @change="(e) => assignDeviceToCell(position.panelId, (e.target as HTMLSelectElement).value)"
                 >
                   <option value="">Select Device</option>
-                  <option v-for="device in allAvailableDevices" :key="device.id" :value="device.id">
-                    {{ device.name }} ({{ device.type }})
-                  </option>
+                  <option v-for="device in allAvailableDevices" :key="device.id" :value="device.id">{{ device.name }} ({{ device.type }})</option>
                 </select>
               </div>
             </div>
-            
+
             <div class="panel-content">
               <keep-alive>
                 <template v-if="cellDeviceAssignments[position.panelId] && getComponentForCell(position.panelId)">
-                  <component 
+                  <component
                     :is="getComponentForCell(position.panelId)"
                     :key="cellDeviceAssignments[position.panelId] || position.panelId"
                     :device-id="cellDeviceAssignments[position.panelId]"
@@ -791,7 +833,7 @@ const getPanelTypeName = (panelId: string): string => {
       <p>No layout configured. Select or create a layout to continue.</p>
       <button class="create-layout-btn" @click="openLayoutBuilder">Create New Layout</button>
     </div>
-    
+
     <!-- Static Layout Chooser Modal -->
     <div v-if="showStaticLayoutChooser" class="static-layout-modal">
       <div class="static-layout-modal-content">
@@ -867,14 +909,17 @@ const getPanelTypeName = (panelId: string): string => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--aw-panel-header-text-color);
+  text-shadow: 1px 1px 2px var(--aw-color-black-40);
 }
 
 .connection-info {
   font-size: 0.7rem;
-  color: var(--aw-text-secondary-color);
+  color: var(--aw-panel-header-text-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 1px 1px 2px var(--aw-color-black-40);
 }
 
 .header-controls {
@@ -888,7 +933,7 @@ const getPanelTypeName = (panelId: string): string => {
 .minimize-panel-btn {
   background: transparent;
   border: none;
-  color: var(--aw-text-color);
+  color: var(--aw-panel-header-text-color);
   cursor: pointer;
   font-size: 1rem;
   padding: 4px;

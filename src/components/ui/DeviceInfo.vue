@@ -60,6 +60,7 @@ defineProps<{
 
 .device-info-value {
   color: var(--aw-text-color);
+  font-family: var(--aw-font-family-mono);
   text-align: right;
   font-variant-numeric: tabular-nums;
   word-break: break-all;
@@ -70,8 +71,9 @@ defineProps<{
     grid-template-columns: 1fr;
   }
 
-  .device-info-label, .device-info-value {
+  .device-info-label,
+  .device-info-value {
     padding: 4px 0;
   }
 }
-</style> 
+</style>

@@ -1,18 +1,9 @@
-// Status: Good - Core UI Component 
-// This is the notification manager implementation that: 
-// - Manages all system notifications   
-// - Provides filtering by type and state 
-// - Handles notification acknowledgment 
-// - Supports notification history 
-// - Implements proper notification lifecycle
+// Status: Good - Core UI Component // This is the notification manager implementation that: // - Manages all system notifications // - Provides
+filtering by type and state // - Handles notification acknowledgment // - Supports notification history // - Implements proper notification lifecycle
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import {
-  useNotificationStore,
-  type NotificationType,
-  type NotificationFilter
-} from '@/stores/useNotificationStore'
+import { useNotificationStore, type NotificationType, type NotificationFilter } from '@/stores/useNotificationStore'
 import Icon from '@/components/ui/Icon.vue'
 import type { IconType } from '@/components/ui/Icon.vue'
 
@@ -83,10 +74,7 @@ function exportHistory() {
   const dataUri = notificationStore.exportNotificationHistory()
   const link = document.createElement('a')
   link.setAttribute('href', dataUri)
-  link.setAttribute(
-    'download',
-    `notification-history-${new Date().toISOString().split('T')[0]}.json`
-  )
+  link.setAttribute('download', `notification-history-${new Date().toISOString().split('T')[0]}.json`)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -149,15 +137,8 @@ function getIconForNotificationType(type: NotificationType): IconType {
         <h3 class="aw-notification-manager__filter-title">Type</h3>
         <div class="aw-notification-manager__filter-options">
           <label v-for="type in notificationTypes" :key="type" class="aw-notification-manager__filter-option">
-            <input
-              type="checkbox"
-              :checked="selectedTypes.includes(type)"
-              @change="toggleTypeFilter(type)"
-            />
-            <span 
-              class="aw-notification-manager__type-label" 
-              :class="`aw-notification-manager__type-label--${type}`"
-            >{{ type }}</span>
+            <input type="checkbox" :checked="selectedTypes.includes(type)" @change="toggleTypeFilter(type)" />
+            <span class="aw-notification-manager__type-label" :class="`aw-notification-manager__type-label--${type}`">{{ type }}</span>
           </label>
         </div>
       </div>
@@ -165,30 +146,15 @@ function getIconForNotificationType(type: NotificationType): IconType {
         <h3 class="aw-notification-manager__filter-title">Read Status</h3>
         <div class="aw-notification-manager__filter-options">
           <label class="aw-notification-manager__filter-option">
-            <input
-              type="radio"
-              name="read-status"
-              :checked="readFilter === null"
-              @change="readFilter = null"
-            />
+            <input type="radio" name="read-status" :checked="readFilter === null" @change="readFilter = null" />
             <span>All</span>
           </label>
           <label class="aw-notification-manager__filter-option">
-            <input
-              type="radio"
-              name="read-status"
-              :checked="readFilter === false"
-              @change="readFilter = false"
-            />
+            <input type="radio" name="read-status" :checked="readFilter === false" @change="readFilter = false" />
             <span>Unread</span>
           </label>
           <label class="aw-notification-manager__filter-option">
-            <input
-              type="radio"
-              name="read-status"
-              :checked="readFilter === true"
-              @change="readFilter = true"
-            />
+            <input type="radio" name="read-status" :checked="readFilter === true" @change="readFilter = true" />
             <span>Read</span>
           </label>
         </div>
@@ -197,49 +163,28 @@ function getIconForNotificationType(type: NotificationType): IconType {
         <h3 class="aw-notification-manager__filter-title">Acknowledgement</h3>
         <div class="aw-notification-manager__filter-options">
           <label class="aw-notification-manager__filter-option">
-            <input
-              type="radio"
-              name="acknowledgement"
-              :checked="acknowledgedFilter === null"
-              @change="acknowledgedFilter = null"
-            />
+            <input type="radio" name="acknowledgement" :checked="acknowledgedFilter === null" @change="acknowledgedFilter = null" />
             <span>All</span>
           </label>
           <label class="aw-notification-manager__filter-option">
-            <input
-              type="radio"
-              name="acknowledgement"
-              :checked="acknowledgedFilter === false"
-              @change="acknowledgedFilter = false"
-            />
+            <input type="radio" name="acknowledgement" :checked="acknowledgedFilter === false" @change="acknowledgedFilter = false" />
             <span>Needs Acknowledgement</span>
           </label>
           <label class="aw-notification-manager__filter-option">
-            <input
-              type="radio"
-              name="acknowledgement"
-              :checked="acknowledgedFilter === true"
-              @change="acknowledgedFilter = true"
-            />
+            <input type="radio" name="acknowledgement" :checked="acknowledgedFilter === true" @change="acknowledgedFilter = true" />
             <span>Acknowledged</span>
           </label>
         </div>
       </div>
       <div class="aw-notification-manager__filter-actions">
-        <button class="aw-notification-manager__btn aw-notification-manager__btn--secondary" @click="clearFilters">
-          Clear Filters
-        </button>
-        <button class="aw-notification-manager__btn aw-notification-manager__btn--primary" @click="toggleFilterPanel">
-          Apply
-        </button>
+        <button class="aw-notification-manager__btn aw-notification-manager__btn--secondary" @click="clearFilters">Clear Filters</button>
+        <button class="aw-notification-manager__btn aw-notification-manager__btn--primary" @click="toggleFilterPanel">Apply</button>
       </div>
     </div>
 
     <!-- Notification list -->
     <div class="aw-notification-manager__list">
-      <div v-if="filteredNotifications.length === 0" class="aw-notification-manager__empty-state">
-        No notifications to display
-      </div>
+      <div v-if="filteredNotifications.length === 0" class="aw-notification-manager__empty-state">No notifications to display</div>
       <div
         v-for="notification in filteredNotifications"
         v-else
@@ -251,10 +196,7 @@ function getIconForNotificationType(type: NotificationType): IconType {
         }"
       >
         <div class="aw-notification-manager__item-content">
-          <div 
-            class="aw-notification-manager__item-icon" 
-            :class="`aw-notification-manager__item-icon--${notification.type}`"
-          >
+          <div class="aw-notification-manager__item-icon" :class="`aw-notification-manager__item-icon--${notification.type}`">
             <Icon :type="getIconForNotificationType(notification.type)" size="18" />
           </div>
           <div class="aw-notification-manager__item-details">
@@ -301,6 +243,7 @@ function getIconForNotificationType(type: NotificationType): IconType {
   padding: var(--aw-spacing-md);
   /* stylelint-disable-next-line */
   border-bottom: 1px solid var(--aw-panel-border-color);
+  background-color: var(--aw-panel-header-bg-color);
 }
 
 .aw-notification-manager__title {
@@ -475,6 +418,8 @@ function getIconForNotificationType(type: NotificationType): IconType {
 .aw-notification-manager__item-content {
   display: flex;
   padding: var(--aw-spacing-sm);
+  background-color: var(--aw-color-neutral-100);
+  color: var(--aw-text-color);
 }
 
 .aw-notification-manager__item-icon {

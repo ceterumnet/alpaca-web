@@ -23,9 +23,12 @@ const props = defineProps({
 const emit = defineEmits(['toggle'])
 const open = ref(props.defaultOpen)
 
-watch(() => props.defaultOpen, (val) => {
-  open.value = val
-})
+watch(
+  () => props.defaultOpen,
+  (val) => {
+    open.value = val
+  }
+)
 
 function toggle() {
   open.value = !open.value
@@ -50,7 +53,7 @@ function toggle() {
   font-weight: var(--aw-font-weight-medium, 500);
   font-size: 1rem;
   border-bottom: 1px solid var(--aw-panel-border-color);
-  background: var(--aw-panel-header-bg-color, transparent);
+  background: var(--aw-panel-header-bg-color);
 }
 
 .chevron {
@@ -70,7 +73,9 @@ function toggle() {
 
 .collapsible-title {
   flex: 1;
-  color: var(--aw-text-color);
+  color: var(--aw-panel-header-text-color);
+  text-shadow: 1px 1px 2px var(--aw-color-black-40);
+  font-size: 0.9rem;
 }
 
 .collapsible-content {
@@ -80,4 +85,4 @@ function toggle() {
 .closed .collapsible-content {
   display: none;
 }
-</style> 
+</style>
