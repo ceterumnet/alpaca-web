@@ -10,47 +10,78 @@
       </div>
 
       <template v-else-if="!storedSwitches || storedSwitches.length === 0">
-         <div class="panel-section">
-            <h3>Switches</h3>
-            <p>No switches available for this device, or still loading.</p>
+        <div class="panel-section">
+          <h3>Switches</h3>
+          <p>No switches available for this device, or still loading.</p>
         </div>
       </template>
 
       <template v-else>
-        <div v-for="(sw, index) in storedSwitches" :key="sw.name + '-' + index" class="panel-section switch-item">
-          <h3>{{ sw.name }}</h3>
-          <p class="switch-description">{{ sw.description }}</p>
-          
-          <div class="switch-controls">
-            <template v-if="isBooleanSwitch(sw)">
-              <label class="toggle">
-                <input type="checkbox" :checked="Boolean(sw.value)" @change="toggleBooleanSwitch(index, ($event.target as HTMLInputElement).checked)">
-                <span class="slider"></span>
-              </label>
-              <span class="value-label">{{ Boolean(sw.value) ? 'ON' : 'OFF' }}</span>
-            </template>
-            <template v-else>
-              <input 
-                type="number" 
-                :value="sw.value" 
-                :min="sw.min"
-                :max="sw.max"
-                :step="sw.step"
-                class="numeric-input"
-                @change="setNumericSwitchValue(index, parseFloat(($event.target as HTMLInputElement).value))"
-              />
-              <span class="value-label">Current: {{ sw.value }}</span>
-              <span v-if="sw.min !== undefined && sw.max !== undefined" class="range-label">
-                (Range: {{ sw.min }} to {{ sw.max }}, Step: {{ sw.step }})
-              </span>
-            </template>
-          </div>
+        <div class="switches-grid">
+          <div v-for="(sw, index) in storedSwitches" :key="sw.name + '-' + index" class="panel-section switch-item">
+            <h3 class="switch-name-label">
+              <template v-if="editingIndex === index">
+                <input v-model="editableSwitchNames[index]" type="text" class="aw-input switch-name-inline-input" placeholder="Edit name" />
+                <button
+                  class="aw-button aw-button--secondary aw-button--small switch-name-save-btn"
+                  :disabled="editableSwitchNames[index] === sw.name || !editableSwitchNames[index]"
+                  @click="updateSwitchName(index)"
+                >
+                  Save
+                </button>
+                <button class="aw-button aw-button--tertiary aw-button--small switch-name-cancel-btn" @click="cancelEdit(index)">Cancel</button>
+              </template>
+              <template v-else>
+                <span class="switch-name-text">{{ sw.name }}</span>
+                <span class="switch-name-edit-icon">
+                  <button
+                    class="aw-button aw-button--tertiary aw-button--icon-only switch-name-edit-btn"
+                    aria-label="Edit name"
+                    @click="startEdit(index)"
+                  >
+                    <Icon type="highlight" size="18" />
+                  </button>
+                </span>
+              </template>
+            </h3>
+            <p class="switch-description">{{ sw.description }}</p>
 
-          <div class="switch-name-edit">
-            <input v-model="editableSwitchNames[index]" type="text" placeholder="Edit name" />
-            <button :disabled="editableSwitchNames[index] === sw.name || !editableSwitchNames[index]" @click="updateSwitchName(index)">Save Name</button>
+            <div class="switch-controls">
+              <template v-if="isBooleanSwitch(sw)">
+                <div class="switch-input-row">
+                  <label class="toggle">
+                    <input
+                      type="checkbox"
+                      :checked="Boolean(sw.value)"
+                      @change="toggleBooleanSwitch(index, ($event.target as HTMLInputElement).checked)"
+                    />
+                    <span class="slider"></span>
+                  </label>
+                  <span class="value-label">{{ Boolean(sw.value) ? 'ON' : 'OFF' }}</span>
+                </div>
+                <div class="range-label"></div>
+              </template>
+              <template v-else>
+                <div class="switch-input-row">
+                  <input
+                    type="number"
+                    :value="sw.value"
+                    :min="sw.min"
+                    :max="sw.max"
+                    :step="sw.step"
+                    class="aw-input"
+                    @change="setNumericSwitchValue(index, parseFloat(($event.target as HTMLInputElement).value))"
+                  />
+                  <span class="value-label">Current: {{ sw.value }}</span>
+                </div>
+                <div class="range-label">
+                  <template v-if="sw.min !== undefined && sw.max !== undefined">
+                    (Range: {{ sw.min }} to {{ sw.max }}, Step: {{ sw.step }})
+                  </template>
+                </div>
+              </template>
+            </div>
           </div>
-
         </div>
       </template>
     </div>
@@ -58,9 +89,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { ISwitchDetail } from '@/api/alpaca/switch-client'
+import Icon from '@/components/ui/Icon.vue'
 
 const props = defineProps({
   deviceId: {
@@ -80,80 +112,111 @@ const currentDevice = computed(() => {
 })
 
 const storedSwitches = computed(() => {
-  return currentDevice.value?.sw_switches as ISwitchDetail[] | undefined | null;
-});
+  return currentDevice.value?.sw_switches as ISwitchDetail[] | undefined | null
+})
 
 const editableSwitchNames = ref<string[]>([])
+const editingIndex = ref<number | null>(null)
 
-watch(storedSwitches, (newSwitches) => {
-  if (newSwitches) {
-    editableSwitchNames.value = newSwitches.map(sw => sw.name);
-  } else {
-    editableSwitchNames.value = [];
-  }
-}, { immediate: true, deep: true });
+watch(
+  storedSwitches,
+  (newSwitches) => {
+    if (newSwitches) {
+      editableSwitchNames.value = newSwitches.map((sw) => sw.name)
+    } else {
+      editableSwitchNames.value = []
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 const isBooleanSwitch = (sw: ISwitchDetail): boolean => {
-  return sw.min === 0 && sw.max === 1 && sw.step === 1;
+  return sw.min === 0 && sw.max === 1 && sw.step === 1
 }
 
 const toggleBooleanSwitch = async (switchIndex: number, newState: boolean) => {
-  if (!props.deviceId) return;
+  if (!props.deviceId) return
   try {
-    await store.setDeviceSwitchValue(props.deviceId, switchIndex, newState);
+    await store.setDeviceSwitchValue(props.deviceId, switchIndex, newState)
   } catch (error) {
-    console.error(`Error toggling switch ${switchIndex} via store:`, error);
+    console.error(`Error toggling switch ${switchIndex} via store:`, error)
   }
 }
 
 const setNumericSwitchValue = async (switchIndex: number, newValue: number) => {
-  if (!props.deviceId || isNaN(newValue)) return;
+  if (!props.deviceId || isNaN(newValue)) return
   try {
-    await store.setDeviceSwitchValue(props.deviceId, switchIndex, newValue);
+    await store.setDeviceSwitchValue(props.deviceId, switchIndex, newValue)
   } catch (error) {
-    console.error(`Error setting value for switch ${switchIndex} via store:`, error);
+    console.error(`Error setting value for switch ${switchIndex} via store:`, error)
+  }
+}
+
+function startEdit(index: number) {
+  editingIndex.value = index
+  nextTick(() => {
+    const input = document.querySelector<HTMLInputElement>(`.switch-name-inline-input`)
+    if (input) input.focus()
+  })
+}
+
+function cancelEdit(index: number) {
+  if (storedSwitches.value && storedSwitches.value[index]) {
+    editableSwitchNames.value[index] = storedSwitches.value[index].name
+  }
+  editingIndex.value = null
+}
+
+const doUpdateSwitchName = async (switchIndex: number) => {
+  if (!props.deviceId || !editableSwitchNames.value[switchIndex]) return
+  const newName = editableSwitchNames.value[switchIndex]
+  const oldName = storedSwitches.value?.[switchIndex]?.name
+  if (newName === oldName) return
+
+  try {
+    await store.setDeviceSwitchName(props.deviceId, switchIndex, newName)
+  } catch (error) {
+    console.error(`Error updating name for switch ${switchIndex} via store:`, error)
+    if (oldName) editableSwitchNames.value[switchIndex] = oldName
   }
 }
 
 const updateSwitchName = async (switchIndex: number) => {
-  if (!props.deviceId || !editableSwitchNames.value[switchIndex]) return;
-  const newName = editableSwitchNames.value[switchIndex];
-  const oldName = storedSwitches.value?.[switchIndex]?.name;
-  if (newName === oldName) return;
-
-  try {
-    await store.setDeviceSwitchName(props.deviceId, switchIndex, newName);
-  } catch (error) {
-    console.error(`Error updating name for switch ${switchIndex} via store:`, error);
-    if(oldName) editableSwitchNames.value[switchIndex] = oldName;
-  }
+  await doUpdateSwitchName(switchIndex)
+  editingIndex.value = null
 }
 
 onMounted(() => {
   if (props.deviceId && props.isConnected) {
-    store.handleSwitchConnected(props.deviceId);
+    store.handleSwitchConnected(props.deviceId)
   }
-});
+})
 
-watch(() => props.isConnected, (newIsConnected, oldIsConnected) => {
-  if (props.deviceId) {
-    if (newIsConnected && !oldIsConnected) {
-      store.handleSwitchConnected(props.deviceId);
-    } else if (!newIsConnected && oldIsConnected) {
-      store.handleSwitchDisconnected(props.deviceId);
+watch(
+  () => props.isConnected,
+  (newIsConnected, oldIsConnected) => {
+    if (props.deviceId) {
+      if (newIsConnected && !oldIsConnected) {
+        store.handleSwitchConnected(props.deviceId)
+      } else if (!newIsConnected && oldIsConnected) {
+        store.handleSwitchDisconnected(props.deviceId)
+      }
     }
   }
-});
+)
 
-watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
-  if (oldDeviceId && props.isConnected) {
-    store.handleSwitchDisconnected(oldDeviceId);
-  }
-  if (newDeviceId && props.isConnected) {
-    store.handleSwitchConnected(newDeviceId);
-  }
-}, { immediate: false });
-
+watch(
+  () => props.deviceId,
+  (newDeviceId, oldDeviceId) => {
+    if (oldDeviceId && props.isConnected) {
+      store.handleSwitchDisconnected(oldDeviceId)
+    }
+    if (newDeviceId && props.isConnected) {
+      store.handleSwitchConnected(newDeviceId)
+    }
+  },
+  { immediate: false }
+)
 </script>
 
 <style scoped>
@@ -166,6 +229,7 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  box-shadow: var(--aw-shadow-sm);
 }
 
 .panel-content {
@@ -175,18 +239,21 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
 }
 
 .panel-section {
-  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  /* margin-bottom: var(--aw-spacing-md); */
   background-color: var(--aw-panel-content-bg-color);
-  border-radius: calc(var(--aw-spacing-xs) * 1.5);
-  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
+  border-radius: var(--aw-border-radius-sm);
+  padding: var(--aw-spacing-sm);
 }
 
 .panel-section h3 {
   margin-top: 0;
-  margin-bottom: calc(var(--aw-spacing-sm));
-  font-size: var(--aw-font-size-base);
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
+  margin-bottom: var(--aw-spacing-xs);
+  font-size: var(--aw-font-size-base, 1rem);
+  background: var(--aw-panel-header-bg-color);
+  color: var(--aw-panel-header-text-color);
+  border-radius: var(--aw-border-radius-sm);
+  padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
+  border: none;
 }
 
 .connection-notice {
@@ -196,14 +263,19 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   align-items: center;
   min-height: 100px;
   background-color: var(--aw-panel-content-bg-color);
-  border-radius: calc(var(--aw-spacing-xs) * 1.5);
-  margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs));
+  border-radius: var(--aw-border-radius-sm);
+  margin-bottom: var(--aw-spacing-md);
   padding: var(--aw-spacing-md);
   color: var(--aw-text-secondary-color);
 }
 
-.connection-message { font-size: 1.1rem; }
-.panel-tip { font-size: 0.8rem; }
+.connection-message {
+  font-size: 1.1rem;
+}
+
+.panel-tip {
+  font-size: 0.8rem;
+}
 
 .switch-item {
   /* Specific styles for switch items if needed */
@@ -218,9 +290,9 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
 
 .switch-controls {
   display: flex;
-  align-items: center;
-  gap: var(--aw-spacing-md);
-  margin-bottom: var(--aw-spacing-sm);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
 }
 
 .toggle {
@@ -240,21 +312,22 @@ watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background-color: var(--aw-input-bg-color);
+  background-color: var(--aw-color-neutral-400);
   border: 1px solid var(--aw-input-border-color);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: var(--aw-border-radius-sm);
 }
 
 .slider::before {
   position: absolute;
-  content: "";
+  content: '';
   height: 20px;
   width: 20px;
   left: 4px;
   bottom: 4px;
-  background-color: var(--aw-button-primary-text);
-  transition: .4s;
+  background-color: var(--aw-color-neutral-100);
+  box-shadow: 0 1px 4px var(--aw-color-black-50);
+  transition: 0.4s;
   border-radius: var(--aw-border-radius-sm);
 }
 
@@ -275,49 +348,79 @@ input:checked + .slider::before {
   min-width: 80px;
 }
 
-.numeric-input {
-  width: 80px;
-  padding: var(--aw-spacing-xs);
-  background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-input-border-color, var(--aw-panel-border-color));
-  border-radius: var(--aw-border-radius-sm);
-}
-
 .range-label {
   font-size: 0.8rem;
   color: var(--aw-text-secondary-color);
+  margin-top: var(--aw-spacing-xs);
+  display: block;
+
+  /* min-height: 3em; */
 }
 
-.switch-name-edit {
-  margin-top: var(--aw-spacing-sm);
+.switch-name-label {
   display: flex;
-  gap: var(--aw-spacing-xs);
   align-items: center;
+  justify-content: space-between;
+  gap: var(--aw-spacing-xs);
 }
 
-.switch-name-edit input[type="text"] {
-  flex-grow: 1;
-  padding: var(--aw-spacing-xs);
-  background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-input-border-color, var(--aw-panel-border-color));
-  border-radius: var(--aw-border-radius-sm);
+.switch-name-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.switch-name-edit button {
+.switch-name-edit-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.switch-name-inline-input {
+  width: 8em;
+  font-size: 1em;
+  margin-right: var(--aw-spacing-xs);
   padding: var(--aw-spacing-xs) var(--aw-spacing-sm);
-  background-color: var(--aw-button-secondary-bg);
-  color: var(--aw-button-secondary-text);
+}
+
+.switch-name-save-btn,
+.switch-name-cancel-btn {
+  margin-right: var(--aw-spacing-xs);
+}
+
+.switch-name-edit-btn {
+  padding: 0 var(--aw-spacing-xs);
+  font-size: 1em;
+  background-color: transparent;
   border: none;
-  border-radius: var(--aw-border-radius-sm);
+  color: var(--aw-panel-header-text-color);
   cursor: pointer;
 }
 
-.switch-name-edit button:disabled {
-  background-color: var(--aw-color-neutral-300);
-  cursor: not-allowed;
-  opacity: 0.7;
+.switches-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--aw-spacing-sm);
 }
 
-</style> 
+@media (width <= 1100px) {
+  .switches-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (width <= 700px) {
+  .switches-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.switch-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--aw-spacing-md);
+}
+</style>
