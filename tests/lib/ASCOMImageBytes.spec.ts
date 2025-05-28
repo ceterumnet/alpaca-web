@@ -380,9 +380,9 @@ describe('ASCOMImageBytes', () => {
     it('should process a monochrome image without bayerPattern (remaining monochrome)', () => {
       const width = 2
       const height = 2
-      const monoPixelData = new Uint16Array([1000, 2000, 3000, 4000]) // Column-major
-
-      const buffer = createMockImageBytesBuffer(width, height, monoPixelData, ImageElementType.UInt16, ImageElementType.UInt16)
+      const monoSensorPixelData = new Uint16Array([1000, 3000, 2000, 4000]) // Column-major
+      const monoPixelData = new Uint16Array([1000, 2000, 3000, 4000]) // Row-major
+      const buffer = createMockImageBytesBuffer(width, height, monoSensorPixelData, ImageElementType.UInt16, ImageElementType.UInt16)
 
       const processed: ProcessedImageData = processImageBytes(buffer, width, height, undefined)
 
@@ -393,11 +393,9 @@ describe('ASCOMImageBytes', () => {
       expect(processed.height).toBe(height)
       expect(processed.pixelData).toBeInstanceOf(Uint16Array)
       expect(processed.pixelData.length).toBe(width * height)
-      // In non-debayered path, pixelData is the converted originalMonoPixelData.
-      // For UInt16 input, convertToUint16Array is called, which should return the same data if already Uint16Array.
       expect(processed.pixelData).toEqual(monoPixelData)
       expect(processed.bitsPerPixel).toBe(16)
-      expect(processed.originalPixelData).toEqual(monoPixelData)
+      expect(processed.originalPixelData).toEqual(monoSensorPixelData)
     })
 
     it('should ignore bayerPattern if image is already color (rank 3)', () => {
