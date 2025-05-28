@@ -21,37 +21,41 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web app
+      - name: Copy Image Wasm
+        run: npm run copy-wasm
+
+      - name: Build Proxied Version
         run: npm run build-only
 
-      - name: Install server dependencies
-        run: npm ci
-        working-directory: ./server
+      - name: Move Proxied Build
+        run: mv dist alpaca-web-proxied
 
-      - name: Create distribution package
+      - name: Build Direct Version
         run: |
-          mkdir -p dist-package
-          cp -r dist/* dist-package/
-          mkdir -p dist-package/server
-          cp server/{package.json,package-lock.json,index.js,alpacaDiscovery.js} dist-package/server/
-          cp README.md dist-package/
-          echo "Creating startup scripts"
-          echo '#!/bin/bash\ncd server && npm i --production && node index.js' > dist-package/start.sh
-          chmod +x dist-package/start.sh
-          echo '@echo off\ncd server && npm i --production && node index.js' > dist-package/start.bat
+          VITE_APP_BASE_PATH=/html/ VITE_APP_DISCOVERY_MODE=direct npm run build-only
 
-      - name: Zip distribution package
-        run: |
-          cd dist-package
-          zip -r ../alpaca-web-${{ github.ref_name }}.zip .
-          cd ..
-          tar -czf alpaca-web-${{ github.ref_name }}.tar.gz -C dist-package .
+      - name: Move Direct Build
+        run: mv dist alpaca-web-direct
+
+      - name: Zip Proxied Build
+        run: zip -r alpaca-web-proxied-${{ github.ref_name }}.zip alpaca-web-proxied
+
+      - name: Tar Proxied Build
+        run: tar -czf alpaca-web-proxied-${{ github.ref_name }}.tar.gz alpaca-web-proxied
+
+      - name: Zip Direct Build
+        run: zip -r alpaca-web-direct-${{ github.ref_name }}.zip alpaca-web-direct
+
+      - name: Tar Direct Build
+        run: tar -czf alpaca-web-direct-${{ github.ref_name }}.tar.gz alpaca-web-direct
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            alpaca-web-${{ github.ref_name }}.zip
-            alpaca-web-${{ github.ref_name }}.tar.gz
+            alpaca-web-proxied-${{ github.ref_name }}.zip
+            alpaca-web-proxied-${{ github.ref_name }}.tar.gz
+            alpaca-web-direct-${{ github.ref_name }}.zip
+            alpaca-web-direct-${{ github.ref_name }}.tar.gz
           draft: false
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
