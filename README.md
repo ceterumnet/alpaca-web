@@ -157,9 +157,21 @@ For more details, see the [Project Setup](#project-structure) and [docs/](docs/)
 
 ---
 
-## Screenshot
+## Screenshots
 
-> _Add a screenshot or animated GIF here to showcase the UI._
+---
+
+### Camera Panel (iOS Dark Theme)
+
+![Camera Panel - iOS Dark Theme](docs/screenshots/camera_ios_dark_theme.png)
+
+### Camera and Telescope Panels (Light Theme)
+
+![Camera and Telescope Panels - Light Theme](docs/screenshots/camera_and_telescope_light_theme.png)
+
+### Camera and Telescope Panels (Dark Theme)
+
+![Camera and Telescope Panels - Dark Theme](docs/screenshots/camera_and_telescope_dark_theme.png)
 
 ---
 
