@@ -597,18 +597,18 @@ function getPanelHeaderContext(cellId: string) {
             </div>
 
             <div class="panel-content">
-              <keep-alive>
-                <template v-if="cellPanelAssignments[position.panelId]">
+              <template v-if="cellPanelAssignments[position.panelId]">
+                <keep-alive>
                   <component
                     :is="getPanelComponentForCell(position.panelId)"
                     v-bind="getPanelProps(cellPanelAssignments[position.panelId])"
-                    :key="position.panelId"
+                    :key="position.panelId + '-' + (cellPanelAssignments[position.panelId]?.deviceId || '')"
                   />
-                </template>
-                <div v-else class="empty-panel-state">
-                  <p>No panel selected.</p>
-                </div>
-              </keep-alive>
+                </keep-alive>
+              </template>
+              <div v-else class="empty-panel-state">
+                <p>No panel selected.</p>
+              </div>
             </div>
           </div>
         </template>
