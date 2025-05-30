@@ -28,6 +28,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
   // const notificationStore = useNotificationStore() // Comment out for now
   const deviceService: IDeviceDiscoveryService = discoveryService
   const discoveryResultsRef = ref<DiscoveryResult>(deviceService.getDiscoveryResults())
+  const lastDiscoveryTimeRef = ref<Date | null>(deviceService.lastDiscoveryTime)
 
   // State for manual discovery prompt
   const showManualDiscoveryPrompt = ref(false)
@@ -64,6 +65,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
       log.debug('[useEnhancedDiscoveryStore] Results from service (raw object):', results)
       log.debug('[useEnhancedDiscoveryStore] Results from service (JSON.stringified for inspection):', JSON.parse(JSON.stringify(results)))
       discoveryResultsRef.value = results
+      lastDiscoveryTimeRef.value = deviceService.lastDiscoveryTime
       initialDirectDiscoveryAttemptFailed = false // Reset on successful discovery
 
       // === Add detailed check for results.servers ===
@@ -113,6 +115,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
           lastDiscoveryTime: new Date(),
           error: error instanceof Error ? error.message : String(error)
         }
+        lastDiscoveryTimeRef.value = new Date()
       } else if (isDirectMode && deviceService instanceof DirectDiscoveryService && initialDirectDiscoveryAttemptFailed) {
         log.warn('[EnhancedDiscoveryStore] Manual direct discovery attempt also failed.')
         // Potentially show a persistent error notification to the user
@@ -122,6 +125,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
           lastDiscoveryTime: new Date(),
           error: 'Manual discovery attempt failed. ' + (error instanceof Error ? error.message : String(error))
         }
+        lastDiscoveryTimeRef.value = new Date()
       }
       // Propagate the error so UI components can react if needed, or handle globally
       throw error
@@ -143,6 +147,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
 
   function refreshDiscoveryResults(): void {
     discoveryResultsRef.value = deviceService.getDiscoveryResults()
+    lastDiscoveryTimeRef.value = deviceService.lastDiscoveryTime
   }
 
   function getProxyUrl(server: DeviceServer): string {
@@ -181,7 +186,7 @@ export const useEnhancedDiscoveryStore = defineStore('enhancedDiscovery', () => 
     discoveryResults: computed(() => discoveryResultsRef.value),
     servers: computed(() => discoveryResultsRef.value.servers),
     status: computed(() => deviceService.status),
-    lastDiscoveryTime: computed(() => deviceService.lastDiscoveryTime),
+    lastDiscoveryTime: computed(() => lastDiscoveryTimeRef.value),
     lastError: computed(() => deviceService.lastError),
     isDiscovering: computed(() => deviceService.status === 'discovering'),
     showManualDiscoveryPrompt: computed(() => showManualDiscoveryPrompt.value),

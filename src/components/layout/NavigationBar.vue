@@ -45,6 +45,28 @@ const navLinks: NavLink[] = [
 // Layout functionality
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
 
+// Helper to compute gridTemplateColumns from layout definition
+function getGridTemplateColumns(layout: LayoutTemplate): string {
+  // Collect widths for each column (by index)
+  const colWidths: (number | undefined)[] = []
+  for (let col = 0; col < layout.cols; col++) {
+    // Find the first cell in this column with a width
+    const cellWithWidth = layout.cells.find((cell) => cell.col === col && cell.width)
+    colWidths.push(cellWithWidth?.width)
+  }
+  // If any width is defined, use them; otherwise, default to equal fractions
+  if (colWidths.some((w) => w !== undefined)) {
+    // If a width is missing, fill with equal share of remaining
+    const totalDefined = colWidths.reduce((sum: number, w) => sum + (w || 0), 0)
+    const undefinedCount = colWidths.filter((w) => w === undefined).length
+    const remaining = 100 - totalDefined
+    const fill = undefinedCount > 0 ? Math.max(remaining / undefinedCount, 0) : 0
+    return colWidths.map((w) => `${w !== undefined ? w : fill}fr`).join(' ')
+  } else {
+    return `repeat(${layout.cols}, 1fr)`
+  }
+}
+
 // Toggle between dark and light mode
 function toggleDarkMode() {
   uiStore.isDarkMode = !uiStore.isDarkMode
@@ -198,7 +220,7 @@ const isActiveLink = (path: string) => {
                 class="aw-navigation-bar__thumbnail-preview"
                 :style="{
                   gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-                  gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : '1fr 1fr'
+                  gridTemplateColumns: getGridTemplateColumns(layout)
                 }"
               >
                 <div
@@ -241,7 +263,7 @@ const isActiveLink = (path: string) => {
                     class="layout-modal__preview"
                     :style="{
                       gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-                      gridTemplateColumns: layout.id === 'hybrid-60' ? '3fr 2fr' : '1fr 1fr',
+                      gridTemplateColumns: getGridTemplateColumns(layout),
                       width: '120px',
                       aspectRatio: '3 / 2'
                     }"

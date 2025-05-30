@@ -68,4 +68,150 @@ FUTURE:
 
 # Files:
 
-src ├── api │ ├── alpaca │ │ ├── base-client.ts │ │ ├── camera-client.ts │ │ ├── covercalibrator-client.ts │ │ ├── dome-client.ts │ │ ├── errors.ts │ │ ├── factory.ts │ │ ├── filterwheel-client.ts │ │ ├── focuser-client.ts │ │ ├── index.ts │ │ ├── observingconditions-client.ts │ │ ├── rotator-client.ts │ │ ├── safetymonitor-client.ts │ │ ├── switch-client.ts │ │ ├── telescope-client.ts │ │ └── types.ts │ └── AlpacaClient.ts ├── App.vue ├── assets │ ├── base.css │ ├── catalogs │ │ ├── addendum.csv │ │ ├── convert-ngc-csv-to-msgpack.cjs │ │ ├── NGC.csv │ │ └── ngc.msgpack │ ├── components │ │ ├── buttons.css │ │ └── forms.css │ ├── design-tokens.css │ ├── icons │ ├── main.css │ └── modern-reset.css ├── components │ ├── devices │ │ ├── SimplifiedCameraPanel.vue │ │ ├── SimplifiedCoverCalibratorPanel.vue │ │ ├── SimplifiedDomePanel.vue │ │ ├── SimplifiedFilterWheelPanel.vue │ │ ├── SimplifiedFocuserPanel.vue │ │ ├── SimplifiedObservingConditionsPanel.vue │ │ ├── SimplifiedRotatorPanel.vue │ │ ├── SimplifiedSafetyMonitorPanel.vue │ │ ├── SimplifiedSwitchPanel.vue │ │ └── SimplifiedTelescopePanel.vue │ ├── discovery │ │ └── ManualDiscoveryPrompt.vue │ ├── layout │ │ ├── LayoutContainer.vue │ │ └── NavigationBar.vue │ ├── navigation │ │ └── DiscoveryIndicator.vue │ ├── panels │ │ ├── CameraControls.vue │ │ ├── DeepSkyCatalogPanel.vue │ │ ├── features │ │ │ ├── CameraExposureControl.vue │ │ │ └── CameraImageDisplay.vue │ │ └── index.ts │ └── ui │ ├── CollapsibleSection.vue │ ├── DeviceInfo.vue │ ├── HistogramStretchControl.vue │ ├── Icon.vue │ ├── LogPanel.vue │ ├── NotificationCenter.vue │ ├── NotificationManager.vue │ ├── SettingsPanel.vue │ ├── SlideUpLogContainer.vue │ └── ToastNotification.vue ├── lib │ ├── ASCOMImageBytes.ts │ ├── DisplayImageWorker.ts │ └── HistogramWorker.ts ├── main.ts ├── plugins │ └── logger.ts ├── router │ └── index.ts ├── services │ ├── DeviceComponentRegistry.ts │ ├── DirectDiscoveryService.ts │ ├── discoveryServiceFactory.ts │ ├── imaging │ │ ├── ImageProcessingService.ts │ │ └── types.ts │ ├── interfaces │ │ └── DeviceDiscoveryInterface.ts │ ├── NotificationService.ts │ └── ProxiedDiscoveryService.ts ├── shims-vue.d.ts ├── stores │ ├── modules │ │ ├── cameraActions.ts │ │ ├── coreActions.ts │ │ ├── coverCalibratorActions.ts │ │ ├── discoveryActions.ts │ │ ├── domeActions.ts │ │ ├── eventSystem.ts │ │ ├── filterWheelActions.ts │ │ ├── focuserActions.ts │ │ ├── observingConditionsActions.ts │ │ ├── rotatorActions.ts │ │ ├── safetyMonitorActions.ts │ │ ├── switchActions.ts │ │ └── telescopeActions.ts │ ├── types │ │ └── device-store.types.ts │ ├── UnifiedStore.ts │ ├── useDeepSkyCatalogStore.ts │ ├── useEnhancedDiscoveryStore.ts │ ├── useLayoutStore.ts │ ├── useLogStore.ts │ ├── useNotificationStore.ts │ └── useUIPreferencesStore.ts ├── types │ ├── device.types.ts │ ├── DiscoveredDevice.ts │ ├── layouts │ │ ├── GridLayoutDefinition.ts │ │ ├── LayoutDefinition.ts │ │ └── StaticLayoutTemplates.ts │ ├── lodash-es.d.ts │ ├── navigation │ │ └── Context.ts │ ├── notifications │ │ └── NotificationTypes.ts │ ├── panels │ │ ├── AlpacaFeatureMap.ts │ │ └── FeatureTypes.ts │ ├── property-mapping.ts │ ├── README.md │ └── value-transforms.ts ├── ui │ └── icons -> ../components/icons ├── utils │ ├── alpacaPropertyAccess.ts │ ├── astroCoordinates.ts │ └── debugUtils.ts └── views ├── LogDisplayView.vue ├── PanelLayoutView.vue ├── SettingsView.vue └── StyleGuideView.vue
+```
+src
+├── api
+│   ├── alpaca
+│   │   ├── base-client.ts
+│   │   ├── camera-client.ts
+│   │   ├── covercalibrator-client.ts
+│   │   ├── dome-client.ts
+│   │   ├── errors.ts
+│   │   ├── factory.ts
+│   │   ├── filterwheel-client.ts
+│   │   ├── focuser-client.ts
+│   │   ├── index.ts
+│   │   ├── observingconditions-client.ts
+│   │   ├── rotator-client.ts
+│   │   ├── safetymonitor-client.ts
+│   │   ├── switch-client.ts
+│   │   ├── telescope-client.ts
+│   │   └── types.ts
+│   └── AlpacaClient.ts
+├── App.vue
+├── assets
+│   ├── base.css
+│   ├── catalogs
+│   │   ├── addendum.csv
+│   │   ├── convert-ngc-csv-to-msgpack.cjs
+│   │   ├── NGC.csv
+│   │   └── ngc.msgpack
+│   ├── components
+│   │   ├── buttons.css
+│   │   └── forms.css
+│   ├── design-tokens.css
+│   ├── icons
+│   ├── main.css
+│   └── modern-reset.css
+├── components
+│   ├── devices
+│   │   ├── SimplifiedCameraPanel.vue
+│   │   ├── SimplifiedCoverCalibratorPanel.vue
+│   │   ├── SimplifiedDomePanel.vue
+│   │   ├── SimplifiedFilterWheelPanel.vue
+│   │   ├── SimplifiedFocuserPanel.vue
+│   │   ├── SimplifiedObservingConditionsPanel.vue
+│   │   ├── SimplifiedRotatorPanel.vue
+│   │   ├── SimplifiedSafetyMonitorPanel.vue
+│   │   ├── SimplifiedSwitchPanel.vue
+│   │   └── SimplifiedTelescopePanel.vue
+│   ├── discovery
+│   │   └── ManualDiscoveryPrompt.vue
+│   ├── layout
+│   │   ├── LayoutContainer.vue
+│   │   └── NavigationBar.vue
+│   ├── navigation
+│   │   └── DiscoveryIndicator.vue
+│   ├── panels
+│   │   ├── CameraControls.vue
+│   │   ├── DeepSkyCatalogPanel.vue
+│   │   ├── features
+│   │   │   ├── CameraExposureControl.vue
+│   │   │   └── CameraImageDisplay.vue
+│   │   └── index.ts
+│   └── ui
+│       ├── CollapsibleSection.vue
+│       ├── DeviceInfo.vue
+│       ├── HistogramStretchControl.vue
+│       ├── Icon.vue
+│       ├── LogPanel.vue
+│       ├── NotificationCenter.vue
+│       ├── NotificationManager.vue
+│       ├── SettingsPanel.vue
+│       ├── SlideUpLogContainer.vue
+│       └── ToastNotification.vue
+├── lib
+│   ├── ASCOMImageBytes.ts
+│   ├── DisplayImageWorker.ts
+│   └── HistogramWorker.ts
+├── main.ts
+├── plugins
+│   └── logger.ts
+├── router
+│   └── index.ts
+├── services
+│   ├── DeviceComponentRegistry.ts
+│   ├── DirectDiscoveryService.ts
+│   ├── discoveryServiceFactory.ts
+│   ├── imaging
+│   │   ├── ImageProcessingService.ts
+│   │   └── types.ts
+│   ├── interfaces
+│   │   └── DeviceDiscoveryInterface.ts
+│   ├── NotificationService.ts
+│   └── ProxiedDiscoveryService.ts
+├── shims-vue.d.ts
+├── stores
+│   ├── modules
+│   │   ├── cameraActions.ts
+│   │   ├── coreActions.ts
+│   │   ├── coverCalibratorActions.ts
+│   │   ├── discoveryActions.ts
+│   │   ├── domeActions.ts
+│   │   ├── eventSystem.ts
+│   │   ├── filterWheelActions.ts
+│   │   ├── focuserActions.ts
+│   │   ├── observingConditionsActions.ts
+│   │   ├── rotatorActions.ts
+│   │   ├── safetyMonitorActions.ts
+│   │   ├── switchActions.ts
+│   │   └── telescopeActions.ts
+│   ├── types
+│   │   └── device-store.types.ts
+│   ├── UnifiedStore.ts
+│   ├── useDeepSkyCatalogStore.ts
+│   ├── useEnhancedDiscoveryStore.ts
+│   ├── useLayoutStore.ts
+│   ├── useLogStore.ts
+│   ├── useNotificationStore.ts
+│   └── useUIPreferencesStore.ts
+├── types
+│   ├── device.types.ts
+│   ├── DiscoveredDevice.ts
+│   ├── layouts
+│   │   ├── GridLayoutDefinition.ts
+│   │   ├── LayoutDefinition.ts
+│   │   └── StaticLayoutTemplates.ts
+│   ├── lodash-es.d.ts
+│   ├── navigation
+│   │   └── Context.ts
+│   ├── notifications
+│   │   └── NotificationTypes.ts
+│   ├── panels
+│   │   ├── AlpacaFeatureMap.ts
+│   │   └── FeatureTypes.ts
+│   ├── property-mapping.ts
+│   ├── README.md
+│   └── value-transforms.ts
+├── ui
+│   └── icons -> ../components/icons
+├── utils
+│   ├── alpacaPropertyAccess.ts
+│   ├── astroCoordinates.ts
+│   └── debugUtils.ts
+└── views
+    ├── LogDisplayView.vue
+    ├── PanelLayoutView.vue
+    ├── SettingsView.vue
+    └── StyleGuideView.vue
+```

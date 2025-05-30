@@ -1,7 +1,3 @@
-// Status: New - Discovery Navigation Integration // This component provides discovery status indicators and triggers in the navigation area // - Runs
-discovery automatically when the app loads // - Performs periodic discovery checks // - Shows spinner during discovery // - Generates notifications
-when new devices are found
-
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useEnhancedDiscoveryStore } from '@/stores/useEnhancedDiscoveryStore'

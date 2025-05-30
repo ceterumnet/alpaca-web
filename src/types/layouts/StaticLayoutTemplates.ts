@@ -24,15 +24,12 @@ export interface LayoutTemplate {
 // Shared static layout templates
 export const staticLayouts: LayoutTemplate[] = [
   {
-    id: '2x2',
-    name: '2x2 Grid',
-    rows: 2,
-    cols: 2,
+    id: '1x1',
+    name: '1x1 Grid',
+    rows: 1,
+    cols: 1,
     cells: [
-      { id: 'cell-1', row: 0, col: 0 },
-      { id: 'cell-2', row: 0, col: 1 },
-      { id: 'cell-3', row: 1, col: 0 },
-      { id: 'cell-4', row: 1, col: 1 }
+      { id: 'cell-1', row: 0, col: 0, rowSpan: 1, colSpan: 1, width: 100 }
     ]
   },
   {
@@ -45,6 +42,19 @@ export const staticLayouts: LayoutTemplate[] = [
       { id: 'cell-2', row: 0, col: 1 }
     ]
   },
+  {
+    id: '2x2',
+    name: '2x2 Grid',
+    rows: 2,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0 },
+      { id: 'cell-2', row: 0, col: 1 },
+      { id: 'cell-3', row: 1, col: 0 },
+      { id: 'cell-4', row: 1, col: 1 }
+    ]
+  },
+
   {
     id: '3x2',
     name: '3x2 Grid',
@@ -79,6 +89,17 @@ export const staticLayouts: LayoutTemplate[] = [
       { id: 'cell-1', row: 0, col: 0, rowSpan: 2, colSpan: 1, width: 60 },
       { id: 'cell-2', row: 0, col: 1, width: 40 },
       { id: 'cell-3', row: 1, col: 1, width: 40 }
+    ]
+  },
+  {
+    id: 'hybrid-70',
+    name: 'Hybrid 70/30',
+    rows: 2,
+    cols: 2,
+    cells: [
+      { id: 'cell-1', row: 0, col: 0, rowSpan: 2, colSpan: 1, width: 70 },
+      { id: 'cell-2', row: 0, col: 1, width: 30 },
+      { id: 'cell-3', row: 1, col: 1, width: 30 }
     ]
   }
 ]
