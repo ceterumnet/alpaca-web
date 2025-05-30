@@ -127,7 +127,7 @@ onUnmounted(() => {
       @click="handleDiscoveryClick"
     >
       <div class="aw-discovery-indicator__icon-wrapper">
-        <Icon type="search" class="aw-discovery-indicator__icon" />
+        <Icon type="radar" class="aw-discovery-indicator__icon" />
         <span v-if="hasDevices" class="aw-discovery-indicator__device-badge">{{ availableDeviceCount }}</span>
       </div>
       <span v-if="props.showLabel" class="aw-discovery-indicator__label">

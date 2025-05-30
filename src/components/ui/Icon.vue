@@ -62,6 +62,8 @@ export type IconType =
   | 'layout-grid' // IconLayoutGrid
   | 'external-link' // IconExternalLink
   | 'lock' // IconLock
+  | 'radar' // IconRadar (for discovery)
+  | 'scan' // IconScan (alternative for discovery)
   // Keep old names for CSS compatibility, but map them in setup or use new names in templates
   // Retaining old names for simpler CSS class matching for now.
   // The mapping to Tabler components will handle the new names.
@@ -144,6 +146,8 @@ export default defineComponent({
           'layout-grid',
           'external-link',
           'lock',
+          'radar',
+          'scan',
           // Old names for compatibility, these will be mapped
           'device-unknown',
           'gear',
@@ -203,7 +207,9 @@ export default defineComponent({
         sliders: 'sliders-horizontal',
         park: 'parking-circle',
         unpark: 'player-play',
-        sync: 'refresh'
+        sync: 'refresh',
+        radar: 'radar',
+        scan: 'scan'
       }
 
       const currentPropType = props.type || 'question-mark'

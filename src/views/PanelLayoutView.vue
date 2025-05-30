@@ -606,7 +606,7 @@ function getPanelHeaderContext(cellId: string) {
                   />
                 </template>
                 <div v-else class="empty-panel-state">
-                  <p>No panel assigned.</p>
+                  <p>No panel selected.</p>
                 </div>
               </keep-alive>
             </div>
