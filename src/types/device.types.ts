@@ -65,6 +65,7 @@ export interface UnifiedDevice extends BaseDevice {
   capabilities?: Record<string, boolean>
   deviceAttributes?: Record<string, unknown>
   stateHistory?: DeviceStateTransition[] // Track state transitions
+  deviceNumber?: number
   [key: string]: unknown // Allow for additional properties
 }
 

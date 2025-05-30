@@ -101,11 +101,7 @@ onMounted(() => {
 
 <style scoped>
 .deep-sky-catalog-panel {
-  background: var(--aw-panel-content-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-md);
   padding: var(--aw-spacing-md);
-  max-width: 900px;
   margin: 0 auto;
   box-shadow: var(--aw-shadow-sm);
   display: flex;

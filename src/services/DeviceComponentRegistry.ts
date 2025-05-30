@@ -19,6 +19,7 @@ import SimplifiedObservingConditionsPanel from '@/components/devices/SimplifiedO
 import SimplifiedRotatorPanel from '@/components/devices/SimplifiedRotatorPanel.vue'
 import SimplifiedSafetyMonitorPanel from '@/components/devices/SimplifiedSafetyMonitorPanel.vue'
 import SimplifiedSwitchPanel from '@/components/devices/SimplifiedSwitchPanel.vue'
+import DeepSkyCatalogPanel from '@/components/panels/DeepSkyCatalogPanel.vue'
 
 // Types
 export interface DeviceComponentRef {
@@ -44,6 +45,26 @@ interface PerformanceMetrics {
   assignmentCount: number
 }
 
+export interface PanelRegistryEntry {
+  type: 'device' | 'utility'
+  component: Component
+  label: string
+}
+
+const panelRegistry: Record<string, PanelRegistryEntry> = {
+  camera: { type: 'device', component: markRaw(SimplifiedCameraPanel), label: 'Camera' },
+  telescope: { type: 'device', component: markRaw(SimplifiedTelescopePanel), label: 'Telescope' },
+  focuser: { type: 'device', component: markRaw(SimplifiedFocuserPanel), label: 'Focuser' },
+  filterwheel: { type: 'device', component: markRaw(SimplifiedFilterWheelPanel), label: 'Filter Wheel' },
+  covercalibrator: { type: 'device', component: markRaw(SimplifiedCoverCalibratorPanel), label: 'Cover/Calibrator' },
+  dome: { type: 'device', component: markRaw(SimplifiedDomePanel), label: 'Dome' },
+  observingconditions: { type: 'device', component: markRaw(SimplifiedObservingConditionsPanel), label: 'Observing Conditions' },
+  rotator: { type: 'device', component: markRaw(SimplifiedRotatorPanel), label: 'Rotator' },
+  safetymonitor: { type: 'device', component: markRaw(SimplifiedSafetyMonitorPanel), label: 'Safety Monitor' },
+  switch: { type: 'device', component: markRaw(SimplifiedSwitchPanel), label: 'Switch' },
+  deepskycatalog: { type: 'utility', component: markRaw(DeepSkyCatalogPanel), label: 'Deep Sky Catalog' }
+}
+
 /**
  * Device Component Registry Service
  *
@@ -54,20 +75,6 @@ interface PerformanceMetrics {
 class DeviceComponentRegistry {
   // Registry of device components
   registry = ref<Record<string, DeviceComponentRef>>({})
-
-  // Registered component types
-  private componentMap: Record<string, Component> = {
-    camera: markRaw(SimplifiedCameraPanel),
-    telescope: markRaw(SimplifiedTelescopePanel),
-    focuser: markRaw(SimplifiedFocuserPanel),
-    filterwheel: markRaw(SimplifiedFilterWheelPanel),
-    covercalibrator: markRaw(SimplifiedCoverCalibratorPanel),
-    dome: markRaw(SimplifiedDomePanel),
-    observingconditions: markRaw(SimplifiedObservingConditionsPanel),
-    rotator: markRaw(SimplifiedRotatorPanel),
-    safetymonitor: markRaw(SimplifiedSafetyMonitorPanel),
-    switch: markRaw(SimplifiedSwitchPanel)
-  }
 
   // Performance metrics
   private metrics: PerformanceMetrics = {
@@ -100,11 +107,11 @@ class DeviceComponentRegistry {
     }
 
     // Get the component based on device type
-    const component = this.componentMap[normalizedType]
+    const component = panelRegistry[normalizedType].component
 
     if (!component) {
       log.error(
-        `[DeviceComponentRegistry] registerDevice FAILED: No component found in componentMap for normalizedType "${normalizedType}" (original deviceType: "${deviceType}", deviceId: "${deviceId}"). Available mapped types: ${Object.keys(this.componentMap).join(', ')}`
+        `[DeviceComponentRegistry] registerDevice FAILED: No component found in componentMap for normalizedType "${normalizedType}" (original deviceType: "${deviceType}", deviceId: "${deviceId}"). Available mapped types: ${Object.keys(panelRegistry).join(', ')}`
       )
       throw new Error(`No component registered for device type "${normalizedType}"`)
     }
@@ -390,3 +397,35 @@ class DeviceComponentRegistry {
 const deviceComponentRegistry = new DeviceComponentRegistry()
 
 export default deviceComponentRegistry
+
+// Universal panel instance registry (for state preservation)
+interface PanelInstanceRef {
+  cellId: string
+  panelType: string
+  component: Component
+  createdAt: number
+  lastActive: number
+}
+
+const panelInstances = ref<Record<string, PanelInstanceRef>>({})
+
+export function getOrCreatePanelInstance(cellId: string, panelType: string): PanelInstanceRef {
+  const key = `${panelType}-${cellId}`
+  if (panelInstances.value[key]) {
+    panelInstances.value[key].lastActive = Date.now()
+    return panelInstances.value[key]
+  }
+  const entry = panelRegistry[panelType]
+  if (!entry) throw new Error(`No panel registered for type ${panelType}`)
+  const refObj: PanelInstanceRef = {
+    cellId,
+    panelType,
+    component: markRaw(entry.component),
+    createdAt: Date.now(),
+    lastActive: Date.now()
+  }
+  panelInstances.value[key] = refObj
+  return refObj
+}
+
+export { panelRegistry }

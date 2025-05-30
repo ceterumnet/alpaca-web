@@ -94,6 +94,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
 
     _normalizeDevice(this: UnifiedStoreType, device: Device): Device {
       let apiBaseUrl = device.apiBaseUrl || (device.properties?.apiBaseUrl as string | undefined)
+      let parsedDeviceNum: number | undefined = undefined
 
       if (!apiBaseUrl && device.id && device.id.includes(':')) {
         try {
@@ -105,6 +106,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
             const deviceNum = parseInt(parts[3], 10)
             if (!isNaN(deviceNum)) {
               apiBaseUrl = `http://${ip}:${port}/api/v1/${type}/${deviceNum}`
+              parsedDeviceNum = deviceNum
             }
           }
         } catch (error) {
@@ -113,6 +115,11 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         }
       }
 
+      if (parsedDeviceNum === undefined) {
+        parsedDeviceNum = device.properties?.deviceNumber as number | undefined
+      }
+      console.log('parsedDeviceNum', parsedDeviceNum)
+      // console.log('normalizing device', device)
       const normalized = {
         id: device.id,
         name: device.name,
@@ -126,15 +133,18 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         ipAddress: device.ipAddress,
         port: device.port,
         displayName: device.displayName,
-        discoveredAt: device.discoveredAt,
+        discoveredAt: device.properties?.discoveredAt as string,
         lastConnected: device.lastConnected,
         deviceType: device.deviceType,
-        deviceNum: device.deviceNum,
+        deviceNum: device.deviceNum !== undefined ? device.deviceNum : parsedDeviceNum,
         idx: device.idx,
         capabilities: device.capabilities,
         deviceAttributes: device.deviceAttributes,
         stateHistory: device.stateHistory
       }
+
+      console.log('normalized device', normalized)
+
       return normalized
     },
 
