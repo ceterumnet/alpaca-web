@@ -253,6 +253,8 @@ watch(
   flex-direction: column;
   height: 100%;
   box-shadow: var(--aw-shadow-sm);
+  container-type: inline-size; /* Define this as a query container */
+  container-name: simplified-switch-panel; /* Optional: name the container */
 }
 
 .panel-content {
@@ -430,13 +432,13 @@ input:checked + .slider::before {
   gap: var(--aw-spacing-sm);
 }
 
-@media (width <= 1100px) {
+@container simplified-switch-panel (max-width: 800px) {
   .switches-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (width <= 700px) {
+@container simplified-switch-panel (max-width: 600px) {
   .switches-grid {
     grid-template-columns: 1fr;
   }

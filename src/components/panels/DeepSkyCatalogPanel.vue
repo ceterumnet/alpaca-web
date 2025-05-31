@@ -1,6 +1,5 @@
 <template>
   <div class="aw-panel deep-sky-catalog-panel">
-    <div class="aw-panel-header">Deep Sky Catalog</div>
     <form class="aw-form-group filter-bar" @submit.prevent>
       <div class="filter-row">
         <input v-model="filters.name" class="aw-input" type="text" placeholder="Search name or identifier..." @input="onFilterChange" />
@@ -134,7 +133,7 @@ onMounted(() => {
 }
 
 .mag-input {
-  max-width: 90px;
+  /* max-width: 90px; */
 }
 
 .catalog-results {
@@ -143,7 +142,9 @@ onMounted(() => {
   border: 1px solid var(--aw-panel-border-color);
   max-height: 350px;
   overflow-y: auto;
-  margin-bottom: var(--aw-spacing-md);
+
+  /* margin-bottom: var(--aw-spacing-md); */
+  font-size: var(--aw-font-size-sm);
 }
 
 .catalog-result-row {
@@ -195,7 +196,9 @@ onMounted(() => {
   border-radius: var(--aw-border-radius-sm);
   border: 1px solid var(--aw-panel-border-color);
   padding: var(--aw-spacing-md);
-  margin-top: var(--aw-spacing-md);
+  font-size: var(--aw-font-size-sm);
+
+  /* margin-top: var(--aw-spacing-md); */
 }
 
 .detail-header {
