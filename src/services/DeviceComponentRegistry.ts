@@ -131,7 +131,7 @@ class DeviceComponentRegistry {
 
     // Add to registry
     this.registry.value[key] = componentRef
-    log.info({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Registered device component: ${normalizedType}-${deviceId}`)
+    log.debug({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Registered device component: ${normalizedType}-${deviceId}`)
 
     // Update metrics
     this.metrics.componentCreations++
@@ -139,7 +139,7 @@ class DeviceComponentRegistry {
 
     // Log performance
     const elapsedTime = performance.now() - startTime
-    log.info({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Component registration took ${elapsedTime.toFixed(2)}ms`)
+    log.debug({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Component registration took ${elapsedTime.toFixed(2)}ms`)
 
     return componentRef
   }
@@ -178,7 +178,7 @@ class DeviceComponentRegistry {
     )
     try {
       const ref = this.registerDevice(deviceId, normalizedType) // Pass normalizedType
-      log.info(
+      log.debug(
         { deviceIds: [deviceId] },
         `[DeviceComponentRegistry] getComponent: Successfully registered and returning new component for key "${key}"`
       )
@@ -291,7 +291,7 @@ class DeviceComponentRegistry {
     if (this.registry.value[key]) {
       delete this.registry.value[key]
       this.metrics.unregisteredComponents++
-      log.info({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Unregistered device component: ${normalizedType}-${deviceId}`)
+      log.debug({ deviceIds: [deviceId] }, `[DeviceComponentRegistry] Unregistered device component: ${normalizedType}-${deviceId}`)
     }
   }
 
@@ -304,7 +304,7 @@ class DeviceComponentRegistry {
       ref.isVisible = false
     })
 
-    log.info('[DeviceComponentRegistry] Cleared all device assignments')
+    log.debug('[DeviceComponentRegistry] Cleared all device assignments')
   }
 
   /**

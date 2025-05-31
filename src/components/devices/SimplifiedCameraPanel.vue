@@ -199,16 +199,11 @@ const handleExposureComplete = () => {
   // Note: Image data is now handled by the watcher on currentDevice.value.properties.imageData
 }
 
-// This handler is likely no longer called by CameraExposureControl with data,
-// as image download responsibility moved to store actions.
-// Keeping it for now in case of other uses, but the watcher above is the primary mechanism.
 const handleImageDownloaded = () => {
-  log.warn(
+  log.debug(
     { deviceIds: [props.deviceId] },
-    'SimplifiedCameraPanel: handleImageDownloaded called. This might be from a legacy path or an event without data. Image data should primarily come from store watcher.'
+    'SimplifiedCameraPanel: handleImageDownloaded called. This is currently a no-op. Image data should primarily come from store watcher.'
   )
-  // imageData.value = data // Commenting out to prefer store-driven updates
-  // log.debug({deviceIds:[props.deviceId]}, `SimplifiedCameraPanel: Image downloaded (via event): ${data.byteLength} bytes`)
 }
 
 const handleExposureError = (error: string) => {

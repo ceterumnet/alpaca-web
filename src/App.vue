@@ -60,7 +60,7 @@ function runInitialDiscovery() {
 }
 
 onMounted(() => {
-  log.info('App mounted') // Use log instead of this.$log
+  log.debug('App mounted') // Use log instead of this.$log
 
   // Check for stored preference
   const storedPref = localStorage.getItem('dark-theme-preference')
