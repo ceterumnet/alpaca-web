@@ -118,8 +118,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       if (parsedDeviceNum === undefined) {
         parsedDeviceNum = device.properties?.deviceNumber as number | undefined
       }
-      console.log('parsedDeviceNum', parsedDeviceNum)
-      // console.log('normalizing device', device)
+
       const normalized = {
         id: device.id,
         name: device.name,
@@ -142,8 +141,6 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         deviceAttributes: device.deviceAttributes,
         stateHistory: device.stateHistory
       }
-
-      console.log('normalized device', normalized)
 
       return normalized
     },

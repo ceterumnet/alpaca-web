@@ -57,7 +57,9 @@ export class ProxiedDiscoveryService implements IDeviceDiscoveryService {
    */
   async discoverDevices(options?: DiscoveryOptions): Promise<DiscoveryResult> {
     if (this._status === 'discovering') {
-      throw new Error('Discovery already in progress')
+      // throw new Error('Discovery already in progress')
+      log.warn('Discovery already in progress')
+      return Promise.resolve(this._discoveryResults)
     }
 
     this._setStatus('discovering')
