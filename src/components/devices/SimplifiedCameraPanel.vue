@@ -974,14 +974,10 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 }
 
 /* Responsive adjustments */
-
-/* @media (max-width: 768px) { */
-
-/* Old media query */
-@container simplified-camera-panel (max-width: 768px) {
+@container (max-width: 768px) {
   /* New container query */
   .main-layout-grid {
-    flex-direction: column;
+    /* flex-direction: column; */
   }
 
   .camera-controls-column,
@@ -989,6 +985,25 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
     flex-basis: auto; /* Reset flex-basis for column layout */
     width: 100%;
     min-width: unset; /* Remove min-width for stacked layout */
+  }
+
+  .aw-camera-image-display {
+    /* max-width: 60%; */
+  }
+
+  .image-container {
+    /* max-height: 140px; */
+  }
+}
+
+@container (max-width: 600px) {
+  /* New container query */
+  .main-layout-grid {
+    flex-direction: column;
+  }
+
+  .aw-camera-image-display {
+    max-width: unset;
   }
 }
 
@@ -1037,12 +1052,6 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   text-align: right;
   font-variant-numeric: tabular-nums;
   word-break: break-all;
-}
-
-@media (width <= 600px) {
-  .camera-info-list {
-    grid-template-columns: 1fr;
-  }
 }
 
 .subframe-section {

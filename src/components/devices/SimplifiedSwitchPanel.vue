@@ -438,7 +438,7 @@ input:checked + .slider::before {
   }
 }
 
-@container simplified-switch-panel (max-width: 600px) {
+@container simplified-switch-panel (max-width: 520px) {
   .switches-grid {
     grid-template-columns: 1fr;
   }

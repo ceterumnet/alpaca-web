@@ -987,11 +987,23 @@ function onDragEnd() {
   position: relative;
 }
 
+@media (height <= 600px) {
+  /* New container query */
+
+  .image-container {
+    height: 140px;
+  }
+
+  .image-container canvas {
+    height: 140px;
+  }
+}
+
 .image-canvas {
   display: block;
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain;
+  object-fit: scale-down;
   background-color: var(--aw-color-background);
   /* stylelint-disable-next-line */
   border: 2px solid var(--aw-color-border);

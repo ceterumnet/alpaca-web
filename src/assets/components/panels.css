@@ -9,7 +9,6 @@
   flex-direction: column;
   height: 100%;
   container-type: inline-size; /* Define this as a query container */
-  container-name: simplified-camera-panel; /* Optional: name the container */
 }
 
 /* Device selector styles */
