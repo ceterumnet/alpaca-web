@@ -973,11 +973,9 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   justify-content: flex-end; /* Align toggle to the right within its container */
 }
 
-/* Responsive adjustments */
-@container (max-width: 768px) {
-  /* New container query */
+@container (max-width: 640px) {
   .main-layout-grid {
-    /* flex-direction: column; */
+    flex-direction: column;
   }
 
   .camera-controls-column,
@@ -986,18 +984,9 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
     width: 100%;
     min-width: unset; /* Remove min-width for stacked layout */
   }
-
-  .aw-camera-image-display {
-    /* max-width: 60%; */
-  }
-
-  .image-container {
-    /* max-height: 140px; */
-  }
 }
 
 @container (max-width: 600px) {
-  /* New container query */
   .main-layout-grid {
     flex-direction: column;
   }
