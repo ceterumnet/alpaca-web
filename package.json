@@ -14,7 +14,7 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build --force",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-pattern .gitignore",
-    "stylelint": "stylelint \"src/**/*.{vue,css,scss,less}\" --fix --ignore-pattern .gitignore",
+    "stylelint": "stylelint \"src/**/*.{vue,css,scss,less}\" --formatter=string --fix --ignore-pattern .gitignore",
     "format": "prettier --write src/"
   },
   "dependencies": {

@@ -1,7 +1,3 @@
-// Status: Good - Core Component // This is the main application component that: // - Serves as the application root // - Manages global layout and
-routing // - Handles device connection state // - Provides global UI components // - Maintains application-wide state // - Initiates automatic device
-discovery
-
 <script setup lang="ts">
 // import '@primevue/themes'
 import { computed, onMounted, ref } from 'vue'

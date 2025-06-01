@@ -894,147 +894,6 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
 </template>
 
 <style scoped>
-.simplified-panel {
-  background-color: var(--aw-panel-bg-color);
-
-  /* color: var(--aw-panel-header-text-color); */
-  border-radius: var(--aw-border-radius);
-  border: 1px solid var(--aw-panel-border-color);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  container-type: inline-size; /* Define this as a query container */
-  container-name: simplified-camera-panel; /* Optional: name the container */
-}
-
-/* Device selector styles */
-.device-selector {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: calc(var(--aw-spacing-xs) / 2) var(--aw-spacing-sm);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  cursor: pointer;
-  background-color: var(--aw-panel-content-bg-color);
-  margin: var(--aw-spacing-xs) 0;
-  min-width: 120px;
-}
-
-.device-name {
-  font-size: 0.8rem;
-  margin-right: var(--aw-spacing-sm);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-}
-
-.device-toggle {
-  font-size: 0.6rem;
-  opacity: 0.7;
-}
-
-.device-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 200px;
-  background-color: var(--aw-panel-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  z-index: 100;
-  margin-top: var(--aw-spacing-xs);
-  box-shadow: var(--aw-shadow-md);
-}
-
-.device-list {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.device-item {
-  padding: var(--aw-spacing-sm);
-  cursor: pointer;
-  border-bottom: 1px solid var(--aw-panel-border-color);
-}
-
-.device-item:hover {
-  background-color: var(--aw-panel-hover-bg-color);
-}
-
-.device-selected {
-  background-color: var(--aw-primary-color-transparent);
-}
-
-.device-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.device-item-name {
-  font-weight: var(--aw-font-weight-medium);
-  margin-bottom: calc(var(--aw-spacing-xs) / 2);
-}
-
-.device-item-status {
-  font-size: 0.7rem;
-  opacity: 0.8;
-}
-
-.device-item-status.connected {
-  color: var(--aw-success-color);
-}
-
-.device-item-status.disconnected {
-  color: var(--aw-error-color);
-}
-
-.device-empty {
-  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)) var(--aw-spacing-sm);
-  text-align: center;
-  color: var(--aw-text-secondary-color);
-  font-size: 0.9rem;
-}
-
-.device-actions {
-  padding: var(--aw-spacing-sm);
-  border-top: 1px solid var(--aw-panel-border-color);
-}
-
-.discover-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--aw-spacing-xs) * 1.5);
-  width: 100%;
-  padding: calc(var(--aw-spacing-xs) * 1.5) 0;
-  background-color: var(--aw-button-primary-bg);
-  color: var(--aw-button-primary-text);
-  border: none;
-  border-radius: var(--aw-border-radius-sm);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.discover-button:hover {
-  background-color: var(--aw-button-primary-hover-bg);
-}
-
-.panel-content {
-  overflow-y: auto;
-  flex: 1;
-  padding: var(--aw-spacing-md); /* Add some padding to the main content area */
-}
-
-.main-layout-grid {
-  display: flex;
-  flex-direction: row;
-  gap: var(--aw-spacing-md);
-  width: 100%;
-}
-
 .camera-controls-column {
   flex: 1 1 60%; /* Allow camera controls to take more space initially */
   min-width: 300px; /* Minimum width for camera controls */
@@ -1048,126 +907,21 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   min-width: 250px; /* Minimum width for settings */
 }
 
-.panel-section {
-  /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */
-
-  /* Adjusted by flex gap */
-  background-color: var(--aw-panel-content-bg-color);
-  border-radius: calc(var(--aw-spacing-xs) * 1.5);
-  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-  border: 1px solid var(--aw-panel-border-color); /* Add border to sections */
-}
-
-.panel-section h3 {
-  margin-top: 0;
-  margin-bottom: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-  font-size: var(--aw-font-size-base);
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
-}
-
 .camera-controls-wrapper {
-  /* border: 1px solid var(--aw-panel-border-color); */
-
-  /* Removed as panel-section has border */
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
   overflow: hidden;
-
-  /* margin-top: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)); */
-
-  /* No longer needed */
 }
 
 .camera-settings {
   display: grid;
   grid-template-columns: auto 1fr; /* Parent grid for label/input columns */
   gap: var(--aw-spacing-sm) var(--aw-spacing-sm); /* Gap between label and input columns */ /* Gap between each setting row */
-
-  /* align-items: center; */
-
-  /* Let .setting-row handle its internal vertical alignment */
-}
-
-.setting-row {
-  grid-column: 1 / -1; /* Span all columns of the parent grid */
-  display: grid;
-  grid-template-columns: subgrid; /* Inherit column tracks from parent */
-  align-items: center; /* Vertically align label and input-container within the row */
-
-  /* gap: var(--aw-spacing-sm); */
-
-  /* Gap is now handled by parent grid + subgrid inheritance */
-}
-
-.setting-row label {
-  color: var(--aw-text-secondary-color);
-  font-size: 0.9rem;
-  white-space: nowrap; /* Prevent label text from wrapping */
-  flex-shrink: 0; /* Prevent label from shrinking */
-}
-
-.input-with-spinner {
-  position: relative;
-  display: flex;
-  align-items: center;
-
-  /* gap: var(--aw-spacing-xs); */
-
-  /* Add gap between input and spinner if desired */
-}
-
-.setting-row .input-with-spinner {
-  flex-grow: 1; /* Allow input to take available space */
-  display: flex;
-  align-items: center;
-}
-
-.toggle {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0; /* Prevent toggle from shrinking */
-}
-
-.setting-row input,
-.setting-row .toggle {
-  /* padding: var(--aw-spacing-sm); */
-
-  /* Padding is on input-with-spinner or input directly */
-  background-color: var(--aw-input-bg-color);
-  color: var(--aw-text-color);
-  border: 1px solid var(--aw-panel-border-color);
-  border-radius: var(--aw-border-radius-sm);
-  flex-grow: 1;
-}
-
-.setting-row input {
-  padding: var(--aw-spacing-xs); /* More compact input padding */
 }
 
 .cooling-controls {
   display: grid; /* Changed from flex to grid */
   grid-template-columns: auto 1fr; /* Parent grid for label/input columns */
   gap: var(--aw-spacing-sm) var(--aw-spacing-sm); /* Gap between label and input columns */ /* Gap between each setting row */
-
-  /* align-items: center; */
-
-  /* Let .setting-row handle its internal vertical alignment */
-}
-
-.cooling-status {
-  /* display: flex; */
-
-  /* Already a setting-row */
-
-  /* justify-content: space-between; */
-
-  /* From setting-row */
-
-  /* align-items: center; */
-
-  /* From setting-row */
 }
 
 .temperature-label {
@@ -1181,74 +935,9 @@ watch([sensorWidth, sensorHeight, binX, binY], ([w, h, bx, by]) => {
   flex-grow: 1;
 }
 
-.cooling-toggle {
-  /* display: flex; */
-
-  /* Already a setting-row */
-
-  /* align-items: center; */
-
-  /* From setting-row */
-
-  /* justify-content: space-between; */
-
-  /* From setting-row */
-}
-
 .cooling-toggle label[for='cooler-toggle-checkbox'] {
   /* More specific selector for the label */
   margin-bottom: 0; /* Override if any default margin exists */
-}
-
-.toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background-color: var(--aw-input-bg-color);
-  border: 1px solid var(--aw-panel-border-color);
-  transition: 0.4s;
-  border-radius: var(--aw-spacing-lg);
-}
-
-.slider::before {
-  position: absolute;
-  content: '';
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--aw-text-secondary-color);
-  transition: 0.4s;
-  border-radius: var(--aw-border-radius-sm);
-}
-
-input:checked + .slider {
-  background-color: var(--aw-success-color);
-}
-
-input:checked + .slider::before {
-  transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
-  background-color: var(--aw-button-primary-text);
-}
-
-.temperature-target {
-  /* display: flex; */
-
-  /* Already a setting-row */
-
-  /* align-items: center; */
-
-  /* From setting-row */
-
-  /* justify-content: space-between; */
-
-  /* From setting-row */
 }
 
 .subframe-controls input {
@@ -1269,102 +958,7 @@ input:checked + .slider::before {
   /* Target input within this specific structure */
   width: 60px; /* More compact target temp input */
   padding: var(--aw-spacing-xs);
-
-  /* background-color: var(--aw-input-bg-color); */
-
-  /* Already set */
-
-  /* color: var(--aw-text-color); */
-
-  /* Already set */
-
-  /* border: 1px solid var(--aw-panel-border-color); */
-
-  /* Already set */
-
-  /* border-radius: var(--aw-border-radius-sm); */
-
-  /* Already set */
   flex-grow: 0; /* Don't let it grow too much */
-}
-
-.connection-notice {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background-color: var(--aw-panel-content-bg-color);
-  border-radius: calc(var(--aw-spacing-xs) * 1.5);
-
-  /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */
-
-  /* Handled by parent padding/gap */
-  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-  padding: var(--aw-spacing-md);
-  border: 1px solid var(--aw-panel-border-color); /* Add border */
-  margin-bottom: var(--aw-spacing-md); /* Space before the main layout */
-}
-
-.connection-message {
-  color: var(--aw-text-secondary-color);
-  font-size: 1.1rem;
-}
-
-.panel-tip {
-  font-size: 0.8rem;
-  color: var(--aw-text-secondary-color);
-}
-
-.panel-error-display {
-  background-color: var(--aw-color-error-muted);
-  color: var(--aw-color-error-700);
-  padding: var(--aw-spacing-sm);
-
-  /* margin-bottom: var(--aw-spacing-md); */
-
-  /* Handled by parent padding/gap */
-  border-radius: var(--aw-border-radius-sm);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid var(--aw-color-error-border); /* Add specific error border */
-  margin-bottom: var(--aw-spacing-md); /* Space before the main layout */
-}
-
-.error-message-content {
-  display: flex;
-  align-items: center;
-  gap: var(--aw-spacing-sm);
-}
-
-.error-icon {
-  font-size: 1.2rem; /* Make icon slightly larger */
-}
-
-.dismiss-button {
-  background-color: transparent;
-  border: none;
-  color: var(--aw-color-error-700);
-  cursor: pointer;
-  padding: var(--aw-spacing-xs);
-}
-
-.dismiss-button .icon {
-  font-size: 1rem;
-}
-
-/* .input-with-spinner input { */
-
-/* General input styling moved to .setting-row input */
-
-/* flex-grow: 1; */
-
-/* } */
-
-.spinner-icon {
-  margin-left: var(--aw-spacing-sm);
-  color: var(--aw-text-secondary-color);
-  flex-shrink: 0; /* Prevent spinner from being squeezed */
 }
 
 /* Ensure toggle switch is vertically aligned with spinner */
@@ -1377,21 +971,6 @@ input:checked + .slider::before {
 
   /* Already set */
   justify-content: flex-end; /* Align toggle to the right within its container */
-}
-
-/* .cooling-toggle .toggle { */
-
-/* margin-right: auto; */
-
-/* Pushes spinner to the right if needed or centers */
-
-/* } */
-
-/* Adjustments for setting rows if they contain input-with-spinner */
-.setting-row .input-with-spinner + .spinner-icon {
-  /* If spinner is outside input-with-spinner, style it here */
-
-  /* This case should not happen with current structure */
 }
 
 /* Responsive adjustments */
@@ -1411,52 +990,6 @@ input:checked + .slider::before {
     width: 100%;
     min-width: unset; /* Remove min-width for stacked layout */
   }
-}
-
-/* Add styles for slider-row, slider-group, themed-slider, and slider-minmax */
-.slider-row {
-  align-items: center;
-  gap: 8px;
-}
-
-.slider-group {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  gap: 8px;
-  min-width: 0;
-}
-
-.themed-slider {
-  flex: 1 1 80px;
-  min-width: 60px;
-  max-width: 140px;
-  accent-color: var(--aw-accent-color);
-  background-color: transparent;
-  height: 2px;
-  margin: 0 4px;
-}
-
-.themed-slider::-webkit-slider-thumb {
-  background: var(--aw-primary-color);
-  border: 1px solid var(--aw-panel-border-color);
-}
-
-.themed-slider::-moz-range-thumb {
-  background: var(--aw-primary-color);
-  border: 1px solid var(--aw-panel-border-color);
-}
-
-.themed-slider::-ms-thumb {
-  background: var(--aw-primary-color);
-  border: 1px solid var(--aw-panel-border-color);
-}
-
-.slider-minmax {
-  font-size: 0.8rem;
-  color: var(--aw-text-secondary-color);
-  min-width: 24px;
-  text-align: center;
 }
 
 .camera-info-collapsible {

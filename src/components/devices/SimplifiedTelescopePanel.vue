@@ -680,148 +680,6 @@ const sideOfPierDisplay = computed(() => {
 </template>
 
 <style scoped>
-.simplified-panel {
-  background-color: var(--aw-panel-bg-color);
-
-  /* color: var(--aw-panel-header-text-color); */
-  border-radius: var(--aw-border-radius);
-  border: 1px solid var(--aw-panel-border-color);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  container-type: inline-size; /* Define this as a query container */
-  container-name: simplified-camera-panel; /* Optional: name the container */
-}
-
-/* Panel group and layout */
-.aw-form-group {
-  background-color: var(--aw-panel-bg-color);
-  color: var(--aw-text-color);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  margin: 0;
-  font-family: var(--aw-font-family, inherit);
-}
-
-.aw-panel-status-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--aw-spacing-sm);
-  padding: var(--aw-spacing-xs) var(--aw-spacing-md);
-  font-size: var(--aw-font-size-base, 1rem);
-  color: var(--aw-text-secondary-color);
-  border-bottom: 1px solid var(--aw-panel-border-color);
-}
-
-.aw-status-label {
-  font-weight: 500;
-}
-
-.aw-status-value {
-  font-weight: 600;
-}
-
-.aw-status-badge {
-  display: inline-block;
-  border-radius: var(--aw-border-radius-sm);
-  padding: var(--aw-spacing-xs) var(--aw-spacing-md);
-  font-size: var(--aw-font-size-base, 1em);
-  font-family: inherit;
-  font-weight: 700;
-  background: var(--aw-success-color);
-  color: var(--aw-button-primary-text);
-}
-
-.aw-status-badge.idle {
-  background: var(--aw-panel-border-color);
-  color: var(--aw-text-secondary-color);
-}
-
-.aw-status-badge.slewing {
-  background: var(--aw-warning-color);
-  color: var(--aw-warning-text-color);
-}
-
-.aw-status-badge.parked {
-  background: var(--aw-control-park-color);
-  color: var(--aw-text-color);
-}
-
-.aw-status-badge.tracking {
-  background: var(--aw-status-tracking-on-color);
-  color: var(--aw-text-color);
-}
-
-.aw-status-badge.home {
-  background: var(--aw-panel-header-bg-color);
-  color: var(--aw-panel-header-text-color);
-}
-
-.aw-panel-content {
-  overflow-y: auto;
-  flex: 1;
-  padding: var(--aw-spacing-lg) var(--aw-spacing-md) var(--aw-spacing-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--aw-spacing-lg);
-}
-
-.aw-section {
-  width: 100%;
-  margin-bottom: var(--aw-spacing-sm);
-}
-
-.aw-section-header {
-  font-size: var(--aw-font-size-lg, 1.1em);
-  font-weight: 700;
-  margin-bottom: var(--aw-spacing-xs);
-  color: var(--aw-text-color);
-  letter-spacing: 0.01em;
-}
-
-.aw-section-divider {
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  margin: var(--aw-spacing-md) 0;
-}
-
-.aw-section-table {
-  display: grid;
-  grid-template-columns: var(--aw-label-width, 90px) 1fr var(--aw-label-width, 90px) 1fr;
-  gap: var(--aw-spacing-xs) var(--aw-spacing-md);
-  align-items: start;
-  margin-bottom: var(--aw-spacing-lg);
-}
-
-.aw-row {
-  display: contents;
-}
-
-.aw-label {
-  text-align: right;
-  color: var(--aw-text-secondary-color);
-  font-weight: 500;
-  font-size: var(--aw-font-size-sm, 0.95em);
-}
-
-.aw-value {
-  text-align: left;
-  font-family: var(--aw-font-family-mono, inherit);
-  color: var(--aw-text-color);
-  min-width: 90px;
-  letter-spacing: 0.04em;
-  font-size: var(--aw-font-size-sm, 0.95em);
-}
-
-/* Only apply background, border-radius, and padding to .aw-value when it does not contain input, select, or checkbox */
-.aw-value:not(:has(input, select, textarea)) {
-  background: var(--aw-input-bg-color);
-  border-radius: var(--aw-border-radius-sm);
-  padding: var(--aw-spacing-xs) var(--aw-spacing-md);
-}
-
 .aw-tracking-controls-row {
   display: grid;
   grid-template-columns: 0.5fr 1fr;
@@ -862,66 +720,11 @@ const sideOfPierDisplay = computed(() => {
   min-width: 160px;
 }
 
-.aw-input-label {
-  font-size: var(--aw-font-size-base, 1em);
-  font-weight: 500;
-  margin-bottom: var(--aw-spacing-xxs, 2px);
-}
-
-.aw-input-field {
-  font-size: var(--aw-font-size-base, 1em);
-  padding: var(--aw-spacing-xs) var(--aw-spacing-md);
-  border-radius: var(--aw-border-radius-sm);
-  border: 1px solid var(--aw-panel-border-color);
-  background: var(--aw-input-bg-color);
-  color: var(--aw-text-color);
-  font-family: var(--aw-font-family-mono, inherit);
-}
-
-.aw-input-hint {
-  font-size: var(--aw-font-size-sm, 0.85em);
-  color: var(--aw-text-secondary-color);
-}
-
-.aw-input-error-message {
-  color: var(--aw-error-text-color);
-  font-size: var(--aw-font-size-sm, 0.85em);
-}
-
-.aw-input-error {
-  border-color: var(--aw-color-error-700);
-  background: var(--aw-error-muted);
-}
-
 .aw-movement-actions {
   display: flex;
   flex-direction: row;
   gap: var(--aw-spacing-md);
   margin-bottom: var(--aw-spacing-xs);
-}
-
-.aw-btn {
-  font-size: var(--aw-font-size-base, 1em);
-  padding: var(--aw-spacing-xs) var(--aw-spacing-lg);
-  border-radius: var(--aw-border-radius-sm);
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s;
-}
-
-.aw-btn.primary {
-  background: var(--aw-button-primary-bg);
-  color: var(--aw-button-primary-text);
-}
-
-.aw-btn.secondary {
-  background: var(--aw-button-secondary-bg);
-  color: var(--aw-button-secondary-text);
-}
-
-.aw-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .aw-manual-rate-row {
@@ -969,93 +772,11 @@ const sideOfPierDisplay = computed(() => {
   color: var(--aw-button-primary-text);
 }
 
-@media (width <=600px) {
-  .aw-form-group {
-    max-width: 100vw;
-    padding: 0;
-  }
-
-  .aw-panel-content {
-    padding: var(--aw-spacing-md) var(--aw-spacing-xs) var(--aw-spacing-sm);
-  }
-
-  .aw-live-data-row,
-  .aw-tracking-controls-row,
-  .aw-movement-inputs,
-  .aw-manual-rate-row,
-  .aw-actions-row {
-    flex-direction: column;
-    gap: var(--aw-spacing-xs);
-    align-items: flex-start;
-  }
-}
-
 .aw-actions-row {
   display: flex;
   flex-direction: row;
   gap: var(--aw-spacing-md);
   justify-content: flex-start;
-}
-
-.aw-section-table .aw-value > .aw-input-field {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* --- Main Info + NESW Layout --- */
-.aw-main-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--aw-spacing-sm);
-  align-items: start;
-  margin-bottom: var(--aw-spacing-lg);
-}
-
-.aw-info-table {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-radius: var(--aw-border-radius-sm);
-  border: 1px solid var(--aw-panel-border-color);
-  background: var(--aw-panel-bg-color);
-  min-width: 220px;
-  max-width: 320px;
-  font-size: var(--aw-font-size-sm, 0.95em);
-  box-shadow: none;
-}
-
-.aw-info-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  border-bottom: 1px solid var(--aw-panel-border-color);
-  min-height: 28px;
-  padding: 0 var(--aw-spacing-md);
-}
-
-.aw-info-row:last-child {
-  /* No border for last child */
-}
-
-.aw-info-label {
-  flex: 0 0 90px;
-  text-align: left;
-  color: var(--aw-text-secondary-color);
-  font-weight: 500;
-  padding: var(--aw-spacing-xs) 0;
-}
-
-.aw-info-value {
-  flex: 1 1 auto;
-  text-align: right;
-  color: var(--aw-text-color);
-  font-family: var(--aw-font-family-mono, inherit);
-  padding: var(--aw-spacing-xs) 0;
-}
-
-/* Adjust NESW grid for vertical alignment with info table */
-.aw-direction-pad-vertical {
-  /* align-self: start; */
 }
 
 /* Fix: Prevent icon collapse due to reset's max-width */
@@ -1077,11 +798,6 @@ svg {
   font-size: var(--aw-font-size-md);
 }
 
-/* Move this rule above the more specific one to fix linter error */
-.aw-input-error-message:empty {
-  visibility: hidden;
-}
-
 .aw-movement-controls-row {
   display: flex;
   flex-direction: column;
@@ -1095,47 +811,5 @@ svg {
   flex-direction: row;
   align-items: center;
   gap: var(--aw-spacing-md);
-}
-
-.panel-content {
-  overflow-y: auto;
-  flex: 1;
-  padding: var(--aw-spacing-md); /* Add some padding to the main content area */
-}
-
-.connection-notice {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background-color: var(--aw-panel-content-bg-color);
-  border-radius: calc(var(--aw-spacing-xs) * 1.5);
-  gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
-  padding: var(--aw-spacing-md);
-  border: 1px solid var(--aw-panel-border-color); /* Add border */
-  margin-bottom: var(--aw-spacing-md); /* Space before the main layout */
-}
-
-.connection-message {
-  color: var(--aw-text-secondary-color);
-  font-size: 1.1rem;
-}
-
-@media (width <=900px) {
-  .aw-main-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    gap: var(--aw-spacing-md);
-  }
-
-  .aw-direction-pad-vertical {
-    justify-self: start;
-    margin-top: var(--aw-spacing-md);
-  }
-
-  .aw-info-table {
-    min-width: 0;
-    max-width: 100%;
-  }
 }
 </style>

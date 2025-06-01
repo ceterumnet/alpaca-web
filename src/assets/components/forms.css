@@ -219,7 +219,14 @@
    FORM GROUP AND LAYOUT
    ============================================================ */
 .aw-form-group {
-  /* margin-bottom: var(--aw-spacing-md); */
+  background-color: var(--aw-panel-bg-color);
+  color: var(--aw-text-color);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+  font-family: var(--aw-font-family, inherit);
 }
 
 .aw-form-label {

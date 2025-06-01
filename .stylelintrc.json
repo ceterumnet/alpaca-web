@@ -10,6 +10,7 @@
     "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"],
     "selector-class-pattern": "^(aw-).*$|[a-z0-9\\-]+$"
   },
+  "formatter": "string",
   "overrides": [
     {
       "files": ["**/*.vue"],
