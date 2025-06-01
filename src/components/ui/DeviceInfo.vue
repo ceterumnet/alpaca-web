@@ -24,10 +24,6 @@ defineProps<{
 
 <style scoped>
 .device-info-section {
-  background: var(--aw-panel-content-bg-color);
-  border-radius: var(--aw-border-radius-sm);
-  border: 1px solid var(--aw-panel-border-color);
-  padding: var(--aw-spacing-sm) var(--aw-spacing-lg);
   margin: 0;
   font-size: 0.8rem;
   box-shadow: var(--aw-shadow-sm);

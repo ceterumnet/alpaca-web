@@ -245,6 +245,7 @@ input:checked + .slider::before {
   align-items: center;
   background-color: var(--aw-panel-content-bg-color);
   border-radius: calc(var(--aw-spacing-xs) * 1.5);
+  margin: var(--aw-spacing-md);
 
   /* margin-bottom: calc(var(--aw-spacing-md) + var(--aw-spacing-xs)); */
 
