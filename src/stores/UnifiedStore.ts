@@ -39,7 +39,7 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createFilterWheelActions().state(),
       ...createDomeActions().state(),
       ...createObservingConditionsActions().state(),
-      ...createSwitchActions().state(),
+      // ...createSwitchActions().state(),
       ...createRotatorActions().state(),
       ...createCoverCalibratorActions().state(),
       ...createSafetyMonitorActions().state(),

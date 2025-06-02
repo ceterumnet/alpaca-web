@@ -12,9 +12,7 @@
  * Provides functionality for interacting with telescope devices
  */
 
-import type { Device } from '@/types/device.types'
 import type { DeviceEvent } from '../types/device-store.types'
-import type { AlpacaClient } from '@/api/AlpacaClient'
 import type { TelescopeClient } from '@/api/alpaca/telescope-client'
 import { formatSiderealTime, parseRaString, parseDecString } from '@/utils/astroCoordinates'
 import log from '@/plugins/logger'

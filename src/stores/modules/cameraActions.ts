@@ -20,10 +20,11 @@
 // - Support for both binary and JSON image formats
 
 import log from '@/plugins/logger'
-import type { DeviceEvent, Device } from '../types/device-store.types'
+// import type { DeviceEvent, Device } from '../types/device-store.types'
 // import type { AlpacaClient } from '@/api/AlpacaClient'
 import { AlpacaClient as BaseAlpacaClient } from '@/api/alpaca/base-client'
 import type { UnifiedStoreType } from '../UnifiedStore'
+import type { CameraClient } from '@/api/alpaca/camera-client'
 
 // Define an interface for the actions specific to the camera module
 // This helps in typing 'this' context for actions if needed, and for clear definition of available actions
@@ -673,7 +674,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
         try {
           // Fetch all read-only properties.
           // client.getCameraInfo() returns an object with lowercase alpaca property names as keys.
-          const propertiesFromClient = await (client as import('@/api/alpaca/camera-client').CameraClient).getCameraInfo()
+          const propertiesFromClient = await (client as CameraClient).getCameraInfo()
 
           // Ensure specific properties for gain/offset modes are present
           // Access with lowercase alpaca property names as returned by client.getCameraInfo()
@@ -1062,7 +1063,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
 
         // Remove from device state tracking
         this._deviceStateAvailableProps.delete(deviceId)
-        this._deviceStateUnsupported.delete(deviceId)
+        this.deviceStateUnsupported.delete(deviceId)
       },
 
       /**
@@ -1097,7 +1098,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
         }
 
         // Remove from unsupported list in case it was previously added
-        this._deviceStateUnsupported.delete(deviceId)
+        this.deviceStateUnsupported.delete(deviceId)
 
         // Start property polling
         this.startCameraPropertyPolling(deviceId)
@@ -1107,7 +1108,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
 
       async setCameraGain(this: UnifiedStoreType, deviceId: string, desiredGain: number | string): Promise<void> {
         const device = this.getDeviceById(deviceId)
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        const client = this.getDeviceClient(deviceId) as CameraClient | null
         if (!device || !client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client or device not found for setCameraGain' })
           return
@@ -1168,7 +1169,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
 
       async setCameraOffset(this: UnifiedStoreType, deviceId: string, desiredOffset: number | string): Promise<void> {
         const device = this.getDeviceById(deviceId)
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        const client = this.getDeviceClient(deviceId) as CameraClient | null
         if (!device || !client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client or device not found for setCameraOffset' })
           return
@@ -1228,7 +1229,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
       },
 
       async setCameraReadoutMode(this: UnifiedStoreType, deviceId: string, modeIndex: number): Promise<void> {
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        const client = this.getDeviceClient(deviceId) as CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setCameraReadoutMode' })
           return
@@ -1243,7 +1244,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
       },
 
       async setCameraSubframe(this: UnifiedStoreType, deviceId: string, startX: number, startY: number, numX: number, numY: number): Promise<void> {
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        const client = this.getDeviceClient(deviceId) as CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setCameraSubframe' })
           return
@@ -1262,7 +1263,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
         deviceId: string
         // earlyImageReadout: boolean = true // Client.stopExposure does not take this.
       ): Promise<void> {
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        const client = this.getDeviceClient(deviceId) as CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for stopCameraExposure' })
           return
@@ -1278,7 +1279,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
       },
 
       async pulseGuideCamera(this: UnifiedStoreType, deviceId: string, direction: number, duration: number): Promise<void> {
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        const client = this.getDeviceClient(deviceId) as CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for pulseGuideCamera' })
           return
@@ -1293,7 +1294,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
       },
 
       async setCameraSubExposureDuration(this: UnifiedStoreType, deviceId: string, duration: number): Promise<void> {
-        const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
+        const client = this.getDeviceClient(deviceId) as CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setSubExposureDuration' })
           return

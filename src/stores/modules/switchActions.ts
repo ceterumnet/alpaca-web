@@ -12,25 +12,25 @@ import { SwitchClient, type ISwitchDetail } from '@/api/alpaca/switch-client'
 import { isSwitch } from '@/types/device.types'
 
 // Properties that this module will manage on the Device object in the store
-export interface SwitchDeviceProperties {
-  sw_switches?: ISwitchDetail[] | null // Array of switch details
-  sw_maxSwitch?: number | null
-  sw_deviceStateAvailableProps?: Set<string> // Properties confirmed available via deviceState
-  sw_usingDeviceState?: boolean // Flag to indicate if deviceState is being used for polling
-  [key: string]: unknown // Index signature for UnifiedDevice compatibility
-}
+// export interface ISwitchDeviceProperties {
+//   sw_switches?: ISwitchDetail[] | null // Array of switch details
+//   sw_maxSwitch?: number | null
+//   sw_deviceStateAvailableProps?: Set<string> // Properties confirmed available via deviceState
+//   sw_usingDeviceState?: boolean // Flag to indicate if deviceState is being used for polling
+//   [key: string]: unknown // Index signature for UnifiedDevice compatibility
+// }
 
 // Internal state for the module
-export interface SwitchModuleState {
-  _sw_pollingTimers: Map<string, number>
-  _sw_isPolling: Map<string, boolean>
-  _sw_deviceStateAvailableProps: Map<string, Set<string>> // Tracks props confirmed from deviceState
-  _sw_deviceStateUnsupported: Set<string> // Tracks devices where deviceState failed
-}
+// export interface ISwitchModuleState {
+//   _sw_pollingTimers: Map<string, number>
+//   _sw_isPolling: Map<string, boolean>
+//   _sw_deviceStateAvailableProps: Map<string, Set<string>> // Tracks props confirmed from deviceState
+//   _sw_deviceStateUnsupported: Set<string> // Tracks devices where deviceState failed
+// }
 
 // Signatures of actions in this module
-interface SwitchActionsSignatures {
-  _getSwitchClient: (this: UnifiedStoreType, deviceId: string) => SwitchClient | null
+interface ISwitchActionsSignatures {
+  // getSwitchClient: (this: UnifiedStoreType, deviceId: string) => SwitchClient | null
   fetchSwitchDetails: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   setDeviceSwitchValue: (this: UnifiedStoreType, deviceId: string, switchId: number, value: number | boolean) => Promise<void>
   setDeviceSwitchName: (this: UnifiedStoreType, deviceId: string, switchId: number, name: string) => Promise<void>
@@ -53,39 +53,12 @@ interface SwitchActionsSignatures {
 // export type SwitchActionContext = SwitchModuleState & CoreState & SwitchActionsSignatures;
 
 export function createSwitchActions(): {
-  state: () => SwitchModuleState
-  actions: SwitchActionsSignatures
+  actions: ISwitchActionsSignatures
 } {
   return {
-    state: (): SwitchModuleState => ({
-      _sw_pollingTimers: new Map(),
-      _sw_isPolling: new Map(),
-      _sw_deviceStateAvailableProps: new Map(),
-      _sw_deviceStateUnsupported: new Set()
-    }),
-
     actions: {
-      _getSwitchClient(this: UnifiedStoreType, deviceId: string): SwitchClient | null {
-        const device: Device | null = this.getDeviceById(deviceId)
-        if (!device || !isSwitch(device)) {
-          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Device ${deviceId} not found or is not a Switch device.`)
-          return null
-        }
-        let baseUrl = ''
-        if (device.apiBaseUrl) baseUrl = device.apiBaseUrl
-        else if (device.address && device.port) baseUrl = `http://${device.address}:${device.port}`
-        else if (device.ipAddress && device.port) baseUrl = `http://${device.ipAddress}:${device.port}`
-        else {
-          log.error({ deviceIds: [deviceId] }, `[SwitchStore] Device ${deviceId} has incomplete address details.`)
-          return null
-        }
-        if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
-        const deviceNumber = typeof device.deviceNum === 'number' ? device.deviceNum : 0
-        return new SwitchClient(baseUrl, deviceNumber, device)
-      },
-
       async fetchSwitchDetails(this: UnifiedStoreType, deviceId: string): Promise<void> {
-        const client = this._getSwitchClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as SwitchClient | null
         if (!client) return
 
         let maxSwitch: number | null = null
@@ -93,12 +66,12 @@ export function createSwitchActions(): {
         let fetchedViaDeviceState = false
 
         // Initialize device state tracking if not present
-        if (!this._sw_deviceStateAvailableProps.has(deviceId)) {
-          this._sw_deviceStateAvailableProps.set(deviceId, new Set<string>())
+        if (!this._deviceStateAvailableProps.has(deviceId)) {
+          this._deviceStateAvailableProps.set(deviceId, new Set<string>())
         }
-        const deviceStateProps = this._sw_deviceStateAvailableProps.get(deviceId)!
+        const deviceStateProps = this._deviceStateAvailableProps.get(deviceId)!
 
-        if (!this._sw_deviceStateUnsupported.has(deviceId)) {
+        if (!this.deviceStateUnsupported.has(deviceId)) {
           try {
             log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Attempting fetchDeviceState for ${deviceId}`)
             deviceStateResult = await this.fetchDeviceState(deviceId, { forceRefresh: true })
@@ -160,7 +133,7 @@ export function createSwitchActions(): {
       },
 
       async setDeviceSwitchValue(this: UnifiedStoreType, deviceId: string, switchId: number, value: number | boolean): Promise<void> {
-        const client = this._getSwitchClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as SwitchClient | null
         if (!client) return
         try {
           if (typeof value === 'boolean') {
@@ -191,7 +164,7 @@ export function createSwitchActions(): {
       },
 
       async setDeviceSwitchName(this: UnifiedStoreType, deviceId: string, switchId: number, name: string): Promise<void> {
-        const client = this._getSwitchClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as SwitchClient | null
         if (!client) return
         try {
           await client.setSwitchName(switchId, name)
@@ -213,7 +186,7 @@ export function createSwitchActions(): {
       },
 
       async setAsyncSwitchStateStoreAction(this: UnifiedStoreType, deviceId: string, switchId: number, state: boolean): Promise<void> {
-        const client = this._getSwitchClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as SwitchClient | null
         if (!client) return
         try {
           await client.setAsyncSwitch(switchId, state)
@@ -234,7 +207,7 @@ export function createSwitchActions(): {
       },
 
       async setAsyncSwitchValueStoreAction(this: UnifiedStoreType, deviceId: string, switchId: number, value: number): Promise<void> {
-        const client = this._getSwitchClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as SwitchClient | null
         if (!client) return
         try {
           await client.setAsyncSwitchValue(switchId, value)
@@ -258,7 +231,7 @@ export function createSwitchActions(): {
         switchId: number,
         transactionId: number
       ): Promise<boolean | null> {
-        const client = this._getSwitchClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as SwitchClient | null
         if (!client) return null
         try {
           const isComplete = await client.isStateChangeComplete(switchId, transactionId)
@@ -278,13 +251,13 @@ export function createSwitchActions(): {
       },
 
       async _pollSwitchStatus(this: UnifiedStoreType, deviceId: string): Promise<void> {
-        if (!this._sw_isPolling.get(deviceId)) return
+        if (!this.isDevicePolling.has(deviceId)) return
         const device: Device | null = this.getDeviceById(deviceId)
         if (!device || !device.isConnected) {
           this.stopSwitchPolling(deviceId)
           return
         }
-        const client = this._getSwitchClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as SwitchClient | null
         if (!client) return
 
         const currentMaxSwitch = device.sw_maxSwitch
@@ -300,10 +273,10 @@ export function createSwitchActions(): {
         }
 
         let deviceStateResult: Record<string, unknown> | null = null
-        const deviceStateProps = this._sw_deviceStateAvailableProps.get(deviceId) || new Set<string>()
+        const deviceStateProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
         let usingDeviceStateInPoll = false
 
-        if (!this._sw_deviceStateUnsupported.has(deviceId)) {
+        if (!this.deviceStateUnsupported.has(deviceId)) {
           try {
             const pollIntervalSetting =
               (device.properties?.propertyPollIntervalMs as number) ||
@@ -319,7 +292,7 @@ export function createSwitchActions(): {
               const oldSize = deviceStateProps.size
               Object.keys(deviceStateResult).forEach((key) => deviceStateProps.add(key.toLowerCase()))
               if (deviceStateProps.size > oldSize) {
-                this._sw_deviceStateAvailableProps.set(deviceId, new Set(deviceStateProps))
+                this._deviceStateAvailableProps.set(deviceId, new Set(deviceStateProps))
                 this.updateDevice(deviceId, { sw_deviceStateAvailableProps: new Set(deviceStateProps) })
               }
               usingDeviceStateInPoll = true
@@ -339,7 +312,7 @@ export function createSwitchActions(): {
           }
         }
 
-        this.updateDevice(deviceId, { sw_usingDeviceState: usingDeviceStateInPoll && !this._sw_deviceStateUnsupported.has(deviceId) })
+        this.updateDevice(deviceId, { sw_usingDeviceState: usingDeviceStateInPoll && !this.deviceStateUnsupported.has(deviceId) })
 
         const newSwitches = [...oldSwitches.map((sw) => ({ ...sw }))]
         let changedOverall = false
@@ -383,21 +356,21 @@ export function createSwitchActions(): {
       startSwitchPolling(this: UnifiedStoreType, deviceId: string): void {
         const device: Device | null = this.getDeviceById(deviceId)
         if (!device || !isSwitch(device) || !device.isConnected) return
-        if (this._sw_pollingTimers.has(deviceId)) {
+        if (this.isDevicePolling.has(deviceId)) {
           this.stopSwitchPolling(deviceId)
         }
         const pollInterval = (device.properties?.propertyPollIntervalMs as number) || 3000
-        this._sw_isPolling.set(deviceId, true)
+        this.isDevicePolling.set(deviceId, new Set([true]))
         const timerId = window.setInterval(() => this._pollSwitchStatus(deviceId), pollInterval)
-        this._sw_pollingTimers.set(deviceId, timerId)
+        this.pollingTimers.set(deviceId, timerId)
         log.debug({ deviceIds: [deviceId], pollInterval }, `[SwitchStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       stopSwitchPolling(this: UnifiedStoreType, deviceId: string): void {
-        this._sw_isPolling.set(deviceId, false)
-        if (this._sw_pollingTimers.has(deviceId)) {
-          clearInterval(this._sw_pollingTimers.get(deviceId)!)
-          this._sw_pollingTimers.delete(deviceId)
+        this.isDevicePolling.set(deviceId, new Set([false]))
+        if (this.pollingTimers.has(deviceId)) {
+          clearInterval(this.pollingTimers.get(deviceId)!)
+          this.pollingTimers.delete(deviceId)
           log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Stopped polling for ${deviceId}.`)
         }
       },
