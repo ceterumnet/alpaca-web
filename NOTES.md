@@ -19,6 +19,10 @@ FUTURE:
 
 # TODO
 
+## Cleanup:
+
+- [ ] Ensure that all of the panels are leveraging alpacaPropertyAccess
+
 ## Github stuff
 
 - [ ] Figure out better dependabot configuration

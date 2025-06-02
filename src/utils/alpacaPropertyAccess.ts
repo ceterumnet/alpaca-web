@@ -8,14 +8,6 @@ import log from '@/plugins/logger'
 import { fromAscomValue } from '@/types/value-transforms'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 
-// Define store interface for type safety
-interface UnifiedStoreExtended {
-  getDevicePropertyOptimized: (deviceId: string, property: string) => Promise<unknown>
-  getDeviceProperty: (deviceId: string, property: string) => Promise<unknown>
-  fetchDeviceState: (deviceId: string, options: { cacheTtlMs: number; forceRefresh: boolean }) => Promise<Record<string, unknown> | null>
-  callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-}
-
 /**
  * Converts a camelCase property name to the proper Alpaca case format
  * Example: rightAscension -> RightAscension
@@ -31,7 +23,7 @@ export function toAlpacaCase(property: string): string {
  * Handles case conversion and value transformation
  */
 export async function getAlpacaProperty<T = unknown>(deviceId: string, property: string): Promise<T | null> {
-  const store = useUnifiedStore() as unknown as UnifiedStoreExtended
+  const store = useUnifiedStore() // as unknown as UnifiedStoreExtended
   // API method names are lowercase
   const apiMethod = property.toLowerCase()
 
@@ -45,7 +37,7 @@ export async function getAlpacaProperty<T = unknown>(deviceId: string, property:
  * Handles value transformation
  */
 export async function setAlpacaProperty<T = unknown>(deviceId: string, property: string, value: T): Promise<boolean> {
-  const store = useUnifiedStore() as unknown as UnifiedStoreExtended
+  const store = useUnifiedStore() // as unknown as UnifiedStoreExtended
   // API method names are lowercase
   const apiMethod = property.toLowerCase()
   // Parameter names need proper casing (PascalCase)
@@ -65,7 +57,7 @@ export async function callAlpacaMethod<T = unknown, P = Record<string, unknown>>
   method: string,
   params: P = {} as P
 ): Promise<T | null> {
-  const store = useUnifiedStore() as unknown as UnifiedStoreExtended
+  const store = useUnifiedStore() // as unknown as UnifiedStoreExtended
 
   // API method names are lowercase
   const apiMethod = method.toLowerCase()
@@ -86,7 +78,7 @@ export async function callAlpacaMethod<T = unknown, P = Record<string, unknown>>
  * Returns an object with camelCase property names and transformed values
  */
 export async function getAlpacaProperties<T = Record<string, unknown>>(deviceId: string, properties: string[]): Promise<T> {
-  const store = useUnifiedStore() as unknown as UnifiedStoreExtended
+  const store = useUnifiedStore() //as unknown as UnifiedStoreExtended
   const result: Record<string, unknown> = {}
 
   try {
