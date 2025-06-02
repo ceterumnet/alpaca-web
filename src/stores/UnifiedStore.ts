@@ -35,7 +35,7 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createEventSystem().state(),
       ...createDiscoveryActions().state(),
       // ...createCameraActions().state(),
-      ...createTelescopeActions().state(),
+      // ...createTelescopeActions().state(),
       ...createFilterWheelActions().state(),
       ...createDomeActions().state(),
       ...createObservingConditionsActions().state(),

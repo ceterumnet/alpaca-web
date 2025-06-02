@@ -18,37 +18,64 @@ import type { AlpacaClient } from '@/api/AlpacaClient'
 import type { TelescopeClient } from '@/api/alpaca/telescope-client'
 import { formatSiderealTime, parseRaString, parseDecString } from '@/utils/astroCoordinates'
 import log from '@/plugins/logger'
+import type { UnifiedStoreType } from '../UnifiedStore'
 
 // Define telescope state interface with property polling intervals
-export interface TelescopeState {
-  _propertyPollingIntervals: Map<string, number>
-  _deviceStateAvailableProps: Map<string, Set<string>> // Track which properties are available via devicestate for each device
-  _deviceStateUnsupported: Set<string> // Track devices that don't support devicestate
+// export interface TelescopeState {
+//   _propertyPollingIntervals: Map<string, number>
+//   _deviceStateAvailableProps: Map<string, Set<string>> // Track which properties are available via devicestate for each device
+//   _deviceStateUnsupported: Set<string> // Track devices that don't support devicestate
+// }
+
+interface ITelescopeActions {
+  fetchTelescopeProperties(this: UnifiedStoreType, deviceId: string): Promise<boolean>
+  startTelescopePropertyPolling(this: UnifiedStoreType, deviceId: string): void
+  stopTelescopePropertyPolling(this: UnifiedStoreType, deviceId: string): void
+  setTelescopePollingInterval(this: UnifiedStoreType, deviceId: string, intervalMs: number): void
+  parkTelescope(this: UnifiedStoreType, deviceId: string): Promise<boolean>
+  unparkTelescope(this: UnifiedStoreType, deviceId: string): Promise<boolean>
+  setTelescopeTracking(this: UnifiedStoreType, deviceId: string, enabled: boolean, trackingRate?: number): Promise<boolean>
+  setTelescopeGuideRateDeclination(this: UnifiedStoreType, deviceId: string, rate: number): Promise<boolean>
+  setTelescopeGuideRateRightAscension(this: UnifiedStoreType, deviceId: string, rate: number): Promise<boolean>
+  setTelescopeSlewSettleTime(this: UnifiedStoreType, deviceId: string, time: number): Promise<boolean>
+  slewToCoordinates(this: UnifiedStoreType, deviceId: string, rightAscension: number, declination: number, useAsync: boolean): Promise<boolean>
+  slewToAltAz(this: UnifiedStoreType, deviceId: string, altitude: number, azimuth: number, useAsync: boolean): Promise<boolean>
+  abortSlew(this: UnifiedStoreType, deviceId: string): Promise<boolean>
+  slewToCoordinatesString(this: UnifiedStoreType, deviceId: string, raString: string, decString: string, useAsync: boolean): Promise<boolean>
+  findHome(this: UnifiedStoreType, deviceId: string): Promise<boolean>
+  syncToCoordinates(this: UnifiedStoreType, deviceId: string, rightAscension: number, declination: number): Promise<boolean>
+  syncToAltAz(this: UnifiedStoreType, deviceId: string, altitude: number, azimuth: number): Promise<boolean>
+  syncToTarget(this: UnifiedStoreType, deviceId: string): Promise<boolean>
+  slewToTarget(this: UnifiedStoreType, deviceId: string): Promise<boolean>
+  slewToTargetAsync(this: UnifiedStoreType, deviceId: string): Promise<boolean>
+  moveAxis(this: UnifiedStoreType, deviceId: string, axis: number, rate: number): Promise<boolean>
+  pulseGuide(this: UnifiedStoreType, deviceId: string, direction: number, duration: number): Promise<boolean>
+  setTargetRightAscension(this: UnifiedStoreType, deviceId: string, rightAscension: number): Promise<boolean>
+  setTargetDeclination(this: UnifiedStoreType, deviceId: string, declination: number): Promise<boolean>
+  getIsPulseGuiding(this: UnifiedStoreType, deviceId: string): Promise<boolean | null>
+  getApertureArea(this: UnifiedStoreType, deviceId: string): Promise<number | null>
+  getApertureDiameter(this: UnifiedStoreType, deviceId: string): Promise<number | null>
+  getAxisRates(this: UnifiedStoreType, deviceId: string, axis: number): Promise<object[] | null>
+  getDestinationSideOfPier(this: UnifiedStoreType, deviceId: string, rightAscension: number, declination: number): Promise<number | null>
+  getGuideRateDeclination(this: UnifiedStoreType, deviceId: string): Promise<number | null>
+  getGuideRateRightAscension(this: UnifiedStoreType, deviceId: string): Promise<number | null>
+  getSlewSettleTime(this: UnifiedStoreType, deviceId: string): Promise<number | null>
 }
 
-export function createTelescopeActions() {
+export function createTelescopeActions(): { actions: ITelescopeActions } {
   return {
-    state: (): TelescopeState => ({
-      _propertyPollingIntervals: new Map<string, number>(),
-      _deviceStateAvailableProps: new Map<string, Set<string>>(),
-      _deviceStateUnsupported: new Set<string>()
-    }),
+    // state: (): TelescopeState => ({
+    //   _propertyPollingIntervals: new Map<string, number>(),
+    //   _deviceStateAvailableProps: new Map<string, Set<string>>(),
+    //   _deviceStateUnsupported: new Set<string>()
+    // }),
 
     actions: {
       /**
        * Fetch telescope properties after successful connection
        * Updates the device store with all available telescope properties
        */
-      async fetchTelescopeProperties(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          startTelescopePropertyPolling: (deviceId: string) => void
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async fetchTelescopeProperties(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Fetching properties for telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
@@ -139,17 +166,7 @@ export function createTelescopeActions() {
        * Start polling for telescope dynamic properties
        * These properties can change and should be periodically updated
        */
-      startTelescopePropertyPolling(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          stopTelescopePropertyPolling: (deviceId: string) => void
-          _emitEvent: (event: DeviceEvent) => void
-          fetchDeviceState: (deviceId: string, options?: { forceRefresh?: boolean; cacheTtlMs?: number }) => Promise<Record<string, unknown> | null>
-        },
-        deviceId: string
-      ): void {
+      startTelescopePropertyPolling(this: UnifiedStoreType, deviceId: string): void {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Starting property polling for telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
@@ -197,8 +214,8 @@ export function createTelescopeActions() {
         }
 
         // Ensure the unsupported set is initialized
-        if (!this._deviceStateUnsupported) {
-          this._deviceStateUnsupported = new Set<string>()
+        if (!this.deviceStateUnsupported) {
+          this.deviceStateUnsupported = new Set<string>()
         }
 
         // Clear any existing interval first
@@ -230,7 +247,7 @@ export function createTelescopeActions() {
             let deviceState: Record<string, unknown> | null = null
             const availableProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
 
-            if (!this._deviceStateUnsupported.has(deviceId)) {
+            if (!this.deviceStateUnsupported.has(deviceId)) {
               // We either haven't tried devicestate yet, or we know it's supported
               try {
                 // Use the fetchDeviceState with proper caching options
@@ -259,7 +276,7 @@ export function createTelescopeActions() {
               } catch (error) {
                 log.warn({ deviceIds: [deviceId] }, `[TelescopeActions] Error fetching devicestate for ${deviceId}:`, error)
                 // If devicestate completely fails, mark as unsupported to avoid future attempts
-                this._deviceStateUnsupported.add(deviceId)
+                this.deviceStateUnsupported.add(deviceId)
                 deviceState = null
               }
             }
@@ -419,7 +436,7 @@ export function createTelescopeActions() {
       /**
        * Stop polling for telescope properties
        */
-      stopTelescopePropertyPolling(this: TelescopeState, deviceId: string): void {
+      stopTelescopePropertyPolling(this: UnifiedStoreType, deviceId: string): void {
         if (!this._propertyPollingIntervals) {
           return
         }
@@ -436,15 +453,7 @@ export function createTelescopeActions() {
       /**
        * Change the polling interval for a telescope device
        */
-      setTelescopePollingInterval(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          startTelescopePropertyPolling: (deviceId: string) => void
-        },
-        deviceId: string,
-        intervalMs: number
-      ): void {
+      setTelescopePollingInterval(this: UnifiedStoreType, deviceId: string, intervalMs: number): void {
         if (intervalMs < 100) {
           log.warn({ deviceIds: [deviceId] }, `[TelescopeActions] Polling interval too small (${intervalMs}ms), using 100ms minimum`)
           intervalMs = 100
@@ -462,15 +471,7 @@ export function createTelescopeActions() {
       /**
        * Park the telescope using standard ASCOM Alpaca method
        */
-      async parkTelescope(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async parkTelescope(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Parking telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
@@ -522,15 +523,7 @@ export function createTelescopeActions() {
       /**
        * Unpark the telescope using standard ASCOM Alpaca method
        */
-      async unparkTelescope(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async unparkTelescope(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Unparking telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
@@ -582,17 +575,7 @@ export function createTelescopeActions() {
       /**
        * Set telescope tracking state
        */
-      async setTelescopeTracking(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        enabled: boolean,
-        trackingRate?: number
-      ): Promise<boolean> {
+      async setTelescopeTracking(this: UnifiedStoreType, deviceId: string, enabled: boolean, trackingRate?: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting tracking for telescope ${deviceId} to ${enabled}, rate: ${trackingRate}.`)
         const device = this.getDeviceById(deviceId)
         if (!device) {
@@ -624,17 +607,7 @@ export function createTelescopeActions() {
         }
       },
 
-      async setTelescopeGuideRateDeclination(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null // Should be TelescopeClient
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          fetchTelescopeProperties: (deviceId: string) => Promise<boolean> // or a more specific refresh
-        },
-        deviceId: string,
-        rate: number
-      ): Promise<boolean> {
+      async setTelescopeGuideRateDeclination(this: UnifiedStoreType, deviceId: string, rate: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting guide rate declination for telescope ${deviceId} to ${rate}.`)
         const client = this.getDeviceClient(deviceId) as TelescopeClient | null
         if (!client) {
@@ -658,17 +631,7 @@ export function createTelescopeActions() {
         }
       },
 
-      async setTelescopeGuideRateRightAscension(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null // Should be TelescopeClient
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          fetchTelescopeProperties: (deviceId: string) => Promise<boolean>
-        },
-        deviceId: string,
-        rate: number
-      ): Promise<boolean> {
+      async setTelescopeGuideRateRightAscension(this: UnifiedStoreType, deviceId: string, rate: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting guide rate right ascension for telescope ${deviceId} to ${rate}.`)
         const client = this.getDeviceClient(deviceId) as TelescopeClient | null
         if (!client) {
@@ -692,17 +655,7 @@ export function createTelescopeActions() {
         }
       },
 
-      async setTelescopeSlewSettleTime(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null // Should be TelescopeClient
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          fetchTelescopeProperties: (deviceId: string) => Promise<boolean>
-        },
-        deviceId: string,
-        time: number
-      ): Promise<boolean> {
+      async setTelescopeSlewSettleTime(this: UnifiedStoreType, deviceId: string, time: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting slew settle time for telescope ${deviceId} to ${time}.`)
         const client = this.getDeviceClient(deviceId) as TelescopeClient | null
         if (!client) {
@@ -730,12 +683,7 @@ export function createTelescopeActions() {
        * Slew the telescope to specified coordinates
        */
       async slewToCoordinates(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
+        this: UnifiedStoreType,
         deviceId: string,
         rightAscension: number,
         declination: number,
@@ -817,18 +765,7 @@ export function createTelescopeActions() {
       /**
        * Slew the telescope to Alt/Az coordinates
        */
-      async slewToAltAz(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        altitude: number,
-        azimuth: number,
-        useAsync: boolean = true
-      ): Promise<boolean> {
+      async slewToAltAz(this: UnifiedStoreType, deviceId: string, altitude: number, azimuth: number, useAsync: boolean = true): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Slewing telescope ${deviceId} to Alt/Az:`, {
           altitude,
           azimuth,
@@ -904,15 +841,7 @@ export function createTelescopeActions() {
       /**
        * Abort any in-progress slew operation
        */
-      async abortSlew(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async abortSlew(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Aborting slew for telescope ${deviceId}.`)
 
         const device = this.getDeviceById(deviceId)
@@ -950,13 +879,7 @@ export function createTelescopeActions() {
        * Slew the telescope to specified coordinates using string inputs for RA and Dec.
        */
       async slewToCoordinatesString(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-          slewToCoordinates: (deviceId: string, rightAscension: number, declination: number, useAsync?: boolean) => Promise<boolean>
-        },
+        this: UnifiedStoreType,
         deviceId: string,
         raString: string,
         decString: string,
@@ -1019,15 +942,7 @@ export function createTelescopeActions() {
       /**
        * Find Home (ASCOM Alpaca)
        */
-      async findHome(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async findHome(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Finding home for telescope ${deviceId}.`)
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1049,17 +964,7 @@ export function createTelescopeActions() {
       /**
        * Sync to Coordinates (RA/Dec)
        */
-      async syncToCoordinates(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        rightAscension: number,
-        declination: number
-      ): Promise<boolean> {
+      async syncToCoordinates(this: UnifiedStoreType, deviceId: string, rightAscension: number, declination: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Syncing telescope ${deviceId} to RA/Dec:`, { rightAscension, declination })
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1086,17 +991,7 @@ export function createTelescopeActions() {
       /**
        * Sync to Alt/Az
        */
-      async syncToAltAz(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        altitude: number,
-        azimuth: number
-      ): Promise<boolean> {
+      async syncToAltAz(this: UnifiedStoreType, deviceId: string, altitude: number, azimuth: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Syncing telescope ${deviceId} to Alt/Az:`, { altitude, azimuth })
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1122,15 +1017,7 @@ export function createTelescopeActions() {
       /**
        * Sync to Target
        */
-      async syncToTarget(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async syncToTarget(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Syncing telescope ${deviceId} to target.`)
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1150,15 +1037,7 @@ export function createTelescopeActions() {
       /**
        * Slew to Target (ASCOM Alpaca)
        */
-      async slewToTarget(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async slewToTarget(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Slewing telescope ${deviceId} to target.`)
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1178,15 +1057,7 @@ export function createTelescopeActions() {
       /**
        * Slew to Target Async (ASCOM Alpaca)
        */
-      async slewToTargetAsync(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async slewToTargetAsync(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Slewing telescope ${deviceId} to target (async).`)
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1206,17 +1077,7 @@ export function createTelescopeActions() {
       /**
        * Move Axis (ASCOM Alpaca)
        */
-      async moveAxis(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        axis: number,
-        rate: number
-      ): Promise<boolean> {
+      async moveAxis(this: UnifiedStoreType, deviceId: string, axis: number, rate: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Moving axis ${axis} at rate ${rate} for telescope ${deviceId}.`)
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1236,17 +1097,7 @@ export function createTelescopeActions() {
       /**
        * Pulse Guide (ASCOM Alpaca)
        */
-      async pulseGuide(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        direction: number,
-        duration: number
-      ): Promise<boolean> {
+      async pulseGuide(this: UnifiedStoreType, deviceId: string, direction: number, duration: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Pulse guiding telescope ${deviceId} direction ${direction} for ${duration}ms.`)
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1266,16 +1117,7 @@ export function createTelescopeActions() {
       /**
        * Set Target Right Ascension (ASCOM Alpaca)
        */
-      async setTargetRightAscension(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        rightAscension: number
-      ): Promise<boolean> {
+      async setTargetRightAscension(this: UnifiedStoreType, deviceId: string, rightAscension: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting target right ascension for telescope ${deviceId}: ${rightAscension}`)
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1301,16 +1143,7 @@ export function createTelescopeActions() {
       /**
        * Set Target Declination (ASCOM Alpaca)
        */
-      async setTargetDeclination(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (deviceId: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        declination: number
-      ): Promise<boolean> {
+      async setTargetDeclination(this: UnifiedStoreType, deviceId: string, declination: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Setting target declination for telescope ${deviceId}: ${declination}`)
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
@@ -1337,14 +1170,7 @@ export function createTelescopeActions() {
        * Get isPulseGuiding (ASCOM Alpaca)
        * This is a getter, polled if not available via devicestate.
        */
-      async getIsPulseGuiding(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): Promise<boolean | null> {
+      async getIsPulseGuiding(this: UnifiedStoreType, deviceId: string): Promise<boolean | null> {
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
@@ -1363,14 +1189,7 @@ export function createTelescopeActions() {
       /**
        * Get Aperture Area (ASCOM Alpaca)
        */
-      async getApertureArea(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): Promise<number | null> {
+      async getApertureArea(this: UnifiedStoreType, deviceId: string): Promise<number | null> {
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
@@ -1389,14 +1208,7 @@ export function createTelescopeActions() {
       /**
        * Get Aperture Diameter (ASCOM Alpaca)
        */
-      async getApertureDiameter(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): Promise<number | null> {
+      async getApertureDiameter(this: UnifiedStoreType, deviceId: string): Promise<number | null> {
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
@@ -1415,15 +1227,7 @@ export function createTelescopeActions() {
       /**
        * Get Axis Rates (ASCOM Alpaca)
        */
-      async getAxisRates(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string,
-        axis: number
-      ): Promise<object[] | null> {
+      async getAxisRates(this: UnifiedStoreType, deviceId: string, axis: number): Promise<object[] | null> {
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
@@ -1443,16 +1247,7 @@ export function createTelescopeActions() {
       /**
        * Get Destination Side Of Pier (ASCOM Alpaca)
        */
-      async getDestinationSideOfPier(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string,
-        rightAscension: number,
-        declination: number
-      ): Promise<number | null> {
+      async getDestinationSideOfPier(this: UnifiedStoreType, deviceId: string, rightAscension: number, declination: number): Promise<number | null> {
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
@@ -1472,14 +1267,7 @@ export function createTelescopeActions() {
       /**
        * Get Guide Rate Declination (ASCOM Alpaca)
        */
-      async getGuideRateDeclination(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): Promise<number | null> {
+      async getGuideRateDeclination(this: UnifiedStoreType, deviceId: string): Promise<number | null> {
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
@@ -1498,14 +1286,7 @@ export function createTelescopeActions() {
       /**
        * Get Guide Rate Right Ascension (ASCOM Alpaca)
        */
-      async getGuideRateRightAscension(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): Promise<number | null> {
+      async getGuideRateRightAscension(this: UnifiedStoreType, deviceId: string): Promise<number | null> {
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
@@ -1524,14 +1305,7 @@ export function createTelescopeActions() {
       /**
        * Get Slew Settle Time (ASCOM Alpaca)
        */
-      async getSlewSettleTime(
-        this: TelescopeState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): Promise<number | null> {
+      async getSlewSettleTime(this: UnifiedStoreType, deviceId: string): Promise<number | null> {
         const device = this.getDeviceById(deviceId)
         if (!device) throw new Error(`Device not found: ${deviceId}`)
         if (device.type !== 'telescope') throw new Error(`Device ${deviceId} is not a telescope`)
