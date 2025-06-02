@@ -1,11 +1,3 @@
-// Status: Good - Core Module
-// This is the core actions module that:
-// - Implements fundamental device operations
-// - Handles common device functionality
-// - Provides shared action utilities
-// - Supports device abstraction
-// - Maintains core operation state
-
 /**
  * Core Actions Module
  *
@@ -29,8 +21,9 @@ export interface CoreState {
   deviceStateCache: Map<string, { timestamp: number; data: Record<string, unknown> }>
   _propertyPollingIntervals: Map<string, number>
   _deviceStateAvailableProps: Map<string, Set<string>>
-  _deviceStateUnsupported: Set<string>
+  deviceStateUnsupported: Set<string>
   lastDeviceStateFetch: Map<string, { timestamp: number; data: Record<string, unknown> }>
+  devicePropertyUnsupported: Map<string, Set<string>>
 }
 
 // All actions will now use UnifiedStoreType for `this` to avoid context mismatch errors,
@@ -231,6 +224,8 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           stateHistory: [...(device.stateHistory || []), { from: 'connecting', to: 'connected', timestamp: Date.now() }]
         })
         this._emitEvent({ type: 'deviceConnected', deviceId })
+
+        // TODO: we should not be checking device types in coreActions
         if (device.type === 'camera' && this.fetchCameraProperties) {
           try {
             log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is a camera, fetching properties`)
@@ -326,8 +321,8 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           if (this._deviceStateAvailableProps) {
             this._deviceStateAvailableProps.delete(deviceId)
           }
-          if (this._deviceStateUnsupported) {
-            this._deviceStateUnsupported.delete(deviceId)
+          if (this.deviceStateUnsupported) {
+            this.deviceStateUnsupported.delete(deviceId)
           }
         }
         if (device.type === 'focuser' && this.handleFocuserDisconnected) {
@@ -430,8 +425,8 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           log.debug({ deviceIds: [deviceId] }, `[CoreActions] Clearing devicestate tracking for telescope ${deviceId}`)
           this._deviceStateAvailableProps.delete(deviceId)
         }
-        if (this._deviceStateUnsupported) {
-          this._deviceStateUnsupported.delete(deviceId)
+        if (this.deviceStateUnsupported) {
+          this.deviceStateUnsupported.delete(deviceId)
         }
       }
       this.devices.delete(deviceId)
@@ -651,7 +646,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       options?: { cacheTtlMs?: number; forceRefresh?: boolean }
     ): Promise<Record<string, unknown> | null> {
       const client = this.deviceClients.get(deviceId) as AlpacaClient | undefined
-      if (!client) return null
+      if (!client) throw new Error(`No API client available for device ${deviceId}`)
 
       const cachedResult = this.lastDeviceStateFetch.get(deviceId)
       const cacheTtlMs = options?.cacheTtlMs ?? 0
@@ -659,15 +654,11 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       if (cachedResult && cacheTtlMs > 0 && !forceRefresh && Date.now() - cachedResult.timestamp < cacheTtlMs) {
         return cachedResult.data
       }
-      try {
-        const state = await client.getDeviceState()
-        const timestamp = Date.now()
-        this.lastDeviceStateFetch.set(deviceId, { timestamp, data: state || {} })
-        return state
-      } catch (error) {
-        log.error({ deviceIds: [deviceId] }, `[CoreActions] Error fetching state for device ${deviceId}:`, error)
-        return null
-      }
+
+      const state = await client.getDeviceState()
+      const timestamp = Date.now()
+      this.lastDeviceStateFetch.set(deviceId, { timestamp, data: state || {} })
+      return state
     },
 
     async executeDeviceOperation<T>(
@@ -734,17 +725,23 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         }
         throw new Error(`No API client available for device ${deviceId}`)
       }
-      try {
-        return await operation(client)
-      } catch (error) {
-        log.error({ deviceIds: [deviceId] }, `[CoreActions] Error executing operation on device ${deviceId}:`, error)
-        throw error
-      }
+      return await operation(client)
     },
 
     async getDeviceProperty(this: UnifiedStoreType, deviceId: string, property: string): Promise<unknown> {
       return this.executeDeviceOperation(deviceId, async (client: AlpacaClient) => {
-        return await client.getProperty(property)
+        if (this.devicePropertyUnsupported.get(deviceId)?.has(property)) {
+          return null
+        }
+        try {
+          return await client.getProperty(property)
+        } catch (error) {
+          if (error instanceof Error && error.message.toLowerCase().includes('property')) {
+            log.info({ deviceIds: [deviceId] }, `[CoreActions] Failed to get Property ${property} for device ${deviceId}:`, error)
+            this.devicePropertyUnsupported.set(deviceId, new Set([...(this.devicePropertyUnsupported.get(deviceId) || []), property]))
+          }
+          throw error
+        }
       })
     },
 
@@ -851,19 +848,29 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         throw new Error(`Device not found: ${deviceId}`)
       }
       const normalizedProperty = property.toLowerCase()
-      try {
-        const deviceState = await this.fetchDeviceState(deviceId, {
-          cacheTtlMs: 500,
-          forceRefresh: false
-        })
-        if (deviceState && deviceState[normalizedProperty] !== undefined) {
-          return deviceState[normalizedProperty]
+
+      if (!this.deviceStateUnsupported.has(deviceId)) {
+        try {
+          const deviceState = await this.fetchDeviceState(deviceId, {
+            cacheTtlMs: 500,
+            forceRefresh: false
+          })
+
+          if (deviceState && deviceState[normalizedProperty] !== undefined) {
+            return deviceState[normalizedProperty]
+          }
+        } catch (error) {
+          if (error instanceof Error && error.message.toLowerCase().includes('devicestate')) {
+            log.info(
+              { deviceIds: [deviceId] },
+              `[CoreActions] Devicestate appears to be unsupported for ${deviceId}, falling back to individual property fetch:`,
+              error
+            )
+            this.deviceStateUnsupported.add(deviceId)
+          }
         }
-        return await this.getDeviceProperty(deviceId, property)
-      } catch (error) {
-        log.debug({ deviceIds: [deviceId] }, `[CoreActions] Devicestate failed for ${deviceId}, falling back to individual property fetch:`, error)
-        return await this.getDeviceProperty(deviceId, property)
       }
+      return await this.getDeviceProperty(deviceId, property)
     }
   }
 
@@ -878,8 +885,9 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       deviceStateCache: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),
       _propertyPollingIntervals: new Map<string, number>(),
       _deviceStateAvailableProps: new Map<string, Set<string>>(),
-      _deviceStateUnsupported: new Set<string>(),
-      lastDeviceStateFetch: new Map<string, { timestamp: number; data: Record<string, unknown> }>()
+      deviceStateUnsupported: new Set<string>(),
+      lastDeviceStateFetch: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),
+      devicePropertyUnsupported: new Map<string, Set<string>>()
     }),
     actions: actionsDefinition
   }

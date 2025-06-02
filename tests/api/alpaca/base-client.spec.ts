@@ -737,31 +737,6 @@ describe('AlpacaClient', () => {
       // Current implementation returns {}, let's stick to that.
     })
 
-    it('should return null on error fetching device state and log a warning', async () => {
-      // consoleWarnSpy is already initialized in the describe block's beforeEach
-      // const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-      mockFetch.mockReset() // Reset any previous mocks
-      const errorJson = async () => {
-        throw new Error('Simulated JSON parse failure for devicestate HTTP error')
-      }
-      // With DEFAULT_OPTIONS.retries = 0, only one attempt will be made by getProperty
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'DS Error 1', json: errorJson })
-
-      const state = await client.getDeviceState()
-      expect(state).toBeNull()
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(`Error fetching device state for ${deviceType} ${deviceNumber}:`),
-        expect.objectContaining({
-          message: 'HTTP error 500: DS Error 1',
-          statusCode: 500,
-          type: ErrorType.SERVER
-        })
-      )
-      // consoleWarnSpy.mockRestore() // This is handled by the describe block's afterEach
-    })
-
     it('should return null if device state is not supported (400 error)', async () => {
       // ... existing code ...
     })

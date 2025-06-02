@@ -469,34 +469,29 @@ export class AlpacaClient {
    * Get device state
    */
   public async getDeviceState(): Promise<Record<string, unknown> | null> {
-    try {
-      const result = await this.getProperty('devicestate')
-      const stateResult: Record<string, unknown> = {}
+    const result = await this.getProperty('devicestate')
+    const stateResult: Record<string, unknown> = {}
 
-      // The devicestate response should be an array of {Name, Value} objects
-      if (result && Array.isArray(result)) {
-        // Convert the array of {Name, Value} objects to a flat object with lowercase keys
-        for (const item of result) {
-          if (item && typeof item === 'object' && 'Name' in item && 'Value' in item) {
-            // Store with lowercase key for consistency with our property naming
-            stateResult[item.Name.toLowerCase()] = item.Value
-          }
+    // The devicestate response should be an array of {Name, Value} objects
+    if (result && Array.isArray(result)) {
+      // Convert the array of {Name, Value} objects to a flat object with lowercase keys
+      for (const item of result) {
+        if (item && typeof item === 'object' && 'Name' in item && 'Value' in item) {
+          // Store with lowercase key for consistency with our property naming
+          stateResult[item.Name.toLowerCase()] = item.Value
         }
-        return stateResult
       }
-      // Handle case where devicestate returns direct object (non-standard but possible)
-      else if (result && typeof result === 'object' && !Array.isArray(result)) {
-        // Try to extract properties from the object
-        for (const [key, value] of Object.entries(result)) {
-          stateResult[key.toLowerCase()] = value
-        }
-        return Object.keys(stateResult).length > 0 ? stateResult : null
-      }
-
-      return null
-    } catch (error) {
-      log.warn(`Error fetching device state for ${this.deviceType} ${this.deviceNumber}:`, error)
-      return null
+      return stateResult
     }
+    // Handle case where devicestate returns direct object (non-standard but possible)
+    else if (result && typeof result === 'object' && !Array.isArray(result)) {
+      // Try to extract properties from the object
+      for (const [key, value] of Object.entries(result)) {
+        stateResult[key.toLowerCase()] = value
+      }
+      return Object.keys(stateResult).length > 0 ? stateResult : null
+    }
+
+    return null
   }
 }

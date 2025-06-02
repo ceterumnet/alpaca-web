@@ -32,17 +32,12 @@ export function toAlpacaCase(property: string): string {
  */
 export async function getAlpacaProperty<T = unknown>(deviceId: string, property: string): Promise<T | null> {
   const store = useUnifiedStore() as unknown as UnifiedStoreExtended
-  try {
-    // API method names are lowercase
-    const apiMethod = property.toLowerCase()
+  // API method names are lowercase
+  const apiMethod = property.toLowerCase()
 
-    // Use devicestate optimized property access if available
-    const value = await store.getDevicePropertyOptimized(deviceId, apiMethod)
-    return fromAscomValue(value) as T
-  } catch (error) {
-    log.error({ deviceIds: [deviceId], property }, `Error getting property ${property}:`, error)
-    return null
-  }
+  // Use devicestate optimized property access if available
+  const value = await store.getDevicePropertyOptimized(deviceId, apiMethod)
+  return fromAscomValue(value) as T
 }
 
 /**
@@ -51,20 +46,15 @@ export async function getAlpacaProperty<T = unknown>(deviceId: string, property:
  */
 export async function setAlpacaProperty<T = unknown>(deviceId: string, property: string, value: T): Promise<boolean> {
   const store = useUnifiedStore() as unknown as UnifiedStoreExtended
-  try {
-    // API method names are lowercase
-    const apiMethod = property.toLowerCase()
-    // Parameter names need proper casing (PascalCase)
-    const paramName = toAlpacaCase(property)
-    // Create the parameter object with proper casing
-    const param = { [paramName]: value }
+  // API method names are lowercase
+  const apiMethod = property.toLowerCase()
+  // Parameter names need proper casing (PascalCase)
+  const paramName = toAlpacaCase(property)
+  // Create the parameter object with proper casing
+  const param = { [paramName]: value }
 
-    await store.callDeviceMethod(deviceId, apiMethod, [param])
-    return true
-  } catch (error) {
-    log.error({ deviceIds: [deviceId], property }, `Error setting property ${property}:`, error)
-    return false
-  }
+  await store.callDeviceMethod(deviceId, apiMethod, [param])
+  return true
 }
 
 /**
@@ -76,22 +66,18 @@ export async function callAlpacaMethod<T = unknown, P = Record<string, unknown>>
   params: P = {} as P
 ): Promise<T | null> {
   const store = useUnifiedStore() as unknown as UnifiedStoreExtended
-  try {
-    // API method names are lowercase
-    const apiMethod = method.toLowerCase()
-    // Convert parameter names to proper casing (PascalCase)
-    const formattedParams: Record<string, unknown> = {}
 
-    for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
-      formattedParams[toAlpacaCase(key)] = value
-    }
+  // API method names are lowercase
+  const apiMethod = method.toLowerCase()
+  // Convert parameter names to proper casing (PascalCase)
+  const formattedParams: Record<string, unknown> = {}
 
-    const result = await store.callDeviceMethod(deviceId, apiMethod, [formattedParams])
-    return result as T
-  } catch (error) {
-    log.error({ deviceIds: [deviceId], method }, `Error calling method ${method}:`, error)
-    throw error
+  for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+    formattedParams[toAlpacaCase(key)] = value
   }
+
+  const result = await store.callDeviceMethod(deviceId, apiMethod, [formattedParams])
+  return result as T
 }
 
 /**

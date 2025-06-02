@@ -75,13 +75,13 @@ onMounted(() => {
   log.debug('Has dark-theme class:', document.documentElement.classList.contains('dark-theme')) // Use log instead of this.$log
 
   // Create a welcome notification
-  setTimeout(() => {
-    notificationStore.showSuccess('Welcome to Alpaca Web', {
-      autoDismiss: true,
-      position: 'top-right',
-      duration: 5000
-    })
-  }, 1000)
+  // setTimeout(() => {
+  //   notificationStore.showSuccess('Welcome to Alpaca Web', {
+  //     autoDismiss: true,
+  //     position: 'top-right',
+  //     duration: 5000
+  //   })
+  // }, 1000)
 
   // Start automatic device discovery
   runInitialDiscovery()

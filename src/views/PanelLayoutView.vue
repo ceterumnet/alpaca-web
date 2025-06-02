@@ -1,20 +1,13 @@
-// Status: Core View // This view implements the main panel layout system with: // - Grid-based layout using LayoutContainer // - Support for multiple
-device panels // - Integration with layout store for persistence // - Proper responsive behavior
-
 <script setup lang="ts">
 import log from '@/plugins/logger'
 
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/useLayoutStore'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import LayoutContainer from '@/components/layout/LayoutContainer.vue'
-import type { GridLayoutDefinition, LayoutRow, LayoutCell as StoreLayoutCell } from '@/types/layouts/LayoutDefinition'
-// import StaticLayoutChooser from '@/components/layout/StaticLayoutChooser.vue'
 import Icon from '@/components/ui/Icon.vue'
 import type { Component } from 'vue'
-
-// Import the device component registry
 import deviceComponentRegistry from '@/services/DeviceComponentRegistry'
 import { panelRegistry, getOrCreatePanelInstance } from '@/services/DeviceComponentRegistry'
 
@@ -26,8 +19,6 @@ const route = useRoute()
 
 // Layout ID to display - default to 'default'
 const currentLayoutId = ref(layoutStore.currentLayoutId || 'default')
-
-const showStaticLayoutChooser = ref(false)
 
 const maximizedPanelId = ref<string | null>(null)
 
@@ -212,40 +203,36 @@ async function toggleCellConnection(cellId: string) {
 }
 
 // Watch for external changes to device connection statuses (Optimized)
-watch(
-  relevantDeviceStatuses,
-  (currentDeviceStatuses /*, previousDeviceStatuses */) => {
-    // The watcher now fires only if id or isConnected changes for any device, or if devices are added/removed.
-    log.debug('PanelLayoutView - relevantDeviceStatuses changed, updating cell connection statuses.')
+watch(relevantDeviceStatuses, (currentDeviceStatuses /*, previousDeviceStatuses */) => {
+  // The watcher now fires only if id or isConnected changes for any device, or if devices are added/removed.
+  log.debug('PanelLayoutView - relevantDeviceStatuses changed, updating cell connection statuses.')
 
-    currentDeviceStatuses.forEach((deviceStatus) => {
-      // Iterate over cells to find which ones are assigned this device
-      Object.entries(cellDeviceAssignments.value).forEach(([cellId, assignedDeviceId]) => {
-        if (assignedDeviceId === deviceStatus.id) {
-          // Check if the connection status for this cell needs an update
-          if (cellConnectionStatus.value[cellId] !== deviceStatus.isConnected) {
-            log.debug(
-              { deviceIds: [deviceStatus.id] },
-              `Updating connection status for cell ${cellId} (device ${deviceStatus.id}) to ${deviceStatus.isConnected}`
-            )
-            cellConnectionStatus.value[cellId] = deviceStatus.isConnected
-          }
+  currentDeviceStatuses.forEach((deviceStatus) => {
+    // Iterate over cells to find which ones are assigned this device
+    Object.entries(cellDeviceAssignments.value).forEach(([cellId, assignedDeviceId]) => {
+      if (assignedDeviceId === deviceStatus.id) {
+        // Check if the connection status for this cell needs an update
+        if (cellConnectionStatus.value[cellId] !== deviceStatus.isConnected) {
+          log.debug(
+            { deviceIds: [deviceStatus.id] },
+            `Updating connection status for cell ${cellId} (device ${deviceStatus.id}) to ${deviceStatus.isConnected}`
+          )
+          cellConnectionStatus.value[cellId] = deviceStatus.isConnected
         }
-      })
+      }
     })
-    // Note: No need for { deep: true } on relevantDeviceStatuses if we are careful about how it's constructed.
-    // Vue's default watcher for a computed property returning an array of objects will trigger if the array
-    // reference changes or if items are added/removed. If isConnected mutates on an existing object within
-    // devicesList and relevantDeviceStatuses.map creates new objects, the watcher will fire.
-    // If devicesList itself is replaced, relevantDeviceStatuses recomputes, watcher fires.
-    // If a device object within devicesList has its isConnected property mutated directly, AND
-    // relevantDeviceStatuses.map re-uses existing device objects (it does not, it creates new ones),
-    // then deep:true would be needed. But since .map creates new objects, it should be fine.
-    // Let's keep deep: true for safety for now, as per the original optimization note,
-    // but it might be removable if the store guarantees devicesList array itself is replaced on changes.
-  },
-  { deep: true, immediate: true }
-)
+  })
+  // Note: No need for { deep: true } on relevantDeviceStatuses if we are careful about how it's constructed.
+  // Vue's default watcher for a computed property returning an array of objects will trigger if the array
+  // reference changes or if items are added/removed. If isConnected mutates on an existing object within
+  // devicesList and relevantDeviceStatuses.map creates new objects, the watcher will fire.
+  // If devicesList itself is replaced, relevantDeviceStatuses recomputes, watcher fires.
+  // If a device object within devicesList has its isConnected property mutated directly, AND
+  // relevantDeviceStatuses.map re-uses existing device objects (it does not, it creates new ones),
+  // then deep:true would be needed. But since .map creates new objects, it should be fine.
+  // Let's keep deep: true for safety for now, as per the original optimization note,
+  // but it might be removable if the store guarantees devicesList array itself is replaced on changes.
+})
 
 // Get all available devices (not filtered by type)
 const allAvailableDevices = computed(() => {
@@ -392,9 +379,6 @@ watch(
         // Log performance metrics after layout change is complete
         const layoutChangeTime = performance.now() - startTime
         log.debug(`Layout change to ${currentLayoutId.value} took ${layoutChangeTime.toFixed(2)}ms`)
-
-        // Log component registry metrics to monitor performance
-        deviceComponentRegistry.logPerformanceMetrics()
       }
     })
   },

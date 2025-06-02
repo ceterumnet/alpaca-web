@@ -1,11 +1,3 @@
-// Status: Good - Core Component 
-// This is the layout container component that: 
-// - Provides base layout structure 
-// - Handles layout organization 
-// - Supports responsive design 
-// - Manages layout state 
-// - Maintains layout consistency
-
 <script setup lang="ts">
 import log from '@/plugins/logger'
 import { computed, onMounted, watch } from 'vue'
@@ -21,13 +13,13 @@ const layoutStore = useLayoutStore()
 // Local computed properties to ensure reactivity
 const currentLayout = computed(() => {
   log.debug({ layoutId: props.layoutId }, 'Computing currentLayout with layoutId:')
-  return layoutStore.layouts.find(layout => layout.id === props.layoutId) || null
+  return layoutStore.layouts.find((layout) => layout.id === props.layoutId) || null
 })
 
 const currentDeviceLayout = computed(() => {
   if (!currentLayout.value) return null
   log.debug({ viewport: layoutStore.currentViewport }, 'Computing currentDeviceLayout for viewport:')
-  return currentLayout.value.layouts.find(layout => layout.deviceType === layoutStore.currentViewport) || null
+  return currentLayout.value.layouts.find((layout) => layout.deviceType === layoutStore.currentViewport) || null
 })
 
 // Watch for changes in the layoutId prop
@@ -35,7 +27,7 @@ watch(
   () => props.layoutId,
   (newLayoutId) => {
     log.debug({ newLayoutId }, 'LayoutContainer - Layout ID changed:')
-    log.debug({ availableLayouts: layoutStore.layouts.map(l => l.id) }, 'LayoutContainer - Available layouts:')
+    log.debug({ availableLayouts: layoutStore.layouts.map((l) => l.id) }, 'LayoutContainer - Available layouts:')
     layoutStore.setCurrentLayout(newLayoutId)
   }
 )
@@ -43,7 +35,7 @@ watch(
 // Set the current layout when component is mounted
 onMounted(() => {
   log.debug({ layoutId: props.layoutId }, 'LayoutContainer - Mounted with layout ID:')
-  log.debug({ availableLayouts: layoutStore.layouts.map(l => l.id) }, 'LayoutContainer - Available layouts:')
+  log.debug({ availableLayouts: layoutStore.layouts.map((l) => l.id) }, 'LayoutContainer - Available layouts:')
   layoutStore.setCurrentLayout(props.layoutId)
 })
 
@@ -58,18 +50,26 @@ watch(
 watch(
   () => layoutStore.currentDeviceLayout,
   (deviceLayout) => {
-    log.debug('LayoutContainer - Current device layout changed:', 
-      deviceLayout ? `${deviceLayout.deviceType} with ${deviceLayout.positions.length} panels` : 'null')
+    log.debug(
+      'LayoutContainer - Current device layout changed:',
+      deviceLayout ? `${deviceLayout.deviceType} with ${deviceLayout.positions.length} panels` : 'null'
+    )
   }
 )
 
 // Debug current positions
-watch(currentDeviceLayout, (deviceLayout) => {
-  if (deviceLayout) {
-    log.debug(`LayoutContainer - Current device (${deviceLayout.deviceType}) positions:`, 
-      deviceLayout.positions.map(p => `${p.panelId}: (${p.x},${p.y}) ${p.width}x${p.height}`))
-  }
-}, { immediate: true })
+watch(
+  currentDeviceLayout,
+  (deviceLayout) => {
+    if (deviceLayout) {
+      log.debug(
+        `LayoutContainer - Current device (${deviceLayout.deviceType}) positions:`,
+        deviceLayout.positions.map((p) => `${p.panelId}: (${p.x},${p.y}) ${p.width}x${p.height}`)
+      )
+    }
+  },
+  { immediate: true }
+)
 
 // Determine if we're in a mobile view
 const isMobileView = computed(() => layoutStore.currentViewport === 'mobile')
@@ -88,32 +88,31 @@ function getPanelStyle(position: PanelPosition) {
 
   // Use row/column span to properly position cells
   log.debug({ position }, `Panel ${position.panelId}: Position (${position.x}, ${position.y}), Size ${position.width}x${position.height}`)
-  
+
   const style = {
     gridColumnStart: position.x + 1,
     gridColumnEnd: position.x + position.width + 1,
     gridRowStart: position.y + 1,
     gridRowEnd: position.y + position.height + 1 // The correct position takes into account the height
   }
-  
-  log.debug({ position, style }, `Panel ${position.panelId}: Grid position - Column ${style.gridColumnStart}/${style.gridColumnEnd}, Row ${style.gridRowStart}/${style.gridRowEnd}`)
-  
+
+  log.debug(
+    { position, style },
+    `Panel ${position.panelId}: Grid position - Column ${style.gridColumnStart}/${style.gridColumnEnd}, Row ${style.gridRowStart}/${style.gridRowEnd}`
+  )
+
   return style
 }
 
 // Back to standard position handling
 const currentPositions = computed(() => {
-  if (!currentDeviceLayout.value) return [];
-  return currentDeviceLayout.value.positions;
-});
-
+  if (!currentDeviceLayout.value) return []
+  return currentDeviceLayout.value.positions
+})
 </script>
 
 <template>
-  <div 
-    class="aw-layout-container" 
-    :class="{ 'aw-layout-container--mobile': isMobileView }"
-  >
+  <div class="aw-layout-container" :class="{ 'aw-layout-container--mobile': isMobileView }">
     <div v-if="currentLayout && currentDeviceLayout" class="aw-layout-container__grid">
       <div
         v-for="position in currentPositions"
@@ -125,8 +124,7 @@ const currentPositions = computed(() => {
         :data-device-type="position.deviceType"
       >
         <!-- Use slot if provided, otherwise fall back to BasePanel -->
-        <slot :name="position.panelId" :position="position">        
-        </slot>
+        <slot :name="position.panelId" :position="position"> </slot>
       </div>
     </div>
     <div v-else class="aw-layout-container__empty">
@@ -142,6 +140,13 @@ const currentPositions = computed(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+@media (width <= 640px) {
+  .aw-layout-container {
+    display: block;
+    overflow: auto;
+  }
 }
 
 .aw-layout-container__grid {
@@ -165,20 +170,20 @@ const currentPositions = computed(() => {
 
   /* Show border for debugging */
   outline: 1px dashed var(--aw-color-debug-border);
-  
+
   /* Firefox scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: var(--aw-scrollbar-thumb) var(--aw-scrollbar-track);
-  
+
   /* WebKit scrollbar styling */
   &::-webkit-scrollbar {
     width: var(--aw-spacing-sm);
   }
-  
+
   &::-webkit-scrollbar-track {
     background: var(--aw-scrollbar-track);
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background-color: var(--aw-scrollbar-thumb);
     border-radius: var(--aw-spacing-xs);
