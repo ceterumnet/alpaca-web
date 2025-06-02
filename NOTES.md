@@ -6,6 +6,22 @@
 - I need to run an audit to ensure the stores use a consistent polling architecture. Perhaps that can be part of the devicestate revamp
 - Need to review the \*DeviceProperties vs the states of the stores
 
+```
+I'm reviewing this file and also @coreActions.ts and I think the functionality in this file really belongs as part of @coreActions.ts .
+
+I think this intent was lost a bit during one of many refactors, and only the @SimplifiedCameraPanel.vue is leveraging this file properly.
+
+However, this file handles the various nuances of property names and their respective mappings between alpaca and the rest of the system.
+
+Also, there is some weirdness and inconsistency between @switch-client.ts directly leveraging @value-transforms.ts which leads me to believe that @value-transforms.ts is also something that should just be part of @coreActions.ts or at least only leveraged inside of @coreActions.ts given that it is quite generic.
+
+Additionally, I think that @property-mapping.ts may be a different strategy that is better than @value-transforms.ts / @alpacaPropertyAccess.ts
+
+So you can see why I'm interesting in getting a rigorous analysis of this so I can determine what the best path forward is.
+
+Please review and let me know what your thoughts are
+```
+
 FUTURE:
 
 - [ ] Wire up PHD2 monitor - https://github.com/OpenPHDGuiding/phd2/wiki/EventMonitoring

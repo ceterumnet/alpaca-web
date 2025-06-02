@@ -1,10 +1,3 @@
-// Status: Good - Core Component
-// This is the core store implementation that:
-// - Combines modular functionality for different device types
-// - Provides a clean, maintainable architecture
-// - Integrates with the event system
-// - Manages device state and actions
-
 /**
  * Unified Store
  *
@@ -41,7 +34,7 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createCoreActions().state(),
       ...createEventSystem().state(),
       ...createDiscoveryActions().state(),
-      ...createCameraActions().state(),
+      // ...createCameraActions().state(),
       ...createTelescopeActions().state(),
       ...createFilterWheelActions().state(),
       ...createDomeActions().state(),

@@ -21,15 +21,9 @@
 
 import log from '@/plugins/logger'
 import type { DeviceEvent, Device } from '../types/device-store.types'
-import type { AlpacaClient } from '@/api/AlpacaClient'
+// import type { AlpacaClient } from '@/api/AlpacaClient'
 import { AlpacaClient as BaseAlpacaClient } from '@/api/alpaca/base-client'
-
-// Define camera state interface with property polling intervals
-export interface CameraState {
-  _propertyPollingIntervals: Map<string, number>
-  _deviceStateAvailableProps: Map<string, Set<string>> // Track which properties are available via devicestate for each device
-  _deviceStateUnsupported: Set<string> // Track devices that don't support devicestate
-}
+import type { UnifiedStoreType } from '../UnifiedStore'
 
 // Define an interface for the actions specific to the camera module
 // This helps in typing 'this' context for actions if needed, and for clear definition of available actions
@@ -60,28 +54,10 @@ export interface CameraActionsSignatures {
   // getCameraSubExposureDuration might be covered by fetchCameraProperties if subexposureduration is polled
 }
 
-export function createCameraActions() {
+export function createCameraActions(): { actions: CameraActionsSignatures } {
   return {
-    state: (): CameraState => ({
-      _propertyPollingIntervals: new Map<string, number>(),
-      _deviceStateAvailableProps: new Map<string, Set<string>>(),
-      _deviceStateUnsupported: new Set<string>()
-    }),
-
     actions: {
-      async startCameraExposure(
-        this: CameraState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (id: string, method: string, args: unknown[]) => Promise<unknown>
-          trackExposureProgress: (id: string, exposureTime: number) => void
-        },
-        deviceId: string,
-        exposureTime: number,
-        isLight: boolean = true
-      ): Promise<boolean> {
+      async startCameraExposure(this: UnifiedStoreType, deviceId: string, exposureTime: number, isLight: boolean = true): Promise<boolean> {
         const device = this.getDeviceById(deviceId)
         if (!device) {
           log.error({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Device ${deviceId} not found for startCameraExposure`)
@@ -155,17 +131,7 @@ export function createCameraActions() {
         }
       },
 
-      trackExposureProgress(
-        this: CameraState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          handleExposureComplete: (id: string) => Promise<void>
-        },
-        deviceId: string,
-        exposureTime: number
-      ): void {
+      trackExposureProgress(this: UnifiedStoreType, deviceId: string, exposureTime: number): void {
         const device = this.getDeviceById(deviceId)
         if (!device) {
           log.error({ deviceIds: [deviceId] }, `[UnifiedStore/cameraActions] Device ${deviceId} not found for trackExposureProgress`) // Restored original log
@@ -410,16 +376,7 @@ export function createCameraActions() {
         }
       },
 
-      async handleExposureComplete(
-        this: CameraState & {
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          getDeviceClient: (id: string) => AlpacaClient | null
-          callDeviceMethod: (id: string, method: string, args: unknown[]) => Promise<unknown>
-          getDeviceById: (id: string) => Device | null
-        },
-        deviceId: string
-      ): Promise<void> {
+      async handleExposureComplete(this: UnifiedStoreType, deviceId: string): Promise<void> {
         log.debug({ deviceIds: [deviceId] }, `Handling exposure completion for camera ${deviceId}`)
 
         try {
@@ -584,14 +541,7 @@ export function createCameraActions() {
         }
       },
 
-      async abortCameraExposure(
-        this: CameraState & {
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (id: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async abortCameraExposure(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `Aborting exposure on camera ${deviceId}`)
 
         try {
@@ -628,16 +578,7 @@ export function createCameraActions() {
         }
       },
 
-      async setCameraCooler(
-        this: CameraState & {
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (id: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        enabled: boolean,
-        targetTemperature?: number
-      ): Promise<boolean> {
+      async setCameraCooler(this: UnifiedStoreType, deviceId: string, enabled: boolean, targetTemperature?: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `Setting camera ${deviceId} cooler:`, {
           enabled,
           targetTemperature
@@ -679,16 +620,7 @@ export function createCameraActions() {
         }
       },
 
-      async setCameraBinning(
-        this: CameraState & {
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          callDeviceMethod: (id: string, method: string, args: unknown[]) => Promise<unknown>
-        },
-        deviceId: string,
-        binX: number,
-        binY: number
-      ): Promise<boolean> {
+      async setCameraBinning(this: UnifiedStoreType, deviceId: string, binX: number, binY: number): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `Setting camera ${deviceId} binning:`, { binX, binY })
 
         try {
@@ -723,17 +655,7 @@ export function createCameraActions() {
        * Fetch camera properties after successful connection
        * Updates the device store with all available camera properties
        */
-      async fetchCameraProperties(
-        this: CameraState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          startCameraPropertyPolling: (deviceId: string) => void
-          fetchDeviceState: (deviceId: string, options?: { forceRefresh?: boolean; cacheTtlMs?: number }) => Promise<Record<string, unknown> | null>
-        },
-        deviceId: string
-      ): Promise<boolean> {
+      async fetchCameraProperties(this: UnifiedStoreType, deviceId: string): Promise<boolean> {
         log.debug({ deviceIds: [deviceId] }, `Fetching properties for camera ${deviceId}`)
 
         const device = this.getDeviceById(deviceId)
@@ -868,16 +790,7 @@ export function createCameraActions() {
        * Start polling for camera read/write properties
        * These properties can change and should be periodically updated
        */
-      startCameraPropertyPolling(
-        this: CameraState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => AlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          stopCameraPropertyPolling: (deviceId: string) => void
-          fetchDeviceState: (deviceId: string, options?: { forceRefresh?: boolean; cacheTtlMs?: number }) => Promise<Record<string, unknown> | null>
-        },
-        deviceId: string
-      ): void {
+      startCameraPropertyPolling(this: UnifiedStoreType, deviceId: string): void {
         log.debug({ deviceIds: [deviceId] }, `Starting property polling for camera ${deviceId}`)
 
         const device = this.getDeviceById(deviceId)
@@ -973,7 +886,7 @@ export function createCameraActions() {
             let deviceStateResult: Record<string, unknown> | null = null
 
             // Only try devicestate if we haven't marked it as unsupported
-            if (!this._deviceStateUnsupported.has(deviceId)) {
+            if (!this.deviceStateUnsupported.has(deviceId)) {
               deviceStateResult = await this.fetchDeviceState(deviceId, {
                 forceRefresh: true, // Always get fresh data during polling
                 cacheTtlMs: pollInterval / 2 // Cache for half the polling interval
@@ -1081,12 +994,7 @@ export function createCameraActions() {
       /**
        * Stop polling for camera properties
        */
-      stopCameraPropertyPolling(
-        this: CameraState & {
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): void {
+      stopCameraPropertyPolling(this: UnifiedStoreType, deviceId: string): void {
         if (!this._propertyPollingIntervals) {
           return
         }
@@ -1108,15 +1016,7 @@ export function createCameraActions() {
       /**
        * Change the polling interval for a device
        */
-      setPropertyPollingInterval(
-        this: CameraState & {
-          getDeviceById: (id: string) => Device | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          startCameraPropertyPolling: (deviceId: string) => void
-        },
-        deviceId: string,
-        intervalMs: number
-      ): void {
+      setPropertyPollingInterval(this: UnifiedStoreType, deviceId: string, intervalMs: number): void {
         if (intervalMs < 100) {
           log.warn({ deviceIds: [deviceId] }, `Polling interval too small (${intervalMs}ms), using 100ms minimum`)
           intervalMs = 100
@@ -1136,14 +1036,7 @@ export function createCameraActions() {
        * @param deviceId ID of the camera device
        * @param format The format: 'binary' (default, uses application/imagebytes) or 'json' (fallback)
        */
-      setPreferredImageFormat(
-        this: CameraState & {
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          getDeviceById: (id: string) => Device | null
-        },
-        deviceId: string,
-        format: 'binary' | 'json'
-      ): void {
+      setPreferredImageFormat(this: UnifiedStoreType, deviceId: string, format: 'binary' | 'json'): void {
         const device = this.getDeviceById(deviceId)
         if (!device) {
           log.error({ deviceIds: [deviceId] }, `Cannot set preferred image format: Device not found ${deviceId}`)
@@ -1164,7 +1057,7 @@ export function createCameraActions() {
       /**
        * Cleanup all device state tracking when a device is disconnected or removed
        */
-      cleanupDeviceState(this: CameraState, deviceId: string): void {
+      cleanupDeviceState(this: UnifiedStoreType, deviceId: string): void {
         log.debug({ deviceIds: [deviceId] }, `Cleaning up device state tracking for camera ${deviceId}`)
 
         // Remove from device state tracking
@@ -1176,14 +1069,7 @@ export function createCameraActions() {
        * Handle device disconnection
        * Clean up all resources and stop polling
        */
-      handleDeviceDisconnected(
-        this: CameraState & {
-          stopCameraPropertyPolling: (deviceId: string) => void
-          cleanupDeviceState: (deviceId: string) => void
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): void {
+      handleDeviceDisconnected(this: UnifiedStoreType, deviceId: string): void {
         log.debug({ deviceIds: [deviceId] }, `Handling disconnection for camera ${deviceId}`)
 
         // Stop property polling
@@ -1202,13 +1088,7 @@ export function createCameraActions() {
        * Handle device connection
        * Initialize devicestate tracking and start property polling
        */
-      handleDeviceConnected(
-        this: CameraState & {
-          startCameraPropertyPolling: (deviceId: string) => void
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-        },
-        deviceId: string
-      ): void {
+      handleDeviceConnected(this: UnifiedStoreType, deviceId: string): void {
         log.debug({ deviceIds: [deviceId] }, `Handling connection for camera ${deviceId}`)
 
         // Initialize devicestate tracking for this device
@@ -1225,17 +1105,7 @@ export function createCameraActions() {
 
       // Implementation of new actions
 
-      async setCameraGain(
-        this: CameraState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => BaseAlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          fetchCameraProperties: (deviceId: string) => Promise<boolean> // To refresh state
-        },
-        deviceId: string,
-        desiredGain: number | string
-      ): Promise<void> {
+      async setCameraGain(this: UnifiedStoreType, deviceId: string, desiredGain: number | string): Promise<void> {
         const device = this.getDeviceById(deviceId)
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
         if (!device || !client) {
@@ -1296,17 +1166,7 @@ export function createCameraActions() {
         }
       },
 
-      async setCameraOffset(
-        this: CameraState & {
-          getDeviceById: (id: string) => Device | null
-          getDeviceClient: (id: string) => BaseAlpacaClient | null
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          _emitEvent: (event: DeviceEvent) => void
-          fetchCameraProperties: (deviceId: string) => Promise<boolean>
-        },
-        deviceId: string,
-        desiredOffset: number | string
-      ): Promise<void> {
+      async setCameraOffset(this: UnifiedStoreType, deviceId: string, desiredOffset: number | string): Promise<void> {
         const device = this.getDeviceById(deviceId)
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
         if (!device || !client) {
@@ -1367,15 +1227,7 @@ export function createCameraActions() {
         }
       },
 
-      async setCameraReadoutMode(
-        this: CameraState & {
-          getDeviceClient: (id: string) => BaseAlpacaClient | null
-          _emitEvent: (event: DeviceEvent) => void
-          fetchCameraProperties: (deviceId: string) => Promise<boolean>
-        },
-        deviceId: string,
-        modeIndex: number
-      ): Promise<void> {
+      async setCameraReadoutMode(this: UnifiedStoreType, deviceId: string, modeIndex: number): Promise<void> {
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setCameraReadoutMode' })
@@ -1390,18 +1242,7 @@ export function createCameraActions() {
         }
       },
 
-      async setCameraSubframe(
-        this: CameraState & {
-          getDeviceClient: (id: string) => BaseAlpacaClient | null
-          _emitEvent: (event: DeviceEvent) => void
-          fetchCameraProperties: (deviceId: string) => Promise<boolean>
-        },
-        deviceId: string,
-        startX: number,
-        startY: number,
-        numX: number,
-        numY: number
-      ): Promise<void> {
+      async setCameraSubframe(this: UnifiedStoreType, deviceId: string, startX: number, startY: number, numX: number, numY: number): Promise<void> {
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setCameraSubframe' })
@@ -1417,12 +1258,7 @@ export function createCameraActions() {
       },
 
       async stopCameraExposure(
-        this: CameraState & {
-          getDeviceClient: (id: string) => BaseAlpacaClient | null
-          _emitEvent: (event: DeviceEvent) => void
-          updateDeviceProperties: (id: string, props: Record<string, unknown>) => boolean
-          // earlyImageReadout is not a param for client.stopExposure(), Alpaca spec for StopExposure implies image is available.
-        },
+        this: UnifiedStoreType,
         deviceId: string
         // earlyImageReadout: boolean = true // Client.stopExposure does not take this.
       ): Promise<void> {
@@ -1441,15 +1277,7 @@ export function createCameraActions() {
         }
       },
 
-      async pulseGuideCamera(
-        this: CameraState & {
-          getDeviceClient: (id: string) => BaseAlpacaClient | null
-          _emitEvent: (event: DeviceEvent) => void
-        },
-        deviceId: string,
-        direction: number,
-        duration: number
-      ): Promise<void> {
+      async pulseGuideCamera(this: UnifiedStoreType, deviceId: string, direction: number, duration: number): Promise<void> {
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for pulseGuideCamera' })
@@ -1464,15 +1292,7 @@ export function createCameraActions() {
         }
       },
 
-      async setCameraSubExposureDuration(
-        this: CameraState & {
-          getDeviceClient: (id: string) => BaseAlpacaClient | null
-          _emitEvent: (event: DeviceEvent) => void
-          fetchCameraProperties: (deviceId: string) => Promise<boolean>
-        },
-        deviceId: string,
-        duration: number
-      ): Promise<void> {
+      async setCameraSubExposureDuration(this: UnifiedStoreType, deviceId: string, duration: number): Promise<void> {
         const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/camera-client').CameraClient | null
         if (!client) {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: 'Client not found for setSubExposureDuration' })
