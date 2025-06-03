@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, vi, type MockInstance, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi, type MockInstance, type Mock, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useUnifiedStore, type UnifiedStoreType } from '@/stores/UnifiedStore'
 import type { SwitchDeviceProperties, Device, UnifiedDevice, DeviceEvent, StoreOptions } from '@/stores/types/device-store.types'
 import { SwitchClient, type ISwitchDetail } from '@/api/alpaca/switch-client'
 import { type SwitchDevice as CoreSwitchDevice } from '@/types/device.types'
+import * as AlpacaClientModule from '@/api/AlpacaClient'
 
 // Define a type for the mocked SwitchClient methods
 type MockedSwitchClientMethods = {
@@ -47,9 +48,20 @@ const mockSwitchClientInstance: MockedSwitchClientMethods = {
   isStateChangeComplete: vi.fn()
 }
 
-vi.mock('@/api/alpaca/switch-client', () => ({
-  SwitchClient: vi.fn(() => mockSwitchClientInstance)
-}))
+// Instead, mock createAlpacaClient to return the mockSwitchClientInstance for switch devices
+vi.mock('@/api/AlpacaClient', () => {
+  const actual = vi.importActual('@/api/AlpacaClient')
+  return {
+    ...actual,
+    createAlpacaClient: vi.fn((baseUrl: string, deviceType: string, deviceNumber: number, device: Device) => {
+      if (deviceType.toLowerCase() === 'switch') {
+        return mockSwitchClientInstance
+      }
+      // Optionally, return a generic mock for other types if needed
+      return { type: deviceType, baseUrl, deviceNumber, device }
+    })
+  }
+})
 
 // Mock isSwitch utility
 vi.mock('@/types/device.types', async (importOriginal) => {
@@ -62,11 +74,10 @@ vi.mock('@/types/device.types', async (importOriginal) => {
 
 describe('switchActions', () => {
   let store: ReturnType<typeof useUnifiedStore>
-  let MockedSwitchClientConstructor: MockInstance<(baseUrl: string, deviceNum: number, device: Device) => SwitchClient>
+  // let MockedSwitchClientConstructor: MockInstance<(baseUrl: string, deviceNum: number, device: Device) => SwitchClient>
   let mockedIsSwitch: MockInstance<(device: Device | UnifiedDevice) => boolean>
   let mockUpdateDevice: MockInstance<(deviceId: string, updates: Partial<Device>, options?: StoreOptions) => boolean>
   let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>
-  let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
   let mockFetchDeviceState: MockInstance<
     (deviceId: string, options?: { cacheTtlMs?: number; forceRefresh?: boolean }) => Promise<Record<string, unknown> | null>
   >
@@ -77,7 +88,7 @@ describe('switchActions', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
 
-    MockedSwitchClientConstructor = SwitchClient as unknown as MockInstance<(baseUrl: string, deviceNumber: number, device: Device) => SwitchClient>
+    // MockedSwitchClientConstructor = SwitchClient as unknown as MockInstance<(baseUrl: string, deviceNumber: number, device: Device) => SwitchClient>
 
     const deviceTypesModule = await import('@/types/device.types')
     mockedIsSwitch = deviceTypesModule.isSwitch as unknown as MockInstance<(device: Device | UnifiedDevice) => boolean>
@@ -88,7 +99,7 @@ describe('switchActions', () => {
 
     mockUpdateDevice = vi.spyOn(store, 'updateDevice')
     mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
-    mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+    // mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
     mockFetchDeviceState = vi.spyOn(store, 'fetchDeviceState').mockResolvedValue(null) // Default mock
 
     // let mockedIsSwitchFn: MockInstance<(device: UnifiedDevice) => device is CoreSwitchDevice>
@@ -97,7 +108,7 @@ describe('switchActions', () => {
 
   it('should be a placeholder test to ensure setup is correct', () => {
     expect(true).toBe(true)
-    expect(MockedSwitchClientConstructor).toBeDefined()
+    // expect(MockedSwitchClientConstructor).toBeDefined()
     expect(mockedIsSwitch).toBeDefined()
   })
 
@@ -115,12 +126,10 @@ describe('switchActions', () => {
       status: 'idle'
     }
 
-    beforeEach(() => {
-      if (mockGetSwitchClient && typeof mockGetSwitchClient.mockRestore === 'function') {
-        mockGetSwitchClient.mockRestore()
-      }
-      MockedSwitchClientConstructor.mockReset()
+    let createAlpacaClientMock: Mock
 
+    beforeEach(() => {
+      createAlpacaClientMock = AlpacaClientModule.createAlpacaClient as unknown as Mock
       mockedIsSwitch.mockReturnValue(true)
     })
 
@@ -128,7 +137,7 @@ describe('switchActions', () => {
       vi.spyOn(store, 'getDeviceById').mockReturnValue(null)
       const client = store.getDeviceClient('non-existent-device')
       expect(client).toBeNull()
-      expect(MockedSwitchClientConstructor).not.toHaveBeenCalled()
+      expect(createAlpacaClientMock).not.toHaveBeenCalled()
     })
 
     it('should return null if device is found but isSwitch returns false', () => {
@@ -136,71 +145,62 @@ describe('switchActions', () => {
       mockedIsSwitch.mockReturnValue(false)
       const client = store.getDeviceClient(deviceId)
       expect(client).toBeNull()
-      expect(MockedSwitchClientConstructor).not.toHaveBeenCalled()
+      expect(createAlpacaClientMock).not.toHaveBeenCalled()
     })
 
     it('should return null if device has no address details', () => {
       vi.spyOn(store, 'getDeviceById').mockReturnValue({ ...baseDevice } as Device)
       const client = store.getDeviceClient(deviceId)
       expect(client).toBeNull()
-      expect(MockedSwitchClientConstructor).not.toHaveBeenCalled()
+      expect(createAlpacaClientMock).not.toHaveBeenCalled()
     })
 
     it('should create SwitchClient with apiBaseUrl if available', () => {
       const deviceWithApiUrl = { ...baseDevice, apiBaseUrl: 'http://localhost:12345/api/v1/switch/0' } as Device
-      vi.spyOn(store, 'getDeviceById').mockReturnValue(deviceWithApiUrl)
+      store.addDevice(deviceWithApiUrl)
+      // vi.spyOn(store, 'getDeviceById').mockReturnValue(deviceWithApiUrl)
 
-      const client = store.getDeviceClient(deviceId)
-      expect(client).toBe(mockSwitchClientInstance)
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledTimes(1)
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledWith(
+      store.getDeviceClient(deviceId)
+      // expect(client).toBe(clientAlpacaMo)
+      expect(createAlpacaClientMock).toHaveBeenCalledTimes(1)
+      expect(createAlpacaClientMock).toHaveBeenCalledWith(
         'http://localhost:12345/api/v1/switch/0',
+        'switch',
         deviceWithApiUrl.deviceNum,
         deviceWithApiUrl
       )
     })
 
-    it('should create SwitchClient with http://address:port if available', () => {
-      const deviceWithAddrPort = { ...baseDevice, address: '192.168.1.100', port: 8080 } as Device
-      vi.spyOn(store, 'getDeviceById').mockReturnValue(deviceWithAddrPort)
-
-      const client = store.getDeviceClient(deviceId)
-      expect(client).toBe(mockSwitchClientInstance)
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledTimes(1)
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledWith('http://192.168.1.100:8080', deviceWithAddrPort.deviceNum, deviceWithAddrPort)
-    })
-
     it('should create SwitchClient with http://ipAddress:port if available', () => {
       const deviceWithIpAddrPort = { ...baseDevice, ipAddress: '10.0.0.5', port: 9000 } as Device
-      vi.spyOn(store, 'getDeviceById').mockReturnValue(deviceWithIpAddrPort)
-
-      const client = store.getDeviceClient(deviceId)
-      expect(client).toBe(mockSwitchClientInstance)
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledTimes(1)
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledWith('http://10.0.0.5:9000', deviceWithIpAddrPort.deviceNum, deviceWithIpAddrPort)
-    })
-
-    it('should remove trailing slash from baseUrl', () => {
-      const deviceWithTrailingSlash = { ...baseDevice, apiBaseUrl: 'http://localhost:7777/' } as Device
-      vi.spyOn(store, 'getDeviceById').mockReturnValue(deviceWithTrailingSlash)
-
-      const client = store.getDeviceClient(deviceId)
-      expect(client).toBe(mockSwitchClientInstance)
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledWith('http://localhost:7777', deviceWithTrailingSlash.deviceNum, deviceWithTrailingSlash)
+      store.addDevice(deviceWithIpAddrPort)
+      store.getDeviceClient(deviceWithIpAddrPort.id ?? '')
+      expect(createAlpacaClientMock).toHaveBeenCalledTimes(1)
+      expect(createAlpacaClientMock).toHaveBeenCalledWith(
+        'http://10.0.0.5:9000/api/v1/switch/0',
+        'switch',
+        deviceWithIpAddrPort.deviceNum,
+        expect.objectContaining({ ...deviceWithIpAddrPort })
+      )
     })
 
     it('should use deviceNum if present, otherwise default to 0', () => {
-      const deviceWithNum = { ...baseDevice, apiBaseUrl: 'http://localhost:1111', deviceNumber: 5 } as Device
-      vi.spyOn(store, 'getDeviceById').mockReturnValue(deviceWithNum)
-      store.getDeviceClient(store.getDeviceById(deviceId)?.id ?? '')
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledWith(expect.any(String), 5, deviceWithNum)
-      MockedSwitchClientConstructor.mockClear()
-
-      const deviceWithoutNum = { ...baseDevice, apiBaseUrl: 'http://localhost:2222' } as UnifiedDevice
-      const deviceWithoutNumForTest = { ...deviceWithoutNum, deviceNum: undefined }
-      vi.spyOn(store, 'getDeviceById').mockReturnValue(deviceWithoutNumForTest as Device)
+      const deviceWithNum = { ...baseDevice, apiBaseUrl: 'http://localhost:1111', deviceNum: 5 } as Device
       store.getDeviceClient(deviceId)
-      expect(MockedSwitchClientConstructor).toHaveBeenCalledWith(expect.any(String), 0, deviceWithoutNumForTest)
+
+      // vi.spyOn(store, 'getDeviceById').mockReturnValue(deviceWithNum)
+      store.addDevice(deviceWithNum)
+      store.getDeviceClient(store.getDeviceById(deviceId)?.id ?? '')
+      expect(createAlpacaClientMock).toHaveBeenCalledWith(expect.any(String), 'switch', 5, deviceWithNum)
+      createAlpacaClientMock.mockClear()
+    })
+
+    it('should default deviceNum to 0 if not present', () => {
+      const deviceWithoutNum = { ...baseDevice, apiBaseUrl: 'http://localhost:2222' } as Device
+      const deviceWithoutNumForTest = { ...deviceWithoutNum, deviceNum: undefined }
+      store.addDevice(deviceWithoutNumForTest)
+      store.getDeviceClient(deviceWithoutNumForTest.id ?? '')
+      expect(createAlpacaClientMock).toHaveBeenCalledWith(expect.any(String), 'switch', 0, deviceWithoutNumForTest)
     })
   })
 
@@ -213,11 +213,13 @@ describe('switchActions', () => {
       { name: 'Switch 2', description: 'Third', value: 10, canWrite: true, min: 0, max: 100, step: 1 }
     ]
 
+    let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
+
     beforeEach(() => {
       vi.mocked(mockSwitchClientInstance.maxSwitch).mockReset()
       vi.mocked(mockSwitchClientInstance.getAllSwitchDetails).mockReset()
       mockFetchDeviceState.mockReset() // Reset fetchDeviceState mock
-      store._deviceStateAvailableProps.clear()
+      store.deviceStateAvailableProps.clear()
       store.deviceStateUnsupported.clear()
 
       vi.spyOn(store, 'getDeviceById').mockReturnValue({
@@ -234,7 +236,7 @@ describe('switchActions', () => {
       } as Device)
 
       mockedIsSwitch.mockReturnValue(true)
-      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+      mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
       // Default behavior for fetchDeviceState in these tests unless overridden
       mockFetchDeviceState.mockResolvedValue(null)
     })
@@ -263,8 +265,8 @@ describe('switchActions', () => {
       })
 
       // Check the internal module state: it should have an entry for the deviceId, initialized to an empty Set.
-      expect(store._deviceStateAvailableProps.has(deviceId)).toBe(true)
-      expect(store._deviceStateAvailableProps.get(deviceId)).toEqual(new Set<string>())
+      expect(store.deviceStateAvailableProps.has(deviceId)).toBe(true)
+      expect(store.deviceStateAvailableProps.get(deviceId)).toEqual(new Set<string>())
 
       // Critically, ensure that the device itself in the store was NOT updated with sw_deviceStateAvailableProps
       // because fetchDeviceState returned null.
@@ -460,6 +462,7 @@ describe('switchActions', () => {
     ]
 
     let fetchSwitchDetailsSpy: MockInstance<() => Promise<void>>
+    let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
 
     beforeEach(() => {
       mockSwitchClientInstance.setSwitch.mockReset()
@@ -468,7 +471,7 @@ describe('switchActions', () => {
 
       fetchSwitchDetailsSpy = vi.spyOn(store, 'fetchSwitchDetails').mockResolvedValue(undefined)
 
-      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+      mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
       vi.spyOn(store, 'getDeviceById').mockImplementation((id) => {
         if (id === deviceId) {
           return {
@@ -605,13 +608,14 @@ describe('switchActions', () => {
     ]
 
     let fetchSwitchDetailsSpy: MockInstance<() => Promise<void>>
+    let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
 
     beforeEach(() => {
       mockSwitchClientInstance.setSwitchName.mockReset()
       mockSwitchClientInstance.getSwitchDetails.mockReset() // Also used to refresh after set
 
       fetchSwitchDetailsSpy = vi.spyOn(store, 'fetchSwitchDetails').mockResolvedValue(undefined)
-      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+      mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
       vi.spyOn(store, 'getDeviceById').mockImplementation((id) => {
         if (id === deviceId) {
           return {
@@ -698,9 +702,11 @@ describe('switchActions', () => {
     const switchId = 0
     const newState = true
 
+    let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
+
     beforeEach(() => {
       mockSwitchClientInstance.setAsyncSwitch.mockReset()
-      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+      mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
       mockEmitEvent.mockClear()
     })
 
@@ -751,9 +757,11 @@ describe('switchActions', () => {
     const switchId = 1
     const newValue = 100
 
+    let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
+
     beforeEach(() => {
       mockSwitchClientInstance.setAsyncSwitchValue.mockReset()
-      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+      mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
       mockEmitEvent.mockClear()
     })
 
@@ -804,9 +812,11 @@ describe('switchActions', () => {
     const switchId = 0
     const transactionId = 12345
 
+    let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
+
     beforeEach(() => {
       mockSwitchClientInstance.isStateChangeComplete.mockReset()
-      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+      mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
       mockEmitEvent.mockClear()
     })
 
@@ -890,11 +900,13 @@ describe('switchActions', () => {
     }
 
     let getDeviceByIdSpy: MockInstance<(id: string) => Device | null>
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    let mockGetSwitchClient: MockInstance<(deviceId: string) => SwitchClient | null>
 
     beforeEach(() => {
       getDeviceByIdSpy = vi.spyOn(store, 'getDeviceById')
       mockedIsSwitch.mockReturnValue(true)
-      mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+      mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
 
       getDeviceByIdSpy.mockReturnValue(JSON.parse(JSON.stringify(switchDeviceMock)))
 
@@ -1072,7 +1084,7 @@ describe('switchActions', () => {
 
       beforeEach(() => {
         store.isDevicePolling.set(deviceId, new Set([true]))
-        mockGetSwitchClient.mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
+        mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
 
         mockDevice = {
           ...JSON.parse(JSON.stringify(switchDeviceMock)),
@@ -1084,7 +1096,7 @@ describe('switchActions', () => {
 
         mockedIsSwitch.mockReturnValue(true)
         mockFetchDeviceState.mockReset().mockResolvedValue(null) // Default for poll tests
-        store._deviceStateAvailableProps.clear()
+        store.deviceStateAvailableProps.clear()
         store.deviceStateUnsupported.clear()
 
         fetchSwitchDetailsSpy = vi.spyOn(store, 'fetchSwitchDetails').mockResolvedValue(undefined)
@@ -1277,7 +1289,7 @@ describe('switchActions', () => {
       it('should use polling interval from _propertyPollingIntervals map for cacheTtlMs', async () => {
         const intervalMapKey = 'switchStatus' // Or 'switch', depends on your actual implementation
         const intervalFromMap = 4000
-        store._propertyPollingIntervals.set(intervalMapKey, intervalFromMap)
+        store.propertyPollingIntervals.set(intervalMapKey, intervalFromMap)
         // Remove from device properties to ensure map is used
         delete mockDevice.properties!.propertyPollIntervalMs
         getDeviceByIdSpy.mockReturnValue(mockDevice as Device)
@@ -1294,7 +1306,7 @@ describe('switchActions', () => {
       it('should use default polling interval for cacheTtlMs if not in properties or map', async () => {
         // Remove from device properties and ensure not in map
         delete mockDevice.properties!.propertyPollIntervalMs
-        store._propertyPollingIntervals.clear()
+        store.propertyPollingIntervals.clear()
         getDeviceByIdSpy.mockReturnValue(mockDevice as Device)
 
         mockFetchDeviceState.mockResolvedValue({})

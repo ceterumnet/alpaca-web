@@ -4,21 +4,6 @@
  * Provides functionality for interacting with camera devices
  */
 
-// Status: Good - Core Module
-// This is the camera actions module that:
-// - Implements camera control operations
-// - Handles image acquisition
-// - Provides exposure management
-// - Supports camera configuration
-// - Maintains camera state
-
-// Features:
-// - Exposure tracking with progress updates
-// - Image download handling
-// - Error recovery and fallback mechanisms
-// - Event emission for UI updates
-// - Support for both binary and JSON image formats
-
 import log from '@/plugins/logger'
 // import type { DeviceEvent, Device } from '../types/device-store.types'
 // import type { AlpacaClient } from '@/api/AlpacaClient'
@@ -807,13 +792,13 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
         this.stopCameraPropertyPolling(deviceId)
 
         // Initialize the interval map if not already done
-        if (!this._propertyPollingIntervals) {
-          this._propertyPollingIntervals = new Map<string, number>()
+        if (!this.propertyPollingIntervals) {
+          this.propertyPollingIntervals = new Map<string, number>()
         }
 
         // Initialize devicestate tracking for this device if not already done
-        if (!this._deviceStateAvailableProps.has(deviceId)) {
-          this._deviceStateAvailableProps.set(deviceId, new Set<string>())
+        if (!this.deviceStateAvailableProps.has(deviceId)) {
+          this.deviceStateAvailableProps.set(deviceId, new Set<string>())
         }
 
         // Get polling interval from device properties or use default
@@ -895,7 +880,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
 
               if (deviceStateResult) {
                 // Update our tracking of which properties are available via devicestate
-                const deviceStateProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
+                const deviceStateProps = this.deviceStateAvailableProps.get(deviceId) || new Set<string>()
 
                 // Add all received properties to our available props set
                 Object.keys(deviceStateResult).forEach((prop) => {
@@ -903,7 +888,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
                 })
 
                 // Update the set
-                this._deviceStateAvailableProps.set(deviceId, deviceStateProps)
+                this.deviceStateAvailableProps.set(deviceId, deviceStateProps)
 
                 // Add all received properties to our update
                 Object.entries(deviceStateResult).forEach(([key, value]) => {
@@ -919,7 +904,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
             }
 
             // For any properties not received via devicestate, poll them individually
-            const deviceStateProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
+            const deviceStateProps = this.deviceStateAvailableProps.get(deviceId) || new Set<string>()
 
             // Filter properties that need to be individually fetched
             const individualPropsToFetch = propsToFetch.filter((prop) => !deviceStateResult || !deviceStateProps.has(prop.toLowerCase()))
@@ -987,7 +972,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
 
         // Store the interval ID
         // Note: Window.setInterval returns a number ID
-        this._propertyPollingIntervals.set(deviceId, intervalId)
+        this.propertyPollingIntervals.set(deviceId, intervalId)
 
         log.debug({ deviceIds: [deviceId] }, `Property polling started for camera ${deviceId} with interval ${pollInterval}ms`)
       },
@@ -996,16 +981,16 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
        * Stop polling for camera properties
        */
       stopCameraPropertyPolling(this: UnifiedStoreType, deviceId: string): void {
-        if (!this._propertyPollingIntervals) {
+        if (!this.propertyPollingIntervals) {
           return
         }
 
-        const intervalId = this._propertyPollingIntervals.get(deviceId)
+        const intervalId = this.propertyPollingIntervals.get(deviceId)
 
         if (intervalId) {
           log.debug({ deviceIds: [deviceId] }, `Stopping property polling for camera ${deviceId}`)
           clearInterval(intervalId)
-          this._propertyPollingIntervals.delete(deviceId)
+          this.propertyPollingIntervals.delete(deviceId)
 
           // Clean up devicestate tracking
           this.updateDeviceProperties(deviceId, {
@@ -1062,7 +1047,7 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
         log.debug({ deviceIds: [deviceId] }, `Cleaning up device state tracking for camera ${deviceId}`)
 
         // Remove from device state tracking
-        this._deviceStateAvailableProps.delete(deviceId)
+        this.deviceStateAvailableProps.delete(deviceId)
         this.deviceStateUnsupported.delete(deviceId)
       },
 
@@ -1093,8 +1078,8 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
         log.debug({ deviceIds: [deviceId] }, `Handling connection for camera ${deviceId}`)
 
         // Initialize devicestate tracking for this device
-        if (!this._deviceStateAvailableProps.has(deviceId)) {
-          this._deviceStateAvailableProps.set(deviceId, new Set<string>())
+        if (!this.deviceStateAvailableProps.has(deviceId)) {
+          this.deviceStateAvailableProps.set(deviceId, new Set<string>())
         }
 
         // Remove from unsupported list in case it was previously added

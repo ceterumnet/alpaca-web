@@ -103,9 +103,9 @@ describe('coreActions', () => {
         selectedDeviceId: null,
         deviceClients: new Map(),
         deviceStateCache: new Map(),
-        _propertyPollingIntervals: new Map(),
-        _deviceStateAvailableProps: new Map(),
-        _deviceStateUnsupported: new Set(),
+        propertyPollingIntervals: new Map(),
+        deviceStateAvailableProps: new Map(),
+        deviceStateUnsupported: new Set(),
         lastDeviceStateFetch: new Map()
       }
       expect(store.devices).toEqual(expectedInitialState.devices)
@@ -113,9 +113,9 @@ describe('coreActions', () => {
       expect(store.selectedDeviceId).toEqual(expectedInitialState.selectedDeviceId)
       expect(store.deviceClients).toEqual(expectedInitialState.deviceClients)
       expect(store.deviceStateCache).toEqual(expectedInitialState.deviceStateCache)
-      expect(store._propertyPollingIntervals).toEqual(expectedInitialState._propertyPollingIntervals)
-      expect(store._deviceStateAvailableProps).toEqual(expectedInitialState._deviceStateAvailableProps)
-      expect(store._deviceStateUnsupported).toEqual(expectedInitialState._deviceStateUnsupported)
+      expect(store.propertyPollingIntervals).toEqual(expectedInitialState.propertyPollingIntervals)
+      expect(store.deviceStateAvailableProps).toEqual(expectedInitialState.deviceStateAvailableProps)
+      expect(store.deviceStateUnsupported).toEqual(expectedInitialState.deviceStateUnsupported)
       expect(store.lastDeviceStateFetch).toEqual(expectedInitialState.lastDeviceStateFetch) // Corrected property name
     })
   })

@@ -1038,7 +1038,7 @@ describe('domeActions', () => {
       vi.useRealTimers()
       store._dome_isPolling.delete(deviceId)
       store._dome_pollingTimers.delete(deviceId)
-      store._propertyPollingIntervals.set('domeStatus', 5000)
+      store.propertyPollingIntervals.set('domeStatus', 5000)
     })
 
     it('should start polling, set state, and call _pollDomeStatus immediately', () => {
@@ -1054,7 +1054,7 @@ describe('domeActions', () => {
       store.startDomePolling(deviceId)
       expect(mockPollDomeStatus).toHaveBeenCalledTimes(1)
 
-      const interval = store._propertyPollingIntervals.get('domeStatus') || 5000
+      const interval = store.propertyPollingIntervals.get('domeStatus') || 5000
       vi.advanceTimersByTime(interval)
       expect(mockPollDomeStatus).toHaveBeenCalledTimes(2)
 
@@ -1086,7 +1086,7 @@ describe('domeActions', () => {
 
     it('should use custom polling interval if provided and set in store', () => {
       const customInterval = 1000
-      store._propertyPollingIntervals.set('domeStatus', customInterval)
+      store.propertyPollingIntervals.set('domeStatus', customInterval)
       store.startDomePolling(deviceId)
       expect(mockPollDomeStatus).toHaveBeenCalledTimes(1)
 

@@ -822,14 +822,14 @@ describe('stores/modules/rotatorActions.ts', () => {
       })
 
       it('should use default interval if none provided and not in store settings', () => {
-        store._propertyPollingIntervals = new Map()
+        store.propertyPollingIntervals = new Map()
         const setIntervalSpy = vi.spyOn(global, 'setInterval')
         store.startRotatorPolling(testRotatorId)
         expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 1000)
       })
 
       it('should use interval from store._propertyPollingIntervals if available', () => {
-        store._propertyPollingIntervals = new Map([['rotatorStatus', 750]])
+        store.propertyPollingIntervals = new Map([['rotatorStatus', 750]])
         const setIntervalSpy = vi.spyOn(global, 'setInterval')
         store.startRotatorPolling(testRotatorId)
         expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 750)

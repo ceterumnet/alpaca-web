@@ -254,7 +254,7 @@ export function createDomeActions(): {
         if (this._dome_pollingTimers.has(deviceId)) {
           this.stopDomePolling(deviceId)
         }
-        const pollInterval = (device.properties?.propertyPollIntervalMs as number) || this._propertyPollingIntervals.get('domeStatus') || 5000
+        const pollInterval = (device.properties?.propertyPollIntervalMs as number) || this.propertyPollingIntervals.get('domeStatus') || 5000
         this._dome_isPolling.set(deviceId, true)
         const timerId = window.setInterval(() => this._pollDomeStatus(deviceId), pollInterval)
         this._dome_pollingTimers.set(deviceId, timerId)

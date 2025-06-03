@@ -538,7 +538,7 @@ export function createRotatorActions(): {
       // Stop any existing polling for this device first
       this.stopRotatorPolling(deviceId)
 
-      const pollingInterval = intervalMs ?? this._propertyPollingIntervals?.get('rotatorStatus') ?? 1000 // Default to 1s
+      const pollingInterval = intervalMs ?? this.propertyPollingIntervals?.get('rotatorStatus') ?? 1000 // Default to 1s
 
       // Initial fetch
       this._pollRotatorStatus(deviceId)

@@ -66,10 +66,10 @@ export function createSwitchActions(): {
         let fetchedViaDeviceState = false
 
         // Initialize device state tracking if not present
-        if (!this._deviceStateAvailableProps.has(deviceId)) {
-          this._deviceStateAvailableProps.set(deviceId, new Set<string>())
+        if (!this.deviceStateAvailableProps.has(deviceId)) {
+          this.deviceStateAvailableProps.set(deviceId, new Set<string>())
         }
-        const deviceStateProps = this._deviceStateAvailableProps.get(deviceId)!
+        const deviceStateProps = this.deviceStateAvailableProps.get(deviceId)!
 
         if (!this.deviceStateUnsupported.has(deviceId)) {
           try {
@@ -273,15 +273,15 @@ export function createSwitchActions(): {
         }
 
         let deviceStateResult: Record<string, unknown> | null = null
-        const deviceStateProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
+        const deviceStateProps = this.deviceStateAvailableProps.get(deviceId) || new Set<string>()
         let usingDeviceStateInPoll = false
 
         if (!this.deviceStateUnsupported.has(deviceId)) {
           try {
             const pollIntervalSetting =
               (device.properties?.propertyPollIntervalMs as number) ||
-              this._propertyPollingIntervals.get('switchStatus') ||
-              this._propertyPollingIntervals.get('switch') ||
+              this.propertyPollingIntervals.get('switchStatus') ||
+              this.propertyPollingIntervals.get('switch') ||
               2000 // Default polling interval for switch
             const cacheTtl = pollIntervalSetting / 2
 
@@ -292,7 +292,7 @@ export function createSwitchActions(): {
               const oldSize = deviceStateProps.size
               Object.keys(deviceStateResult).forEach((key) => deviceStateProps.add(key.toLowerCase()))
               if (deviceStateProps.size > oldSize) {
-                this._deviceStateAvailableProps.set(deviceId, new Set(deviceStateProps))
+                this.deviceStateAvailableProps.set(deviceId, new Set(deviceStateProps))
                 this.updateDevice(deviceId, { sw_deviceStateAvailableProps: new Set(deviceStateProps) })
               }
               usingDeviceStateInPoll = true

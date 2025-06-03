@@ -19,8 +19,8 @@ export interface CoreState {
   theme: 'light' | 'dark'
   isSidebarVisible: boolean
   deviceStateCache: Map<string, { timestamp: number; data: Record<string, unknown> }>
-  _propertyPollingIntervals: Map<string, number>
-  _deviceStateAvailableProps: Map<string, Set<string>>
+  propertyPollingIntervals: Map<string, number>
+  deviceStateAvailableProps: Map<string, Set<string>>
   deviceStateUnsupported: Set<string>
   lastDeviceStateFetch: Map<string, { timestamp: number; data: Record<string, unknown> }>
   devicePropertyUnsupported: Map<string, Set<string>>
@@ -108,6 +108,10 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           // If parsing fails, apiBaseUrl remains undefined, which is handled later
           log.warn({ deviceIds: [device.id] }, `[CoreActions] Could not parse apiBaseUrl from device ID ${device.id}:`, error)
         }
+      }
+
+      if (!apiBaseUrl && device.ipAddress && device.port) {
+        apiBaseUrl = `http://${device.ipAddress}:${device.port}/api/v1/${device.type?.toLowerCase()}/${device.deviceNum}`
       }
 
       if (parsedDeviceNum === undefined) {
@@ -320,8 +324,8 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
               log.error({ deviceIds: [deviceId] }, `[CoreActions] Error stopping telescope property polling: ${error}`)
             }
           }
-          if (this._deviceStateAvailableProps) {
-            this._deviceStateAvailableProps.delete(deviceId)
+          if (this.deviceStateAvailableProps) {
+            this.deviceStateAvailableProps.delete(deviceId)
           }
           if (this.deviceStateUnsupported) {
             this.deviceStateUnsupported.delete(deviceId)
@@ -423,9 +427,9 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
             log.error({ deviceIds: [deviceId] }, `[CoreActions] Error stopping telescope property polling: ${error}`)
           }
         }
-        if (this._deviceStateAvailableProps) {
+        if (this.deviceStateAvailableProps) {
           log.debug({ deviceIds: [deviceId] }, `[CoreActions] Clearing devicestate tracking for telescope ${deviceId}`)
-          this._deviceStateAvailableProps.delete(deviceId)
+          this.deviceStateAvailableProps.delete(deviceId)
         }
         if (this.deviceStateUnsupported) {
           this.deviceStateUnsupported.delete(deviceId)
@@ -885,8 +889,8 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       theme: 'light',
       isSidebarVisible: true,
       deviceStateCache: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),
-      _propertyPollingIntervals: new Map<string, number>(),
-      _deviceStateAvailableProps: new Map<string, Set<string>>(),
+      propertyPollingIntervals: new Map<string, number>(),
+      deviceStateAvailableProps: new Map<string, Set<string>>(),
       deviceStateUnsupported: new Set<string>(),
       lastDeviceStateFetch: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),
       devicePropertyUnsupported: new Map<string, Set<string>>(),

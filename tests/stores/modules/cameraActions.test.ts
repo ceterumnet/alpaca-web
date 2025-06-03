@@ -148,14 +148,14 @@ describe('cameraActions', () => {
 
   describe('Initial State', () => {
     it('should have the correct initial CameraState properties mixed into the store', () => {
-      expect(store._propertyPollingIntervals).toBeInstanceOf(Map)
-      expect(store._propertyPollingIntervals.size).toBe(0)
+      expect(store.propertyPollingIntervals).toBeInstanceOf(Map)
+      expect(store.propertyPollingIntervals.size).toBe(0)
 
-      expect(store._deviceStateAvailableProps).toBeInstanceOf(Map)
-      expect(store._deviceStateAvailableProps.size).toBe(0)
+      expect(store.deviceStateAvailableProps).toBeInstanceOf(Map)
+      expect(store.deviceStateAvailableProps.size).toBe(0)
 
-      expect(store._deviceStateUnsupported).toBeInstanceOf(Set)
-      expect(store._deviceStateUnsupported.size).toBe(0)
+      expect(store.deviceStateUnsupported).toBeInstanceOf(Set)
+      expect(store.deviceStateUnsupported.size).toBe(0)
     })
   })
 
@@ -452,7 +452,7 @@ describe('cameraActions', () => {
 
       // Assert: Initial setup
       expect(mockStopCameraPropertyPolling).toHaveBeenCalledTimes(1) // Called to clear previous timers
-      expect(store._propertyPollingIntervals.has(deviceId)).toBe(true)
+      expect(store.propertyPollingIntervals.has(deviceId)).toBe(true)
       expect(consoleDebugSpy).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Starting property polling for camera ${deviceId}`)
       expect(consoleDebugSpy).toHaveBeenCalledWith({ deviceIds: [deviceId] }, `Property polling started for camera ${deviceId} with interval 1000ms`)
 
@@ -481,7 +481,7 @@ describe('cameraActions', () => {
     it('should stop polling if the device becomes disconnected', async () => {
       // Arrange
       store.startCameraPropertyPolling(deviceId)
-      expect(store._propertyPollingIntervals.has(deviceId)).toBe(true)
+      expect(store.propertyPollingIntervals.get(deviceId)).toBeDefined()
       mockStopCameraPropertyPolling.mockClear() // Clear initial call from startCameraPropertyPolling
 
       // Act: First tick (device is connected)

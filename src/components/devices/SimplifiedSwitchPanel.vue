@@ -166,7 +166,9 @@ const toggleBooleanSwitch = async (switchIndex: number, newState: boolean) => {
   }
 }
 
-const setNumericSwitchValue = async (switchIndex: number, newValue: number) => {
+// TODO: this panel should have a numeric input field for the value, and a button to set the value
+// I think that during a refactor we lost this functionality
+const _setNumericSwitchValue = async (switchIndex: number, newValue: number) => {
   if (!props.deviceId || isNaN(newValue)) return
   try {
     await store.setDeviceSwitchValue(props.deviceId, switchIndex, newValue)

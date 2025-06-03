@@ -36,10 +36,10 @@ interface ITelescopeActions {
   setTelescopeGuideRateDeclination(this: UnifiedStoreType, deviceId: string, rate: number): Promise<boolean>
   setTelescopeGuideRateRightAscension(this: UnifiedStoreType, deviceId: string, rate: number): Promise<boolean>
   setTelescopeSlewSettleTime(this: UnifiedStoreType, deviceId: string, time: number): Promise<boolean>
-  slewToCoordinates(this: UnifiedStoreType, deviceId: string, rightAscension: number, declination: number, useAsync: boolean): Promise<boolean>
-  slewToAltAz(this: UnifiedStoreType, deviceId: string, altitude: number, azimuth: number, useAsync: boolean): Promise<boolean>
+  slewToCoordinates(this: UnifiedStoreType, deviceId: string, rightAscension: number, declination: number, useAsync?: boolean): Promise<boolean>
+  slewToAltAz(this: UnifiedStoreType, deviceId: string, altitude: number, azimuth: number, useAsync?: boolean): Promise<boolean>
   abortSlew(this: UnifiedStoreType, deviceId: string): Promise<boolean>
-  slewToCoordinatesString(this: UnifiedStoreType, deviceId: string, raString: string, decString: string, useAsync: boolean): Promise<boolean>
+  slewToCoordinatesString(this: UnifiedStoreType, deviceId: string, raString: string, decString: string, useAsync?: boolean): Promise<boolean>
   findHome(this: UnifiedStoreType, deviceId: string): Promise<boolean>
   syncToCoordinates(this: UnifiedStoreType, deviceId: string, rightAscension: number, declination: number): Promise<boolean>
   syncToAltAz(this: UnifiedStoreType, deviceId: string, altitude: number, azimuth: number): Promise<boolean>
@@ -198,17 +198,17 @@ export function createTelescopeActions(): { actions: ITelescopeActions } {
         const pollInterval = (properties.propertyPollIntervalMs as number) || 1000 // Default 1 second for telescopes
 
         // Initialize the interval map if not already done
-        if (!this._propertyPollingIntervals) {
-          this._propertyPollingIntervals = new Map<string, number>()
+        if (!this.propertyPollingIntervals) {
+          this.propertyPollingIntervals = new Map<string, number>()
         }
 
         // Initialize devicestate available properties for this device if not already done
-        if (!this._deviceStateAvailableProps) {
-          this._deviceStateAvailableProps = new Map<string, Set<string>>()
+        if (!this.deviceStateAvailableProps) {
+          this.deviceStateAvailableProps = new Map<string, Set<string>>()
         }
 
-        if (!this._deviceStateAvailableProps.has(deviceId)) {
-          this._deviceStateAvailableProps.set(deviceId, new Set<string>())
+        if (!this.deviceStateAvailableProps.has(deviceId)) {
+          this.deviceStateAvailableProps.set(deviceId, new Set<string>())
         }
 
         // Ensure the unsupported set is initialized
@@ -243,7 +243,7 @@ export function createTelescopeActions(): { actions: ITelescopeActions } {
 
             // Only try to get properties using devicestate if device is not in the unsupported list
             let deviceState: Record<string, unknown> | null = null
-            const availableProps = this._deviceStateAvailableProps.get(deviceId) || new Set<string>()
+            const availableProps = this.deviceStateAvailableProps.get(deviceId) || new Set<string>()
 
             if (!this.deviceStateUnsupported.has(deviceId)) {
               // We either haven't tried devicestate yet, or we know it's supported
@@ -269,7 +269,7 @@ export function createTelescopeActions(): { actions: ITelescopeActions } {
                   )
 
                   // Update the available properties map
-                  this._deviceStateAvailableProps.set(deviceId, availableProps)
+                  this.deviceStateAvailableProps.set(deviceId, availableProps)
                 }
               } catch (error) {
                 log.warn({ deviceIds: [deviceId] }, `[TelescopeActions] Error fetching devicestate for ${deviceId}:`, error)
@@ -426,7 +426,7 @@ export function createTelescopeActions(): { actions: ITelescopeActions } {
 
         // Store the interval ID
         // Note: Window.setInterval returns a number ID
-        this._propertyPollingIntervals.set(deviceId, intervalId)
+        this.propertyPollingIntervals.set(deviceId, intervalId)
 
         log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Property polling started for telescope ${deviceId} with interval ${pollInterval}ms`)
       },
@@ -435,16 +435,16 @@ export function createTelescopeActions(): { actions: ITelescopeActions } {
        * Stop polling for telescope properties
        */
       stopTelescopePropertyPolling(this: UnifiedStoreType, deviceId: string): void {
-        if (!this._propertyPollingIntervals) {
+        if (!this.propertyPollingIntervals) {
           return
         }
 
-        const intervalId = this._propertyPollingIntervals.get(deviceId)
+        const intervalId = this.propertyPollingIntervals.get(deviceId)
 
         if (intervalId) {
           log.debug({ deviceIds: [deviceId] }, `[TelescopeActions] Stopping property polling for telescope ${deviceId}.`)
           clearInterval(intervalId)
-          this._propertyPollingIntervals.delete(deviceId)
+          this.propertyPollingIntervals.delete(deviceId)
         }
       },
 
