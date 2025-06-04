@@ -14,11 +14,23 @@
         <div class="panel-section">
           <h3>Status</h3>
           <div class="status-grid">
-            <div><span class="label">Sky Angle:</span> <span class="value">{{ rotatorState?.position?.toFixed(2) ?? 'N/A' }}°</span></div>
-            <div><span class="label">Mech Angle:</span> <span class="value">{{ rotatorState?.mechanicalPosition?.toFixed(2) ?? 'N/A' }}°</span></div>
-            <div><span class="label">Moving:</span> <span class="value">{{ rotatorState?.isMoving === null ? 'N/A' : (rotatorState?.isMoving ? 'Yes' : 'No') }}</span></div>
-            <div><span class="label">Target:</span> <span class="value">{{ rotatorState?.targetPosition?.toFixed(2) ?? 'N/A' }}°</span></div>
-            <div v-if="rotatorState?.canReverse !== null"><span class="label">Reversed:</span> <span class="value">{{ rotatorState?.reverse === null ? 'N/A' : (rotatorState?.reverse ? 'Yes' : 'No') }}</span></div>
+            <div>
+              <span class="label">Sky Angle:</span> <span class="value">{{ rotatorState?.position?.toFixed(2) ?? 'N/A' }}°</span>
+            </div>
+            <div>
+              <span class="label">Mech Angle:</span> <span class="value">{{ rotatorState?.mechanicalPosition?.toFixed(2) ?? 'N/A' }}°</span>
+            </div>
+            <div>
+              <span class="label">Moving:</span>
+              <span class="value">{{ rotatorState?.isMoving === null ? 'N/A' : rotatorState?.isMoving ? 'Yes' : 'No' }}</span>
+            </div>
+            <div>
+              <span class="label">Target:</span> <span class="value">{{ rotatorState?.targetPosition?.toFixed(2) ?? 'N/A' }}°</span>
+            </div>
+            <div v-if="rotatorState?.canReverse !== null">
+              <span class="label">Reversed:</span>
+              <span class="value">{{ rotatorState?.reverse === null ? 'N/A' : rotatorState?.reverse ? 'Yes' : 'No' }}</span>
+            </div>
           </div>
         </div>
 
@@ -47,7 +59,7 @@
             <div v-if="rotatorState?.canReverse === true" class="input-group">
               <label class="toggle-label">Reverse Direction:</label>
               <label class="toggle">
-                <input v-model="reverseInput" type="checkbox" :disabled="rotatorState?.isMoving === true" @change="setReverseHandler">
+                <input v-model="reverseInput" type="checkbox" :disabled="rotatorState?.isMoving === true" @change="setReverseHandler" />
                 <span class="slider"></span>
               </label>
             </div>
@@ -67,7 +79,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { RotatorDeviceProperties } from '@/types/device.types.ts'
-// Removed: import { callAlpacaMethod, getAlpacaProperties, checkDeviceCapability } from '@/utils/alpacaPropertyAccess'
 
 const props = defineProps({
   deviceId: {
@@ -114,7 +125,7 @@ const updateRotatorStatus = async () => {
 }
 
 const fetchCapabilities = async () => {
-  if (!props.deviceId) return;
+  if (!props.deviceId) return
   try {
     await store.fetchRotatorCapabilities(props.deviceId)
   } catch (error) {
@@ -123,20 +134,28 @@ const fetchCapabilities = async () => {
 }
 
 // Watch for changes in store's rotator state to update local inputs if necessary
-watch(() => rotatorState.value?.reverse, (newReverse) => {
-  if (newReverse !== null && newReverse !== undefined) {
-    reverseInput.value = newReverse
-  }
-}, { immediate: true })
+watch(
+  () => rotatorState.value?.reverse,
+  (newReverse) => {
+    if (newReverse !== null && newReverse !== undefined) {
+      reverseInput.value = newReverse
+    }
+  },
+  { immediate: true }
+)
 
-watch(() => rotatorState.value?.position, (newPosition) => {
-  if (newPosition !== null && newPosition !== undefined && targetAngleInput.value === 0) {
-    targetAngleInput.value = parseFloat(newPosition.toFixed(1))
-  }
-  if (newPosition !== null && newPosition !== undefined && syncAngleInput.value === 0) {
-    syncAngleInput.value = parseFloat(newPosition.toFixed(1)) // Also init sync input
-  }
-}, { immediate: true })
+watch(
+  () => rotatorState.value?.position,
+  (newPosition) => {
+    if (newPosition !== null && newPosition !== undefined && targetAngleInput.value === 0) {
+      targetAngleInput.value = parseFloat(newPosition.toFixed(1))
+    }
+    if (newPosition !== null && newPosition !== undefined && syncAngleInput.value === 0) {
+      syncAngleInput.value = parseFloat(newPosition.toFixed(1)) // Also init sync input
+    }
+  },
+  { immediate: true }
+)
 
 // Alpaca actions - now dispatch to store
 const moveAbsoluteHandler = async () => {
@@ -192,7 +211,7 @@ const setReverseHandler = async () => {
 let statusTimer: number | undefined
 
 const startPolling = () => {
-  if (statusTimer) clearInterval(statusTimer);
+  if (statusTimer) clearInterval(statusTimer)
   if (props.isConnected && props.deviceId) {
     statusTimer = window.setInterval(updateRotatorStatus, 2000) // Poll every 2 seconds
   }
@@ -216,46 +235,52 @@ onMounted(async () => {
   }
 })
 
-watch(() => props.isConnected, async (newIsConnected) => {
-  if (props.deviceId) {
-    if (newIsConnected) {
-      store.initializeRotatorState(props.deviceId) // Ensure state is ready
-      await fetchCapabilities()
-      await updateRotatorStatus()
-      startPolling()
+watch(
+  () => props.isConnected,
+  async (newIsConnected) => {
+    if (props.deviceId) {
+      if (newIsConnected) {
+        store.initializeRotatorState(props.deviceId) // Ensure state is ready
+        await fetchCapabilities()
+        await updateRotatorStatus()
+        startPolling()
+      } else {
+        stopPolling()
+        store.clearRotatorState(props.deviceId) // Clear state on disconnect
+        resetLocalInputs()
+      }
+    }
+  }
+)
+
+watch(
+  () => props.deviceId,
+  async (newDeviceId, oldDeviceId) => {
+    if (oldDeviceId) {
+      stopPolling()
+      store.clearRotatorState(oldDeviceId) // Clear state for old device
+    }
+    if (newDeviceId) {
+      store.initializeRotatorState(newDeviceId)
+      resetLocalInputs() // Reset inputs for the new device
+      if (props.isConnected) {
+        await fetchCapabilities()
+        await updateRotatorStatus()
+        startPolling()
+      }
     } else {
       stopPolling()
-      store.clearRotatorState(props.deviceId) // Clear state on disconnect
       resetLocalInputs()
     }
-  }
-})
-
-watch(() => props.deviceId, async (newDeviceId, oldDeviceId) => {
-  if (oldDeviceId) {
-    stopPolling()
-    store.clearRotatorState(oldDeviceId) // Clear state for old device
-  }
-  if (newDeviceId) {
-    store.initializeRotatorState(newDeviceId)
-    resetLocalInputs() // Reset inputs for the new device
-    if (props.isConnected) {
-      await fetchCapabilities()
-      await updateRotatorStatus()
-      startPolling()
-    }
-  } else {
-    stopPolling()
-    resetLocalInputs()
-  }
-}, { immediate: true })
+  },
+  { immediate: true }
+)
 
 onUnmounted(() => {
   stopPolling()
   // Optionally clear state if component is truly destroyed and device no longer relevant
   // if (props.deviceId) store.clearRotatorState(props.deviceId)
 })
-
 </script>
 
 <style scoped>
@@ -304,8 +329,12 @@ onUnmounted(() => {
   color: var(--aw-text-secondary-color);
 }
 
-.connection-message { font-size: 1.1rem; }
-.panel-tip { font-size: 0.8rem; }
+.connection-message {
+  font-size: 1.1rem;
+}
+.panel-tip {
+  font-size: 0.8rem;
+}
 
 .status-grid {
   display: grid;
@@ -319,7 +348,8 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.label, .toggle-label {
+.label,
+.toggle-label {
   color: var(--aw-text-secondary-color);
   font-size: 0.9rem;
 }
@@ -330,7 +360,8 @@ onUnmounted(() => {
   text-align: right;
 }
 
-.movement-controls, .advanced-controls {
+.movement-controls,
+.advanced-controls {
   display: flex;
   flex-direction: column;
   gap: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
@@ -347,7 +378,7 @@ onUnmounted(() => {
   flex-basis: 120px; /* Give labels a consistent starting width */
 }
 
-.input-group input[type="number"] {
+.input-group input[type='number'] {
   flex-grow: 1;
   padding: var(--aw-spacing-xs);
   background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
@@ -357,7 +388,8 @@ onUnmounted(() => {
   min-width: 80px;
 }
 
-.action-button, .stop-button {
+.action-button,
+.stop-button {
   padding: calc(var(--aw-spacing-xs) * 1.5) var(--aw-spacing-sm);
   background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
@@ -369,12 +401,14 @@ onUnmounted(() => {
   flex-grow: 1; /* Allow buttons to grow if space allows */
 }
 
-.action-button:hover { background-color: var(--aw-button-primary-hover-bg); }
+.action-button:hover {
+  background-color: var(--aw-button-primary-hover-bg);
+}
 
-.action-button:disabled { 
+.action-button:disabled {
   background-color: var(--aw-color-neutral-300);
   cursor: not-allowed;
-  opacity: 0.7; 
+  opacity: 0.7;
 }
 
 .stop-button {
@@ -383,15 +417,17 @@ onUnmounted(() => {
 }
 
 .stop-button.wide-button {
-    width: 100%; /* Make halt button full width in its flex container */
+  width: 100%; /* Make halt button full width in its flex container */
 }
 
-.stop-button:hover { background-color: var(--aw-button-danger-hover-bg); }
+.stop-button:hover {
+  background-color: var(--aw-button-danger-hover-bg);
+}
 
-.stop-button:disabled { 
+.stop-button:disabled {
   background-color: var(--aw-color-neutral-300);
   cursor: not-allowed;
-  opacity: 0.7; 
+  opacity: 0.7;
 }
 
 /* Toggle switch styles */
@@ -402,10 +438,10 @@ onUnmounted(() => {
   height: 24px;
 }
 
-.toggle input { 
-  opacity: 0; 
-  width: 0; 
-  height: 0; 
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .slider {
@@ -414,24 +450,28 @@ onUnmounted(() => {
   inset: 0;
   background-color: var(--aw-panel-bg-color);
   border: 1px solid var(--aw-panel-border-color);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: var(--aw-spacing-lg);
 }
 
 .slider::before {
   position: absolute;
-  content: "";
-  height: 16px; width: 16px;
-  left: 3px; bottom: 3px;
+  content: '';
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
   background-color: var(--aw-text-secondary-color);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 50%;
 }
 
-input:checked + .slider { background-color: var(--aw-success-color); }
+input:checked + .slider {
+  background-color: var(--aw-success-color);
+}
 
 input:checked + .slider::before {
   transform: translateX(calc(var(--aw-spacing-lg) - var(--aw-spacing-xs)));
   background-color: var(--aw-button-primary-text);
 }
-</style> 
+</style>

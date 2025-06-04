@@ -69,6 +69,8 @@ interface ICoreActions {
   callDeviceMethod(this: UnifiedStoreType, deviceId: string, method: string, args?: unknown[]): Promise<unknown>
   addDeviceWithCheck(this: UnifiedStoreType, device: Device): boolean
   getDevicePropertyOptimized(this: UnifiedStoreType, deviceId: string, property: string): Promise<unknown>
+  getDeviceProperties(this: UnifiedStoreType, deviceId: string, properties: string[]): Promise<Record<string, unknown>>
+  getDevicePropertiesOptimized(this: UnifiedStoreType, deviceId: string, properties: string[]): Promise<Record<string, unknown>>
 }
 
 export function createCoreActions(): { state: () => CoreState; actions: ICoreActions } {
@@ -877,6 +879,21 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         }
       }
       return await this.getDeviceProperty(deviceId, property)
+    },
+
+    async getDeviceProperties(this: UnifiedStoreType, deviceId: string, properties: string[]): Promise<Record<string, unknown>> {
+      return this.executeDeviceOperation(deviceId, async (client: AlpacaClient) => {
+        return await client.getProperties(properties)
+      })
+    },
+
+    async getDevicePropertiesOptimized(this: UnifiedStoreType, deviceId: string, properties: string[]): Promise<Record<string, unknown>> {
+      const result: Record<string, unknown> = {}
+      for (const property of properties) {
+        const value = await this.getDevicePropertyOptimized(deviceId, property)
+        result[property] = value
+      }
+      return result
     }
   }
 

@@ -2,10 +2,8 @@
 import log from '@/plugins/logger'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-// import CameraControls from '@/components/panels/CameraControls.vue'
 import CameraImageDisplay from '@/components/panels/features/CameraImageDisplay.vue'
 import CameraExposureControl from '@/components/panels/features/CameraExposureControl.vue'
-import { setAlpacaProperty, getAlpacaProperties, getDeviceCapabilities } from '@/utils/alpacaPropertyAccess'
 import Icon from '@/components/ui/Icon.vue'
 import type { BayerPattern } from '@/lib/ASCOMImageBytes'
 import '@/assets/components/forms.css'
@@ -120,7 +118,7 @@ const toggleCooler = async () => {
   isTogglingCooler.value = true
   settingsError.value = null
   try {
-    await setAlpacaProperty(props.deviceId, 'coolerOn', !coolerOn.value)
+    await store.setCameraCooler(props.deviceId, !coolerOn.value)
     coolerOn.value = !coolerOn.value
   } catch (error) {
     log.error({ deviceIds: [props.deviceId] }, 'Error toggling cooler:', error)
@@ -135,7 +133,7 @@ const updateGain = async () => {
   isLoadingGain.value = true
   settingsError.value = null
   try {
-    await setAlpacaProperty(props.deviceId, 'gain', gain.value)
+    await store.setCameraGain(props.deviceId, gain.value)
   } catch (error) {
     log.error({ deviceIds: [props.deviceId] }, 'Error setting gain:', error)
     settingsError.value = `Failed to set gain: ${error instanceof Error ? error.message : String(error)}`
@@ -148,7 +146,7 @@ const updateOffset = async () => {
   isLoadingOffset.value = true
   settingsError.value = null
   try {
-    await setAlpacaProperty(props.deviceId, 'offset', offset.value)
+    await store.setCameraOffset(props.deviceId, offset.value)
   } catch (error) {
     log.error({ deviceIds: [props.deviceId] }, 'Error setting offset:', error)
     settingsError.value = `Failed to set offset: ${error instanceof Error ? error.message : String(error)}`
@@ -161,8 +159,7 @@ const updateBinning = async () => {
   isLoadingBinning.value = true
   settingsError.value = null
   try {
-    await setAlpacaProperty(props.deviceId, 'binX', binning.value)
-    await setAlpacaProperty(props.deviceId, 'binY', binning.value)
+    await store.setCameraBinning(props.deviceId, binning.value, binning.value)
   } catch (error) {
     log.error({ deviceIds: [props.deviceId] }, 'Error setting binning:', error)
     settingsError.value = `Failed to set binning: ${error instanceof Error ? error.message : String(error)}`
@@ -176,7 +173,7 @@ const updateTargetTemp = async () => {
   isLoadingTargetTemp.value = true
   settingsError.value = null
   try {
-    await setAlpacaProperty(props.deviceId, 'setCCDTemperature', targetTemp.value)
+    await store.setCameraCooler(props.deviceId, true, targetTemp.value)
   } catch (error) {
     log.error({ deviceIds: [props.deviceId] }, 'Error setting target temperature:', error)
     settingsError.value = `Failed to set target temperature: ${error instanceof Error ? error.message : String(error)}`
@@ -231,10 +228,10 @@ const updateDeviceCapabilities = async () => {
   if (!props.isConnected || !props.deviceId) return
 
   try {
-    const deviceCaps = await getDeviceCapabilities(props.deviceId, ['canSetCCDTemperature'])
+    // const deviceCaps = await store.getDeviceCapabilities(props.deviceId, ['canSetCCDTemperature'])
 
     capabilities.value = {
-      canSetCCDTemperature: deviceCaps.canSetCCDTemperature || false
+      canSetCCDTemperature: store.deviceSupports(props.deviceId, 'SetCCDTemperature') || false
     }
   } catch (error) {
     log.error({ deviceIds: [props.deviceId] }, 'Error checking device capabilities:', error)
@@ -266,7 +263,7 @@ const updateCameraStatus = async () => {
       propertiesToFetch.push('setCCDTemperature')
     }
 
-    const properties = await getAlpacaProperties(props.deviceId, propertiesToFetch)
+    const properties = await store.getDevicePropertiesOptimized(props.deviceId, propertiesToFetch)
 
     // Update camera settings with current values
     if (properties.gain !== null && typeof properties.gain === 'number') {
@@ -330,8 +327,6 @@ const resetCameraSettings = () => {
 // Setup polling when mounted
 onMounted(() => {
   if (props.isConnected && props.deviceId) {
-    // First check device capabilities
-    updateDeviceCapabilities()
     // Then get current status
     updateCameraStatus()
     // Start regular status polling

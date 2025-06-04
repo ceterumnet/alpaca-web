@@ -1,35 +1,8 @@
-// Status: Good - Part of new panel system 
-// This component handles camera exposure control with
-// proper ASCOM Alpaca protocol support
-// Features: 
-// - Exposure start/abort 
-// - Progress tracking
-// - Image ready polling 
-// - Error handling 
-// - Event emission for UI updates
 <script setup lang="ts">
 import log from '@/plugins/logger'
 import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import Icon from '@/components/ui/Icon.vue'
-
-// Add a debug function
-function debugClientStatus(store: {
-  getDeviceById: (id: string) => Record<string, unknown> | null;
-  getDeviceClient: (id: string) => unknown | null;
-}, deviceId: string) {
-  const device = store.getDeviceById(deviceId)
-  log.debug({deviceIds:[deviceId]}, `DEBUG - Device status for ${deviceId}:`, {
-    device: device ? {
-      id: device.id,
-      type: device.type,
-      isConnected: device.isConnected,
-      apiBaseUrl: device.apiBaseUrl,
-      hasProperties: !!device.properties
-    } : null,
-    hasClient: !!store.getDeviceClient(deviceId)
-  })
-}
 
 const props = defineProps({
   deviceId: {
@@ -75,7 +48,7 @@ const percentComplete = ref(0)
 const error = ref('')
 const pollingIntervals = ref<number[]>([])
 
-const durationPresets = ref([0.01, 0.1, 1, 5, 10, 30, 60, 120, 300]);
+const durationPresets = ref([0.01, 0.1, 1, 5, 10, 30, 60, 120, 300])
 
 // Method to clear the error message
 const clearError = () => {
@@ -93,9 +66,9 @@ const validateExposureDuration = () => {
 }
 
 const setExposureDuration = (presetValue: number) => {
-  exposureDuration.value = presetValue;
-  validateExposureDuration(); // Ensure it's within min/max if presets are outside
-};
+  exposureDuration.value = presetValue
+  validateExposureDuration() // Ensure it's within min/max if presets are outside
+}
 
 // Add reactive refs for component state tracking
 const componentState = ref({
@@ -127,7 +100,7 @@ const startExposure = async () => {
     return
   }
 
-  log.debug({exposureMin: props.exposureMin, exposureMax: props.exposureMax}, 'exposureMin and exposureMax')
+  log.debug({ exposureMin: props.exposureMin, exposureMax: props.exposureMax }, 'exposureMin and exposureMax')
   // Validate exposure duration is within allowed range
   if (exposureDuration.value < props.exposureMin || exposureDuration.value > props.exposureMax) {
     error.value = `Exposure duration must be between ${props.exposureMin} and ${props.exposureMax} seconds`
@@ -135,18 +108,15 @@ const startExposure = async () => {
     return
   }
 
-  // Debug client status before operation
-  debugClientStatus(unifiedStore, props.deviceId)
-
   // Verify we're dealing with a camera device
   const device = unifiedStore.getDeviceById(props.deviceId)
   if (!device || device.type !== 'camera') {
     error.value = `Device ${props.deviceId} is not a camera (type: ${device?.type})`
-    log.error({deviceIds:[props.deviceId]}, error.value)
+    log.error({ deviceIds: [props.deviceId] }, error.value)
     emit('error', error.value)
     return
   }
-  
+
   // Get the client - check if it's a CameraClient for direct method access
   const isCameraClient = false // Always use store/service abstraction
 
@@ -154,16 +124,16 @@ const startExposure = async () => {
     // If exposure is already in progress, abort it
     try {
       // Always use callDeviceMethod for abortexposure
-      log.debug({deviceIds:[props.deviceId]}, 'Using callDeviceMethod for abortexposure')
+      log.debug({ deviceIds: [props.deviceId] }, 'Using callDeviceMethod for abortexposure')
       await unifiedStore.callDeviceMethod(props.deviceId, props.stopMethod)
-      
-      log.debug({deviceIds:[props.deviceId]}, 'Exposure aborted')
+
+      log.debug({ deviceIds: [props.deviceId] }, 'Exposure aborted')
       exposureInProgress.value = false
       percentComplete.value = 0
       clearPollingIntervals()
     } catch (err) {
       error.value = `Failed to abort exposure: ${err}`
-      log.error({deviceIds:[props.deviceId]}, `Abort error:`, err)
+      log.error({ deviceIds: [props.deviceId] }, `Abort error:`, err)
       emit('error', error.value)
     }
     return
@@ -177,13 +147,11 @@ const startExposure = async () => {
 
     if (isCameraClient) {
       // Always use callDeviceMethod for startexposure
-      log.debug({deviceIds:[props.deviceId]}, 'Using callDeviceMethod for startexposure')
-      await unifiedStore.callDeviceMethod(props.deviceId, props.method, [
-        { Duration: exposureDuration.value, Light: isLight.value }
-      ])
+      log.debug({ deviceIds: [props.deviceId] }, 'Using callDeviceMethod for startexposure')
+      await unifiedStore.callDeviceMethod(props.deviceId, props.method, [{ Duration: exposureDuration.value, Light: isLight.value }])
     } else {
       // Use the store/service abstraction
-      log.debug({deviceIds:[props.deviceId]}, 'Using store/service abstraction for startexposure')
+      log.debug({ deviceIds: [props.deviceId] }, 'Using store/service abstraction for startexposure')
       await unifiedStore.startCameraExposure(props.deviceId, exposureDuration.value, isLight.value)
     }
 
@@ -194,7 +162,7 @@ const startExposure = async () => {
   } catch (err) {
     exposureInProgress.value = false
     error.value = `Failed to start exposure: ${err}`
-    log.error({deviceIds:[props.deviceId]}, `Start exposure error:`, err)
+    log.error({ deviceIds: [props.deviceId] }, `Start exposure error:`, err)
     emit('error', error.value)
   }
 }
@@ -203,7 +171,7 @@ const startExposure = async () => {
 const setupPolling = () => {
   clearPollingIntervals()
 
-  log.debug({deviceIds:[props.deviceId]}, '%c🔄 CameraExposureControl: Starting exposure polling', 'color: purple')
+  log.debug({ deviceIds: [props.deviceId] }, '%c🔄 CameraExposureControl: Starting exposure polling', 'color: purple')
 
   // Poll for percent completed (every 500ms)
   const progressInterval = window.setInterval(async () => {
@@ -221,14 +189,15 @@ const setupPolling = () => {
         // Remove from our tracking array
         pollingIntervals.value = pollingIntervals.value.filter((id) => id !== progressInterval)
 
-        log.debug({deviceIds:[props.deviceId]},
+        log.debug(
+          { deviceIds: [props.deviceId] },
           '%c✅ CameraExposureControl: Exposure reported 100% complete. Store will handle image download.',
           'color: #4caf50'
         )
         // Removed: startImageReadyPolling() - Store handles image readiness and download
       }
     } catch (err) {
-      log.error({deviceIds:[props.deviceId]}, 'Error polling exposure progress:', err)
+      log.error({ deviceIds: [props.deviceId] }, 'Error polling exposure progress:', err)
     }
   }, 500)
 
@@ -243,47 +212,44 @@ const clearPollingIntervals = () => {
 }
 
 // Add a watcher for deviceId changes to force refresh
-watch(() => props.deviceId, (newId, oldId) => {
-  if (newId !== oldId) {
-    // Clear intervals and reset state if the device changes
-    clearPollingIntervals()
-    exposureInProgress.value = false
-    percentComplete.value = 0
-    error.value = ''
-    
-    // Update component state tracking
-    componentState.value.lastPropsUpdate = Date.now()
-    log.debug({deviceIds:[props.deviceId]}, `[CameraExposureControl] Device ID changed from ${oldId} to ${newId}`)
-    
-    // Force debug check of device state
-    debugClientStatus(unifiedStore, newId)
-    
-    // Check device connection
-    const device = unifiedStore.getDeviceById(newId)
-    componentState.value.deviceConnectionChecked = true
-    componentState.value.deviceHasClient = device?.isConnected || false
-    
-    log.debug({deviceIds:[props.deviceId]}, `[CameraExposureControl] State after device change:`, {
-      deviceId: newId,
-      deviceFound: !!device,
-      isConnected: device?.isConnected,
-      componentState: { ...componentState.value }
-    })
-  }
-}, { immediate: true })
+watch(
+  () => props.deviceId,
+  (newId, oldId) => {
+    if (newId !== oldId) {
+      // Clear intervals and reset state if the device changes
+      clearPollingIntervals()
+      exposureInProgress.value = false
+      percentComplete.value = 0
+      error.value = ''
+
+      // Update component state tracking
+      componentState.value.lastPropsUpdate = Date.now()
+
+      // Check device connection
+      const device = unifiedStore.getDeviceById(newId)
+      componentState.value.deviceConnectionChecked = true
+      componentState.value.deviceHasClient = device?.isConnected || false
+    }
+  },
+  { immediate: true }
+)
 
 // Watch for imageData from the store to emit imageDownloaded event
-watch(() => unifiedStore.getDeviceById(props.deviceId)?.properties?.imageData, (newImageData, oldImageData) => {
-  if (newImageData && newImageData instanceof ArrayBuffer && newImageData.byteLength > 0) {
-    // Check if it's actually new data. This comparison might need refinement
-    // if oldImageData could be the same ArrayBuffer instance but modified,
-    // however, Pinia typically creates new state objects/values.
-    if (newImageData !== oldImageData) {
-      log.debug({deviceIds:[props.deviceId]}, '%c📷 CameraExposureControl: Detected new image data from store', 'color: #4caf50');
-      emit('imageDownloaded', newImageData);
+watch(
+  () => unifiedStore.getDeviceById(props.deviceId)?.properties?.imageData,
+  (newImageData, oldImageData) => {
+    if (newImageData && newImageData instanceof ArrayBuffer && newImageData.byteLength > 0) {
+      // Check if it's actually new data. This comparison might need refinement
+      // if oldImageData could be the same ArrayBuffer instance but modified,
+      // however, Pinia typically creates new state objects/values.
+      if (newImageData !== oldImageData) {
+        log.debug({ deviceIds: [props.deviceId] }, '%c📷 CameraExposureControl: Detected new image data from store', 'color: #4caf50')
+        emit('imageDownloaded', newImageData)
+      }
     }
-  }
-}, { deep: true });
+  },
+  { deep: true }
+)
 
 // Add explicit update for isConnected value
 const forceUpdateDisplay = () => {
@@ -297,7 +263,7 @@ onMounted(() => {
   const updateInterval = setInterval(() => {
     forceUpdateDisplay()
   }, 2000) // check every 2 seconds
-  
+
   // Clean up on unmount
   onBeforeUnmount(() => {
     clearInterval(updateInterval)
@@ -336,7 +302,7 @@ onMounted(() => {
           :key="preset"
           :disabled="exposureInProgress || !isConnected"
           class="preset-button"
-          :class="{ 'active': exposureDuration === preset }"
+          :class="{ active: exposureDuration === preset }"
           @click="setExposureDuration(preset)"
         >
           {{ preset }}s
@@ -347,34 +313,18 @@ onMounted(() => {
         <label class="frame-type-label">Frame Type:</label>
         <div class="frame-type-radios">
           <label class="radio-label">
-            <input 
-              v-model="isLight" 
-              type="radio"
-              name="frameType" 
-              :value="true" 
-              :disabled="exposureInProgress || !isConnected"
-            >
+            <input v-model="isLight" type="radio" name="frameType" :value="true" :disabled="exposureInProgress || !isConnected" />
             <span class="radio-text">Light</span>
           </label>
           <label class="radio-label">
-            <input 
-              v-model="isLight" 
-              type="radio"
-              name="frameType" 
-              :value="false" 
-              :disabled="exposureInProgress || !isConnected"
-            >
+            <input v-model="isLight" type="radio" name="frameType" :value="false" :disabled="exposureInProgress || !isConnected" />
             <span class="radio-text">Dark</span>
           </label>
         </div>
       </div>
     </div>
 
-    <button
-      class="exposure-button"
-      :disabled="!isConnected || (exposureInProgress && percentComplete < 100)"
-      @click="startExposure"
-    >
+    <button class="exposure-button" :disabled="!isConnected || (exposureInProgress && percentComplete < 100)" @click="startExposure">
       <Icon v-if="exposureInProgress && percentComplete < 100" type="refresh" animation="spin" class="button-icon" />
       <Icon v-else-if="buttonText === 'Abort'" type="player-stop" class="button-icon" />
       <Icon v-else type="camera" class="button-icon" />
@@ -452,7 +402,7 @@ onMounted(() => {
   align-items: center;
 }
 
-.duration-input-group input[type="number"].aw-input {
+.duration-input-group input[type='number'].aw-input {
   flex-grow: 1;
   width: auto;
 }
@@ -474,7 +424,9 @@ onMounted(() => {
   border: 1px solid var(--aw-panel-border-color);
   border-radius: var(--aw-border-radius-sm);
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .preset-button:disabled {
@@ -520,7 +472,7 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.radio-label input[type="radio"] {
+.radio-label input[type='radio'] {
   margin-right: var(--aw-spacing-xxs);
 }
 
@@ -536,7 +488,10 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--aw-spacing-xs);
-  transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    box-shadow 0.2s,
+    border-color 0.2s;
   width: 100%;
   box-shadow: var(--aw-shadow-sm);
 }
@@ -588,7 +543,8 @@ onMounted(() => {
 }
 
 /* Responsive adjustments for smaller containers if needed */
-@media (width <= 400px) { /* Example breakpoint for when controls are in a very narrow space */
+@media (width <= 400px) {
+  /* Example breakpoint for when controls are in a very narrow space */
   .exposure-inputs {
     flex-direction: column; /* Stack inputs vertically */
     align-items: stretch; /* Stretch items to full width */
@@ -605,11 +561,13 @@ onMounted(() => {
     flex-basis: auto;
   }
 
-  .input-group input[type="number"] {
+  .input-group input[type='number'] {
     width: auto; /* Allow input to grow */
     flex-grow: 1;
   }
 }
 
-.toggle-switch-container { display: none; } /* Hide old toggle if necessary */
+.toggle-switch-container {
+  display: none;
+} /* Hide old toggle if necessary */
 </style>

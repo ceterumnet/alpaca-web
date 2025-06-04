@@ -1,7 +1,3 @@
-// Status: Good - Part of new panel system // This component handles image display and processing with advanced features: // - ASCOM Alpaca image
-format support // - Image stretching and enhancement // - Histogram generation and display // - Robust stretch handling for outlier rejection // -
-Real-time image updates
-
 <script setup lang="ts">
 import log from '@/plugins/logger'
 import { ref, onMounted, watch, nextTick, onBeforeUnmount, computed } from 'vue'

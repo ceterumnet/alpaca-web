@@ -1,11 +1,3 @@
-// Status: Good - Core Component
-// This is the base ALPACA client implementation that:
-// - Uses the new type system and migration utilities
-// - Provides proper error handling, retry logic, and timeout handling
-// - Maintains type safety across the system
-// - Supports property validation and transformation
-// - Integrates with the unified logging service
-
 /**
  * Core ALPACA API client with proper error handling,
  * request/response logging, retry logic, and timeout handling.

@@ -13,26 +13,48 @@
         <div class="panel-section">
           <h3>Status</h3>
           <div class="status-grid">
-            <div><span class="label">Shutter:</span> <span class="value">{{ shutterStatusText }}</span></div>
-            <div><span class="label">Slewing:</span> <span class="value">{{ domeSlewing === null ? 'N/A' : (domeSlewing ? 'Yes' : 'No') }}</span></div>
-            <div><span class="label">At Home:</span> <span class="value">{{ domeAtHome === null ? 'N/A' : (domeAtHome ? 'Yes' : 'No') }}</span></div>
-            <div><span class="label">At Park:</span> <span class="value">{{ domeAtPark === null ? 'N/A' : (domeAtPark ? 'Yes' : 'No') }}</span></div>
+            <div>
+              <span class="label">Shutter:</span> <span class="value">{{ shutterStatusText }}</span>
+            </div>
+            <div>
+              <span class="label">Slewing:</span> <span class="value">{{ domeSlewing === null ? 'N/A' : domeSlewing ? 'Yes' : 'No' }}</span>
+            </div>
+            <div>
+              <span class="label">At Home:</span> <span class="value">{{ domeAtHome === null ? 'N/A' : domeAtHome ? 'Yes' : 'No' }}</span>
+            </div>
+            <div>
+              <span class="label">At Park:</span> <span class="value">{{ domeAtPark === null ? 'N/A' : domeAtPark ? 'Yes' : 'No' }}</span>
+            </div>
           </div>
         </div>
 
         <div class="panel-section">
           <h3>Position</h3>
-           <div class="status-grid">
-            <div><span class="label">Altitude:</span> <span class="value">{{ typeof domeAltitude === 'number' ? domeAltitude.toFixed(2) + '°' : 'N/A' }}</span></div>
-            <div><span class="label">Azimuth:</span> <span class="value">{{ typeof domeAzimuth === 'number' ? domeAzimuth.toFixed(2) + '°' : 'N/A' }}</span></div>
+          <div class="status-grid">
+            <div>
+              <span class="label">Altitude:</span>
+              <span class="value">{{ typeof domeAltitude === 'number' ? domeAltitude.toFixed(2) + '°' : 'N/A' }}</span>
+            </div>
+            <div>
+              <span class="label">Azimuth:</span>
+              <span class="value">{{ typeof domeAzimuth === 'number' ? domeAzimuth.toFixed(2) + '°' : 'N/A' }}</span>
+            </div>
           </div>
         </div>
 
         <div class="panel-section">
           <h3>Controls</h3>
           <div class="control-buttons">
-            <button class="action-button" :disabled="domeSlewing === true || domeShutterStatus === 0 || domeShutterStatus === 2" @click="openShutter">Open Shutter</button>
-            <button class="action-button" :disabled="domeSlewing === true || domeShutterStatus === 1 || domeShutterStatus === 3" @click="closeShutter">Close Shutter</button>
+            <button class="action-button" :disabled="domeSlewing === true || domeShutterStatus === 0 || domeShutterStatus === 2" @click="openShutter">
+              Open Shutter
+            </button>
+            <button
+              class="action-button"
+              :disabled="domeSlewing === true || domeShutterStatus === 1 || domeShutterStatus === 3"
+              @click="closeShutter"
+            >
+              Close Shutter
+            </button>
             <button class="action-button" :disabled="domeSlewing === true" @click="parkDome">Park Dome</button>
             <button class="action-button" :disabled="domeSlewing === true" @click="findHome">Find Home</button>
             <button class="stop-button" :disabled="domeSlewing !== true" @click="abortSlew">Abort Slew</button>
@@ -46,7 +68,6 @@
 <script setup lang="ts">
 import { computed, watch, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-// DomeClient import is no longer needed here
 
 const props = defineProps({
   deviceId: {
@@ -76,12 +97,18 @@ const domeSlewing = computed(() => currentDevice.value?.properties?.dome_slewing
 const shutterStatusText = computed(() => {
   if (domeShutterStatus.value === null) return 'Unknown'
   switch (domeShutterStatus.value) {
-    case 0: return 'Open'
-    case 1: return 'Closed'
-    case 2: return 'Opening'
-    case 3: return 'Closing'
-    case 4: return 'Error'
-    default: return 'Invalid Status'
+    case 0:
+      return 'Open'
+    case 1:
+      return 'Closed'
+    case 2:
+      return 'Opening'
+    case 3:
+      return 'Closing'
+    case 4:
+      return 'Error'
+    default:
+      return 'Invalid Status'
   }
 })
 
@@ -100,26 +127,32 @@ onMounted(() => {
   }
 })
 
-watch(() => props.isConnected, (newIsConnected) => {
-  if (props.deviceId) {
-    if (newIsConnected) {
-      // store.handleDomeConnected(props.deviceId); // Managed by core device connect logic
-      store.fetchDomeStatus(props.deviceId); // Explicitly fetch on reconnect or first connect if panel loaded later
-    } else {
-      // store.handleDomeDisconnected(props.deviceId); // Managed by core device connect logic
+watch(
+  () => props.isConnected,
+  (newIsConnected) => {
+    if (props.deviceId) {
+      if (newIsConnected) {
+        // store.handleDomeConnected(props.deviceId); // Managed by core device connect logic
+        store.fetchDomeStatus(props.deviceId) // Explicitly fetch on reconnect or first connect if panel loaded later
+      } else {
+        // store.handleDomeDisconnected(props.deviceId); // Managed by core device connect logic
+      }
     }
   }
-});
+)
 
-watch(() => props.deviceId, (newDeviceId) => {
-  if (newDeviceId && props.isConnected) {
-    // store.handleDomeConnected(newDeviceId); // Managed by core device connect logic
-    store.fetchDomeStatus(newDeviceId);
-  }
-}, { immediate: true });
+watch(
+  () => props.deviceId,
+  (newDeviceId) => {
+    if (newDeviceId && props.isConnected) {
+      // store.handleDomeConnected(newDeviceId); // Managed by core device connect logic
+      store.fetchDomeStatus(newDeviceId)
+    }
+  },
+  { immediate: true }
+)
 
 // onUnmounted: Polling is managed by the store.
-
 </script>
 
 <style scoped>
@@ -138,7 +171,7 @@ watch(() => props.deviceId, (newDeviceId) => {
 .panel-content {
   overflow-y: auto;
   flex: 1;
-  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs)); 
+  padding: calc(var(--aw-spacing-sm) + var(--aw-spacing-xs));
 }
 
 .panel-section {
@@ -188,7 +221,7 @@ watch(() => props.deviceId, (newDeviceId) => {
 .status-grid > div {
   display: flex;
   justify-content: space-between;
-  align-items: center; 
+  align-items: center;
 }
 
 .label {
@@ -208,9 +241,10 @@ watch(() => props.deviceId, (newDeviceId) => {
   gap: var(--aw-spacing-sm);
 }
 
-.action-button, .stop-button {
+.action-button,
+.stop-button {
   flex-grow: 1;
-  min-width: 120px; 
+  min-width: 120px;
   background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
   border: none;
@@ -245,5 +279,4 @@ watch(() => props.deviceId, (newDeviceId) => {
   cursor: not-allowed;
   opacity: 0.7;
 }
-
-</style> 
+</style>

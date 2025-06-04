@@ -1,8 +1,3 @@
-// Status: New - Utility
-// This utility provides standardized access to Alpaca device properties
-// It handles property name mapping and value transformations
-// and leverages existing devicestate optimizations
-
 import log from '@/plugins/logger'
 
 import { fromAscomValue } from '@/types/value-transforms'

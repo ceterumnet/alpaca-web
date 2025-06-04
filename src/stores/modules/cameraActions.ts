@@ -5,8 +5,6 @@
  */
 
 import log from '@/plugins/logger'
-// import type { DeviceEvent, Device } from '../types/device-store.types'
-// import type { AlpacaClient } from '@/api/AlpacaClient'
 import { AlpacaClient as BaseAlpacaClient } from '@/api/alpaca/base-client'
 import type { UnifiedStoreType } from '../UnifiedStore'
 import type { CameraClient } from '@/api/alpaca/camera-client'
