@@ -917,8 +917,8 @@ describe('switchActions', () => {
       mockEmitEvent.mockClear()
       vi.spyOn(store, 'fetchSwitchDetails').mockClear()
 
-      store.pollingTimers.forEach((timerId) => clearInterval(timerId))
-      store.pollingTimers.clear()
+      store.propertyPollingIntervals.forEach((timerId) => clearInterval(timerId))
+      store.propertyPollingIntervals.clear()
       store.isDevicePolling.clear()
       vi.clearAllTimers()
     })
@@ -953,7 +953,7 @@ describe('switchActions', () => {
         vi.useFakeTimers()
         mockedIsSwitch.mockReturnValue(true)
         pollStatusSpyForStart = vi.spyOn(store as UnifiedStoreType, '_pollSwitchStatus')
-        store.pollingTimers.delete(startPollDeviceId)
+        store.propertyPollingIntervals.delete(startPollDeviceId)
         store.isDevicePolling.delete(startPollDeviceId)
         vi.clearAllTimers()
       })
@@ -971,7 +971,7 @@ describe('switchActions', () => {
         getDeviceByIdSpy.mockReturnValue(null)
         store.startSwitchPolling(startPollDeviceId)
         expect(store.isDevicePolling.get(startPollDeviceId)).toBeUndefined()
-        expect(store.pollingTimers.has(startPollDeviceId)).toBe(false)
+        expect(store.propertyPollingIntervals.has(startPollDeviceId)).toBe(false)
         expect(pollStatusSpyForStart).not.toHaveBeenCalled()
       })
 
@@ -980,7 +980,7 @@ describe('switchActions', () => {
         mockedIsSwitch.mockReturnValue(false)
         store.startSwitchPolling(startPollDeviceId)
         expect(store.isDevicePolling.get(startPollDeviceId)).toBeUndefined()
-        expect(store.pollingTimers.has(startPollDeviceId)).toBe(false)
+        expect(store.propertyPollingIntervals.has(startPollDeviceId)).toBe(false)
         expect(pollStatusSpyForStart).not.toHaveBeenCalled()
       })
 
@@ -988,15 +988,15 @@ describe('switchActions', () => {
         getDeviceByIdSpy.mockReturnValue({ ...basePollingDevice, isConnected: false } as Device)
         store.startSwitchPolling(startPollDeviceId)
         expect(store.isDevicePolling.get(startPollDeviceId)).toBeUndefined()
-        expect(store.pollingTimers.has(startPollDeviceId)).toBe(false)
+        expect(store.propertyPollingIntervals.has(startPollDeviceId)).toBe(false)
         expect(pollStatusSpyForStart).not.toHaveBeenCalled()
       })
 
       it('should start polling if device is a connected switch', () => {
         getDeviceByIdSpy.mockReturnValue(basePollingDevice as Device)
         store.startSwitchPolling(startPollDeviceId)
-        expect(store.isDevicePolling.get(startPollDeviceId)).contains(true)
-        expect(store.pollingTimers.get(startPollDeviceId)).toBeDefined()
+        expect(store.isDevicePolling.get(startPollDeviceId)).toBe(true)
+        expect(store.propertyPollingIntervals.get(startPollDeviceId)).toBeDefined()
         expect(pollStatusSpyForStart).not.toHaveBeenCalled()
 
         vi.advanceTimersByTime(pollInterval)
@@ -1012,12 +1012,12 @@ describe('switchActions', () => {
         const stopPollingSpy = vi.spyOn(store, 'stopSwitchPolling')
 
         store.startSwitchPolling(startPollDeviceId)
-        const firstTimerId = store.pollingTimers.get(startPollDeviceId)
+        const firstTimerId = store.propertyPollingIntervals.get(startPollDeviceId)
 
         store.startSwitchPolling(startPollDeviceId)
         expect(stopPollingSpy).toHaveBeenCalledWith(startPollDeviceId)
-        expect(store.isDevicePolling.get(startPollDeviceId)).contains(true)
-        const secondTimerId = store.pollingTimers.get(startPollDeviceId)
+        expect(store.isDevicePolling.get(startPollDeviceId)).toBe(true)
+        const secondTimerId = store.propertyPollingIntervals.get(startPollDeviceId)
         expect(secondTimerId).not.toBe(firstTimerId)
 
         vi.advanceTimersByTime(pollInterval)
@@ -1032,7 +1032,7 @@ describe('switchActions', () => {
         } as Device & SwitchDeviceProperties
         getDeviceByIdSpy.mockReturnValue(deviceWithoutInterval as Device)
         store.startSwitchPolling(startPollDeviceId)
-        expect(store.isDevicePolling.get(startPollDeviceId)).contains(true)
+        expect(store.isDevicePolling.get(startPollDeviceId)).toBe(true)
 
         vi.advanceTimersByTime(3000)
         expect(pollStatusSpyForStart).toHaveBeenCalledTimes(1)
@@ -1066,11 +1066,11 @@ describe('switchActions', () => {
 
       it('should stop polling and clear timer', () => {
         store.startSwitchPolling(stopPollDeviceId)
-        expect(store.isDevicePolling.get(stopPollDeviceId)).contains(true)
+        expect(store.isDevicePolling.get(stopPollDeviceId)).toBe(true)
 
         store.stopSwitchPolling(stopPollDeviceId)
-        expect(store.isDevicePolling.get(stopPollDeviceId)).not.contains(true)
-        expect(store.pollingTimers.has(stopPollDeviceId)).toBe(false)
+        expect(store.isDevicePolling.get(stopPollDeviceId)).toBe(false)
+        expect(store.propertyPollingIntervals.has(stopPollDeviceId)).toBe(false)
 
         pollStatusSpyForStop.mockClear()
         vi.advanceTimersByTime(200)
@@ -1083,7 +1083,7 @@ describe('switchActions', () => {
       let mockDevice: Device & SwitchDeviceProperties
 
       beforeEach(() => {
-        store.isDevicePolling.set(deviceId, new Set([true]))
+        store.isDevicePolling.set(deviceId, true)
         mockGetSwitchClient = vi.spyOn(store, 'getDeviceClient').mockReturnValue(mockSwitchClientInstance as unknown as SwitchClient)
 
         mockDevice = {

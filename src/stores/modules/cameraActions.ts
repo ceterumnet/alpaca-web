@@ -11,7 +11,7 @@ import type { CameraClient } from '@/api/alpaca/camera-client'
 
 // Define an interface for the actions specific to the camera module
 // This helps in typing 'this' context for actions if needed, and for clear definition of available actions
-export interface CameraActionsSignatures {
+export interface ICameraActionsSignatures {
   startCameraExposure: (deviceId: string, exposureTime: number, isLight?: boolean) => Promise<boolean>
   trackExposureProgress: (deviceId: string, exposureTime: number) => void
   handleExposureComplete: (deviceId: string) => Promise<void>
@@ -38,7 +38,7 @@ export interface CameraActionsSignatures {
   // getCameraSubExposureDuration might be covered by fetchCameraProperties if subexposureduration is polled
 }
 
-export function createCameraActions(): { actions: CameraActionsSignatures } {
+export function createCameraActions(): { actions: ICameraActionsSignatures } {
   return {
     actions: {
       async startCameraExposure(this: UnifiedStoreType, deviceId: string, exposureTime: number, isLight: boolean = true): Promise<boolean> {
@@ -1290,6 +1290,6 @@ export function createCameraActions(): { actions: CameraActionsSignatures } {
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set sub-exposure duration: ${error}` })
         }
       }
-    } as CameraActionsSignatures // Cast to ensure all actions are covered
+    } as ICameraActionsSignatures // Cast to ensure all actions are covered
   }
 }

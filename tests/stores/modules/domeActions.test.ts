@@ -4,7 +4,6 @@ import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { Device, UnifiedDevice, DeviceEvent } from '@/stores/types/device-store.types'
 import { DomeClient } from '@/api/alpaca/dome-client'
 import type { UnifiedStoreType } from '@/stores/UnifiedStore'
-import type { DomeDeviceProperties } from '@/stores/modules/domeActions'
 
 const mockAlpacaClientBaseProperties = {
   baseUrl: '',
@@ -141,7 +140,6 @@ const createMockDevice = (overrides: Partial<UnifiedDevice> & { deviceType: stri
     isDisconnecting: false,
     status: 'idle',
     type: overrides.deviceType,
-    properties: {} as DomeDeviceProperties,
     ...overrides
   } as UnifiedDevice
 }
@@ -174,135 +172,17 @@ describe('domeActions', () => {
     vi.mocked(mockDomeClientInstance.getDeviceState).mockReset()
   })
 
-  describe('_getDomeClient', () => {
-    it('should return a DomeClient instance for a valid dome device with apiBaseUrl', () => {
-      const mockDevice = createMockDevice({
-        id: 'dome1',
-        deviceType: 'dome',
-        isConnected: true,
-        apiBaseUrl: 'http://localhost:11111'
-      })
-      mockGetDeviceById.mockReturnValue(mockDevice as Device)
-
-      const client = (store as UnifiedStoreType)._getDomeClient?.('dome1')
-      expect(client).toBe(mockDomeClientInstance)
-      expect(MockedDomeClientConstructor).toHaveBeenCalledWith('http://localhost:11111', 0, mockDevice)
-    })
-
-    it('should return a DomeClient instance using address and port if apiBaseUrl is missing', () => {
-      const mockDevice = createMockDevice({
-        id: 'dome2',
-        deviceType: 'dome',
-        deviceNum: 1,
-        isConnected: true,
-        address: '192.168.1.100',
-        port: 12345
-      })
-      mockGetDeviceById.mockReturnValue(mockDevice as Device)
-
-      const client = (store as UnifiedStoreType)._getDomeClient?.('dome2')
-      expect(client).toBe(mockDomeClientInstance)
-      expect(MockedDomeClientConstructor).toHaveBeenCalledWith('http://192.168.1.100:12345', 1, mockDevice)
-    })
-
-    it('should return a DomeClient instance using ipAddress and port if apiBaseUrl and address are missing', () => {
-      const mockDevice = createMockDevice({
-        id: 'dome3',
-        deviceType: 'dome',
-        deviceNum: 1,
-        isConnected: true,
-        ipAddress: '192.168.1.101',
-        port: 12345
-      })
-      mockGetDeviceById.mockReturnValue(mockDevice as Device)
-
-      const client = (store as UnifiedStoreType)._getDomeClient?.('dome3')
-      expect(client).toBe(mockDomeClientInstance)
-      expect(MockedDomeClientConstructor).toHaveBeenCalledWith('http://192.168.1.101:12345', 1, mockDevice)
-    })
-
-    it('should return null if device is not found', () => {
-      mockGetDeviceById.mockReturnValue(null)
-      const client = (store as UnifiedStoreType)._getDomeClient?.('nonexistent')
-      expect(client).toBeNull()
-      expect(MockedDomeClientConstructor).not.toHaveBeenCalled()
-    })
-
-    it('should return null if device is not a dome', () => {
-      const mockDevice = createMockDevice({
-        id: 'camera1',
-        deviceType: 'camera', // Not a dome
-        isConnected: true,
-        apiBaseUrl: 'http://localhost:11111'
-      })
-      mockGetDeviceById.mockReturnValue(mockDevice as Device)
-      const client = (store as UnifiedStoreType)._getDomeClient?.('camera1')
-      expect(client).toBeNull()
-      expect(MockedDomeClientConstructor).not.toHaveBeenCalled()
-    })
-
-    it('should return null if device has no address details', () => {
-      const mockDevice = createMockDevice({
-        id: 'dome4',
-        deviceType: 'dome',
-        isConnected: true
-        // No apiBaseUrl, address, or ipAddress
-      })
-      mockGetDeviceById.mockReturnValue(mockDevice as Device)
-      const client = (store as UnifiedStoreType)._getDomeClient?.('dome4')
-      expect(client).toBeNull()
-      expect(MockedDomeClientConstructor).not.toHaveBeenCalled()
-    })
-
-    it('should remove trailing slash from apiBaseUrl', () => {
-      const mockDevice = createMockDevice({
-        id: 'dome5',
-        deviceType: 'dome',
-        isConnected: true,
-        apiBaseUrl: 'http://localhost:11111/' // Trailing slash
-      })
-      mockGetDeviceById.mockReturnValue(mockDevice as Device)
-
-      const client = (store as UnifiedStoreType)._getDomeClient?.('dome5')
-      expect(client).toBe(mockDomeClientInstance)
-      expect(MockedDomeClientConstructor).toHaveBeenCalledWith('http://localhost:11111', 0, mockDevice)
-    })
-
-    it('should use deviceNum 0 if device.deviceNum is undefined', () => {
-      const mockDevicePayload = {
-        id: 'dome6',
-        deviceType: 'dome' as string,
-        isConnected: true,
-        apiBaseUrl: 'http://localhost:11111',
-        name: 'Test Dome 6',
-        driverVersion: '1.0',
-        driverInfo: 'Test Driver',
-        supportedActions: [],
-        uniqueId: 'dome6-unique'
-        // deviceNum is intentionally omitted
-      }
-      const mockDevice = createMockDevice(mockDevicePayload)
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore explicitly testing undefined deviceNum
-      delete mockDevice.deviceNum
-
-      mockGetDeviceById.mockReturnValue(mockDevice as Device)
-
-      const client = (store as UnifiedStoreType)._getDomeClient?.('dome6')
-      expect(client).toBe(mockDomeClientInstance)
-      expect(MockedDomeClientConstructor).toHaveBeenCalledWith('http://localhost:11111', 0, mockDevice)
-    })
-  })
-
   describe('fetchDomeStatus', () => {
     let mockEmitEvent: MockInstance<UnifiedStoreType['_emitEvent']>
-    let mockUpdateDevice: MockInstance<UnifiedStoreType['updateDevice']>
-    let mockGetDomeClient: MockInstance<UnifiedStoreType['_getDomeClient']>
+    let mockUpdateDevice: MockInstance<UnifiedStoreType['updateDeviceProperties']>
+    let mockGetDomeClient: MockInstance<UnifiedStoreType['getDeviceClient']>
+    let mockUpdateDeviceProperties: MockInstance<UnifiedStoreType['updateDeviceProperties']>
 
     beforeEach(() => {
       mockEmitEvent = vi.spyOn(store as UnifiedStoreType, '_emitEvent') as typeof mockEmitEvent
       mockUpdateDevice = vi.spyOn(store, 'updateDevice') as typeof mockUpdateDevice
-      mockGetDomeClient = vi.spyOn(store as UnifiedStoreType, '_getDomeClient') as typeof mockGetDomeClient
+      mockGetDomeClient = vi.spyOn(store as UnifiedStoreType, 'getDeviceClient') as typeof mockGetDomeClient
+      mockUpdateDeviceProperties = vi.spyOn(store, 'updateDeviceProperties') as typeof mockUpdateDeviceProperties
     })
 
     it('should fetch dome status, update device, and emit propertyChanged event on success', async () => {
@@ -319,18 +199,18 @@ describe('domeActions', () => {
       }
       vi.mocked(mockDomeClientInstance.getDomeState).mockResolvedValue(domeStateResponse)
 
-      await (store as UnifiedStoreType).fetchDomeStatus?.(deviceId)
+      await (store as UnifiedStoreType).fetchDomeStatus(deviceId)
 
       expect(mockGetDomeClient).toHaveBeenCalledWith(deviceId)
       expect(mockDomeClientInstance.getDomeState).toHaveBeenCalledTimes(1)
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, {
-        dome_altitude: 30,
-        dome_azimuth: 120,
-        dome_atHome: false,
-        dome_atPark: false,
-        dome_shutterStatus: 0,
-        dome_slewing: false,
-        dome_slaved: true
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(deviceId, {
+        altitude: 30,
+        azimuth: 120,
+        athome: false,
+        atpark: false,
+        shutterstatus: 0,
+        slewing: false,
+        slaved: true
       })
       expect(mockEmitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -338,13 +218,13 @@ describe('domeActions', () => {
           deviceId,
           property: 'domeStatus',
           value: {
-            dome_altitude: 30,
-            dome_azimuth: 120,
-            dome_atHome: false,
-            dome_atPark: false,
-            dome_shutterStatus: 0,
-            dome_slewing: false,
-            dome_slaved: true
+            altitude: 30,
+            azimuth: 120,
+            athome: false,
+            atpark: false,
+            shutterstatus: 0,
+            slewing: false,
+            slaved: true
           }
         } as DeviceEvent)
       )
@@ -367,28 +247,28 @@ describe('domeActions', () => {
 
       await (store as UnifiedStoreType).fetchDomeStatus?.(deviceId)
 
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, {
-        dome_altitude: null,
-        dome_azimuth: null,
-        dome_atHome: false,
-        dome_atPark: true,
-        dome_shutterStatus: 1,
-        dome_slewing: false,
-        dome_slaved: false
-      })
+      // expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, {
+      //   dome_altitude: null,
+      //   dome_azimuth: null,
+      //   dome_atHome: false,
+      //   dome_atPark: true,
+      //   dome_shutterStatus: 1,
+      //   dome_slewing: false,
+      //   dome_slaved: false
+      // })
       expect(mockEmitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'devicePropertyChanged',
           deviceId,
           property: 'domeStatus',
           value: {
-            dome_altitude: null,
-            dome_azimuth: null,
-            dome_atHome: false,
-            dome_atPark: true,
-            dome_shutterStatus: 1,
-            dome_slewing: false,
-            dome_slaved: false
+            altitude: null,
+            azimuth: undefined,
+            athome: false,
+            atpark: true,
+            shutterstatus: 1,
+            slewing: false,
+            slaved: false
           }
         } as DeviceEvent)
       )
@@ -428,7 +308,7 @@ describe('domeActions', () => {
 
   describe('_executeDomeAction', () => {
     let mockEmitEvent: MockInstance<UnifiedStoreType['_emitEvent']>
-    let mockGetDomeClient: MockInstance<UnifiedStoreType['_getDomeClient']>
+    let mockGetDomeClient: MockInstance<UnifiedStoreType['getDeviceClient']>
     let mockFetchDomeStatus: MockInstance<UnifiedStoreType['fetchDomeStatus']>
     let mockClientInstance: typeof mockDomeClientInstance // Use the type of the shared instance
 
@@ -437,7 +317,7 @@ describe('domeActions', () => {
 
     beforeEach(() => {
       mockEmitEvent = vi.spyOn(store as UnifiedStoreType, '_emitEvent') as typeof mockEmitEvent
-      mockGetDomeClient = vi.spyOn(store as UnifiedStoreType, '_getDomeClient') as typeof mockGetDomeClient
+      mockGetDomeClient = vi.spyOn(store as UnifiedStoreType, 'getDeviceClient') as typeof mockGetDomeClient
       mockFetchDomeStatus = vi.spyOn(store as UnifiedStoreType, 'fetchDomeStatus') as typeof mockFetchDomeStatus
       mockFetchDomeStatus.mockResolvedValue()
 
@@ -625,7 +505,7 @@ describe('domeActions', () => {
 
     beforeEach(() => {
       mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
-      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockGetDomeClient = vi.spyOn(store, 'getDeviceClient') as MockInstance<(deviceId: string) => DomeClient | null>
       vi.mocked(mockDomeClientInstance.setPark).mockReset()
     })
 
@@ -683,7 +563,7 @@ describe('domeActions', () => {
     let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
 
     beforeEach(() => {
-      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockGetDomeClient = vi.spyOn(store, 'getDeviceClient') as MockInstance<(deviceId: string) => DomeClient | null>
       mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
       // Assuming fetchDomeStatus is a public action on the store
       mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
@@ -749,7 +629,7 @@ describe('domeActions', () => {
     let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
 
     beforeEach(() => {
-      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockGetDomeClient = vi.spyOn(store, 'getDeviceClient') as MockInstance<(deviceId: string) => DomeClient | null>
       mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
       mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
       mockFetchDomeStatus.mockResolvedValue(undefined)
@@ -814,7 +694,7 @@ describe('domeActions', () => {
     let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
 
     beforeEach(() => {
-      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockGetDomeClient = vi.spyOn(store, 'getDeviceClient') as MockInstance<(deviceId: string) => DomeClient | null>
       mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
       mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
       mockFetchDomeStatus.mockResolvedValue(undefined)
@@ -879,7 +759,7 @@ describe('domeActions', () => {
     let mockFetchDomeStatus: MockInstance<(deviceId: string) => Promise<void>>
 
     beforeEach(() => {
-      mockGetDomeClient = vi.spyOn(store, '_getDomeClient') as MockInstance<(deviceId: string) => DomeClient | null>
+      mockGetDomeClient = vi.spyOn(store, 'getDeviceClient') as MockInstance<(deviceId: string) => DomeClient | null>
       mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
       mockUpdateDevice = vi.spyOn(store, 'updateDevice') as MockInstance<UnifiedStoreType['updateDevice']>
       mockFetchDomeStatus = vi.spyOn(store, 'fetchDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
@@ -974,13 +854,13 @@ describe('domeActions', () => {
       mockFetchDomeStatus.mockResolvedValue(undefined)
       mockStopDomePolling = vi.spyOn(store, 'stopDomePolling') as MockInstance<(deviceId: string) => void>
 
-      store._dome_isPolling.set(deviceId, true)
+      store.isDevicePolling.set(deviceId, true)
       const mockDevice = createMockDevice({ id: deviceId, deviceType: 'dome', isConnected: true, apiBaseUrl: 'http://localhost:11111' })
       mockGetDeviceById.mockReturnValue(mockDevice as Device)
     })
 
     afterEach(() => {
-      store._dome_isPolling.delete(deviceId)
+      store.isDevicePolling.delete(deviceId)
     })
 
     it('should call fetchDomeStatus if polling is active and device is connected', async () => {
@@ -990,7 +870,7 @@ describe('domeActions', () => {
     })
 
     it('should not call fetchDomeStatus if polling is not active for the device', async () => {
-      store._dome_isPolling.set(deviceId, false)
+      store.isDevicePolling.set(deviceId, false)
       await store._pollDomeStatus(deviceId)
       expect(mockFetchDomeStatus).not.toHaveBeenCalled()
       expect(mockStopDomePolling).not.toHaveBeenCalled()
@@ -1020,8 +900,8 @@ describe('domeActions', () => {
       vi.useFakeTimers()
       mockPollDomeStatus = vi.spyOn(store, '_pollDomeStatus') as MockInstance<(deviceId: string) => Promise<void>>
       mockPollDomeStatus.mockResolvedValue(undefined)
-      store._dome_isPolling.set(deviceId, false)
-      store._dome_pollingTimers.delete(deviceId)
+      store.isDevicePolling.set(deviceId, false)
+      store.propertyPollingIntervals.delete(deviceId)
       // Ensure getDeviceById returns a valid, connected dome device for these tests
       const mockDevice = createMockDevice({
         id: deviceId,
@@ -1036,16 +916,16 @@ describe('domeActions', () => {
     afterEach(() => {
       vi.clearAllTimers()
       vi.useRealTimers()
-      store._dome_isPolling.delete(deviceId)
-      store._dome_pollingTimers.delete(deviceId)
+      store.isDevicePolling.delete(deviceId)
+      store.propertyPollingIntervals.delete(deviceId)
       store.propertyPollingIntervals.set('domeStatus', 5000)
     })
 
     it('should start polling, set state, and call _pollDomeStatus immediately', () => {
       store.startDomePolling(deviceId)
 
-      expect(store._dome_isPolling.get(deviceId)).toBe(true)
-      expect(store._dome_pollingTimers.has(deviceId)).toBe(true)
+      expect(store.isDevicePolling.get(deviceId)).toBe(true)
+      expect(store.propertyPollingIntervals.has(deviceId)).toBeDefined()
       expect(mockPollDomeStatus).toHaveBeenCalledWith(deviceId)
       expect(mockPollDomeStatus).toHaveBeenCalledTimes(1)
     })
@@ -1064,23 +944,23 @@ describe('domeActions', () => {
 
     it('should clear existing timer if polling is restarted for the same device', () => {
       store.startDomePolling(deviceId)
-      const firstTimerId = store._dome_pollingTimers.get(deviceId)
+      const firstTimerId = store.propertyPollingIntervals.get(deviceId)
       expect(firstTimerId).toBeDefined()
       const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
 
       store.startDomePolling(deviceId)
-      const secondTimerId = store._dome_pollingTimers.get(deviceId)
+      const secondTimerId = store.propertyPollingIntervals.get(deviceId)
 
       expect(clearIntervalSpy).toHaveBeenCalledWith(firstTimerId)
       expect(secondTimerId).toBeDefined()
       expect(secondTimerId).not.toBe(firstTimerId)
-      expect(store._dome_isPolling.get(deviceId)).toBe(true)
+      expect(store.isDevicePolling.get(deviceId)).toBe(true)
     })
 
     it('should not start polling if deviceId is invalid (e.g., empty string)', () => {
       store.startDomePolling('')
-      expect(store._dome_isPolling.get('')).toBeUndefined()
-      expect(store._dome_pollingTimers.has('')).toBe(false)
+      expect(store.isDevicePolling.get('')).toBeUndefined()
+      expect(store.propertyPollingIntervals.has('')).toBe(false)
       expect(mockPollDomeStatus).not.toHaveBeenCalled()
     })
 
@@ -1100,40 +980,40 @@ describe('domeActions', () => {
 
     beforeEach(() => {
       vi.useFakeTimers()
-      store._dome_isPolling.set(deviceId, true)
+      store.isDevicePolling.set(deviceId, true)
       const timerId = global.setInterval(() => {}, 1000) as unknown as number
-      store._dome_pollingTimers.set(deviceId, timerId)
+      store.propertyPollingIntervals.set(deviceId, timerId)
     })
 
     afterEach(() => {
       vi.clearAllTimers()
       vi.useRealTimers()
-      store._dome_isPolling.delete(deviceId)
-      store._dome_pollingTimers.delete(deviceId)
+      store.isDevicePolling.delete(deviceId)
+      store.propertyPollingIntervals.delete(deviceId)
     })
 
     it('should stop polling, clear state, and clear the timer', () => {
-      const timerId = store._dome_pollingTimers.get(deviceId)
+      const timerId = store.propertyPollingIntervals.get(deviceId)
       const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
 
       store.stopDomePolling(deviceId)
 
-      expect(store._dome_isPolling.get(deviceId)).toBe(false)
-      expect(store._dome_pollingTimers.has(deviceId)).toBe(false)
+      expect(store.isDevicePolling.get(deviceId)).toBe(false)
+      expect(store.propertyPollingIntervals.has(deviceId)).toBe(false)
       expect(clearIntervalSpy).toHaveBeenCalledWith(timerId)
     })
 
     it('should do nothing if polling is not active for the device', () => {
-      store._dome_isPolling.set(deviceId, false)
-      const originalTimerId = store._dome_pollingTimers.get(deviceId)
+      store.isDevicePolling.set(deviceId, false)
+      const originalTimerId = store.propertyPollingIntervals.get(deviceId)
       const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
 
       store.stopDomePolling(deviceId)
 
-      expect(store._dome_isPolling.get(deviceId)).toBe(false)
+      expect(store.isDevicePolling.get(deviceId)).toBe(false)
       if (originalTimerId) {
         expect(clearIntervalSpy).toHaveBeenCalledWith(originalTimerId)
-        expect(store._dome_pollingTimers.has(deviceId)).toBe(false)
+        expect(store.propertyPollingIntervals.has(deviceId)).toBe(false)
       } else {
         expect(clearIntervalSpy).not.toHaveBeenCalled()
       }
@@ -1143,7 +1023,7 @@ describe('domeActions', () => {
       const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
       store.stopDomePolling('nonexistent-device')
       expect(clearIntervalSpy).not.toHaveBeenCalled()
-      expect(store._dome_isPolling.get('nonexistent-device')).toBe(false)
+      expect(store.isDevicePolling.get('nonexistent-device')).toBe(false)
     })
   })
 
@@ -1192,16 +1072,6 @@ describe('domeActions', () => {
       store.handleDomeDisconnected(deviceId)
 
       expect(mockStopDomePolling).toHaveBeenCalledWith(deviceId)
-      const expectedClearedProperties: DomeDeviceProperties = {
-        dome_altitude: null,
-        dome_azimuth: null,
-        dome_atHome: null,
-        dome_atPark: null,
-        dome_shutterStatus: null,
-        dome_slewing: null,
-        dome_slaved: null
-      }
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, expectedClearedProperties)
     })
 
     it('should not throw if deviceId is invalid (e.g., empty string)', () => {

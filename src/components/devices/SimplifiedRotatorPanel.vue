@@ -332,6 +332,7 @@ onUnmounted(() => {
 .connection-message {
   font-size: 1.1rem;
 }
+
 .panel-tip {
   font-size: 0.8rem;
 }

@@ -87,12 +87,12 @@ const currentDevice = computed(() => {
 })
 
 // Computed properties to get dome state from store
-const domeAltitude = computed(() => currentDevice.value?.properties?.dome_altitude as number | null)
-const domeAzimuth = computed(() => currentDevice.value?.properties?.dome_azimuth as number | null)
-const domeAtHome = computed(() => currentDevice.value?.properties?.dome_atHome as boolean | null)
-const domeAtPark = computed(() => currentDevice.value?.properties?.dome_atPark as boolean | null)
-const domeShutterStatus = computed(() => currentDevice.value?.properties?.dome_shutterStatus as number | null)
-const domeSlewing = computed(() => currentDevice.value?.properties?.dome_slewing as boolean | null)
+const domeAltitude = computed(() => currentDevice.value?.properties?.altitude as number | null)
+const domeAzimuth = computed(() => currentDevice.value?.properties?.azimuth as number | null)
+const domeAtHome = computed(() => currentDevice.value?.properties?.atHome as boolean | null)
+const domeAtPark = computed(() => currentDevice.value?.properties?.atPark as boolean | null)
+const domeShutterStatus = computed(() => currentDevice.value?.properties?.shutterStatus as number | null)
+const domeSlewing = computed(() => currentDevice.value?.properties?.slewing as boolean | null)
 
 const shutterStatusText = computed(() => {
   if (domeShutterStatus.value === null) return 'Unknown'
@@ -132,7 +132,7 @@ watch(
   (newIsConnected) => {
     if (props.deviceId) {
       if (newIsConnected) {
-        // store.handleDomeConnected(props.deviceId); // Managed by core device connect logic
+        store.handleDomeConnected(props.deviceId) // Managed by core device connect logic
         store.fetchDomeStatus(props.deviceId) // Explicitly fetch on reconnect or first connect if panel loaded later
       } else {
         // store.handleDomeDisconnected(props.deviceId); // Managed by core device connect logic

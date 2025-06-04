@@ -24,8 +24,7 @@ export interface CoreState {
   deviceStateUnsupported: Set<string>
   lastDeviceStateFetch: Map<string, { timestamp: number; data: Record<string, unknown> }>
   devicePropertyUnsupported: Map<string, Set<string>>
-  isDevicePolling: Map<string, Set<boolean>>
-  pollingTimers: Map<string, number>
+  isDevicePolling: Map<string, boolean>
 }
 
 // All actions will now use UnifiedStoreType for `this` to avoid context mismatch errors,
@@ -911,8 +910,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       deviceStateUnsupported: new Set<string>(),
       lastDeviceStateFetch: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),
       devicePropertyUnsupported: new Map<string, Set<string>>(),
-      isDevicePolling: new Map<string, Set<boolean>>(),
-      pollingTimers: new Map<string, number>()
+      isDevicePolling: new Map<string, boolean>()
     }),
     actions: actionsDefinition
   }

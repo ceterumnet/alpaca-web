@@ -3,7 +3,7 @@ import type { DeviceEvent } from '../types/device-store.types'
 // import type { CoverCalibratorDevice } from '@/types/device.types' // For reference
 
 // Define state for each CoverCalibrator device
-export interface CoverCalibratorState {
+export interface ICoverCalibratorState {
   coverState: number | null // 0=Unknown, 1=NotPresent, 2=Closed, 3=Moving, 4=Open, 5=Error
   calibratorState: number | null // 0=Unknown, 1=Off, 2=NotReady, 3=Ready, 4=Error
   currentBrightness: number | null
@@ -14,7 +14,7 @@ export interface CoverCalibratorState {
 
 // Overall state structure for the CoverCalibrator module
 export interface CoverCalibratorModuleState {
-  coverCalibratorData: Map<string, CoverCalibratorState>
+  coverCalibratorData: Map<string, ICoverCalibratorState>
 }
 
 // Define signatures for CoverCalibrator actions
@@ -34,7 +34,7 @@ export function createCoverCalibratorActions(): {
   actions: ICoverCalibratorActions
 } {
   const state = (): CoverCalibratorModuleState => ({
-    coverCalibratorData: new Map<string, CoverCalibratorState>()
+    coverCalibratorData: new Map<string, ICoverCalibratorState>()
   })
 
   const actions: ICoverCalibratorActions = {
@@ -86,7 +86,7 @@ export function createCoverCalibratorActions(): {
         // Fetch all properties using the client's helper method
         const status = await client.getCoverCalibratorState()
 
-        const newStatus: CoverCalibratorState = {
+        const newStatus: ICoverCalibratorState = {
           coverState: typeof status.coverstate === 'number' ? (status.coverstate as number) : null,
           calibratorState: typeof status.calibratorstate === 'number' ? (status.calibratorstate as number) : null,
           maxBrightness: typeof status.maxbrightness === 'number' ? (status.maxbrightness as number) : null,

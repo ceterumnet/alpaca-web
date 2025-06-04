@@ -6,31 +6,12 @@
 
 import log from '@/plugins/logger'
 import type { Device, DeviceEvent } from '../types/device-store.types' // Ensure Device is imported if used by UnifiedStoreType context implicitly
-// import type { CoreState } from './coreActions' // This might become unused if SwitchActionContext is removed and actions use UnifiedStoreType
 import type { UnifiedStoreType } from '../UnifiedStore'
 import { SwitchClient, type ISwitchDetail } from '@/api/alpaca/switch-client'
 import { isSwitch } from '@/types/device.types'
 
-// Properties that this module will manage on the Device object in the store
-// export interface ISwitchDeviceProperties {
-//   sw_switches?: ISwitchDetail[] | null // Array of switch details
-//   sw_maxSwitch?: number | null
-//   sw_deviceStateAvailableProps?: Set<string> // Properties confirmed available via deviceState
-//   sw_usingDeviceState?: boolean // Flag to indicate if deviceState is being used for polling
-//   [key: string]: unknown // Index signature for UnifiedDevice compatibility
-// }
-
-// Internal state for the module
-// export interface ISwitchModuleState {
-//   _sw_pollingTimers: Map<string, number>
-//   _sw_isPolling: Map<string, boolean>
-//   _sw_deviceStateAvailableProps: Map<string, Set<string>> // Tracks props confirmed from deviceState
-//   _sw_deviceStateUnsupported: Set<string> // Tracks devices where deviceState failed
-// }
-
 // Signatures of actions in this module
 interface ISwitchActionsSignatures {
-  // getSwitchClient: (this: UnifiedStoreType, deviceId: string) => SwitchClient | null
   fetchSwitchDetails: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   setDeviceSwitchValue: (this: UnifiedStoreType, deviceId: string, switchId: number, value: number | boolean) => Promise<void>
   setDeviceSwitchName: (this: UnifiedStoreType, deviceId: string, switchId: number, name: string) => Promise<void>
@@ -360,17 +341,17 @@ export function createSwitchActions(): {
           this.stopSwitchPolling(deviceId)
         }
         const pollInterval = (device.properties?.propertyPollIntervalMs as number) || 3000
-        this.isDevicePolling.set(deviceId, new Set([true]))
+        this.isDevicePolling.set(deviceId, true)
         const timerId = window.setInterval(() => this._pollSwitchStatus(deviceId), pollInterval)
-        this.pollingTimers.set(deviceId, timerId)
+        this.propertyPollingIntervals.set(deviceId, timerId)
         log.debug({ deviceIds: [deviceId], pollInterval }, `[SwitchStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       stopSwitchPolling(this: UnifiedStoreType, deviceId: string): void {
-        this.isDevicePolling.set(deviceId, new Set([false]))
-        if (this.pollingTimers.has(deviceId)) {
-          clearInterval(this.pollingTimers.get(deviceId)!)
-          this.pollingTimers.delete(deviceId)
+        this.isDevicePolling.set(deviceId, false)
+        if (this.propertyPollingIntervals.has(deviceId)) {
+          clearInterval(this.propertyPollingIntervals.get(deviceId)!)
+          this.propertyPollingIntervals.delete(deviceId)
           log.debug({ deviceIds: [deviceId] }, `[SwitchStore] Stopped polling for ${deviceId}.`)
         }
       },

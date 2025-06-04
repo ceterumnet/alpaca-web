@@ -1,10 +1,3 @@
-// Status: Good - Core Component
-// This is the camera-specific ALPACA client implementation that:
-// - Extends the base AlpacaClient with camera-specific methods
-// - Handles camera-specific operations (exposure, image download)
-// - Provides type-safe camera property access
-// - Implements proper error handling for camera operations
-
 /**
  * Camera-specific ALPACA client
  */
@@ -13,7 +6,7 @@ import type { Device } from '@/stores/types/device-store.types'
 import { AlpacaClient } from './base-client'
 import { AlpacaError, ErrorType } from './errors'
 import log from '@/plugins/logger'
-// Camera-specific client with camera-specific methods
+
 export class CameraClient extends AlpacaClient {
   constructor(baseUrl: string, deviceNumber: number = 0, device: Device) {
     super(baseUrl, 'camera', deviceNumber, device)
