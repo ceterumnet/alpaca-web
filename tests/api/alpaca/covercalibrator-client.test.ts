@@ -20,7 +20,6 @@ const mockCoverCalibratorDevice = {
   settings: {},
   selected: false,
   available: true,
-  lastseen: Date.now(),
   properties: {},
   methods: {}
 } as unknown as Device

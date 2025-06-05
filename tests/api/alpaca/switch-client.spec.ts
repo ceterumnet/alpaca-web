@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { SwitchClient, type ISwitchDetail } from '@/api/alpaca/switch-client'
+import { SwitchClient } from '@/api/alpaca/switch-client'
 import type { Device } from '@/stores/types/device-store.types'
 import type { SwitchDevice } from '@/types/device.types' // Assuming SwitchDevice type exists
 import { AlpacaError } from '@/api/alpaca/errors'
 import { DEFAULT_OPTIONS, type RequestOptions } from '@/api/alpaca/types'
+import type { ISwitchDetail } from '@/types/device.types'
 
 const mockFetch = (global.fetch = vi.fn())
 

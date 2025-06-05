@@ -122,11 +122,6 @@ vi.mock('@/api/alpaca/dome-client', () => {
   return { DomeClient: MockConstructor }
 })
 
-// This type alias points to the mocked constructor from vi.mock
-const MockedDomeClientConstructor = DomeClient as unknown as MockInstance<
-  (baseUrl: string, deviceNumber: number, device: UnifiedDevice) => DomeClient // Changed to DomeClient
->
-
 const createMockDevice = (overrides: Partial<UnifiedDevice> & { deviceType: string; id: string }): UnifiedDevice => {
   return {
     name: 'Test Device',
@@ -247,15 +242,6 @@ describe('domeActions', () => {
 
       await (store as UnifiedStoreType).fetchDomeStatus?.(deviceId)
 
-      // expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, {
-      //   dome_altitude: null,
-      //   dome_azimuth: null,
-      //   dome_atHome: false,
-      //   dome_atPark: true,
-      //   dome_shutterStatus: 1,
-      //   dome_slewing: false,
-      //   dome_slaved: false
-      // })
       expect(mockEmitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'devicePropertyChanged',
@@ -777,7 +763,7 @@ describe('domeActions', () => {
 
       expect(mockGetDomeClient).toHaveBeenCalledWith(deviceId)
       expect(mockDomeClientInstance.setSlaved).toHaveBeenCalledWith(slavedState)
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { dome_slaved: slavedState })
+      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { slaved: slavedState })
       expect(mockEmitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'deviceMethodCalled',
@@ -798,7 +784,7 @@ describe('domeActions', () => {
       await store.setDomeSlavedState(deviceId, slavedState)
 
       expect(mockDomeClientInstance.setSlaved).toHaveBeenCalledWith(slavedState)
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { dome_slaved: slavedState })
+      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { slaved: slavedState })
       expect(mockEmitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'deviceMethodCalled',

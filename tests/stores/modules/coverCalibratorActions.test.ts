@@ -45,7 +45,6 @@ describe('coverCalibratorActions', () => {
     isConnecting: false,
     isDisconnecting: false,
     status: 'idle',
-    severity: 0,
     apiBaseUrl: 'http://localhost:11111',
     properties: {}
   }

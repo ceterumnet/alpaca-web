@@ -37,7 +37,7 @@ describe('FocuserClient', () => {
       // Focuser specific mock properties (can be overridden in tests)
       // These would typically go into the `properties` field if strictly following UnifiedDevice,
       // but for direct use in mock setup, having them at top level is fine as FocuserDevice allows extra props.
-      absolute: true,
+      // absolute: true,
       maxIncrement: 1000,
       maxStep: 10000,
       stepSize: 1,

@@ -32,20 +32,16 @@ const mockDevice: UnifiedDevice = {
   isDisconnecting: false,
   status: 'connected',
   // Alpaca-specific properties (already in the original mock, ensure they are compatible or map them)
-  DeviceName: 'Mock Telescope', // Often same as name or displayName
-  DeviceNumber: 0, // Matches AlpacaClient's deviceNumber
-  DeviceType: 'telescope', // Often same as type
-  DriverInfo: 'Mock Telescope Driver',
-  DriverVersion: '1.0',
-  SupportedActions: [],
-  Description: 'A mock telescope for testing',
-  InterfaceVersion: 1,
-  Connected: true, // Redundant with isConnected, but often present in Alpaca responses
-  UniqueID: 'mock-telescope-0', // Often same as id
-  ClientTransactionID: 0,
-  ServerTransactionID: 0,
-  ErrorNumber: 0,
-  ErrorMessage: '',
+  deviceNumber: 0, // Matches AlpacaClient's deviceNumber
+  deviceType: 'telescope', // Often same as type
+  driverInfo: 'Mock Telescope Driver',
+  driverVersion: '1.0',
+  supportedActions: [],
+  description: 'A mock telescope for testing',
+  interfaceVersion: 1,
+  connected: true, // Redundant with isConnected, but often present in Alpaca responses
+  uniqueId: 'mock-telescope-0', // Often same as id
+
   // Optional UnifiedDevice properties (can be omitted or set to undefined/null if not needed for specific tests)
   discoveredAt: new Date().toISOString(),
   lastConnected: new Date().toISOString(),
@@ -53,16 +49,13 @@ const mockDevice: UnifiedDevice = {
   address: '127.0.0.1',
   port: 11111,
   devicePort: 11111,
-  telemetry: {},
-  lastSeen: new Date().toISOString(),
   firmwareVersion: '1.0.0',
   apiBaseUrl: 'http://localhost:11111/api/v1/telescope/0',
   deviceNum: 0,
   idx: 0,
   capabilities: { canSlew: true },
   deviceAttributes: {},
-  stateHistory: [],
-  methods: {} // Add methods property
+  stateHistory: []
 }
 
 describe('AlpacaClient', () => {
@@ -122,7 +115,7 @@ describe('AlpacaClient', () => {
       // Create a specific mock for this test case with uppercase DeviceType
       const mockDeviceCaps: UnifiedDevice = {
         ...mockDevice,
-        DeviceType: 'Telescope',
+        deviceType: 'Telescope',
         type: 'Telescope' // Also update the base type property
       }
       const clientWithCaps = new AlpacaClient(baseUrl, 'Telescope', deviceNumber, mockDeviceCaps as Device)

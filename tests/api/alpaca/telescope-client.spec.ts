@@ -11,26 +11,21 @@ const mockTelescopeDevice: UnifiedDevice = {
   type: 'Telescope',
   isConnected: true,
   properties: {},
-  DeviceName: 'Mock Telescope',
-  DeviceNumber: 0,
-  DeviceType: 'Telescope',
-  DriverInfo: 'Mock Telescope Driver',
-  DriverVersion: '1.0',
-  SupportedActions: [],
-  UniqueID: 'mock-telescope-0',
-  Host: 'localhost',
-  Port: 11111,
-  Connected: true,
-  InterfaceVersion: 1,
+  deviceNum: 0,
+  deviceType: 'Telescope',
+  driverInfo: 'Mock Telescope Driver',
+  driverVersion: '1.0',
+  supportedActions: [],
+  uniqueId: 'mock-telescope-0',
+  address: 'localhost',
+  port: 11111,
+  connected: true,
+  interfaceVersion: 1,
   isConnecting: false,
   isDisconnecting: false,
   status: 'connected',
   id: 'mock-telescope-0',
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-  profile_id: 'default',
-  settings: {},
-  παρουσία: true
+  capabilities: {}
 }
 
 describe('TelescopeClient', () => {
@@ -1219,7 +1214,7 @@ describe('TelescopeClient', () => {
 
       for (const key in expectedTelescopeState) {
         expect(state).toHaveProperty(key)
-        expect(state[key]).toEqual(expectedTelescopeState[key])
+        expect(state).toHaveProperty(key, expectedTelescopeState[key])
       }
     })
 
@@ -1259,7 +1254,7 @@ describe('TelescopeClient', () => {
       for (const key in expectedTelescopeState) {
         if (key !== failingPropertyTsKey) {
           expect(state).toHaveProperty(key)
-          expect(state[key]).toEqual(expectedTelescopeState[key])
+          expect(state).toHaveProperty(key, expectedTelescopeState[key])
         } else {
           expect(state).not.toHaveProperty(failingPropertyTsKey)
         }

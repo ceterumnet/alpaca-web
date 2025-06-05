@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { AlpacaClient } from '@/api/AlpacaClient' // Main client type
 import type { UnifiedDevice, DeviceEvent } from '@/stores/types/device-store.types'
-import type { DeviceState } from '@/types/device.types' // Ensured correct path
+import type { DeviceStatus } from '@/types/device.types' // Ensured correct path
 import { createAlpacaClient } from '@/api/AlpacaClient'
 import log from '@/plugins/logger'
 
@@ -122,7 +122,7 @@ describe('cameraActions', () => {
           isConnected: false,
           isConnecting: false,
           isDisconnecting: false,
-          status: 'idle' as DeviceState,
+          status: 'idle' as DeviceStatus,
           apiBaseUrl: `http://mock.alpaca.api/${id}`,
           properties: { connected: false, isConnecting: false, cam_gainMode: 'unknown', cam_offsetMode: 'unknown' }
         }) as UnifiedDevice
@@ -170,7 +170,7 @@ describe('cameraActions', () => {
       isConnected: true, // Assume connected for fetching properties
       isConnecting: false,
       isDisconnecting: false,
-      status: 'connected' as DeviceState,
+      status: 'connected' as DeviceStatus,
       apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
       properties: { connected: true, isConnecting: false },
       capabilities: {}
@@ -328,7 +328,7 @@ describe('cameraActions', () => {
           isConnected: false,
           isConnecting: false,
           isDisconnecting: false,
-          status: 'idle' as DeviceState,
+          status: 'idle' as DeviceStatus,
           apiBaseUrl: `http://mock.alpaca.api/${id}`,
           properties: { connected: false, isConnecting: false, cam_gainMode: 'unknown', cam_offsetMode: 'unknown' }
         } as UnifiedDevice
@@ -389,7 +389,7 @@ describe('cameraActions', () => {
       isConnected: true, // Device must be connected for polling to start/continue
       isConnecting: false,
       isDisconnecting: false,
-      status: 'connected' as DeviceState,
+      status: 'connected' as DeviceStatus,
       apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
       properties: {
         connected: true,
@@ -644,7 +644,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,
@@ -724,7 +724,7 @@ describe('cameraActions', () => {
       isConnected: true,
       isConnecting: false,
       isDisconnecting: false,
-      status: 'connected' as DeviceState,
+      status: 'connected' as DeviceStatus,
       apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
       properties: { connected: true, isConnecting: false, isExposing: false }
     }
@@ -1087,7 +1087,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,
@@ -1194,7 +1194,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,
@@ -1337,7 +1337,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,
@@ -1437,7 +1437,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,
@@ -1691,7 +1691,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,
@@ -1932,7 +1932,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,
@@ -2027,7 +2027,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true
@@ -2121,7 +2121,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,
@@ -2207,7 +2207,7 @@ describe('cameraActions', () => {
         isConnected: true,
         isConnecting: false,
         isDisconnecting: false,
-        status: 'connected' as DeviceState,
+        status: 'connected' as DeviceStatus,
         apiBaseUrl: `http://mock.alpaca.api/${deviceId}`,
         properties: {
           connected: true,

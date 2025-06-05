@@ -35,23 +35,17 @@
 
         <!-- Filter Details & Edit -->
         <div class="panel-section">
-          <h3>Filter Details & Edit Names</h3>
+          <h3>Filter Details</h3>
           <div v-if="filterNamesArray.length > 0" class="filter-details-grid">
             <div class="grid-header">
-              <span>#</span>
-              <span>Name (Editable)</span>
-              <span>Offset</span>
-              <span>Action</span>
+              <span class="grid-cell">#</span>
+              <span class="grid-cell">Name</span>
+              <span class="grid-cell">Offset</span>
             </div>
             <div v-for="(name, index) in filterNamesArray" :key="index" class="grid-row">
-              <span>{{ index }}</span>
-              <input v-model="editableFilterNames[index]" type="text" class="name-input" />
-              <span>{{ focusOffsetsArray[index] !== undefined ? focusOffsetsArray[index] : 'N/A' }}</span>
-              <button 
-                :disabled="!editableFilterNames[index] || editableFilterNames[index] === filterNamesArray[index]" 
-                class="action-button-small"
-                @click="updateFilterName(index)"
-              >Save</button>
+              <span class="grid-cell">{{ index }}</span>
+              <span class="grid-cell">{{ name }}</span>
+              <span class="grid-cell">{{ focusOffsetsArray[index] !== undefined ? focusOffsetsArray[index] : 'N/A' }}</span>
             </div>
           </div>
           <p v-else>No filters to display.</p>
@@ -62,10 +56,10 @@
 </template>
 
 <script setup lang="ts">
-
 import log from '@/plugins/logger'
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
+import type { FilterWheelDevice } from '@/types/device.types'
 
 const props = defineProps({
   deviceId: {
@@ -81,8 +75,8 @@ const props = defineProps({
 const store = useUnifiedStore()
 
 const currentDevice = computed(() => {
-  const device = store.getDeviceById(props.deviceId);
-  return device;
+  const device = store.getDeviceById(props.deviceId) as FilterWheelDevice
+  return device
 })
 
 // Local state for UI interaction
@@ -91,45 +85,49 @@ const selectedFilterPosition = ref<number>(0) // Default selection
 
 // Computed properties to get data from the store
 const currentPosition = computed(() => {
-  const pos = currentDevice.value?.fw_currentPosition as number | undefined ?? -1;
-  return pos;
-});
+  const pos = (currentDevice.value?.position as number | undefined) ?? -1
+  return pos
+})
 
 const filterNamesArray = computed(() => {
-  const names = (currentDevice.value?.fw_filterNames as string[] | undefined) || [];
-  return names;
-});
+  const names = (currentDevice.value?.filterNames as string[] | undefined) || []
+  return names
+})
 
 const focusOffsetsArray = computed(() => {
-  return (currentDevice.value?.fw_focusOffsets as number[] | undefined) || [];
-});
+  return (currentDevice.value?.focusOffsets as number[] | undefined) || []
+})
 
 const currentPositionDisplay = computed(() => {
-  return currentPosition.value === -1 ? 'Unknown' : currentPosition.value;
-});
+  return currentPosition.value === -1 ? 'Unknown' : currentPosition.value
+})
 
 const currentFilterNameDisplay = computed(() => {
   if (currentPosition.value >= 0 && currentPosition.value < filterNamesArray.value.length) {
-    return filterNamesArray.value[currentPosition.value];
+    return filterNamesArray.value[currentPosition.value]
   }
-  return 'Unknown';
-});
+  return 'Unknown'
+})
 
 // Initialize editable names and selected position when filter names change from store
-watch(filterNamesArray, (newNames) => {
-  editableFilterNames.value = [...newNames];
-  // also update selectedFilterPosition if currentPosition is valid
-  if (currentPosition.value !== -1 && currentPosition.value < newNames.length) {
-    selectedFilterPosition.value = currentPosition.value;
-  }
-}, { immediate: true, deep: true });
+watch(
+  filterNamesArray,
+  (newNames) => {
+    editableFilterNames.value = [...newNames]
+    // also update selectedFilterPosition if currentPosition is valid
+    if (currentPosition.value !== -1 && currentPosition.value < newNames.length) {
+      selectedFilterPosition.value = currentPosition.value
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 // Update selectedFilterPosition when currentPosition from store changes (e.g. due to polling)
 watch(currentPosition, (newPos) => {
   if (newPos !== -1 && newPos < filterNamesArray.value.length) {
-    selectedFilterPosition.value = newPos;
+    selectedFilterPosition.value = newPos
   }
-});
+})
 
 const selectFilter = async () => {
   if (props.deviceId && selectedFilterPosition.value !== null) {
@@ -138,28 +136,10 @@ const selectFilter = async () => {
       await store.setFilterWheelPosition(props.deviceId, selectedFilterPosition.value)
       // The store action will update fw_currentPosition, and computed props will react.
     } catch (error) {
-      log.error({deviceIds:[props.deviceId]}, `Error setting filter position via store to ${selectedFilterPosition.value}:`, error)
+      log.error({ deviceIds: [props.deviceId] }, `Error setting filter position via store to ${selectedFilterPosition.value}:`, error)
       // Optionally, revert selection if store action failed and didn't update position
       // This depends on how store handles errors and updates state on failure.
       // For now, assume store handles state consistency.
-    }
-  }
-}
-
-const updateFilterName = async (filterIndex: number) => {
-  if (props.deviceId && editableFilterNames.value[filterIndex]) {
-    const newName = editableFilterNames.value[filterIndex];
-    try {
-      // Call store action
-      await store.setFilterWheelName(props.deviceId, filterIndex, newName);
-      // Store action should refresh fw_filterNames, triggering reactive updates.
-    } catch (error) {
-      log.error({deviceIds:[props.deviceId]}, `Error updating name for filter ${filterIndex} via store:`, error)
-      // Revert editable name if API call fails and store doesn't handle it
-      // This part might need adjustment based on store error handling behavior
-      if (filterNamesArray.value[filterIndex]) {
-         editableFilterNames.value[filterIndex] = filterNamesArray.value[filterIndex];
-      }
     }
   }
 }
@@ -170,37 +150,36 @@ watch(
   ([newDeviceId, newIsConnected], [oldDeviceId, oldIsConnected]) => {
     // Stop polling for the old device if it changed and was connected
     if (oldDeviceId && oldDeviceId !== newDeviceId && oldIsConnected) {
-      store.stopFilterWheelPolling(oldDeviceId);
+      store.stopFilterWheelPolling(oldDeviceId)
     }
 
     if (newDeviceId) {
       if (newIsConnected) {
         // Device is present and connected
-        store.fetchFilterWheelDetails(newDeviceId);
-        store.startFilterWheelPolling(newDeviceId);
+        store.fetchFilterWheelDetails(newDeviceId)
+        store.startFilterWheelPolling(newDeviceId)
       } else {
         // Device is present but not connected
         // Stop polling if it was previously connected (oldIsConnected would be true)
         if (oldIsConnected) {
-           store.stopFilterWheelPolling(newDeviceId);
+          store.stopFilterWheelPolling(newDeviceId)
         }
       }
     } else if (oldDeviceId && oldIsConnected) {
       // No new deviceId, but there was an old one that was connected
-      store.stopFilterWheelPolling(oldDeviceId);
+      store.stopFilterWheelPolling(oldDeviceId)
     }
   },
   { immediate: true, deep: true } // deep: true might not be necessary here but immediate is key
-);
+)
 
 onBeforeUnmount(() => {
   if (props.deviceId && props.isConnected) {
-    store.stopFilterWheelPolling(props.deviceId);
+    store.stopFilterWheelPolling(props.deviceId)
   }
-});
+})
 
 // onUnmounted: Polling is managed by the store, so less cleanup here unless specific listeners were added.
-
 </script>
 
 <style scoped>
@@ -236,7 +215,9 @@ onBeforeUnmount(() => {
   padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
-.connection-notice, .loading-notice { /* loading-notice might be removed if not used */
+.connection-notice,
+.loading-notice {
+  /* loading-notice might be removed if not used */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -253,12 +234,14 @@ onBeforeUnmount(() => {
   font-size: 1rem;
 }
 
-.current-filter-display .label { 
-  color: var(--aw-text-secondary-color); 
-  font-size: 0.9rem; 
+.current-filter-display .label {
+  color: var(--aw-text-secondary-color);
+  font-size: 0.9rem;
 }
 
-.current-filter-display .value { font-weight: var(--aw-font-weight-medium); }
+.current-filter-display .value {
+  font-weight: var(--aw-font-weight-medium);
+}
 
 .filter-selection select {
   width: 100%;
@@ -271,30 +254,45 @@ onBeforeUnmount(() => {
 
 .filter-details-grid {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  gap: var(--aw-spacing-sm) var(--aw-spacing-md);
+  grid-template-columns: auto 1fr auto;
+  gap: var(--aw-spacing-xs) var(--aw-spacing-md);
   align-items: center;
+  background-color: var(--aw-panel-content-bg-color);
+  border-radius: var(--aw-border-radius-sm);
+  border: 1px solid var(--aw-panel-border-color);
+  padding: var(--aw-spacing-sm);
+}
+
+.grid-cell {
+  padding: var(--aw-spacing-xs) 0;
+  font-size: 0.9rem;
+}
+
+.grid-cell:first-child {
+  color: var(--aw-text-secondary-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.grid-cell:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .grid-header {
-  display: contents; /* Allows children to participate in grid layout */
+  display: contents;
   font-weight: var(--aw-font-weight-bold);
   color: var(--aw-text-secondary-color);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   padding-bottom: var(--aw-spacing-xs);
   border-bottom: 1px solid var(--aw-panel-border-color);
 }
 
-.grid-header > span {
-   padding-bottom: var(--aw-spacing-xs); /* if border is on parent */
+.grid-header > .grid-cell {
+  padding-bottom: var(--aw-spacing-xs);
 }
 
 .grid-row {
-  display: contents; /* Allows children to participate in grid layout */
-}
-
-.grid-row > span, .grid-row > input {
-  padding: var(--aw-spacing-xs) 0;
+  display: contents;
 }
 
 .name-input {
@@ -307,7 +305,7 @@ onBeforeUnmount(() => {
 }
 
 .action-button-small {
-  padding: calc(var(--aw-spacing-xs)/2) var(--aw-spacing-sm);
+  padding: calc(var(--aw-spacing-xs) / 2) var(--aw-spacing-sm);
   background-color: var(--aw-button-secondary-bg-color, var(--aw-primary-color-variant));
   color: var(--aw-button-secondary-text-color, var(--aw-on-primary-variant));
   border: 1px solid var(--aw-button-secondary-border-color, var(--aw-primary-color-variant));
@@ -326,5 +324,4 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
   opacity: 0.7;
 }
-
-</style> 
+</style>

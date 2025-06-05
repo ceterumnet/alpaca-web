@@ -555,11 +555,6 @@ export const propertyNameFormats: Record<string, Record<PropertyNameFormat, stri
     [PropertyNameFormat.PARAM]: 'OffsetMin',
     [PropertyNameFormat.TS]: 'offsetMin'
   },
-  offsetresolution: {
-    [PropertyNameFormat.URL]: 'offsetresolution',
-    [PropertyNameFormat.PARAM]: 'OffsetResolution',
-    [PropertyNameFormat.TS]: 'offsetResolution'
-  },
   percentcompleted: {
     [PropertyNameFormat.URL]: 'percentcompleted',
     [PropertyNameFormat.PARAM]: 'PercentCompleted',

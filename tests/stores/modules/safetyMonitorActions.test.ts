@@ -3,45 +3,37 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { MockInstance } from 'vitest'
 import { SafetyMonitorClient, type SafetyMonitorAlpacaStatus } from '@/api/alpaca/safetymonitor-client'
-// Assuming DeviceEvent might be a specific import if available, e.g., from '@/types/events.types'
-import type { UnifiedDevice /*, DeviceEvent */ } from '@/types/device.types'
-// import { DeviceType } from '@/types/device.types' // Temporarily commented out if causing issues
-import type { AlpacaClient } from '@/api/AlpacaClient'
-// Attempting to import DeviceEvent from its definition in the SUT context
+import type { SafetyMonitorDevice, UnifiedDevice, Device } from '@/types/device.types'
 import type { DeviceEvent } from '@/stores/types/device-store.types'
-// Import SafetyMonitorDeviceProperties for typing updateDevice spy
-import type { SafetyMonitorDeviceProperties } from '@/stores/modules/safetyMonitorActions'
 
 // Define the explicit shape of our mock client instance for type safety within the test file
 interface MockSafetyMonitorClient {
-  // isSafe is not directly called by SUT, fetchStatus is.
-  // isSafe: MockInstance<() => Promise<boolean>>;
   connected: MockInstance<() => Promise<boolean>>
   fetchStatus: MockInstance<() => Promise<SafetyMonitorAlpacaStatus>>
-  // Add other methods here if needed, with their MockInstance types
 }
 
 const mockSafetyMonitorClientInstance: MockSafetyMonitorClient = {
-  // isSafe: vi.fn<() => Promise<boolean>>(),
   connected: vi.fn<() => Promise<boolean>>(),
   fetchStatus: vi.fn<() => Promise<SafetyMonitorAlpacaStatus>>()
 }
 
+// Mock the SafetyMonitorClient constructor
 vi.mock('@/api/alpaca/safetymonitor-client', () => ({
-  SafetyMonitorClient: vi.fn(() => mockSafetyMonitorClientInstance as unknown as SafetyMonitorClient)
+  SafetyMonitorClient: vi.fn().mockImplementation(() => mockSafetyMonitorClientInstance)
 }))
 
-// Mock the core AlpacaClient factory
-const mockAlpacaClientInstance = {
-  get: vi.fn(),
-  put: vi.fn(),
-  delete: vi.fn(),
-  setup: vi.fn()
-} as unknown as AlpacaClient
-
-vi.mock('@/api/AlpacaClient', () => ({
-  createAlpacaClient: vi.fn(() => mockAlpacaClientInstance)
-}))
+vi.mock('@/api/AlpacaClient', () => {
+  const actual = vi.importActual('@/api/AlpacaClient')
+  return {
+    ...actual,
+    createAlpacaClient: vi.fn((baseUrl: string, deviceType: string, deviceNumber: number, device: Device) => {
+      if (deviceType.toLowerCase() === 'safetymonitor') {
+        return mockSafetyMonitorClientInstance
+      }
+      return { type: deviceType, baseUrl, deviceNumber, device }
+    })
+  }
+})
 
 // Updated createMockDevice helper with refined typing for properties and capabilities
 const createMockDevice = (id: string, type: string, overrides: Partial<UnifiedDevice> = {}): UnifiedDevice => {
@@ -60,7 +52,7 @@ const createMockDevice = (id: string, type: string, overrides: Partial<UnifiedDe
     isConnecting: false,
     isDisconnecting: false,
     status: 'idle',
-    apiBaseUrl: 'http://localhost:11111',
+    apiBaseUrl: 'http://localhost:11111/api/v1/safetymonitor/0',
     properties: {}, // This should conform to Record<string, unknown>
     capabilities: {} // This should conform to Record<string, unknown>
   }
@@ -70,7 +62,7 @@ const createMockDevice = (id: string, type: string, overrides: Partial<UnifiedDe
 describe('safetyMonitorActions', () => {
   let store: ReturnType<typeof useUnifiedStore>
   let mockGetDeviceById: MockInstance<(id: string) => UnifiedDevice | undefined>
-  let mockUpdateDevice: MockInstance<(deviceId: string, updates: SafetyMonitorDeviceProperties) => void>
+  let mockUpdateDevice: MockInstance<(deviceId: string, updates: Partial<SafetyMonitorDevice>) => void>
   let mockEmitEvent: MockInstance<(event: DeviceEvent) => void>
   let mockFetchSafetyMonitorDeviceStatus: MockInstance<(deviceId: string) => Promise<void>>
 
@@ -84,7 +76,7 @@ describe('safetyMonitorActions', () => {
     mockGetDeviceById = vi.spyOn(store, 'getDeviceById') as MockInstance<(id: string) => UnifiedDevice | undefined>
 
     // Spy on updateDevice and _emitEvent
-    mockUpdateDevice = vi.spyOn(store, 'updateDevice') as MockInstance<(deviceId: string, updates: SafetyMonitorDeviceProperties) => void>
+    mockUpdateDevice = vi.spyOn(store, 'updateDevice') as MockInstance<(deviceId: string, updates: Partial<SafetyMonitorDevice>) => void>
     mockEmitEvent = vi.spyOn(store, '_emitEvent') as MockInstance<(event: DeviceEvent) => void>
     mockFetchSafetyMonitorDeviceStatus = vi.spyOn(store, 'fetchSafetyMonitorDeviceStatus') as MockInstance<(deviceId: string) => Promise<void>>
 
@@ -98,61 +90,32 @@ describe('safetyMonitorActions', () => {
     vi.useRealTimers() // Restore real timers after each test
   })
 
-  // Test suite for _getSafetyMonitorClient
-  describe('_getSafetyMonitorClient', () => {
+  // Test suite for getDeviceClient
+  describe('getDeviceClient', () => {
     it('should return null if deviceId is not provided', () => {
-      const client = store._getSafetyMonitorClient('')
+      const client = store.getDeviceClient('')
       expect(client).toBeNull()
     })
 
     it('should return null if device is not found', () => {
       mockGetDeviceById.mockReturnValue(undefined)
-      const client = store._getSafetyMonitorClient('nonexistent-device')
+      const client = store.getDeviceClient('nonexistent-device')
       expect(client).toBeNull()
       expect(mockGetDeviceById).toHaveBeenCalledWith('nonexistent-device')
     })
 
     it('should return null if device is not a safety monitor', () => {
-      // Using string for type
       const mockDevice = createMockDevice('test-device', 'camera')
       mockGetDeviceById.mockReturnValue(mockDevice)
-      const client = store._getSafetyMonitorClient('test-device')
+      const client = store.getDeviceClient('test-device')
       expect(client).toBeNull()
     })
 
     it('should return null if device has no apiBaseUrl', () => {
       const mockDevice = createMockDevice('test-sm', 'safetymonitor', { apiBaseUrl: undefined })
       mockGetDeviceById.mockReturnValue(mockDevice)
-      const client = store._getSafetyMonitorClient('test-sm')
+      const client = store.getDeviceClient('test-sm')
       expect(client).toBeNull()
-    })
-
-    it('should return a SafetyMonitorClient instance if device is valid', () => {
-      const mockDevice = createMockDevice('test-sm', 'safetymonitor', { isConnected: true })
-      mockGetDeviceById.mockReturnValue(mockDevice)
-
-      const client = store._getSafetyMonitorClient('test-sm')
-
-      expect(client).toBeDefined()
-      expect(client).toBe(mockSafetyMonitorClientInstance as unknown as SafetyMonitorClient)
-      // SUT calls new SafetyMonitorClient(baseUrl, deviceNumber, device)
-      expect(vi.mocked(SafetyMonitorClient)).toHaveBeenCalledWith(
-        mockDevice.apiBaseUrl, // Assumes http://localhost:11111
-        mockDevice.deviceNumber,
-        mockDevice // The full device object
-      )
-    })
-
-    it('should create a new client instance each time (no caching in SUT)', () => {
-      const mockDevice = createMockDevice('test-sm-existing', 'safetymonitor', { isConnected: true })
-      mockGetDeviceById.mockReturnValue(mockDevice)
-
-      store._getSafetyMonitorClient('test-sm-existing') // First call
-      expect(vi.mocked(SafetyMonitorClient)).toHaveBeenCalledTimes(1)
-
-      store._getSafetyMonitorClient('test-sm-existing') // Second call
-      // Constructor is called again because SUT doesn't cache
-      expect(vi.mocked(SafetyMonitorClient)).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -164,27 +127,26 @@ describe('safetyMonitorActions', () => {
     let getSMCClientSpy: MockInstance<(deviceId: string) => SafetyMonitorClient | null>
 
     beforeEach(() => {
-      getSMCClientSpy = vi.spyOn(store, '_getSafetyMonitorClient') as MockInstance<(deviceId: string) => SafetyMonitorClient | null>
+      getSMCClientSpy = vi.spyOn(store, 'getDeviceClient') as MockInstance<(deviceId: string) => SafetyMonitorClient | null>
       mockGetDeviceById.mockReturnValue(mockSMDevice)
+      vi.mocked(mockSafetyMonitorClientInstance.fetchStatus).mockReset()
     })
 
-    it('should call updateDevice with safety_isSafe: null if deviceId is not provided', async () => {
-      // _getSafetyMonitorClient will be called with '' and return null
-      getSMCClientSpy.mockReturnValue(null) // Simulate _getSafetyMonitorClient returning null
+    it('should call updateDevice with isSafe: null if deviceId is not provided', async () => {
+      getSMCClientSpy.mockReturnValue(null)
 
       await store.fetchSafetyMonitorDeviceStatus('')
 
       expect(getSMCClientSpy).toHaveBeenCalledWith('')
       expect(vi.mocked(mockSafetyMonitorClientInstance.fetchStatus)).not.toHaveBeenCalled()
-      // SUT calls this.updateDevice(deviceId, { safety_isSafe: null })
-      expect(mockUpdateDevice).toHaveBeenCalledWith('', { safety_isSafe: null })
+      expect(mockUpdateDevice).toHaveBeenCalledWith('', { isSafe: null })
     })
 
-    it('should call updateDevice with safety_isSafe: null if client cannot be obtained', async () => {
+    it('should call updateDevice with isSafe: null if client cannot be obtained', async () => {
       getSMCClientSpy.mockReturnValue(null)
       await store.fetchSafetyMonitorDeviceStatus(deviceId)
       expect(vi.mocked(mockSafetyMonitorClientInstance.fetchStatus)).not.toHaveBeenCalled()
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { safety_isSafe: null })
+      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { isSafe: null })
     })
 
     it('should call fetchStatus and updateDevice on success', async () => {
@@ -196,12 +158,11 @@ describe('safetyMonitorActions', () => {
 
       expect(getSMCClientSpy).toHaveBeenCalledWith(deviceId)
       expect(vi.mocked(mockSafetyMonitorClientInstance.fetchStatus)).toHaveBeenCalledTimes(1)
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { safety_isSafe: true })
-      // Adjusted expected event to match DeviceEvent definition (no deviceType)
+      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { isSafe: true })
       const expectedSuccessEvent: Partial<DeviceEvent> = {
         type: 'devicePropertyChanged',
         deviceId,
-        property: 'safety_isSafe',
+        property: 'isSafe',
         value: true
       }
       expect(mockEmitEvent).toHaveBeenCalledWith(expect.objectContaining(expectedSuccessEvent))
@@ -215,8 +176,7 @@ describe('safetyMonitorActions', () => {
       await store.fetchSafetyMonitorDeviceStatus(deviceId)
 
       expect(vi.mocked(mockSafetyMonitorClientInstance.fetchStatus)).toHaveBeenCalledTimes(1)
-      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { safety_isSafe: null })
-      // Adjusted expected event to match DeviceEvent definition (no deviceType)
+      expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { isSafe: null })
       const expectedErrorEvent: Partial<DeviceEvent> = {
         type: 'deviceApiError',
         deviceId,
@@ -236,8 +196,8 @@ describe('safetyMonitorActions', () => {
       mockSetInterval = vi.spyOn(window, 'setInterval') as MockInstance<(handler: TimerHandler, timeout?: number) => number>
       mockClearInterval = vi.spyOn(window, 'clearInterval') as MockInstance<(intervalId: number | undefined) => void>
       stopPollingSpy = vi.spyOn(store, 'stopSafetyMonitorPolling') as MockInstance<(deviceId: string) => void>
-      store._safety_isPolling.clear()
-      store._safety_pollingTimers.clear()
+      store.isDevicePolling.clear()
+      store.propertyPollingIntervals.clear()
     })
 
     describe('startSafetyMonitorPolling', () => {
@@ -245,7 +205,7 @@ describe('safetyMonitorActions', () => {
         mockGetDeviceById.mockReturnValue(undefined)
         store.startSafetyMonitorPolling(deviceId)
         expect(mockSetInterval).not.toHaveBeenCalled()
-        expect(store._safety_isPolling.get(deviceId)).toBeUndefined()
+        expect(store.isDevicePolling.get(deviceId)).toBeUndefined()
       })
 
       it('should not start polling if device is not a SafetyMonitor', () => {
@@ -269,10 +229,10 @@ describe('safetyMonitorActions', () => {
 
         store.startSafetyMonitorPolling(deviceId)
 
-        expect(store._safety_isPolling.get(deviceId)).toBe(true)
+        expect(store.isDevicePolling.get(deviceId)).toBe(true)
         expect(mockSetInterval).toHaveBeenCalledTimes(1)
         expect(mockSetInterval).toHaveBeenCalledWith(expect.any(Function), 5000)
-        expect(store._safety_pollingTimers.has(deviceId)).toBe(true)
+        expect(store.propertyPollingIntervals.has(deviceId)).toBe(true)
       })
 
       it('should start polling with interval from device properties', () => {
@@ -292,8 +252,8 @@ describe('safetyMonitorActions', () => {
       it('should stop existing polling if already polling for the same device', () => {
         const smDevice = createMockDevice(deviceId, 'safetymonitor', { isConnected: true })
         mockGetDeviceById.mockReturnValue(smDevice)
-        store._safety_pollingTimers.set(deviceId, 12345)
-        store._safety_isPolling.set(deviceId, true)
+        store.propertyPollingIntervals.set(deviceId, 12345)
+        store.isDevicePolling.set(deviceId, true)
         mockFetchSafetyMonitorDeviceStatus.mockResolvedValue()
 
         store.startSafetyMonitorPolling(deviceId)
@@ -317,21 +277,21 @@ describe('safetyMonitorActions', () => {
     })
 
     describe('stopSafetyMonitorPolling', () => {
-      it('should set _safety_isPolling to false', () => {
-        store._safety_isPolling.set(deviceId, true)
+      it('should set isDevicePolling to false', () => {
+        store.isDevicePolling.set(deviceId, true)
         store.stopSafetyMonitorPolling(deviceId)
-        expect(store._safety_isPolling.get(deviceId)).toBe(false)
+        expect(store.isDevicePolling.get(deviceId)).toBe(false)
       })
 
       it('should clear interval and remove timer if one exists', () => {
         const fakeTimerId = 12345
-        store._safety_pollingTimers.set(deviceId, fakeTimerId)
-        store._safety_isPolling.set(deviceId, true)
+        store.propertyPollingIntervals.set(deviceId, fakeTimerId)
+        store.isDevicePolling.set(deviceId, true)
 
         store.stopSafetyMonitorPolling(deviceId)
 
         expect(mockClearInterval).toHaveBeenCalledWith(fakeTimerId)
-        expect(store._safety_pollingTimers.has(deviceId)).toBe(false)
+        expect(store.propertyPollingIntervals.has(deviceId)).toBe(false)
       })
 
       it('should not call clearInterval if no timer exists for the deviceId', () => {
@@ -341,13 +301,13 @@ describe('safetyMonitorActions', () => {
 
       it('should handle being called multiple times without error', () => {
         const fakeTimerId = 67890
-        store._safety_pollingTimers.set(deviceId, fakeTimerId)
-        store._safety_isPolling.set(deviceId, true)
+        store.propertyPollingIntervals.set(deviceId, fakeTimerId)
+        store.isDevicePolling.set(deviceId, true)
 
         store.stopSafetyMonitorPolling(deviceId)
         expect(mockClearInterval).toHaveBeenCalledTimes(1)
-        expect(store._safety_isPolling.get(deviceId)).toBe(false)
-        expect(store._safety_pollingTimers.has(deviceId)).toBe(false)
+        expect(store.isDevicePolling.get(deviceId)).toBe(false)
+        expect(store.propertyPollingIntervals.has(deviceId)).toBe(false)
 
         store.stopSafetyMonitorPolling(deviceId)
         expect(mockClearInterval).toHaveBeenCalledTimes(1)
@@ -404,13 +364,13 @@ describe('safetyMonitorActions', () => {
         store.handleSafetyMonitorDisconnected(deviceId)
 
         expect(stopPollingSpyLocal).toHaveBeenCalledWith(deviceId)
-        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { safety_isSafe: null })
+        expect(mockUpdateDevice).toHaveBeenCalledWith(deviceId, { isSafe: null })
 
         const expectedEvent: Partial<DeviceEvent> = {
           type: 'devicePropertyChanged',
           deviceId,
           // deviceType: 'SafetyMonitor', // SUT includes this, ensure test matches SUT if this is critical
-          property: 'safety_isSafe',
+          property: 'isSafe',
           value: null
         }
         // The SUT includes deviceType in the event it emits.
@@ -428,7 +388,7 @@ describe('safetyMonitorActions', () => {
         store.handleSafetyMonitorDisconnected('nonexistent-device')
 
         expect(stopPollingSpyLocal).toHaveBeenCalledWith('nonexistent-device')
-        expect(mockUpdateDevice).toHaveBeenCalledWith('nonexistent-device', { safety_isSafe: null })
+        expect(mockUpdateDevice).toHaveBeenCalledWith('nonexistent-device', { isSafe: null })
         expect(mockEmitEvent).toHaveBeenCalled()
       })
     })

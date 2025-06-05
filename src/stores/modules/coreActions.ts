@@ -79,6 +79,10 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
     },
 
     getDeviceClient(this: UnifiedStoreType, deviceId: string): AlpacaClient | null {
+      if (!deviceId || this.getDeviceById(deviceId) === null) {
+        log.error({ deviceIds: [deviceId] }, `[CoreActions] getDeviceClient called for device ID: ${deviceId} but device not found`)
+        return null
+      }
       const client = this.deviceClients.get(deviceId)
       return client ? (client as AlpacaClient) : null
     },
@@ -599,6 +603,8 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           deviceAttributes[attributeName] = value
         }
       })
+
+      //TODO: this should not be here.
       switch (device.type.toLowerCase()) {
         case 'camera':
           if (typeof properties.cansetccdtemperature === 'boolean') {
@@ -621,6 +627,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
           if (typeof properties.tracking !== 'undefined') deviceAttributes.tracking = properties.tracking
           break
       }
+
       return this.updateDevice(deviceId, {
         capabilities,
         deviceAttributes

@@ -115,7 +115,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import Icon from '@/components/ui/Icon.vue'
-import type { ISwitchDetail } from '@/stores/modules/switchActions'
+import type { ISwitchDetail, SwitchDevice } from '@/types/device.types'
 
 const props = defineProps({
   deviceId: {
@@ -131,11 +131,11 @@ const props = defineProps({
 const store = useUnifiedStore()
 
 const currentDevice = computed(() => {
-  return store.getDeviceById(props.deviceId)
+  return store.getDeviceById(props.deviceId) as SwitchDevice
 })
 
 const storedSwitches = computed(() => {
-  return currentDevice.value?.sw_switches as ISwitchDetail[] | undefined | null
+  return currentDevice.value?.switches as ISwitchDetail[] | undefined | null
 })
 
 const editableSwitchNames = ref<string[]>([])

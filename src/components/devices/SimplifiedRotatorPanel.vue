@@ -78,7 +78,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import type { RotatorDeviceProperties } from '@/types/device.types.ts'
+import type { RotatorDevice } from '@/types/device.types.ts'
 
 const props = defineProps({
   deviceId: {
@@ -99,7 +99,7 @@ const currentDevice = computed(() => {
 
 // Computed property to get rotator state from the store, now correctly typed
 const rotatorState = computed(() => {
-  return currentDevice.value?.properties as RotatorDeviceProperties | undefined
+  return currentDevice.value?.properties as RotatorDevice | undefined
 })
 
 // Input refs - these remain local to the component for form handling

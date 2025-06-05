@@ -5,9 +5,9 @@
  */
 
 import type { UnifiedStoreType } from '../UnifiedStore'
-import type { Device, DeviceEvent } from '../types/device-store.types'
+import type { DeviceEvent } from '../types/device-store.types'
 import { DomeClient } from '@/api/alpaca/dome-client'
-import { isDome } from '@/types/device.types'
+import { isDome, type DomeDevice } from '@/types/device.types'
 import log from '@/plugins/logger'
 
 // Signatures of actions in this module
@@ -169,7 +169,7 @@ export function createDomeActions(): {
         try {
           await client.setSlaved(slaved)
           // Update the specific property in the store
-          this.updateDevice(deviceId, { dome_slaved: slaved }) // Assuming dome_slaved is added to DomeDeviceProperties
+          this.updateDevice(deviceId, { slaved: slaved } as Partial<DomeDevice>) // Assuming dome_slaved is added to DomeDeviceProperties
           this._emitEvent({
             type: 'deviceMethodCalled',
             deviceId,

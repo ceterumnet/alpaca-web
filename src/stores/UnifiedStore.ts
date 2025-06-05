@@ -34,19 +34,12 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createCoreActions().state(),
       ...createEventSystem().state(),
       ...createDiscoveryActions().state(),
-      // ...createCameraActions().state(),
-      // ...createTelescopeActions().state(),
-      ...createFilterWheelActions().state(),
-      // ...createDomeActions().state(),
-      ...createObservingConditionsActions().state(),
-      // ...createSwitchActions().state(),
-      ...createRotatorActions().state(),
       ...createCoverCalibratorActions().state(),
-      ...createSafetyMonitorActions().state(),
       ...createFocuserActions().state()
     }
   },
 
+  // The selectedDevice concept is not a good idea. We need to weed out the use of it.
   getters: {
     devicesList: (state) => state.devicesArray,
     connectedDevices: (state) => state.devicesArray.filter((device) => device.isConnected),

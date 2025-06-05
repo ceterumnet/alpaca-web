@@ -1,17 +1,7 @@
 import type { Device } from '@/stores/types/device-store.types'
 import { AlpacaClient } from './base-client'
 import { toAscomValue } from '@/types/value-transforms'
-
-export interface ISwitchDetail {
-  name: string
-  value: number | boolean // Switches can be boolean or have numeric values
-  description: string
-  min?: number
-  max?: number
-  step?: number
-  canAsync?: boolean
-  canWrite?: boolean
-}
+import type { ISwitchDetail } from '@/types/device.types'
 
 export class SwitchClient extends AlpacaClient {
   constructor(baseUrl: string, deviceNumber: number = 0, device: Device) {

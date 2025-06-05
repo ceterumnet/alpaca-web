@@ -6,22 +6,16 @@
 
 import log from '@/plugins/logger'
 import { FilterWheelClient } from '@/api/alpaca/filterwheel-client'
-import { isFilterWheel, type FilterWheelDeviceProperties } from '@/types/device.types' // Type guard
+import type { FilterWheelDevice } from '@/types/device.types' // Type guard
+import { isFilterWheel } from '@/types/device.types' // Type guard
 import type { UnifiedStoreType } from '../UnifiedStore'
 import type { DeviceEvent } from '../types/device-store.types'
 
-// Internal state for the FilterWheel module itself (e.g., polling timers)
-export interface FilterWheelModuleState {
-  _fw_pollingTimers: Map<string, number> // deviceId -> intervalId
-  _fw_isPolling: Map<string, boolean> // To prevent multiple poll loops for the same device
-}
-
 // Interface describing the signatures of actions in this module
 interface FilterWheelActionsSignatures {
-  _getFilterWheelClient: (this: UnifiedStoreType, deviceId: string) => FilterWheelClient | null
   fetchFilterWheelDetails: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   setFilterWheelPosition: (this: UnifiedStoreType, deviceId: string, position: number) => Promise<void>
-  setFilterWheelName: (this: UnifiedStoreType, deviceId: string, filterIndex: number, newName: string) => Promise<void>
+  // setFilterWheelName: (this: UnifiedStoreType, deviceId: string, filterIndex: number, newName: string) => Promise<void>
   _pollFilterWheelStatus: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   startFilterWheelPolling: (this: UnifiedStoreType, deviceId: string) => void
   stopFilterWheelPolling: (this: UnifiedStoreType, deviceId: string) => void
@@ -30,58 +24,24 @@ interface FilterWheelActionsSignatures {
 }
 
 export function createFilterWheelActions(): {
-  state: () => FilterWheelModuleState
   actions: FilterWheelActionsSignatures
 } {
   return {
-    state: (): FilterWheelModuleState => ({
-      _fw_pollingTimers: new Map(),
-      _fw_isPolling: new Map()
-    }),
-
     actions: {
-      /**
-       * Internal helper to get or create a FilterWheelClient for a device.
-       */
-      _getFilterWheelClient(this: UnifiedStoreType, deviceId: string): FilterWheelClient | null {
-        const device = this.getDeviceById(deviceId)
-        if (!device || !isFilterWheel(device)) {
-          log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Device ${deviceId} not found or is not a FilterWheel.`)
-          return null
-        }
-
-        let baseUrl = ''
-        if (device.apiBaseUrl) {
-          baseUrl = device.apiBaseUrl
-        } else if (device.address && device.port) {
-          baseUrl = `http://${device.address}:${device.port}`
-        } else if (device.ipAddress && device.port) {
-          baseUrl = `http://${device.ipAddress}:${device.port}`
-        } else {
-          log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Device ${deviceId} has incomplete address details.`)
-          return null
-        }
-        if (baseUrl.endsWith('/')) {
-          baseUrl = baseUrl.slice(0, -1)
-        }
-        const deviceNumber = typeof device.deviceNum === 'number' ? device.deviceNum : 0
-        return new FilterWheelClient(baseUrl, deviceNumber, device)
-      },
-
       /**
        * Fetches all relevant details for a filter wheel and updates the store.
        */
       async fetchFilterWheelDetails(this: UnifiedStoreType, deviceId: string): Promise<void> {
-        const client = this._getFilterWheelClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as FilterWheelClient
         if (!client) return
 
         try {
           const [position, names, offsets] = await Promise.all([client.getPosition(), client.getFilterNames(), client.getFocusOffsets()])
 
-          const updates: FilterWheelDeviceProperties = {
-            fw_currentPosition: position ?? -1,
-            fw_filterNames: Array.isArray(names) ? names : [],
-            fw_focusOffsets: Array.isArray(offsets) ? offsets : []
+          const updates: Partial<FilterWheelDevice> = {
+            position: position ?? -1,
+            filterNames: Array.isArray(names) ? names : [],
+            focusOffsets: Array.isArray(offsets) ? offsets : []
           }
           this.updateDevice(deviceId, updates)
           this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'filterWheelDetails', value: updates } as DeviceEvent)
@@ -95,90 +55,91 @@ export function createFilterWheelActions(): {
        * Sets the position of the filter wheel.
        */
       async setFilterWheelPosition(this: UnifiedStoreType, deviceId: string, position: number): Promise<void> {
-        const client = this._getFilterWheelClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as FilterWheelClient
         if (!client) return
 
         try {
           await client.setPosition(position)
           const newPos = await client.getPosition()
-          this.updateDevice(deviceId, { fw_currentPosition: newPos, fw_isMoving: false })
-          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'fw_currentPosition', value: newPos } as DeviceEvent)
+          this.updateDeviceProperties(deviceId, { position: newPos, isMoving: false } as Partial<FilterWheelDevice>)
+          this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'position', value: newPos } as DeviceEvent)
         } catch (error) {
           log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Error setting position for ${deviceId} to ${position}.`, error)
-          this.updateDevice(deviceId, { fw_isMoving: false })
+          this.updateDeviceProperties(deviceId, { isMoving: false } as Partial<FilterWheelDevice>)
           this._emitEvent({ type: 'deviceApiError', deviceId, error: `Failed to set filter wheel position: ${error}` } as DeviceEvent)
           await this.fetchFilterWheelDetails(deviceId)
         }
       },
 
-      /**
-       * Sets the name of a specific filter in the filter wheel.
-       */
-      async setFilterWheelName(this: UnifiedStoreType, deviceId: string, filterIndex: number, newName: string): Promise<void> {
-        const client = this._getFilterWheelClient(deviceId)
-        if (!client) {
-          log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Could not get client for device ${deviceId} to set filter name.`)
-          return Promise.reject(new Error(`FilterWheel client not found for device ${deviceId}.`))
-        }
+      // This is not standard in alpaca.
+      // /**
+      //  * Sets the name of a specific filter in the filter wheel.
+      //  */
+      // async setFilterWheelName(this: UnifiedStoreType, deviceId: string, filterIndex: number, newName: string): Promise<void> {
+      //   const client = this.getDeviceClient(deviceId) as FilterWheelClient
+      //   if (!client) {
+      //     log.error({ deviceIds: [deviceId] }, `[FilterWheelStore] Could not get client for device ${deviceId} to set filter name.`)
+      //     return Promise.reject(new Error(`FilterWheel client not found for device ${deviceId}.`))
+      //   }
 
-        const device = this.getDeviceById(deviceId)
-        let oldName = 'unknown'
-        if (device && device.properties && Array.isArray(device.properties.fw_filterNames)) {
-          oldName = device.properties.fw_filterNames[filterIndex] ?? 'unknown'
-        }
+      //   const device = this.getDeviceById(deviceId) as FilterWheelDevice
+      //   let oldName = 'unknown'
+      //   if (device && device.filterNames && Array.isArray(device.filterNames)) {
+      //     oldName = device.filterNames[filterIndex] ?? 'unknown'
+      //   }
 
-        try {
-          await client.setFilterName(filterIndex, newName)
-          await this.fetchFilterWheelDetails(deviceId)
+      //   try {
+      //     await client.setFilterName(filterIndex, newName)
+      //     await this.fetchFilterWheelDetails(deviceId)
 
-          this._emitEvent({
-            type: 'devicePropertyChanged',
-            deviceId,
-            property: 'fw_filterNames',
-            value: { index: filterIndex, oldName, newName },
-            message: `Filter ${filterIndex} name changed from "${oldName}" to "${newName}"`
-          } as DeviceEvent)
-          log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] Successfully set name for filter ${filterIndex} on ${deviceId} to "${newName}".`)
-        } catch (error) {
-          log.error(
-            { deviceIds: [deviceId] },
-            `[FilterWheelStore] Error setting name for filter ${filterIndex} on ${deviceId} to "${newName}".`,
-            error
-          )
-          this._emitEvent({
-            type: 'deviceApiError',
-            deviceId,
-            error: `Failed to set filter name for index ${filterIndex} to "${newName}": ${error}`,
-            message: `Error setting filter ${filterIndex} name. Original name: "${oldName}". Attempted: "${newName}".`
-          } as DeviceEvent)
-          return Promise.reject(error)
-        }
-      },
+      //     this._emitEvent({
+      //       type: 'devicePropertyChanged',
+      //       deviceId,
+      //       property: 'filterNames',
+      //       value: { index: filterIndex, oldName, newName },
+      //       message: `Filter ${filterIndex} name changed from "${oldName}" to "${newName}"`
+      //     } as DeviceEvent)
+      //     log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] Successfully set name for filter ${filterIndex} on ${deviceId} to "${newName}".`)
+      //   } catch (error) {
+      //     log.error(
+      //       { deviceIds: [deviceId] },
+      //       `[FilterWheelStore] Error setting name for filter ${filterIndex} on ${deviceId} to "${newName}".`,
+      //       error
+      //     )
+      //     this._emitEvent({
+      //       type: 'deviceApiError',
+      //       deviceId,
+      //       error: `Failed to set filter name for index ${filterIndex} to "${newName}": ${error}`,
+      //       message: `Error setting filter ${filterIndex} name. Original name: "${oldName}". Attempted: "${newName}".`
+      //     } as DeviceEvent)
+      //     return Promise.reject(error)
+      //   }
+      // },
 
       /**
        * Internal polling function for filter wheel status (primarily position).
        */
       async _pollFilterWheelStatus(this: UnifiedStoreType, deviceId: string): Promise<void> {
-        if (!this._fw_isPolling.get(deviceId)) return
+        if (!this.isDevicePolling.get(deviceId)) return
 
-        const device = this.getDeviceById(deviceId)
+        const device = this.getDeviceById(deviceId) as FilterWheelDevice
         if (!device || !device.isConnected) {
           this.stopFilterWheelPolling(deviceId)
           return
         }
 
-        const client = this._getFilterWheelClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as FilterWheelClient
         if (!client) {
           this.stopFilterWheelPolling(deviceId)
           return
         }
 
         try {
-          const currentPositionInStore = device.properties?.fw_currentPosition as number | undefined
+          const currentPositionInStore = device.position as number | undefined
           const pos = await client.getPosition()
           if (pos !== null && pos !== currentPositionInStore) {
-            this.updateDevice(deviceId, { fw_currentPosition: pos })
-            this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'fw_currentPosition', value: pos } as DeviceEvent)
+            this.updateDevice(deviceId, { position: pos } as FilterWheelDevice)
+            this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'position', value: pos } as DeviceEvent)
           }
         } catch (error) {
           log.warn({ deviceIds: [deviceId] }, `[FilterWheelStore] Error polling status for ${deviceId}.`, error)
@@ -192,17 +153,17 @@ export function createFilterWheelActions(): {
         const device = this.getDeviceById(deviceId)
         if (!device || !isFilterWheel(device) || !device.isConnected) return
 
-        if (this._fw_pollingTimers.has(deviceId)) {
+        if (this.propertyPollingIntervals.has(deviceId)) {
           this.stopFilterWheelPolling(deviceId)
         }
 
         const pollInterval = (device.properties?.propertyPollIntervalMs as number) || 3000
 
-        this._fw_isPolling.set(deviceId, true)
+        this.isDevicePolling.set(deviceId, true)
         const timerId = window.setInterval(() => {
           this._pollFilterWheelStatus(deviceId)
         }, pollInterval)
-        this._fw_pollingTimers.set(deviceId, timerId)
+        this.propertyPollingIntervals.set(deviceId, timerId)
         log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
@@ -210,10 +171,10 @@ export function createFilterWheelActions(): {
        * Stops polling for filter wheel status changes.
        */
       stopFilterWheelPolling(this: UnifiedStoreType, deviceId: string): void {
-        this._fw_isPolling.set(deviceId, false)
-        if (this._fw_pollingTimers.has(deviceId)) {
-          clearInterval(this._fw_pollingTimers.get(deviceId)!)
-          this._fw_pollingTimers.delete(deviceId)
+        this.isDevicePolling.set(deviceId, false)
+        if (this.propertyPollingIntervals.has(deviceId)) {
+          clearInterval(this.propertyPollingIntervals.get(deviceId)!)
+          this.propertyPollingIntervals.delete(deviceId)
           log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] Stopped polling for ${deviceId}.`)
         }
       },
@@ -233,11 +194,11 @@ export function createFilterWheelActions(): {
       handleFilterWheelDisconnected(this: UnifiedStoreType, deviceId: string): void {
         log.debug({ deviceIds: [deviceId] }, `[FilterWheelStore] FilterWheel ${deviceId} disconnected. Stopping poll and clearing state.`)
         this.stopFilterWheelPolling(deviceId)
-        const clearedProps: FilterWheelDeviceProperties = {
-          fw_currentPosition: null,
-          fw_filterNames: null,
-          fw_focusOffsets: null,
-          fw_isMoving: null
+        const clearedProps: Partial<FilterWheelDevice> = {
+          position: null,
+          filterNames: null,
+          focusOffsets: null,
+          isMoving: null
         }
         this.updateDevice(deviceId, clearedProps)
       }

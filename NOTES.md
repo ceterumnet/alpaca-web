@@ -30,11 +30,14 @@ Dialog:
 - Therefore, I believe that devicestate optimization lives in the store...
 - It it in coreActions or are there device specific optimizations?
 - Who defines what the list of properties to fetch should be?
-- Who defines what the list of can\* are?
+- Who defines what the list of can\* and has\* are?
+  - Currently, these are defined in property lists in some places and directly on a device interface in others
 - Who defines what the list of actions available are?
 - Where do we define the list of polled properties vs properties that are fetched on an interval?
 - What about sub routines like image capture where there is business logic to poll a specific set of endpoints?
--
+- When should we explicitly define property wrappers vs when should we not?
+- What are the common events emitted from the store vs what are simply reactive properties?
+- How do we create very consistent casing across properties in the system...it's currently a bit of a mess.
 
 - [x] Ensure that all of the panels are following the correct store access patterns
 

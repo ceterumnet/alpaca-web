@@ -40,20 +40,14 @@ const mockCameraDevice: UnifiedDevice = {
   isDisconnecting: false,
   status: 'connected',
   // Alpaca-specific properties
-  DeviceName: 'MockCamera',
-  DeviceNumber: 0,
-  DeviceType: 'camera',
-  DriverInfo: 'Mock Camera Driver',
-  DriverVersion: '1.0',
-  SupportedActions: [],
-  Description: 'A mock camera for testing',
-  InterfaceVersion: 3,
-  Connected: true,
-  UniqueID: 'mock-camera-0',
-  ClientTransactionID: 0,
-  ServerTransactionID: 0,
-  ErrorNumber: 0,
-  ErrorMessage: '',
+  deviceNumber: 0,
+  deviceType: 'camera',
+  driverInfo: 'Mock Camera Driver',
+  driverVersion: '1.0',
+  supportedActions: [],
+  description: 'A mock camera for testing',
+  interfaceVersion: 3,
+  uniqueId: 'mock-camera-0',
   // Optional UnifiedDevice properties
   discoveredAt: new Date().toISOString(),
   lastConnected: new Date().toISOString(),
@@ -61,8 +55,6 @@ const mockCameraDevice: UnifiedDevice = {
   address: '127.0.0.1',
   port: 11111,
   devicePort: 11111,
-  telemetry: {},
-  lastSeen: new Date().toISOString(),
   firmwareVersion: '1.0.0',
   apiBaseUrl: 'http://localhost:11111/api/v1/camera/0',
   deviceNum: 0,
@@ -74,8 +66,7 @@ const mockCameraDevice: UnifiedDevice = {
     canGetCoolerPower: true
   },
   deviceAttributes: {},
-  stateHistory: [],
-  methods: {}
+  stateHistory: []
 }
 
 describe('CameraClient', () => {

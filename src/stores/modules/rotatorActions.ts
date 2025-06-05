@@ -1,25 +1,12 @@
-import type { RotatorDeviceProperties } from '@/types/device.types'
+// import type { RotatorDeviceProperties } from '@/types/device.types'
 import type { UnifiedStoreType } from '../UnifiedStore' // Needed for `this` context in actions
 import { RotatorClient } from '@/api/alpaca/rotator-client'
 import { markRaw } from 'vue'
+import type { RotatorDevice } from '@/types/device.types'
 // import type { DeviceEvent } from '@/stores/types/device-store.types' // For _emitEvent typing
 import type { AlpacaClient } from '@/api/AlpacaClient' // For deviceClients map typing
 // Removed: import type { UnifiedStoreType } from '../UnifiedStore'
 // No longer directly using Store from pinia here, UnifiedStore will handle integration.
-
-/**
- * Represents the internal state specific to the rotator module itself,
- * not per-device. Per-device state is stored on `UnifiedDevice.properties`.
- */
-export interface RotatorModuleState {
-  /** Map of deviceId to active polling timer IDs for rotator status. */
-  _rt_pollingTimers: Map<string, ReturnType<typeof setTimeout>>
-}
-
-/** Initial state for the rotator module. */
-export const initialRotatorModuleState: RotatorModuleState = {
-  _rt_pollingTimers: new Map()
-}
 
 /** Defines the signatures for actions related to rotator devices. */
 export interface RotatorActions {
@@ -55,7 +42,6 @@ export interface RotatorActions {
  * @returns An object containing rotator actions.
  */
 export function createRotatorActions(): {
-  state: () => RotatorModuleState
   actions: RotatorActions
 } {
   const actions: RotatorActions = {
@@ -119,23 +105,23 @@ export function createRotatorActions(): {
         return
       }
 
-      const initialProps: Partial<RotatorDeviceProperties> = {
+      const initialProps: Partial<RotatorDevice> = {
         canReverse: undefined,
         isMoving: undefined,
         mechanicalPosition: undefined,
         position: undefined,
         reverse: undefined,
-        targetPosition: undefined,
-        _rt_isPollingStatus: false // Internal flag for UI/polling logic
+        targetPosition: undefined
+        // isDevicePolling: false // Internal flag for UI/polling logic
       }
       this.updateDeviceProperties(deviceId, initialProps)
 
       // Ensure any pre-existing timer for this deviceId is cleared from the module's state map
       // This uses store._rt_pollingTimers directly, assuming it's part of UnifiedStoreState
-      if (this._rt_pollingTimers && this._rt_pollingTimers.has(deviceId)) {
-        const timerId = this._rt_pollingTimers.get(deviceId)
+      if (this.propertyPollingIntervals && this.propertyPollingIntervals.has(deviceId)) {
+        const timerId = this.propertyPollingIntervals.get(deviceId)
         if (timerId) clearInterval(timerId)
-        this._rt_pollingTimers.delete(deviceId)
+        this.propertyPollingIntervals.delete(deviceId)
       }
     },
 
@@ -148,14 +134,14 @@ export function createRotatorActions(): {
 
       this.stopRotatorPolling(deviceId) // Centralized place to stop polling and clear timers
 
-      const clearedProps: Partial<RotatorDeviceProperties> = {
+      const clearedProps: Partial<RotatorDevice> = {
         canReverse: undefined,
         isMoving: undefined,
         mechanicalPosition: undefined,
         position: undefined,
         reverse: undefined,
-        targetPosition: undefined,
-        _rt_isPollingStatus: undefined // Explicitly clear the internal polling flag
+        targetPosition: undefined
+        // _rt_isPollingStatus: undefined // Explicitly clear the internal polling flag
       }
       this.updateDeviceProperties(deviceId, clearedProps)
     },
@@ -164,10 +150,10 @@ export function createRotatorActions(): {
       const device = this.getDeviceById(deviceId) // Check if device exists for context
 
       // Clear timer from the module's state map
-      if (this._rt_pollingTimers && this._rt_pollingTimers.has(deviceId)) {
-        const timerId = this._rt_pollingTimers.get(deviceId)
+      if (this.propertyPollingIntervals && this.propertyPollingIntervals.has(deviceId)) {
+        const timerId = this.propertyPollingIntervals.get(deviceId)
         if (timerId) clearInterval(timerId)
-        this._rt_pollingTimers.delete(deviceId)
+        this.propertyPollingIntervals.delete(deviceId)
         // console.debug(`[RotatorActions] Stopped status polling timer for ${deviceId}`)
       }
 
@@ -246,15 +232,15 @@ export function createRotatorActions(): {
         const reverse = typeof fetchedValues.reverse === 'boolean' ? (fetchedValues.reverse as boolean) : undefined
         const targetposition = typeof fetchedValues.targetposition === 'number' ? fetchedValues.targetposition : undefined
 
-        const currentRotatorProps = device.properties as RotatorDeviceProperties
+        // const currentRotatorProps = device.properties as Partial<RotatorDevice>
 
-        const newProperties: Partial<RotatorDeviceProperties> = {
+        const newProperties: Partial<RotatorDevice> = {
           position,
           isMoving: ismoving,
           mechanicalPosition: mechanicalposition,
           reverse,
-          targetPosition: targetposition,
-          _rt_isPollingStatus: currentRotatorProps._rt_isPollingStatus ?? false // Preserve polling status
+          targetPosition: targetposition
+          // isDevicePolling: currentRotatorProps.isDevicePolling ?? false // Preserve polling status
         }
 
         this.updateDeviceProperties(deviceId, newProperties)
@@ -543,7 +529,7 @@ export function createRotatorActions(): {
       // Initial fetch
       this._pollRotatorStatus(deviceId)
 
-      const timerId = setInterval(() => {
+      const timerId = window.setInterval(() => {
         // Check if device still exists and is connected before polling
         const currentDevice = this.getDeviceById(deviceId)
         if (!currentDevice || !currentDevice.isConnected) {
@@ -554,13 +540,13 @@ export function createRotatorActions(): {
         this._pollRotatorStatus(deviceId)
       }, pollingInterval)
 
-      if (!this._rt_pollingTimers) {
+      if (!this.propertyPollingIntervals) {
         // This case should ideally not happen if initialRotatorModuleState is set up correctly in UnifiedStore
-        console.error('[RotatorActions.startRotatorPolling] _rt_pollingTimers map not initialized!')
-        this._rt_pollingTimers = new Map()
+        console.error('[RotatorActions.startRotatorPolling] propertyPollingIntervals map not initialized!')
+        this.propertyPollingIntervals = new Map()
       }
-      this._rt_pollingTimers.set(deviceId, timerId)
-      this.updateDeviceProperties(deviceId, { _rt_isPollingStatus: true })
+      this.propertyPollingIntervals.set(deviceId, timerId)
+      this.updateDeviceProperties(deviceId, { isDevicePollingStatus: true })
       console.debug(`[RotatorActions] Started status polling for rotator ${deviceId} every ${pollingInterval}ms`)
     },
 
@@ -585,7 +571,6 @@ export function createRotatorActions(): {
   }
 
   return {
-    state: () => initialRotatorModuleState, // The module defines its piece of the state
     actions
   }
 }

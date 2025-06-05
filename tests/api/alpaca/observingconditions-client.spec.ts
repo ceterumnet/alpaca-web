@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ObservingConditionsClient } from '@/api/alpaca/observingconditions-client'
 import { AlpacaError } from '@/api/alpaca/errors'
-import type { UnifiedDevice, DeviceState, ObservingConditionsDevice } from '@/types/device.types'
+import type { UnifiedDevice, ObservingConditionsDevice, DeviceStatus } from '@/types/device.types'
 import { DEFAULT_OPTIONS, type RequestOptions } from '@/api/alpaca/types'
 
 const mockFetch = (global.fetch = vi.fn())
@@ -24,7 +24,7 @@ const mockDeviceForClient: UnifiedDevice & ObservingConditionsDevice = {
   isConnected: true,
   isConnecting: false,
   isDisconnecting: false,
-  status: 'connected' as DeviceState,
+  status: 'connected' as DeviceStatus,
   properties: {
     ...mockAlpacaDeviceProperties
   },
@@ -41,10 +41,7 @@ const mockDeviceForClient: UnifiedDevice & ObservingConditionsDevice = {
   temperature: 0,
   winddirection: 0,
   windgust: 0,
-  windspeed: 0,
-  sensorname: '',
-  sensordescription: '',
-  timeutcsinceupdate: ''
+  windspeed: 0
 }
 
 describe('ObservingConditionsClient', () => {
@@ -74,7 +71,6 @@ describe('ObservingConditionsClient', () => {
     expect(client.deviceNumber).toBe(deviceNumber)
     expect(client.deviceType).toBe('observingconditions')
     expect(client.device).toBe(mockDeviceForClient)
-    expect(client.device.DeviceName).toBe(mockDeviceForClient.DeviceName)
   })
 
   describe('getAveragePeriod', () => {

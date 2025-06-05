@@ -12,48 +12,67 @@
         <div class="panel-section">
           <h3>Ambient Conditions</h3>
           <div class="conditions-grid">
-            <div><span class="label">Temperature:</span> <span class="value">{{ formatValue(storedConditions?.temperature, '°C') }}</span></div>
-            <div><span class="label">Humidity:</span> <span class="value">{{ formatValue(storedConditions?.humidity, '%') }}</span></div>
-            <div><span class="label">Pressure:</span> <span class="value">{{ formatValue(storedConditions?.pressure, 'hPa') }}</span></div>
-            <div><span class="label">Dew Point:</span> <span class="value">{{ formatValue(storedConditions?.dewpoint, '°C') }}</span></div>
+            <div>
+              <span class="label">Temperature:</span> <span class="value">{{ formatValue(storedConditions?.temperature, '°C') }}</span>
+            </div>
+            <div>
+              <span class="label">Humidity:</span> <span class="value">{{ formatValue(storedConditions?.humidity, '%') }}</span>
+            </div>
+            <div>
+              <span class="label">Pressure:</span> <span class="value">{{ formatValue(storedConditions?.pressure, 'hPa') }}</span>
+            </div>
+            <div>
+              <span class="label">Dew Point:</span> <span class="value">{{ formatValue(storedConditions?.dewpoint, '°C') }}</span>
+            </div>
           </div>
         </div>
 
         <div class="panel-section">
           <h3>Sky Conditions</h3>
           <div class="conditions-grid">
-            <div><span class="label">Cloud Cover:</span> <span class="value">{{ formatValue(storedConditions?.cloudcover, '%') }}</span></div>
-            <div><span class="label">Sky Temperature:</span> <span class="value">{{ formatValue(storedConditions?.skytemperature, '°C') }}</span></div>
-            <div><span class="label">Sky Brightness:</span> <span class="value">{{ formatValue(storedConditions?.skybrightness, 'lux') }}</span></div>
-            <div><span class="label">Sky Quality:</span> <span class="value">{{ formatValue(storedConditions?.skyquality, 'mag/arcsec²') }}</span></div>
-            <div><span class="label">Star FWHM:</span> <span class="value">{{ formatValue(storedConditions?.starfwhm, 'arcsec') }}</span></div>
-            <div><span class="label">Rain Rate:</span> <span class="value">{{ formatValue(storedConditions?.rainrate, 'mm/hr') }}</span></div>
+            <div>
+              <span class="label">Cloud Cover:</span> <span class="value">{{ formatValue(storedConditions?.cloudcover, '%') }}</span>
+            </div>
+            <div>
+              <span class="label">Sky Temperature:</span> <span class="value">{{ formatValue(storedConditions?.skytemperature, '°C') }}</span>
+            </div>
+            <div>
+              <span class="label">Sky Brightness:</span> <span class="value">{{ formatValue(storedConditions?.skybrightness, 'lux') }}</span>
+            </div>
+            <div>
+              <span class="label">Sky Quality:</span> <span class="value">{{ formatValue(storedConditions?.skyquality, 'mag/arcsec²') }}</span>
+            </div>
+            <div>
+              <span class="label">Star FWHM:</span> <span class="value">{{ formatValue(storedConditions?.starfwhm, 'arcsec') }}</span>
+            </div>
+            <div>
+              <span class="label">Rain Rate:</span> <span class="value">{{ formatValue(storedConditions?.rainrate, 'mm/hr') }}</span>
+            </div>
           </div>
         </div>
 
         <div class="panel-section">
           <h3>Wind Conditions</h3>
           <div class="conditions-grid">
-            <div><span class="label">Wind Speed:</span> <span class="value">{{ formatValue(storedConditions?.windspeed, 'm/s') }}</span></div>
-            <div><span class="label">Wind Gust:</span> <span class="value">{{ formatValue(storedConditions?.windgust, 'm/s') }}</span></div>
-            <div><span class="label">Wind Direction:</span> <span class="value">{{ formatValue(storedConditions?.winddirection, '°') }}</span></div>
+            <div>
+              <span class="label">Wind Speed:</span> <span class="value">{{ formatValue(storedConditions?.windspeed, 'm/s') }}</span>
+            </div>
+            <div>
+              <span class="label">Wind Gust:</span> <span class="value">{{ formatValue(storedConditions?.windgust, 'm/s') }}</span>
+            </div>
+            <div>
+              <span class="label">Wind Direction:</span> <span class="value">{{ formatValue(storedConditions?.winddirection, '°') }}</span>
+            </div>
           </div>
         </div>
-        
+
         <div class="panel-section">
           <h3>Settings</h3>
           <div class="input-group">
             <label :for="deviceId + '-avg-period'">Averaging Period (s):</label>
-            <input 
-              :id="deviceId + '-avg-period'" 
-              v-model.number="averagePeriodInput" 
-              type="number" 
-              min="0"
-              @change="setAveragePeriodHandler"
-            />
+            <input :id="deviceId + '-avg-period'" v-model.number="averagePeriodInput" type="number" min="0" @change="setAveragePeriodHandler" />
           </div>
         </div>
-
       </template>
     </div>
   </div>
@@ -62,7 +81,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
-import type { IObservingConditionsData } from '@/api/alpaca/observingconditions-client'
+import type { ObservingConditionsDevice } from '@/types/device.types'
+// import type { IObservingConditionsData } from '@/api/alpaca/observingconditions-client'
 
 const props = defineProps({
   deviceId: {
@@ -77,11 +97,11 @@ const props = defineProps({
 
 const store = useUnifiedStore()
 
-const currentDevice = computed(() => store.getDeviceById(props.deviceId))
+const currentDevice = computed(() => store.getDeviceById(props.deviceId) as ObservingConditionsDevice)
 
 const storedConditions = computed(() => {
-  return currentDevice.value?.oc_conditions as IObservingConditionsData | null | undefined;
-});
+  return currentDevice.value
+})
 
 const averagePeriodInput = ref<number | null>(null)
 
@@ -93,46 +113,56 @@ const formatValue = (value: number | undefined | null, unit: string = '', precis
 const setAveragePeriodHandler = async () => {
   if (!props.deviceId || averagePeriodInput.value === null || averagePeriodInput.value < 0) {
     if (storedConditions.value?.averageperiod !== undefined) {
-        averagePeriodInput.value = storedConditions.value.averageperiod;
+      averagePeriodInput.value = storedConditions.value.averageperiod
     }
-    return;
+    return
   }
   try {
-    await store.setObservingConditionsAveragePeriod(props.deviceId, averagePeriodInput.value);
+    await store.setObservingConditionsAveragePeriod(props.deviceId, averagePeriodInput.value)
   } catch (error) {
-    console.error('Error setting average period via store:', error);
+    console.error('Error setting average period via store:', error)
     if (storedConditions.value?.averageperiod !== undefined) {
-        averagePeriodInput.value = storedConditions.value.averageperiod;
+      averagePeriodInput.value = storedConditions.value.averageperiod
     }
   }
 }
 
-watch(storedConditions, (newConditions) => {
-  if (newConditions?.averageperiod !== undefined) {
-    averagePeriodInput.value = newConditions.averageperiod;
-  }
-}, { immediate: true, deep: true });
+watch(
+  storedConditions,
+  (newConditions) => {
+    if (newConditions?.averageperiod !== undefined) {
+      averagePeriodInput.value = newConditions.averageperiod
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 onMounted(() => {
   if (props.deviceId && props.isConnected) {
-    store.fetchObservingConditions(props.deviceId);
+    store.fetchObservingConditions(props.deviceId)
   }
-});
+})
 
-watch(() => props.isConnected, (newIsConnected) => {
-  if (props.deviceId) {
-    if (newIsConnected) {
-      store.fetchObservingConditions(props.deviceId);
+watch(
+  () => props.isConnected,
+  (newIsConnected) => {
+    if (props.deviceId) {
+      if (newIsConnected) {
+        store.fetchObservingConditions(props.deviceId)
+      }
     }
   }
-});
+)
 
-watch(() => props.deviceId, (newDeviceId) => {
-  if (newDeviceId && props.isConnected) {
-    store.fetchObservingConditions(newDeviceId);
-  }
-}, { immediate: true });
-
+watch(
+  () => props.deviceId,
+  (newDeviceId) => {
+    if (newDeviceId && props.isConnected) {
+      store.fetchObservingConditions(newDeviceId)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -168,7 +198,8 @@ watch(() => props.deviceId, (newDeviceId) => {
   padding-bottom: calc(var(--aw-spacing-xs) * 1.5);
 }
 
-.connection-notice, .loading-notice {
+.connection-notice,
+.loading-notice {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -181,8 +212,13 @@ watch(() => props.deviceId, (newDeviceId) => {
   color: var(--aw-text-secondary-color);
 }
 
-.connection-message { font-size: 1.1rem; }
-.panel-tip { font-size: 0.8rem; }
+.connection-message {
+  font-size: 1.1rem;
+}
+
+.panel-tip {
+  font-size: 0.8rem;
+}
 
 .conditions-grid {
   display: grid;
@@ -219,7 +255,7 @@ watch(() => props.deviceId, (newDeviceId) => {
   white-space: nowrap;
 }
 
-.input-group input[type="number"] {
+.input-group input[type='number'] {
   width: 80px;
   padding: var(--aw-spacing-xs);
   background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
@@ -227,4 +263,4 @@ watch(() => props.deviceId, (newDeviceId) => {
   border: 1px solid var(--aw-input-border-color, var(--aw-panel-border-color));
   border-radius: var(--aw-border-radius-sm);
 }
-</style> 
+</style>
