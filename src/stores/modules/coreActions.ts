@@ -256,7 +256,7 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
         } else if (device.type === 'focuser' && this.handleFocuserConnected) {
           try {
             log.debug({ deviceIds: [deviceId] }, `[CoreActions] Device ${deviceId} is a focuser, handling connection.`)
-            this.handleFocuserConnected(deviceId)
+            await this.handleFocuserConnected(deviceId)
             this.updateDeviceCapabilities(deviceId)
           } catch (focuserError) {
             log.error({ deviceIds: [deviceId] }, `[CoreActions] Error handling focuser connection: ${focuserError}`)

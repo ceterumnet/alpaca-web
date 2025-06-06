@@ -4,30 +4,7 @@ import type { Device, DeviceEvent, FocuserDeviceProperties } from '../types/devi
 import { FocuserClient } from '@/api/alpaca/focuser-client' // Assuming this will be created
 import { isFocuser } from '@/types/device.types' // Assuming this type guard exists or will be created
 
-// Properties managed by this module
-// export interface FocuserDeviceProperties {
-//   focuser_position?: number | null
-//   focuser_isMoving?: boolean | null
-//   focuser_temperature?: number | null
-//   focuser_stepSize?: number | null
-//   focuser_maxStep?: number | null
-//   focuser_maxIncrement?: number | null
-//   focuser_tempComp?: boolean | null
-//   [key: string]: unknown
-// }
-
-// Internal state for the Focuser module
-export interface FocuserModuleState {
-  _focuser_pollingTimers: Map<string, number>
-  _focuser_isPolling: Map<string, boolean>
-  // Module-specific state, if any, beyond what's on the device object
-  // For example, to store targetPosition if it's managed by the store
-  // focuserTargetPositions: Map<string, number>;
-}
-
-// Signatures of actions in this module
 interface IFocuserActions {
-  _getFocuserClient: (this: UnifiedStoreType, deviceId: string) => FocuserClient | null
   fetchFocuserDetails: (this: UnifiedStoreType, deviceId: string) => Promise<void>
   fetchFocuserStatus: (this: UnifiedStoreType, deviceId: string) => Promise<void> // Similar to fetchFocuserDetails but perhaps more frequent
   moveFocuser: (this: UnifiedStoreType, deviceId: string, position: number) => Promise<void>
@@ -48,43 +25,12 @@ interface IFocuserActions {
 }
 
 export function createFocuserActions(): {
-  state: () => FocuserModuleState
   actions: IFocuserActions
 } {
   return {
-    state: (): FocuserModuleState => ({
-      _focuser_pollingTimers: new Map(),
-      _focuser_isPolling: new Map()
-      // focuserTargetPositions: new Map(),
-    }),
-
     actions: {
-      _getFocuserClient(this: UnifiedStoreType, deviceId: string): FocuserClient | null {
-        const device: Device | null = this.getDeviceById(deviceId)
-        if (!device || !isFocuser(device)) {
-          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Device ${deviceId} not found or is not a Focuser.`)
-          return null
-        }
-        let baseUrl = ''
-        if (device.apiBaseUrl) baseUrl = device.apiBaseUrl
-        else if (device.address && device.port) baseUrl = `http://${device.address}:${device.port}`
-        else if (device.ipAddress && device.port) baseUrl = `http://${device.ipAddress}:${device.port}`
-        else {
-          log.error({ deviceIds: [deviceId] }, `[FocuserStore] Device ${deviceId} has incomplete address details.`)
-          return null
-        }
-        if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
-        const deviceNumber = typeof device.deviceNum === 'number' ? device.deviceNum : 0
-        try {
-          return new FocuserClient(baseUrl, deviceNumber, device)
-        } catch (error) {
-          log.error({ deviceIds: [deviceId], error }, `[FocuserStore] Failed to create FocuserClient for ${deviceId}.`)
-          return null
-        }
-      },
-
       async fetchFocuserDetails(this: UnifiedStoreType, deviceId: string): Promise<void> {
-        const client = this._getFocuserClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as FocuserClient
         if (!client) return
 
         try {
@@ -116,7 +62,7 @@ export function createFocuserActions(): {
       },
 
       async fetchFocuserStatus(this: UnifiedStoreType, deviceId: string): Promise<void> {
-        const client = this._getFocuserClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as FocuserClient
         if (!client) return
 
         try {
@@ -140,7 +86,7 @@ export function createFocuserActions(): {
       },
 
       async moveFocuser(this: UnifiedStoreType, deviceId: string, targetPosition: number): Promise<void> {
-        const client = this._getFocuserClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as FocuserClient
         if (!client) return
         try {
           await client.move(targetPosition)
@@ -161,7 +107,7 @@ export function createFocuserActions(): {
       },
 
       async haltFocuser(this: UnifiedStoreType, deviceId: string): Promise<void> {
-        const client = this._getFocuserClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as FocuserClient
         if (!client) return
         try {
           await client.halt()
@@ -175,7 +121,7 @@ export function createFocuserActions(): {
       },
 
       async setFocuserTempComp(this: UnifiedStoreType, deviceId: string, enable: boolean): Promise<void> {
-        const client = this._getFocuserClient(deviceId)
+        const client = this.getDeviceClient(deviceId) as FocuserClient
         if (!client) return
         try {
           await client.setTempComp(enable)
@@ -195,7 +141,7 @@ export function createFocuserActions(): {
       },
 
       async _pollFocuserStatus(this: UnifiedStoreType, deviceId: string): Promise<void> {
-        if (!this._focuser_isPolling.get(deviceId)) return
+        if (!this.isDevicePolling.get(deviceId)) return
 
         const device: Device | null = this.getDeviceById(deviceId)
         if (!device || !device.isConnected) {
@@ -209,34 +155,29 @@ export function createFocuserActions(): {
         const device: Device | null = this.getDeviceById(deviceId)
         if (!device || !isFocuser(device) || !device.isConnected) return
 
-        if (this._focuser_pollingTimers.has(deviceId)) {
+        if (this.isDevicePolling.has(deviceId)) {
           this.stopFocuserPolling(deviceId)
         }
         const pollInterval = (device.properties?.propertyPollIntervalMs as number) || 1000 // Focuser position can change frequently
 
-        this._focuser_isPolling.set(deviceId, true)
+        this.isDevicePolling.set(deviceId, true)
         const timerId = window.setInterval(() => this._pollFocuserStatus(deviceId), pollInterval)
-        this._focuser_pollingTimers.set(deviceId, timerId)
+        this.propertyPollingIntervals.set(deviceId, timerId)
         log.debug({ deviceId, pollInterval }, `[FocuserStore] Started polling for ${deviceId} every ${pollInterval}ms.`)
       },
 
       stopFocuserPolling(this: UnifiedStoreType, deviceId: string): void {
-        this._focuser_isPolling.set(deviceId, false)
-        if (this._focuser_pollingTimers.has(deviceId)) {
-          clearInterval(this._focuser_pollingTimers.get(deviceId)!)
-          this._focuser_pollingTimers.delete(deviceId)
+        this.isDevicePolling.set(deviceId, false)
+        if (this.isDevicePolling.has(deviceId)) {
+          clearInterval(this.propertyPollingIntervals.get(deviceId)!)
+          this.propertyPollingIntervals.delete(deviceId)
           log.debug({ deviceId }, `[FocuserStore] Stopped polling for ${deviceId}.`)
         }
       },
 
-      handleFocuserConnected(this: UnifiedStoreType, deviceId: string): void {
+      handleFocuserConnected: async function (this: UnifiedStoreType, deviceId: string): Promise<void> {
         log.debug({ deviceId }, `[FocuserStore] Focuser ${deviceId} connected. Fetching details and starting poll.`)
-        // It's important to initialize the device's specific state in the module if it uses one.
-        // For example, if focuserTargetPositions was used:
-        // if (!this.focuserTargetPositions.has(deviceId)) {
-        //   this.focuserTargetPositions.set(deviceId, 0); // Default target position
-        // }
-        this.fetchFocuserDetails(deviceId) // Fetches capabilities and initial status
+        await this.fetchFocuserDetails(deviceId) // Fetches capabilities and initial status
         this.startFocuserPolling(deviceId)
       },
 
@@ -264,6 +205,5 @@ export function createFocuserActions(): {
 
 // Type for the Focuser store module to be merged into UnifiedStoreType
 export type FocuserStore = {
-  state: FocuserModuleState
   actions: IFocuserActions
 }

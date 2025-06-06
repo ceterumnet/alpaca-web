@@ -54,11 +54,10 @@ Dialog:
 
 - [ ] Ensure that all of the panels stores have consistent interface names
   - [x] SimplifiedCameraPanel.vue
-  - [x] SimplifiedCoverCalibratorPanel.vue
-    -
-  - [ ] SimplifiedDomePanel.vue
+  - [x] ## SimplifiedCoverCalibratorPanel.vue
+  - [x] SimplifiedDomePanel.vue
     - IDomeActionsSignatures
-  - [ ] SimplifiedFilterWheelPanel.vue
+  - [x] SimplifiedFilterWheelPanel.vue
   - [ ] SimplifiedFocuserPanel.vue
   - [ ] SimplifiedObservingConditionsPanel.vue
   - [ ] SimplifiedRotatorPanel.vue

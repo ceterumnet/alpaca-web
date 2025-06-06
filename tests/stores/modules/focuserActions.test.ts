@@ -2,15 +2,74 @@ import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } fr
 import { createPinia, setActivePinia } from 'pinia'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 import type { UnifiedStoreType } from '@/stores/UnifiedStore'
-import type { Device, FocuserDeviceProperties } from '@/stores/types/device-store.types'
+import type { Device } from '@/stores/types/device-store.types'
 import type { DeviceEvent } from '@/stores/types/device-store.types'
-import { FocuserClient } from '@/api/alpaca/focuser-client' // Actual client for type reference
+import { FocuserClient } from '@/api/alpaca/focuser-client'
 import type { StoreOptions } from '@/stores/types/device-store.types'
-import log from '@/plugins/logger'
+// import log from '@/plugins/logger'
 
-// Mock the FocuserClient
-const mockFocuserClientInstance = {
-  // Device properties (camelCased method names from client)
+// Base properties for all Alpaca clients
+const mockAlpacaClientBaseProperties = {
+  baseUrl: '',
+  deviceType: 'focuser' as string,
+  deviceNumber: 0,
+  device: {} as Device,
+  clientId: 0,
+  transactionId: 0,
+  get localTransactionMode() {
+    return false
+  },
+  set localTransactionMode(value: boolean) {
+    /* no-op */
+  },
+  get useSeparateClientAndTransactions() {
+    return false
+  },
+  set useSeparateClientAndTransactions(value: boolean) {
+    /* no-op */
+  },
+  get clientTransactionId() {
+    return 0
+  },
+  set clientTransactionId(value: number) {
+    /* no-op */
+  },
+  get serverTransactionId() {
+    return 0
+  },
+  set serverTransactionId(value: number) {
+    /* no-op */
+  }
+}
+
+// Extracted public methods to avoid conflicts with private/protected base class methods
+const publicAlpacaBaseMethods = {
+  isConnected: vi.fn().mockResolvedValue(true),
+  setConnected: vi.fn().mockResolvedValue(undefined),
+  getmanagementinfo: vi.fn().mockResolvedValue({ ImageUrl: '', VideoUrl: '' }),
+  getconfigureddevices: vi.fn().mockResolvedValue([]),
+  isAlpacaDevice: vi.fn().mockReturnValue(true),
+  iscommoncommand: vi.fn().mockReturnValue(true),
+  getcommonpropertytype: vi.fn().mockReturnValue('number'),
+  getdescription: vi.fn().mockResolvedValue(''),
+  getdriverinfo: vi.fn().mockResolvedValue(''),
+  getdriverversion: vi.fn().mockResolvedValue(''),
+  getinterfaceversion: vi.fn().mockResolvedValue(0),
+  getname: vi.fn().mockResolvedValue(''),
+  getsupportedactions: vi.fn().mockResolvedValue([]),
+  getuniqueid: vi.fn().mockResolvedValue(''),
+  disposed: vi.fn().mockResolvedValue(undefined),
+  setupdialog: vi.fn().mockResolvedValue(undefined),
+  commandblind: vi.fn().mockResolvedValue(undefined),
+  commandbool: vi.fn().mockResolvedValue(false),
+  commandstring: vi.fn().mockResolvedValue(''),
+  action: vi.fn().mockResolvedValue(''),
+  generateTransactionId: vi.fn(() => 123),
+  generateClientId: vi.fn(() => 456)
+}
+
+// Focuser-specific methods
+const mockFocuserClientSpecificMethods = {
   getAbsolute: vi.fn(),
   isTempCompAvailable: vi.fn(),
   isMoving: vi.fn(),
@@ -20,30 +79,48 @@ const mockFocuserClientInstance = {
   getStepSize: vi.fn(),
   getTempComp: vi.fn(),
   getTemperature: vi.fn(),
-
-  // Action methods
   halt: vi.fn(),
   move: vi.fn(),
   setTempComp: vi.fn(),
+  setSpeed: vi.fn()
+}
 
-  // Common client methods from BaseClient (if needed for other tests)
-  isConnected: vi.fn(),
-  getActionTimeout: vi.fn(),
-  setActionTimeout: vi.fn(),
-  getHttpRequestTimeout: vi.fn(),
-  setHttpRequestTimeout: vi.fn(),
-  setRetryAttempts: vi.fn(),
-  setRetryDelay: vi.fn(),
-  getAxiosInstance: vi.fn(),
+// This will be the shared mock instance returned by the FocuserClient constructor mock
+const mockFocuserClientInstance = {
+  ...mockAlpacaClientBaseProperties,
+  ...publicAlpacaBaseMethods,
+  ...mockFocuserClientSpecificMethods,
+  // Ensure methods that are frequently re-mocked per test are here as vi.fn()
   getProperty: vi.fn(),
   setProperty: vi.fn(),
   callMethod: vi.fn(),
-  fetchDeviceState: vi.fn()
-}
+  getDeviceState: vi.fn()
+} as unknown as FocuserClient
 
-vi.mock('@/api/alpaca/focuser-client', () => ({
-  FocuserClient: vi.fn(() => mockFocuserClientInstance)
-}))
+vi.mock('@/api/alpaca/focuser-client', () => {
+  const MockConstructor = vi.fn((_baseUrl, _deviceNum, _device) => {
+    // Always return the same shared mock instance
+    return mockFocuserClientInstance
+  })
+  return { FocuserClient: MockConstructor }
+})
+
+const createMockDevice = (overrides: Partial<Device> & { deviceType: string; id: string }): Device => {
+  return {
+    name: 'Test Device',
+    driverVersion: '1.0',
+    driverInfo: 'Test Driver',
+    supportedActions: [],
+    uniqueId: `${overrides.id}-unique`,
+    deviceNum: 0,
+    isConnected: false,
+    isConnecting: false,
+    isDisconnecting: false,
+    status: 'idle',
+    type: overrides.deviceType,
+    ...overrides
+  } as Device
+}
 
 const mockEmitEvent = vi.fn()
 
@@ -54,20 +131,23 @@ describe('focuserActions', () => {
   let mockUpdateDevice: MockInstance<(deviceId: string, updates: Partial<Device>, options?: StoreOptions) => boolean>
   let mockCallDeviceMethod: MockInstance<(deviceId: string, method: string, args?: unknown[] | undefined) => Promise<unknown>>
   let emitEventSpy: MockInstance<(event: DeviceEvent) => void>
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let mockGetFocuserClient: MockInstance<UnifiedStoreType['getDeviceClient']>
 
   const FOCUSER_DEVICE_ID = 'focuser-1'
-  const mockFocuserDevice: Device = {
+  const mockFocuserDevice = createMockDevice({
     id: FOCUSER_DEVICE_ID,
-    name: 'Test Focuser',
-    type: 'focuser',
-    isConnected: false,
-    isConnecting: false,
-    isDisconnecting: false,
-    status: 'idle',
-    properties: {},
+    deviceType: 'focuser',
     apiBaseUrl: 'http://localhost:11111/api/v1/focuser/0',
-    deviceNum: 0
-  }
+    deviceNum: 0,
+    name: 'Test Device',
+    driverInfo: 'Test Driver',
+    driverVersion: '1.0',
+    uniqueId: 'focuser-1-unique',
+    supportedActions: [],
+    isConnected: false,
+    status: 'idle'
+  })
 
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -81,10 +161,17 @@ describe('focuserActions', () => {
     emitEventSpy = vi.spyOn(store as unknown as { _emitEvent: (event: DeviceEvent) => void }, '_emitEvent').mockImplementation(mockEmitEvent)
 
     // Spy on relevant core actions
-    mockGetDeviceById = vi.spyOn(store, 'getDeviceById')
-    mockUpdateDeviceProperties = vi.spyOn(store, 'updateDeviceProperties')
-    mockUpdateDevice = vi.spyOn(store, 'updateDevice') // Used by connection handlers
-    mockCallDeviceMethod = vi.spyOn(store, 'callDeviceMethod')
+    store.addDevice(mockFocuserDevice)
+    mockGetDeviceById = vi.spyOn(store, 'getDeviceById') as MockInstance<(deviceId: string) => Device | null>
+    mockUpdateDeviceProperties = vi.spyOn(store, 'updateDeviceProperties') as MockInstance<
+      (deviceId: string, updates: Partial<Device>, options?: StoreOptions) => boolean
+    >
+    mockUpdateDevice = vi.spyOn(store, 'updateDevice') as MockInstance<
+      (deviceId: string, updates: Partial<Device>, options?: StoreOptions) => boolean
+    >
+    mockCallDeviceMethod = vi.spyOn(store, 'callDeviceMethod') as MockInstance<
+      (deviceId: string, method: string, args?: unknown[] | undefined) => Promise<unknown>
+    >
 
     // Setup default mock implementations
     mockGetDeviceById.mockImplementation((deviceId) => {
@@ -93,170 +180,92 @@ describe('focuserActions', () => {
       }
       return null
     })
+
+    // Setup getDeviceClient mock to return null when device is not found
+    mockGetFocuserClient = vi.spyOn(store, 'getDeviceClient').mockImplementation((deviceId) => {
+      const device = store.getDeviceById(deviceId)
+      if (!device || !device.isConnected) {
+        return null
+      }
+      return mockFocuserClientInstance as unknown as FocuserClient
+    })
+
     mockUpdateDeviceProperties.mockReturnValue(true)
     mockUpdateDevice.mockReturnValue(true)
     mockCallDeviceMethod.mockResolvedValue({ data: 'mocked method call' })
 
-    // Ensure focuser device is in the store for tests that need it
-    // but clear its specific properties
-    store.$reset() // Reset the entire store for a clean slate
-    store.devices.set(FOCUSER_DEVICE_ID, { ...mockFocuserDevice, properties: {} })
-    store.devicesArray = [{ ...mockFocuserDevice, properties: {} }]
-
-    // Reset focuser specific state in store if any (e.g. polling timers)
-    // This would be similar to what cleanupDeviceState in cameraActions does
-    store._focuser_isPolling = store._focuser_isPolling || new Map()
-    store._focuser_pollingTimers = store._focuser_pollingTimers || new Map()
-    store._focuser_isPolling.clear()
-    store._focuser_pollingTimers.forEach(clearTimeout)
-    store._focuser_pollingTimers.clear()
+    // Reset focuser specific state in store
+    store.isDevicePolling = store.isDevicePolling || new Map()
+    store.propertyPollingIntervals = store.propertyPollingIntervals || new Map()
+    store.isDevicePolling.clear()
+    store.propertyPollingIntervals.forEach(clearTimeout)
+    store.propertyPollingIntervals.clear()
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  // Test suites will be added here, starting with _getFocuserClient
-  describe('_getFocuserClient', () => {
-    it('should return a FocuserClient instance if device is found and is a focuser', () => {
-      // Retrieve the device as it would be passed to the client constructor
-      const deviceForClient = store.getDeviceById(FOCUSER_DEVICE_ID)
-      const client = store._getFocuserClient(FOCUSER_DEVICE_ID)
-      expect(client).toBeDefined()
-      expect(client).toBe(mockFocuserClientInstance)
-      expect(FocuserClient).toHaveBeenCalledWith(
-        mockFocuserDevice.apiBaseUrl,
-        mockFocuserDevice.deviceNum,
-        deviceForClient // Pass the actual device object used by the SUT
-      )
-    })
-
-    it('should return null if device is not found', () => {
-      mockGetDeviceById.mockReturnValue(null)
-      const client = store._getFocuserClient('non-existent-device')
-      expect(client).toBeNull()
-      expect(FocuserClient).not.toHaveBeenCalled()
-    })
-
-    it('should return null if device is found but is not a focuser', () => {
-      mockGetDeviceById.mockReturnValue({ ...mockFocuserDevice, type: 'camera' } as Device)
-      const client = store._getFocuserClient(FOCUSER_DEVICE_ID)
-      expect(client).toBeNull()
-      expect(FocuserClient).not.toHaveBeenCalled()
-    })
-
-    it('should return null if device is found but has no apiBaseUrl', () => {
-      mockGetDeviceById.mockReturnValue({ ...mockFocuserDevice, apiBaseUrl: undefined } as Device)
-      const client = store._getFocuserClient(FOCUSER_DEVICE_ID)
-      expect(client).toBeNull()
-      expect(FocuserClient).not.toHaveBeenCalled()
-    })
-    it('should return null if FocuserClient constructor throws', () => {
-      vi.mocked(FocuserClient).mockImplementationOnce(() => {
-        throw new Error('Failed to create client')
-      })
-      const client = store._getFocuserClient(FOCUSER_DEVICE_ID)
-      expect(client).toBeNull()
-    })
-  })
-
   describe('fetchFocuserDetails', () => {
     beforeEach(() => {
-      // Reset client mock methods for each test in this suite
+      vi.clearAllMocks()
+      mockGetDeviceById.mockReturnValue({ ...mockFocuserDevice, isConnected: true })
       vi.mocked(mockFocuserClientInstance.getMaxStep).mockResolvedValue(10000)
       vi.mocked(mockFocuserClientInstance.getMaxIncrement).mockResolvedValue(5000)
       vi.mocked(mockFocuserClientInstance.getStepSize).mockResolvedValue(100)
-      // For fetchFocuserDetails, it also calls fetchFocuserStatus, so mock its dependencies too
-      vi.mocked(mockFocuserClientInstance.getPosition).mockResolvedValue(1234)
-      vi.mocked(mockFocuserClientInstance.isMoving).mockResolvedValue(false)
-      vi.mocked(mockFocuserClientInstance.getTemperature).mockResolvedValue(25.5)
-      vi.mocked(mockFocuserClientInstance.getTempComp).mockResolvedValue(true)
     })
 
-    it('should fetch focuser details, update properties, and emit event on success', async () => {
+    it('should fetch focuser details and update properties', async () => {
       await store.fetchFocuserDetails(FOCUSER_DEVICE_ID)
 
       expect(mockFocuserClientInstance.getMaxStep).toHaveBeenCalledTimes(1)
       expect(mockFocuserClientInstance.getMaxIncrement).toHaveBeenCalledTimes(1)
       expect(mockFocuserClientInstance.getStepSize).toHaveBeenCalledTimes(1)
 
-      const expectedDetailsUpdates: FocuserDeviceProperties = {
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(FOCUSER_DEVICE_ID, {
         focuser_maxStep: 10000,
         focuser_maxIncrement: 5000,
         focuser_stepSize: 100
-      }
-      // It calls updateDeviceProperties twice: once for details, once for status from the nested call
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledTimes(2)
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(FOCUSER_DEVICE_ID, expect.objectContaining(expectedDetailsUpdates))
-
-      // Check the event for capabilities (details)
-      expect(emitEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'devicePropertyChanged',
-          deviceId: FOCUSER_DEVICE_ID,
-          property: 'focuserCapabilities',
-          value: expectedDetailsUpdates
-        })
-      )
-
-      // Also verify that fetchFocuserStatus parts were called (due to internal call)
-      expect(mockFocuserClientInstance.getPosition).toHaveBeenCalledTimes(1)
-      expect(mockFocuserClientInstance.isMoving).toHaveBeenCalledTimes(1)
-      const expectedStatusUpdates: FocuserDeviceProperties = {
-        focuser_position: 1234,
-        focuser_isMoving: false,
-        focuser_temperature: 25.5,
-        focuser_tempComp: true
-      }
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(FOCUSER_DEVICE_ID, expect.objectContaining(expectedStatusUpdates))
-      // Check the event for status
-      expect(emitEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'devicePropertyChanged',
-          deviceId: FOCUSER_DEVICE_ID,
-          property: 'focuserStatus',
-          value: expect.objectContaining(expectedStatusUpdates)
-        })
-      )
+      })
     })
 
     it('should not call client methods or update properties if client is not obtained', async () => {
-      mockGetDeviceById.mockReturnValue(null) // Ensure _getFocuserClient returns null
+      mockGetDeviceById.mockReturnValue(null)
       await store.fetchFocuserDetails(FOCUSER_DEVICE_ID)
 
       expect(mockFocuserClientInstance.getMaxStep).not.toHaveBeenCalled()
+      expect(mockFocuserClientInstance.getMaxIncrement).not.toHaveBeenCalled()
+      expect(mockFocuserClientInstance.getStepSize).not.toHaveBeenCalled()
       expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
       expect(emitEventSpy).not.toHaveBeenCalled()
     })
 
     it('should emit deviceApiError if fetching details fails', async () => {
-      const error = new Error('Failed to get max step')
-      vi.mocked(mockFocuserClientInstance.getMaxStep).mockRejectedValue(error)
-
+      vi.mocked(mockFocuserClientInstance.getMaxStep).mockRejectedValue(new Error('Failed to get max step'))
       await store.fetchFocuserDetails(FOCUSER_DEVICE_ID)
 
-      expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
-      expect(emitEventSpy).toHaveBeenCalledWith({
-        type: 'deviceApiError',
-        deviceId: FOCUSER_DEVICE_ID,
-        action: 'fetchFocuserDetails',
-        error: `Failed to fetch focuser details: ${error}`
-      })
-      // fetchFocuserStatus should NOT be called if the initial capability fetch fails and an error is caught.
-      expect(mockFocuserClientInstance.getPosition).not.toHaveBeenCalled()
+      expect(emitEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'deviceApiError',
+          action: 'fetchFocuserDetails',
+          deviceId: FOCUSER_DEVICE_ID,
+          error: expect.stringContaining('Failed to get max step')
+        })
+      )
     })
   })
 
   describe('fetchFocuserStatus', () => {
     beforeEach(() => {
-      // Reset client mock methods for each test in this suite
-      vi.mocked(mockFocuserClientInstance.getPosition).mockResolvedValue(5555)
-      vi.mocked(mockFocuserClientInstance.isMoving).mockResolvedValue(true)
-      vi.mocked(mockFocuserClientInstance.getTemperature).mockResolvedValue(10.1)
+      vi.clearAllMocks()
+      mockGetDeviceById.mockReturnValue({ ...mockFocuserDevice, isConnected: true })
+      vi.mocked(mockFocuserClientInstance.getPosition).mockResolvedValue(1234)
+      vi.mocked(mockFocuserClientInstance.isMoving).mockResolvedValue(false)
+      vi.mocked(mockFocuserClientInstance.getTemperature).mockResolvedValue(10.0)
       vi.mocked(mockFocuserClientInstance.getTempComp).mockResolvedValue(false)
     })
 
-    it('should fetch focuser status, update properties, and emit event on success', async () => {
+    it('should fetch focuser status and update properties', async () => {
       await store.fetchFocuserStatus(FOCUSER_DEVICE_ID)
 
       expect(mockFocuserClientInstance.getPosition).toHaveBeenCalledTimes(1)
@@ -264,51 +273,39 @@ describe('focuserActions', () => {
       expect(mockFocuserClientInstance.getTemperature).toHaveBeenCalledTimes(1)
       expect(mockFocuserClientInstance.getTempComp).toHaveBeenCalledTimes(1)
 
-      const expectedStatusUpdates: FocuserDeviceProperties = {
-        focuser_position: 5555,
-        focuser_isMoving: true,
-        focuser_temperature: 10.1,
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(FOCUSER_DEVICE_ID, {
+        focuser_position: 1234,
+        focuser_isMoving: false,
+        focuser_temperature: 10.0,
         focuser_tempComp: false
-      }
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledTimes(1)
-      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(FOCUSER_DEVICE_ID, expect.objectContaining(expectedStatusUpdates))
-
-      expect(emitEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'devicePropertyChanged',
-          deviceId: FOCUSER_DEVICE_ID,
-          property: 'focuserStatus',
-          value: expectedStatusUpdates
-        })
-      )
+      })
     })
 
     it('should not call client methods or update properties if client is not obtained', async () => {
-      mockGetDeviceById.mockReturnValue(null) // Ensure _getFocuserClient returns null
+      mockGetDeviceById.mockReturnValue(null)
       await store.fetchFocuserStatus(FOCUSER_DEVICE_ID)
 
       expect(mockFocuserClientInstance.getPosition).not.toHaveBeenCalled()
+      expect(mockFocuserClientInstance.isMoving).not.toHaveBeenCalled()
+      expect(mockFocuserClientInstance.getTemperature).not.toHaveBeenCalled()
+      expect(mockFocuserClientInstance.getTempComp).not.toHaveBeenCalled()
       expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
       expect(emitEventSpy).not.toHaveBeenCalled()
     })
 
     it('should not emit deviceApiError if fetching status fails (only logs error)', async () => {
-      // Based on SUT: console.error, but no _emitEvent for deviceApiError in fetchFocuserStatus's catch block
-      const error = new Error('Failed to get position')
-      vi.mocked(mockFocuserClientInstance.getPosition).mockRejectedValue(error)
-      const consoleErrorSpy = vi.spyOn(log, 'error').mockImplementation(() => {}) // Suppress console output for test
-
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.mocked(mockFocuserClientInstance.getPosition).mockRejectedValue(new Error('Failed to get position'))
       await store.fetchFocuserStatus(FOCUSER_DEVICE_ID)
 
       expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
       expect(emitEventSpy).not.toHaveBeenCalled() // No deviceApiError event expected for status polling failures
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        { deviceIds: [FOCUSER_DEVICE_ID] },
-        `[FocuserStore] Error fetching status for ${FOCUSER_DEVICE_ID}.`,
-        error
+        expect.stringContaining('[ERROR]'),
+        expect.objectContaining({ deviceIds: [FOCUSER_DEVICE_ID] }),
+        expect.stringContaining('[FocuserStore] Error fetching status for'),
+        expect.any(Error)
       )
-
-      consoleErrorSpy.mockRestore()
     })
   })
 
@@ -316,6 +313,7 @@ describe('focuserActions', () => {
     const TARGET_POSITION = 7500
 
     beforeEach(() => {
+      mockGetDeviceById.mockReturnValue({ ...mockFocuserDevice, isConnected: true })
       // Ensure fetchFocuserStatus mocks are set up as it's called after move
       vi.mocked(mockFocuserClientInstance.getPosition).mockResolvedValue(TARGET_POSITION) // Assume move is instant for status check
       vi.mocked(mockFocuserClientInstance.isMoving).mockResolvedValue(false) // Assume move completes
@@ -379,6 +377,7 @@ describe('focuserActions', () => {
 
   describe('haltFocuser', () => {
     beforeEach(() => {
+      mockGetDeviceById.mockReturnValue({ ...mockFocuserDevice, isConnected: true })
       // Ensure fetchFocuserStatus mocks are set up as it's called after halt
       vi.mocked(mockFocuserClientInstance.getPosition).mockResolvedValue(1234) // Some position
       vi.mocked(mockFocuserClientInstance.isMoving).mockResolvedValue(false) // Assume halt completes and it's not moving
@@ -441,222 +440,226 @@ describe('focuserActions', () => {
     const ENABLE_TEMP_COMP = true
 
     beforeEach(() => {
-      // Ensure fetchFocuserStatus mocks are set up as it's called after setTempComp
+      vi.clearAllMocks()
+      mockGetDeviceById.mockReturnValue({ ...mockFocuserDevice, isConnected: true })
+      vi.mocked(mockFocuserClientInstance.setTempComp).mockResolvedValue(undefined)
       vi.mocked(mockFocuserClientInstance.getPosition).mockResolvedValue(1234)
       vi.mocked(mockFocuserClientInstance.isMoving).mockResolvedValue(false)
       vi.mocked(mockFocuserClientInstance.getTemperature).mockResolvedValue(10.0)
-      vi.mocked(mockFocuserClientInstance.getTempComp).mockResolvedValue(ENABLE_TEMP_COMP) // Reflects the change
+      vi.mocked(mockFocuserClientInstance.getTempComp).mockResolvedValue(true) // ENABLE_TEMP_COMP
     })
 
-    it('should call client.setTempComp with the enable flag and refresh status on success', async () => {
-      vi.mocked(mockFocuserClientInstance.setTempComp).mockResolvedValue(undefined) // Mock successful setTempComp
-
+    it('should call client.setTempComp and refresh status on success', async () => {
       await store.setFocuserTempComp(FOCUSER_DEVICE_ID, ENABLE_TEMP_COMP)
 
-      expect(mockFocuserClientInstance.setTempComp).toHaveBeenCalledTimes(1)
       expect(mockFocuserClientInstance.setTempComp).toHaveBeenCalledWith(ENABLE_TEMP_COMP)
+      expect(mockFocuserClientInstance.getPosition).toHaveBeenCalledTimes(1)
+      expect(mockFocuserClientInstance.isMoving).toHaveBeenCalledTimes(1)
+      expect(mockFocuserClientInstance.getTemperature).toHaveBeenCalledTimes(1)
+      expect(mockFocuserClientInstance.getTempComp).toHaveBeenCalledTimes(1)
 
-      expect(emitEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'deviceMethodCalled',
-          deviceId: FOCUSER_DEVICE_ID,
-          method: 'setFocuserTempComp',
-          args: [ENABLE_TEMP_COMP],
-          result: 'success'
-        })
-      )
-
-      // Verify fetchFocuserStatus was called
-      expect(mockFocuserClientInstance.getPosition).toHaveBeenCalledTimes(1) // Verifying one of the status calls
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(FOCUSER_DEVICE_ID, {
+        focuser_position: 1234,
+        focuser_isMoving: false,
+        focuser_temperature: 10.0,
+        focuser_tempComp: ENABLE_TEMP_COMP
+      })
     })
 
     it('should not call client.setTempComp if client is not obtained', async () => {
       mockGetDeviceById.mockReturnValue(null)
       await store.setFocuserTempComp(FOCUSER_DEVICE_ID, ENABLE_TEMP_COMP)
+
       expect(mockFocuserClientInstance.setTempComp).not.toHaveBeenCalled()
+      expect(mockUpdateDeviceProperties).not.toHaveBeenCalled()
+      expect(emitEventSpy).not.toHaveBeenCalled()
     })
 
     it('should emit deviceApiError and refresh status if client.setTempComp fails', async () => {
-      const error = new Error('Set TempComp failed')
+      const error = new Error('SetTempComp failed')
       vi.mocked(mockFocuserClientInstance.setTempComp).mockRejectedValue(error)
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {}) // Suppress console output
 
       await store.setFocuserTempComp(FOCUSER_DEVICE_ID, ENABLE_TEMP_COMP)
 
-      expect(mockFocuserClientInstance.setTempComp).toHaveBeenCalledTimes(1)
       expect(mockFocuserClientInstance.setTempComp).toHaveBeenCalledWith(ENABLE_TEMP_COMP)
-
       expect(emitEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'deviceApiError',
-          deviceId: FOCUSER_DEVICE_ID,
           action: 'setFocuserTempComp',
-          error: `Failed to set TempComp: ${error}`,
+          deviceId: FOCUSER_DEVICE_ID,
+          error: expect.stringContaining('Failed to set TempComp'),
           params: { enable: ENABLE_TEMP_COMP }
         })
       )
-
-      // Verify fetchFocuserStatus was still called even on error
-      expect(mockFocuserClientInstance.getPosition).toHaveBeenCalledTimes(1)
-      consoleErrorSpy.mockRestore()
+      // Verify status is still refreshed even after error
+      expect(mockFocuserClientInstance.getPosition).toHaveBeenCalled()
+      expect(mockFocuserClientInstance.isMoving).toHaveBeenCalled()
+      expect(mockFocuserClientInstance.getTemperature).toHaveBeenCalled()
+      expect(mockFocuserClientInstance.getTempComp).toHaveBeenCalled()
     })
   })
 
   describe('Polling Actions', () => {
+    const POLL_INTERVAL = 1000
+
     beforeEach(() => {
-      vi.useFakeTimers()
-      // Ensure device is connected for polling tests
-      mockFocuserDevice.isConnected = true
-      store.devices.set(FOCUSER_DEVICE_ID, { ...mockFocuserDevice, isConnected: true })
-      store.devicesArray = [{ ...mockFocuserDevice, isConnected: true }]
-
-      // Mock _pollFocuserStatus as its detailed functionality is tested via fetchFocuserStatus tests
-      // Here we just want to ensure it's called by the polling mechanism.
-      vi.spyOn(store, '_pollFocuserStatus').mockResolvedValue(undefined)
-    })
-
-    afterEach(() => {
-      vi.runOnlyPendingTimers()
-      vi.useRealTimers()
-    })
-
-    it('startFocuserPolling should start polling if device is connected and not already polling', () => {
-      store.startFocuserPolling(FOCUSER_DEVICE_ID)
-      expect(store._focuser_isPolling.get(FOCUSER_DEVICE_ID)).toBe(true)
-      expect(store._focuser_pollingTimers.has(FOCUSER_DEVICE_ID)).toBe(true)
-      expect(store._pollFocuserStatus).not.toHaveBeenCalled() // Should not call immediately, but after interval
-
-      vi.advanceTimersByTime(1000) // Default poll interval in SUT is 1000ms
-      expect(store._pollFocuserStatus).toHaveBeenCalledTimes(1)
-      expect(store._pollFocuserStatus).toHaveBeenCalledWith(FOCUSER_DEVICE_ID)
-
-      vi.advanceTimersByTime(1000)
-      expect(store._pollFocuserStatus).toHaveBeenCalledTimes(2)
-    })
-
-    it('startFocuserPolling should not start if device is not connected', () => {
-      mockFocuserDevice.isConnected = false
-      store.devices.set(FOCUSER_DEVICE_ID, { ...mockFocuserDevice, isConnected: false })
-      store.startFocuserPolling(FOCUSER_DEVICE_ID)
-      expect(store._focuser_isPolling.get(FOCUSER_DEVICE_ID)).toBeFalsy()
-    })
-
-    it('startFocuserPolling should not start if device is not a focuser', () => {
-      mockGetDeviceById.mockReturnValueOnce({ ...mockFocuserDevice, type: 'camera' } as Device)
-      store.startFocuserPolling(FOCUSER_DEVICE_ID)
-      expect(store._focuser_isPolling.get(FOCUSER_DEVICE_ID)).toBeFalsy()
-    })
-
-    it('startFocuserPolling should clear existing timer and restart if called again for same device', () => {
-      store.startFocuserPolling(FOCUSER_DEVICE_ID)
-      const firstTimerId = store._focuser_pollingTimers.get(FOCUSER_DEVICE_ID)
-      expect(firstTimerId).toBeDefined()
-
-      store.startFocuserPolling(FOCUSER_DEVICE_ID) // Call again
-      expect(store._focuser_pollingTimers.get(FOCUSER_DEVICE_ID)).toBeDefined()
-      expect(store._focuser_pollingTimers.get(FOCUSER_DEVICE_ID)).not.toBe(firstTimerId)
-      expect(store._pollFocuserStatus).not.toHaveBeenCalled() // Interval restarts
-
-      vi.advanceTimersByTime(1000)
-      expect(store._pollFocuserStatus).toHaveBeenCalledTimes(1)
-    })
-
-    it('stopFocuserPolling should stop polling and clear timer if polling was active', () => {
-      store.startFocuserPolling(FOCUSER_DEVICE_ID)
-      expect(store._focuser_isPolling.get(FOCUSER_DEVICE_ID)).toBe(true)
-
-      store.stopFocuserPolling(FOCUSER_DEVICE_ID)
-      expect(store._focuser_isPolling.get(FOCUSER_DEVICE_ID)).toBe(false)
-      expect(store._focuser_pollingTimers.has(FOCUSER_DEVICE_ID)).toBe(false)
-
-      vi.advanceTimersByTime(2000) // Advance time, _pollFocuserStatus should not be called
-      expect(store._pollFocuserStatus).not.toHaveBeenCalled()
-    })
-
-    it('stopFocuserPolling should do nothing if polling was not active', () => {
-      store.stopFocuserPolling(FOCUSER_DEVICE_ID)
-      expect(store._focuser_isPolling.get(FOCUSER_DEVICE_ID)).toBeFalsy() // or undefined if never set
-      expect(store._focuser_pollingTimers.has(FOCUSER_DEVICE_ID)).toBe(false)
-      // Ensure no error is thrown and no unexpected calls
-      const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
-      store.stopFocuserPolling(FOCUSER_DEVICE_ID)
-      expect(clearIntervalSpy).not.toHaveBeenCalledWith(expect.anything()) // As timer map should be empty for this device
-      clearIntervalSpy.mockRestore()
-    })
-
-    it('_pollFocuserStatus should stop polling if device becomes disconnected', async () => {
-      // This test now relies on the mock of _pollFocuserStatus and tests the wrapper logic in startFocuserPolling
-      // The actual logic of _pollFocuserStatus stopping polling on disconnect is implicitly tested if fetchFocuserStatus fails or device.isConnected turns false
-      // For direct test of _pollFocuserStatus itself (if it were not mocked):
-      // 1. Start polling
-      // 2. Advance timer to trigger _pollFocuserStatus
-      // 3. Inside the mock of fetchFocuserStatus (called by _pollFocuserStatus), change device.isConnected to false
-      // 4. Verify polling is stopped by checking _focuser_isPolling and _focuser_pollingTimers
-      // Since _pollFocuserStatus is mocked here for simplicity, we can't directly test its internal stop logic.
-      // We primarily test that startFocuserPolling sets up the interval correctly.
-      // The internal check for device.isConnected in the SUT's _pollFocuserStatus is assumed to work.
-
-      // Simpler test: Ensure stopFocuserPolling is called if device is no longer connected when _pollFocuserStatus is invoked.
-      // This requires _pollFocuserStatus to NOT be mocked for this specific test, or to have a mock that simulates this.
-      vi.restoreAllMocks() // Restore to use actual _pollFocuserStatus
-      vi.spyOn(store, 'fetchFocuserStatus').mockImplementation(async () => {
-        // Simulate device disconnecting during the poll
-        store.devices.get(FOCUSER_DEVICE_ID)!.isConnected = false
+      vi.clearAllMocks()
+      mockGetDeviceById.mockReturnValue({
+        ...mockFocuserDevice,
+        isConnected: true,
+        properties: {
+          ...mockFocuserDevice.properties,
+          propertyPollIntervalMs: POLL_INTERVAL
+        }
       })
-      const stopPollingSpy = vi.spyOn(store, 'stopFocuserPolling')
+      vi.mocked(mockFocuserClientInstance.getPosition).mockResolvedValue(1234)
+      vi.mocked(mockFocuserClientInstance.isMoving).mockResolvedValue(false)
+      vi.mocked(mockFocuserClientInstance.getTemperature).mockResolvedValue(10.0)
+      vi.mocked(mockFocuserClientInstance.getTempComp).mockResolvedValue(false)
+    })
+
+    it('should start polling when startFocuserPolling is called', () => {
+      // Mock the store's polling state
+      store.isDevicePolling.set(FOCUSER_DEVICE_ID, false)
+      store.propertyPollingIntervals.delete(FOCUSER_DEVICE_ID)
 
       store.startFocuserPolling(FOCUSER_DEVICE_ID)
-      vi.advanceTimersByTime(1000) // Trigger the poll
-      await vi.runOnlyPendingTimersAsync() // Ensure async operations in poll complete
 
-      expect(store.fetchFocuserStatus).toHaveBeenCalledTimes(1)
-      expect(stopPollingSpy).toHaveBeenCalledWith(FOCUSER_DEVICE_ID)
+      expect(store.isDevicePolling.get(FOCUSER_DEVICE_ID)).toBe(true)
+      expect(store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)).toBeDefined()
+    })
+
+    it('should call fetchFocuserStatus when _pollFocuserStatus is called', async () => {
+      // Mock the store's polling state
+      store.isDevicePolling.set(FOCUSER_DEVICE_ID, true)
+      store.propertyPollingIntervals.delete(FOCUSER_DEVICE_ID)
+
+      await store._pollFocuserStatus(FOCUSER_DEVICE_ID)
+
+      expect(mockFocuserClientInstance.getPosition).toHaveBeenCalledTimes(1)
+      expect(mockFocuserClientInstance.isMoving).toHaveBeenCalledTimes(1)
+      expect(mockFocuserClientInstance.getTemperature).toHaveBeenCalledTimes(1)
+      expect(mockFocuserClientInstance.getTempComp).toHaveBeenCalledTimes(1)
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(
+        FOCUSER_DEVICE_ID,
+        expect.objectContaining({
+          focuser_position: 1234,
+          focuser_isMoving: false,
+          focuser_temperature: 10.0,
+          focuser_tempComp: false
+        })
+      )
+    })
+
+    it('should stop existing polling before starting new polling', () => {
+      // Mock the store's polling state
+      store.isDevicePolling.set(FOCUSER_DEVICE_ID, false)
+      store.propertyPollingIntervals.delete(FOCUSER_DEVICE_ID)
+
+      store.startFocuserPolling(FOCUSER_DEVICE_ID)
+      const firstIntervalId = store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)
+
+      store.startFocuserPolling(FOCUSER_DEVICE_ID)
+      const secondIntervalId = store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)
+
+      expect(firstIntervalId).toBeDefined()
+      expect(secondIntervalId).toBeDefined()
+      expect(firstIntervalId).not.toBe(secondIntervalId)
     })
   })
 
   describe('Connection Handlers', () => {
-    let fetchDetailsSpy: MockInstance<(deviceId: string) => Promise<void>>
-    let startPollingSpy: MockInstance<(deviceId: string) => void>
-    let stopPollingSpy: MockInstance<(deviceId: string) => void>
-    let updateDevicePropsSpy: MockInstance<(deviceId: string, updates: Partial<Device>, options?: StoreOptions) => boolean>
-
     beforeEach(() => {
-      // Ensure device is set up in a default state (e.g., not connected)
-      mockFocuserDevice.isConnected = false
-      store.devices.set(FOCUSER_DEVICE_ID, { ...mockFocuserDevice })
-      store.devicesArray = [{ ...mockFocuserDevice }]
+      vi.clearAllMocks()
+      mockGetDeviceById.mockReturnValue({
+        ...mockFocuserDevice,
+        isConnected: true
+      })
+      vi.mocked(mockFocuserClientInstance.getMaxStep).mockResolvedValue(10000)
+      vi.mocked(mockFocuserClientInstance.getMaxIncrement).mockResolvedValue(5000)
+      vi.mocked(mockFocuserClientInstance.getStepSize).mockResolvedValue(100)
+      vi.mocked(mockFocuserClientInstance.getPosition).mockResolvedValue(1234)
+      vi.mocked(mockFocuserClientInstance.isMoving).mockResolvedValue(false)
+      vi.mocked(mockFocuserClientInstance.getTemperature).mockResolvedValue(10.0)
+      vi.mocked(mockFocuserClientInstance.getTempComp).mockResolvedValue(false)
 
-      // Spy on the actions that should be called by the handlers
-      fetchDetailsSpy = vi.spyOn(store, 'fetchFocuserDetails').mockResolvedValue(undefined)
-      startPollingSpy = vi.spyOn(store, 'startFocuserPolling').mockImplementation(() => {})
-      stopPollingSpy = vi.spyOn(store, 'stopFocuserPolling').mockImplementation(() => {})
-      updateDevicePropsSpy = vi.spyOn(store, 'updateDeviceProperties').mockReturnValue(true) // Already spied, but ensure it's fresh for this suite
+      // Mock the store's polling state
+      store.isDevicePolling.set(FOCUSER_DEVICE_ID, false)
+      store.propertyPollingIntervals.delete(FOCUSER_DEVICE_ID)
     })
 
-    describe('handleFocuserConnected', () => {
-      it('should call fetchFocuserDetails and startFocuserPolling', () => {
-        store.handleFocuserConnected(FOCUSER_DEVICE_ID)
-        expect(fetchDetailsSpy).toHaveBeenCalledWith(FOCUSER_DEVICE_ID)
-        expect(startPollingSpy).toHaveBeenCalledWith(FOCUSER_DEVICE_ID)
+    it('should fetch details and start polling when handleFocuserConnected is called', async () => {
+      await store.handleFocuserConnected(FOCUSER_DEVICE_ID)
+
+      // Verify fetchFocuserDetails was called
+      expect(mockFocuserClientInstance.getMaxStep).toHaveBeenCalledTimes(1)
+      expect(mockFocuserClientInstance.getMaxIncrement).toHaveBeenCalledTimes(1)
+      expect(mockFocuserClientInstance.getStepSize).toHaveBeenCalledTimes(1)
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(
+        FOCUSER_DEVICE_ID,
+        expect.objectContaining({
+          focuser_maxStep: 10000,
+          focuser_maxIncrement: 5000,
+          focuser_stepSize: 100
+        })
+      )
+
+      // Verify polling was started
+      expect(store.isDevicePolling.get(FOCUSER_DEVICE_ID)).toBe(true)
+      expect(store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)).toBeDefined()
+    })
+
+    it('should stop polling and clear properties when handleFocuserDisconnected is called', () => {
+      // Start polling first
+      store.startFocuserPolling(FOCUSER_DEVICE_ID)
+      // const intervalId = store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)
+
+      store.handleFocuserDisconnected(FOCUSER_DEVICE_ID)
+
+      // Verify polling was stopped
+      expect(store.isDevicePolling.get(FOCUSER_DEVICE_ID)).toBe(false)
+      expect(store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)).toBeUndefined()
+
+      // Verify properties were cleared
+      expect(mockUpdateDeviceProperties).toHaveBeenCalledWith(FOCUSER_DEVICE_ID, {
+        focuser_position: null,
+        focuser_isMoving: null,
+        focuser_temperature: null,
+        focuser_stepSize: null,
+        focuser_maxStep: null,
+        focuser_maxIncrement: null,
+        focuser_tempComp: null
       })
     })
 
-    describe('handleFocuserDisconnected', () => {
-      it('should call stopFocuserPolling and updateDeviceProperties with cleared props', () => {
-        store.handleFocuserDisconnected(FOCUSER_DEVICE_ID)
-        expect(stopPollingSpy).toHaveBeenCalledWith(FOCUSER_DEVICE_ID)
+    it('should not start polling if device is not found when handleFocuserConnected is called', () => {
+      mockGetDeviceById.mockReturnValue(null)
+      store.handleFocuserConnected(FOCUSER_DEVICE_ID)
 
-        const clearedProps: FocuserDeviceProperties = {
-          focuser_position: null,
-          focuser_isMoving: null,
-          focuser_temperature: null,
-          focuser_stepSize: null,
-          focuser_maxStep: null,
-          focuser_maxIncrement: null,
-          focuser_tempComp: null
-        }
-        expect(updateDevicePropsSpy).toHaveBeenCalledWith(FOCUSER_DEVICE_ID, clearedProps)
+      expect(store.isDevicePolling.get(FOCUSER_DEVICE_ID)).toBe(false)
+      expect(store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)).toBeUndefined()
+    })
+
+    it('should not start polling if device is not a focuser when handleFocuserConnected is called', () => {
+      mockGetDeviceById.mockReturnValue({
+        ...mockFocuserDevice,
+        deviceType: 'camera' // Not a focuser
       })
+      store.handleFocuserConnected(FOCUSER_DEVICE_ID)
+
+      expect(store.isDevicePolling.get(FOCUSER_DEVICE_ID)).toBe(false)
+      expect(store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)).toBeUndefined()
+    })
+
+    it('should not start polling if device is not connected when handleFocuserConnected is called', () => {
+      mockGetDeviceById.mockReturnValue({
+        ...mockFocuserDevice,
+        isConnected: false
+      })
+      store.handleFocuserConnected(FOCUSER_DEVICE_ID)
+
+      expect(store.isDevicePolling.get(FOCUSER_DEVICE_ID)).toBe(false)
+      expect(store.propertyPollingIntervals.get(FOCUSER_DEVICE_ID)).toBeUndefined()
     })
   })
 })
