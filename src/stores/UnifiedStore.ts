@@ -34,7 +34,6 @@ export const useUnifiedStore = defineStore('unifiedStore', {
       ...createCoreActions().state(),
       ...createEventSystem().state(),
       ...createDiscoveryActions().state(),
-      ...createCoverCalibratorActions().state(),
       ...createFocuserActions().state()
     }
   },

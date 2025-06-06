@@ -359,6 +359,8 @@ export interface CoverCalibratorDevice extends UnifiedDevice {
   canSetCalibratorState?: boolean
   hasCover?: boolean
   hasCalibrator?: boolean
+  calibratorChanging?: boolean
+  coverMoving?: boolean
 }
 
 /**

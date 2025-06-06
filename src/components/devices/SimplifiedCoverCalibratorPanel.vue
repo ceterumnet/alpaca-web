@@ -17,15 +17,39 @@
             <button :disabled="isCoverOperationInProgress || coverStateComputed === 'Closed'" @click="closeCoverHandler">Close Cover</button>
             <button :disabled="!isCoverOperationInProgress" @click="haltCoverHandler">Halt Cover</button>
           </div>
-          <p>Cover Status: <strong>{{ coverStateComputed }}</strong></p>
+          <p>
+            Cover Status: <strong>{{ coverStateComputed }}</strong>
+          </p>
         </div>
 
         <!-- Calibrator Control Section -->
         <div class="panel-section">
           <h3>Calibrator Control</h3>
           <div class="control-grid">
-            <button :disabled="calibratorStateComputed === 'Ready' || calibratorStateComputed === 'NotReady' || !deviceState || deviceState.maxBrightness == null || deviceState.maxBrightness <= 0" @click="calibratorOnHandler">Turn On</button>
-            <button :disabled="calibratorStateComputed === 'Off' || calibratorStateComputed === 'Unknown' || !deviceState || deviceState.maxBrightness == null || deviceState.maxBrightness <= 0" @click="calibratorOffHandler">Turn Off</button>
+            <button
+              :disabled="
+                calibratorStateComputed === 'Ready' ||
+                calibratorStateComputed === 'NotReady' ||
+                !deviceState ||
+                deviceState.maxBrightness == null ||
+                deviceState.maxBrightness <= 0
+              "
+              @click="calibratorOnHandler"
+            >
+              Turn On
+            </button>
+            <button
+              :disabled="
+                calibratorStateComputed === 'Off' ||
+                calibratorStateComputed === 'Unknown' ||
+                !deviceState ||
+                deviceState.maxBrightness == null ||
+                deviceState.maxBrightness <= 0
+              "
+              @click="calibratorOffHandler"
+            >
+              Turn Off
+            </button>
           </div>
           <div v-if="deviceState && deviceState.maxBrightness != null && deviceState.maxBrightness > 0" class="brightness-control">
             <label :for="deviceId + '-brightness'">Brightness (0 - {{ deviceState.maxBrightness }}):</label>
@@ -38,15 +62,21 @@
               :disabled="calibratorStateComputed === 'Off' || calibratorStateComputed === 'Unknown'"
             />
           </div>
-          <p>Calibrator Status: <strong>{{ calibratorStateComputed }}</strong></p>
-          <p v-if="deviceState && deviceState.maxBrightness != null && deviceState.maxBrightness > 0">Current Brightness: <strong>{{ deviceState?.currentBrightness ?? 'N/A' }}</strong></p>
+          <p>
+            Calibrator Status: <strong>{{ calibratorStateComputed }}</strong>
+          </p>
+          <p v-if="deviceState && deviceState.maxBrightness != null && deviceState.maxBrightness > 0">
+            Current Brightness: <strong>{{ deviceState?.brightness ?? 'N/A' }}</strong>
+          </p>
           <p v-else-if="deviceState && deviceState.maxBrightness === 0">Calibrator light not available.</p>
         </div>
 
         <!-- Device Status Section -->
         <div class="panel-section">
           <h3>Device Information</h3>
-          <p>Device Name: <strong>{{ currentDevice?.name }}</strong></p>
+          <p>
+            Device Name: <strong>{{ currentDevice?.name }}</strong>
+          </p>
           <!-- Removed description as it's not typically in simplified panels and not in store state for covercalibrator -->
           <!-- <p>Description: <strong>{{ currentDevice.description }}</strong></p> -->
         </div>
@@ -60,6 +90,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUnifiedStore } from '@/stores/UnifiedStore'
 // Removed: import { callAlpacaMethod, getAlpacaProperties } from '@/utils/alpacaPropertyAccess'
 import type { Device } from '@/stores/types/device-store.types' // Kept for currentDevice typing
+import type { CoverCalibratorDevice } from '@/types/device.types'
 
 const props = defineProps({
   deviceId: {
@@ -94,7 +125,7 @@ const currentDevice = computed(() => store.getDeviceById(props.deviceId) as Devi
 
 // Computed property to get CoverCalibrator state from the store
 const deviceState = computed(() => {
-  return store.coverCalibratorData.get(props.deviceId)
+  return store.getDeviceById(props.deviceId) as CoverCalibratorDevice | undefined
 })
 
 const targetBrightnessInput = ref(0)
@@ -118,12 +149,12 @@ const fetchDeviceStatus = async () => {
 
 const coverStateComputed = computed(() => {
   const stateVal = deviceState.value?.coverState
-  return stateVal !== null && stateVal !== undefined ? (CoverStates[stateVal] || `Error (Unknown State ${stateVal})`) : 'N/A'
+  return stateVal !== null && stateVal !== undefined ? CoverStates[stateVal] || `Error (Unknown State ${stateVal})` : 'N/A'
 })
 
 const calibratorStateComputed = computed(() => {
   const stateVal = deviceState.value?.calibratorState
-  return stateVal !== null && stateVal !== undefined ? (CalibratorStates[stateVal] || `Error (Unknown State ${stateVal})`) : 'N/A'
+  return stateVal !== null && stateVal !== undefined ? CalibratorStates[stateVal] || `Error (Unknown State ${stateVal})` : 'N/A'
 })
 
 const isCoverOperationInProgress = computed(() => deviceState.value?.coverState === 3) // 3 = Moving
@@ -161,7 +192,7 @@ const calibratorOnHandler = async () => {
   if (!props.deviceId) return
   const currentMaxBrightness = deviceState.value?.maxBrightness
   if (currentMaxBrightness === null || currentMaxBrightness === undefined || currentMaxBrightness <= 0) return
-  
+
   try {
     let brightnessToSend = targetBrightnessInput.value
     if (brightnessToSend > currentMaxBrightness) {
@@ -178,17 +209,25 @@ const calibratorOnHandler = async () => {
 
 const calibratorOffHandler = async () => {
   if (!props.deviceId) return
-  const currentMaxBrightness = deviceState.value?.maxBrightness;
-  if (currentMaxBrightness === null || currentMaxBrightness === undefined || currentMaxBrightness <= 0) return;
-  try { await store.calibratorOff(props.deviceId) } catch (e) { console.error('Error calibratorOff:', e) }
+  const currentMaxBrightness = deviceState.value?.maxBrightness
+  if (currentMaxBrightness === null || currentMaxBrightness === undefined || currentMaxBrightness <= 0) return
+  try {
+    await store.calibratorOff(props.deviceId)
+  } catch (e) {
+    console.error('Error calibratorOff:', e)
+  }
 }
 
 // Sync targetBrightnessInput with currentBrightness from store when it changes and is not zero
-watch(() => deviceState.value?.currentBrightness, (newBrightness) => {
-  if (newBrightness !== null && newBrightness !== undefined) {
-    targetBrightnessInput.value = newBrightness
-  }
-}, { immediate: true })
+watch(
+  () => deviceState.value?.brightness,
+  (newBrightness) => {
+    if (newBrightness !== null && newBrightness !== undefined) {
+      targetBrightnessInput.value = newBrightness
+    }
+  },
+  { immediate: true }
+)
 
 // Watchers for connection and deviceId changes
 const startPolling = () => {
@@ -207,7 +246,6 @@ const stopPolling = () => {
 
 onMounted(() => {
   if (props.deviceId) {
-    store.initializeCoverCalibratorState(props.deviceId)
     if (props.isConnected) {
       fetchDeviceStatus()
       startPolling()
@@ -215,44 +253,47 @@ onMounted(() => {
   }
 })
 
-watch(() => props.isConnected, (newIsConnected) => {
-  if (props.deviceId) {
-    if (newIsConnected) {
-      store.initializeCoverCalibratorState(props.deviceId) // Ensure state exists
-      fetchDeviceStatus()
-      startPolling()
+watch(
+  () => props.isConnected,
+  (newIsConnected) => {
+    if (props.deviceId) {
+      if (newIsConnected) {
+        fetchDeviceStatus()
+        startPolling()
+      } else {
+        stopPolling()
+        resetLocalInputs()
+      }
+    }
+  }
+)
+
+watch(
+  () => props.deviceId,
+  (newDeviceId, oldDeviceId) => {
+    if (oldDeviceId) {
+      stopPolling()
+      // store.clearCoverCalibratorState(oldDeviceId) // Clear state for old device
+    }
+    if (newDeviceId) {
+      resetLocalInputs() // Reset inputs for the new device
+      if (props.isConnected) {
+        fetchDeviceStatus()
+        startPolling()
+      }
     } else {
       stopPolling()
-      // store.clearCoverCalibratorState(props.deviceId) // Clear state on disconnect - decide if needed or keep last state
       resetLocalInputs()
     }
-  }
-})
-
-watch(() => props.deviceId, (newDeviceId, oldDeviceId) => {
-  if (oldDeviceId) {
-    stopPolling()
-    // store.clearCoverCalibratorState(oldDeviceId) // Clear state for old device
-  }
-  if (newDeviceId) {
-    store.initializeCoverCalibratorState(newDeviceId)
-    resetLocalInputs() // Reset inputs for the new device
-    if (props.isConnected) {
-      fetchDeviceStatus()
-      startPolling()
-    }
-  } else {
-    stopPolling()
-    resetLocalInputs()
-  }
-}, { immediate: true })
+  },
+  { immediate: true }
+)
 
 onUnmounted(() => {
   stopPolling()
   // Optionally clear state if component is truly destroyed and device no longer relevant
   // if (props.deviceId) store.clearCoverCalibratorState(props.deviceId)
 })
-
 </script>
 
 <style scoped>
@@ -301,9 +342,13 @@ onUnmounted(() => {
   color: var(--aw-text-secondary-color);
 }
 
-.connection-message { font-size: 1.1rem; }
-.panel-tip { font-size: 0.8rem; }
+.connection-message {
+  font-size: 1.1rem;
+}
 
+.panel-tip {
+  font-size: 0.8rem;
+}
 
 .control-grid {
   display: grid;
@@ -312,14 +357,8 @@ onUnmounted(() => {
   margin-bottom: var(--aw-spacing-sm);
 }
 
-.control-grid button:disabled, .action-button:disabled {
-  background-color: var(--aw-color-neutral-300);
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-/* stylelint-disable-next-line no-descending-specificity */
-.control-grid button, .action-button {
+.control-grid button:disabled,
+.action-button {
   padding: calc(var(--aw-spacing-xs) * 1.5) var(--aw-spacing-sm);
   background-color: var(--aw-button-primary-bg);
   color: var(--aw-button-primary-text);
@@ -330,7 +369,16 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.control-grid button:hover:not(:disabled), .action-button:hover:not(:disabled) {
+.action-button:disabled {
+  background-color: var(--aw-color-neutral-300);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.control-grid button,
+.control-grid button:hover:not(:disabled),
+.action-button:hover:not(:disabled) {
   background-color: var(--aw-button-primary-hover-bg);
 }
 
@@ -346,7 +394,7 @@ onUnmounted(() => {
   color: var(--aw-text-secondary-color);
 }
 
-.brightness-control input[type="number"] {
+.brightness-control input[type='number'] {
   width: 80px;
   padding: var(--aw-spacing-xs);
   background-color: var(--aw-input-bg-color, var(--aw-panel-bg-color));
@@ -367,4 +415,4 @@ onUnmounted(() => {
 /* Styles for specific states could be added here using classes if needed */
 
 /* e.g. .status-open, .status-closed, .calibrator-ready */
-</style> 
+</style>

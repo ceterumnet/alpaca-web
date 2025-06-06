@@ -1,23 +1,7 @@
 import type { UnifiedStoreType } from '../UnifiedStore'
 import type { DeviceEvent } from '../types/device-store.types'
-// import type { CoverCalibratorDevice } from '@/types/device.types' // For reference
+import type { CoverCalibratorDevice } from '@/types/device.types' // For reference
 
-// Define state for each CoverCalibrator device
-export interface ICoverCalibratorState {
-  coverState: number | null // 0=Unknown, 1=NotPresent, 2=Closed, 3=Moving, 4=Open, 5=Error
-  calibratorState: number | null // 0=Unknown, 1=Off, 2=NotReady, 3=Ready, 4=Error
-  currentBrightness: number | null
-  maxBrightness: number | null
-  calibratorChanging?: boolean | null // V2+
-  coverMoving?: boolean | null // V2+
-}
-
-// Overall state structure for the CoverCalibrator module
-export interface CoverCalibratorModuleState {
-  coverCalibratorData: Map<string, ICoverCalibratorState>
-}
-
-// Define signatures for CoverCalibrator actions
 export interface ICoverCalibratorActions {
   fetchCoverCalibratorStatus: (deviceId: string) => Promise<void>
   openCover: (deviceId: string) => Promise<void>
@@ -25,47 +9,13 @@ export interface ICoverCalibratorActions {
   haltCover: (deviceId: string) => Promise<void>
   calibratorOn: (deviceId: string, brightness: number) => Promise<void>
   calibratorOff: (deviceId: string) => Promise<void>
-  initializeCoverCalibratorState: (deviceId: string) => void
-  clearCoverCalibratorState: (deviceId: string) => void
 }
 
 export function createCoverCalibratorActions(): {
-  state: () => CoverCalibratorModuleState
   actions: ICoverCalibratorActions
 } {
-  const state = (): CoverCalibratorModuleState => ({
-    coverCalibratorData: new Map<string, ICoverCalibratorState>()
-  })
-
   const actions: ICoverCalibratorActions = {
-    initializeCoverCalibratorState(this: UnifiedStoreType, deviceId: string) {
-      if (!this.coverCalibratorData.has(deviceId)) {
-        this.coverCalibratorData.set(deviceId, {
-          coverState: null,
-          calibratorState: null,
-          currentBrightness: null,
-          maxBrightness: null,
-          calibratorChanging: null,
-          coverMoving: null
-        })
-      }
-    },
-
-    clearCoverCalibratorState(this: UnifiedStoreType, deviceId: string) {
-      if (this.coverCalibratorData.has(deviceId)) {
-        this.coverCalibratorData.set(deviceId, {
-          coverState: null,
-          calibratorState: null,
-          currentBrightness: null,
-          maxBrightness: null, // Capabilities like maxBrightness might be better to persist or re-fetch on connect
-          calibratorChanging: null,
-          coverMoving: null
-        })
-      }
-    },
-
     async fetchCoverCalibratorStatus(this: UnifiedStoreType, deviceId: string) {
-      this.initializeCoverCalibratorState(deviceId)
       const client = this.getDeviceClient(deviceId) as import('@/api/alpaca/covercalibrator-client').CoverCalibratorClient | null
       if (!client) {
         const errorMsg = `[CoverCalibratorActions] No client for device ${deviceId}`
@@ -79,28 +29,23 @@ export function createCoverCalibratorActions(): {
         return
       }
 
-      const device = this.getDeviceById(deviceId)
+      const device = this.getDeviceById(deviceId) as CoverCalibratorDevice | null
       if (!device || !device.isConnected) return
 
       try {
         // Fetch all properties using the client's helper method
         const status = await client.getCoverCalibratorState()
 
-        const newStatus: ICoverCalibratorState = {
-          coverState: typeof status.coverstate === 'number' ? (status.coverstate as number) : null,
-          calibratorState: typeof status.calibratorstate === 'number' ? (status.calibratorstate as number) : null,
-          maxBrightness: typeof status.maxbrightness === 'number' ? (status.maxbrightness as number) : null,
-          currentBrightness: typeof status.brightness === 'number' ? (status.brightness as number) : null,
-          calibratorChanging: typeof status.calibratorchanging === 'boolean' ? (status.calibratorchanging as boolean) : null,
-          coverMoving: typeof status.covermoving === 'boolean' ? (status.covermoving as boolean) : null
+        const newStatus: Partial<CoverCalibratorDevice> = {
+          coverState: status.coverstate as number | undefined,
+          calibratorState: status.calibratorstate as number | undefined,
+          maxBrightness: status.maxbrightness as number | undefined,
+          brightness: status.brightness as number | undefined,
+          calibratorChanging: status.calibratorchanging as boolean | undefined,
+          coverMoving: status.covermoving as boolean | undefined
         }
 
-        this.$patch((state) => {
-          const data = state.coverCalibratorData.get(deviceId)
-          if (data) {
-            Object.assign(data, newStatus)
-          }
-        })
+        this.updateDevice(deviceId, newStatus)
         this._emitEvent({ type: 'devicePropertyChanged', deviceId, property: 'coverCalibratorStatus', value: newStatus } as DeviceEvent)
       } catch (error: unknown) {
         const errorMsg = `[CoverCalibratorActions] Error fetching status for ${deviceId}: ${error}`
@@ -193,13 +138,11 @@ export function createCoverCalibratorActions(): {
   }
 
   return {
-    state,
     actions
   }
 }
 
 // Type for the CoverCalibrator store module to be merged into UnifiedStoreType
 export type CoverCalibratorStore = {
-  state: CoverCalibratorModuleState
   actions: ICoverCalibratorActions
 }
