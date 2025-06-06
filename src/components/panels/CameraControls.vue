@@ -1,11 +1,3 @@
-// Status: Good - Part of new panel system
-// This component serves as the main container for camera
-// functionality:
-// - Integrates CameraExposureControl and CameraImageDisplay
-// - Manages image data flow between components
-// - Handles exposure state and error reporting
-// - Provides unified camera control interface
-
 <script setup lang="ts">
 import log from '@/plugins/logger'
 import { ref, watch } from 'vue'
@@ -34,26 +26,26 @@ const exposureInProgress = ref(false)
 // Handlers for exposure control events
 const handleExposureStarted = (params: { duration: number; isLight: boolean }) => {
   exposureInProgress.value = true
-  log.debug({deviceIds:[props.deviceId]}, `Exposure started: ${params.duration}s, Light: ${params.isLight}`)
+  log.debug({ deviceIds: [props.deviceId] }, `Exposure started: ${params.duration}s, Light: ${params.isLight}`)
 }
 
 const handleExposureComplete = () => {
   exposureInProgress.value = false
-  log.debug({deviceIds:[props.deviceId]}, 'Exposure complete')
+  log.debug({ deviceIds: [props.deviceId] }, 'Exposure complete')
 }
 
 const handleImageDownloaded = (data: ArrayBuffer) => {
   imageData.value = data
-  log.debug({deviceIds:[props.deviceId]}, `Image downloaded: ${data.byteLength} bytes`)
+  log.debug({ deviceIds: [props.deviceId] }, `Image downloaded: ${data.byteLength} bytes`)
 }
 
 const handleError = (error: string) => {
-  log.error({deviceIds:[props.deviceId]}, 'Camera error:', error)
+  log.error({ deviceIds: [props.deviceId] }, 'Camera error:', error)
 }
 
 // Handle histogram generation
 const handleHistogramGenerated = (histogram: number[]) => {
-  log.debug({deviceIds:[props.deviceId]}, 'Histogram generated with', histogram.length, 'bins')
+  log.debug({ deviceIds: [props.deviceId] }, 'Histogram generated with', histogram.length, 'bins')
 }
 
 // Reset state when device changes

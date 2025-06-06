@@ -102,7 +102,6 @@ describe('coreActions', () => {
         devicesArray: [],
         selectedDeviceId: null,
         deviceClients: new Map(),
-        deviceStateCache: new Map(),
         propertyPollingIntervals: new Map(),
         deviceStateAvailableProps: new Map(),
         deviceStateUnsupported: new Set(),
@@ -112,7 +111,6 @@ describe('coreActions', () => {
       expect(store.devicesArray).toEqual(expectedInitialState.devicesArray)
       expect(store.selectedDeviceId).toEqual(expectedInitialState.selectedDeviceId)
       expect(store.deviceClients).toEqual(expectedInitialState.deviceClients)
-      expect(store.deviceStateCache).toEqual(expectedInitialState.deviceStateCache)
       expect(store.propertyPollingIntervals).toEqual(expectedInitialState.propertyPollingIntervals)
       expect(store.deviceStateAvailableProps).toEqual(expectedInitialState.deviceStateAvailableProps)
       expect(store.deviceStateUnsupported).toEqual(expectedInitialState.deviceStateUnsupported)

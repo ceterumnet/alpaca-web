@@ -1,11 +1,3 @@
-// Status: Good - Core Module
-// This is the event system module that:
-// - Implements event handling system
-// - Handles event propagation
-// - Provides event utilities
-// - Supports event subscription
-// - Maintains event state
-
 /**
  * Event System Module
  *
@@ -31,10 +23,7 @@ export function createEventSystem() {
     }),
 
     actions: {
-      addEventListener(
-        this: EventSystemState & { _emitEvent: (event: DeviceEvent) => void },
-        listener: DeviceEventListener
-      ): void {
+      addEventListener(this: EventSystemState & { _emitEvent: (event: DeviceEvent) => void }, listener: DeviceEventListener): void {
         this.eventListeners.push(listener)
       },
 
@@ -103,23 +92,6 @@ export function createEventSystem() {
 
       emit(this: EventSystemState, event: string, ...args: unknown[]): void {
         if (!this.eventHandlers[event]) return
-
-        // Add debug logging for the 'callDeviceMethod' event with 'exposuretime'
-        if (event === 'callDeviceMethod' && args.length >= 2 && args[1] === 'exposuretime') {
-          console.error('⚠️ DETECTED exposuretime call via emit!')
-          console.error('Call details:', {
-            event,
-            deviceId: args[0],
-            method: args[1],
-            args: args.slice(2)
-          })
-          console.error('Stack trace:')
-          try {
-            throw new Error('Trace for emit exposuretime call')
-          } catch (e) {
-            console.error(e)
-          }
-        }
 
         for (const handler of this.eventHandlers[event]) {
           handler(...args)

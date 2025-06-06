@@ -312,24 +312,6 @@ describe('eventSystem', () => {
         consoleErrorSpy.mockRestore()
       })
 
-      it('should log to console.error for emit("callDeviceMethod") with method "exposuretime"', () => {
-        const deviceId = 'test-cam'
-        const methodName = 'exposuretime'
-        const methodArgs = [10, true]
-
-        // Add a dummy handler to ensure the event emission logic is reached
-        store.on('callDeviceMethod', () => {})
-
-        store.emit('callDeviceMethod', deviceId, methodName, ...methodArgs)
-
-        expect(consoleErrorSpy).toHaveBeenCalled()
-        expect(
-          consoleErrorSpy.mock.calls.some(
-            (callArgs: unknown[]) => typeof callArgs[0] === 'string' && callArgs[0].includes('exposuretime call via emit')
-          )
-        ).toBe(true)
-      })
-
       it('should NOT log to console.error for emit("callDeviceMethod") with other methods', () => {
         store.emit('callDeviceMethod', 'test-cam', 'otherMethod', 123)
         expect(consoleErrorSpy).not.toHaveBeenCalled()

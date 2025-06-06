@@ -18,7 +18,6 @@ export interface CoreState {
   deviceClients: Map<string, AlpacaClient>
   theme: 'light' | 'dark'
   isSidebarVisible: boolean
-  deviceStateCache: Map<string, { timestamp: number; data: Record<string, unknown> }>
   propertyPollingIntervals: Map<string, number>
   deviceStateAvailableProps: Map<string, Set<string>>
   deviceStateUnsupported: Set<string>
@@ -911,7 +910,6 @@ export function createCoreActions(): { state: () => CoreState; actions: ICoreAct
       deviceClients: new Map<string, AlpacaClient>(),
       theme: 'light',
       isSidebarVisible: true,
-      deviceStateCache: new Map<string, { timestamp: number; data: Record<string, unknown> }>(),
       propertyPollingIntervals: new Map<string, number>(),
       deviceStateAvailableProps: new Map<string, Set<string>>(),
       deviceStateUnsupported: new Set<string>(),

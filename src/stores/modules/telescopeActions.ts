@@ -1,11 +1,3 @@
-// Status: Good - Core Module
-// This is the telescope actions module that:
-// - Implements telescope control operations
-// - Handles mount positioning and tracking
-// - Provides coordinate transformations
-// - Supports telescope automation
-// - Maintains telescope state
-
 /**
  * Telescope Actions Module
  *
