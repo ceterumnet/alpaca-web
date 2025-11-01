@@ -48,13 +48,13 @@ jobs:
         run: mv dist alpaca-web-direct
 
       - name: Upload Proxied Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: alpaca-web-proxied
           path: alpaca-web-proxied/
 
       - name: Upload Direct Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: alpaca-web-direct
           path: alpaca-web-direct/
